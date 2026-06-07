@@ -13,6 +13,7 @@ interface RunOptions {
   build?: boolean;
   cwd?: string;
   once?: boolean;
+  maxTokens?: string;
 }
 
 async function run(promptParts: string[], opts: RunOptions): Promise<void> {
@@ -46,6 +47,7 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
     model: target.model,
     mode,
     cwd,
+    maxTokens: opts.maxTokens ? Number(opts.maxTokens) : undefined,
   };
   let session = new Session(sessionCfg);
 
@@ -76,9 +78,14 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
 
   // Interactive REPL.
   for (;;) {
+    // Hint the inverse mode toggle next to the label, e.g. in build mode show
+    // "(/plan for plan mode)".
+    const other = session.mode === "plan" ? "build" : "plan";
+    const label = ui.violet(`${session.mode} ›`);
+    const modeHint = ui.dim(`(/${other} for ${other} mode)`);
     const input = await p.text({
-      message:
-        session.mode === "plan" ? ui.info("plan ›") : ui.accent("build ›"),
+      message: `${label} ${modeHint}`,
+      placeholder: "type a request, or / for commands (/help /mode /clear /exit)",
     });
     if (p.isCancel(input)) {
       p.outro(ui.dim("Bye."));
@@ -100,7 +107,6 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
       }
       continue;
     }
-
     await session.send(text);
   }
 }
@@ -114,6 +120,18 @@ function handleSlash(
 ): "exit" | void {
   const [cmd, arg] = text.slice(1).split(/\s+/, 2);
 
+  // Switch to `next` mode, carrying the existing transcript across.
+  const switchMode = (next: Mode): void => {
+    if (getSession().mode === next) {
+      console.log(ui.dim(`  Already in ${next} mode.`));
+      return;
+    }
+    const carried = new Session({ ...baseCfg, mode: next });
+    carried.messages.push(...getSession().messages);
+    setSession(carried);
+    console.log(ui.dim(`  Switched to ${next} mode.`));
+  };
+
   switch (cmd) {
     case "exit":
     case "quit":
@@ -124,7 +142,9 @@ function handleSlash(
       console.log(
         [
           ui.heading("Commands"),
-          `  ${ui.bold("/mode")} [plan|build]  switch agent mode (read-only vs full)`,
+          `  ${ui.bold("/plan")}               switch to plan mode (read-only)`,
+          `  ${ui.bold("/build")}              switch to build mode (all tools)`,
+          `  ${ui.bold("/mode")} [plan|build]  toggle or set the agent mode`,
           `  ${ui.bold("/clear")}              start a fresh conversation`,
           `  ${ui.bold("/info")}               show the current model & mode`,
           `  ${ui.bold("/exit")}               quit`,
@@ -147,6 +167,14 @@ function handleSlash(
       return;
     }
 
+    case "plan":
+      switchMode("plan");
+      return;
+
+    case "build":
+      switchMode("build");
+      return;
+
     case "mode": {
       const next = (
         arg === "plan" || arg === "build"
@@ -155,11 +183,7 @@ function handleSlash(
             ? "build"
             : "plan"
       ) as Mode;
-      // Carry the existing transcript into the new mode.
-      const carried = new Session({ ...baseCfg, mode: next });
-      carried.messages.push(...getSession().messages);
-      setSession(carried);
-      console.log(ui.dim(`  Switched to ${next} mode.`));
+      switchMode(next);
       return;
     }
 
@@ -179,5 +203,6 @@ export function registerRun(program: Command): void {
     .option("--build", "Start in build mode (all tools)")
     .option("-C, --cwd <dir>", "Working directory for the agent")
     .option("--once", "Run the prompt once and exit (no REPL)")
+    .option("--max-tokens <n>", "Max output tokens per response")
     .action((parts: string[], opts: RunOptions) => run(parts, opts));
 }

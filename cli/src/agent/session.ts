@@ -1,8 +1,14 @@
-import * as p from "@clack/prompts";
 import type { Credential } from "../config/store.ts";
 import type { ProviderInfo } from "../providers/registry.ts";
-import { ui } from "../ui/output.ts";
-import { complete, type ContentBlock, type Message } from "./client.ts";
+import { createSpinner } from "../ui/spinner.ts";
+import { tau } from "../ui/tau.ts";
+import { createLiveText } from "../ui/live.ts";
+import { createClient } from "../providers/registry.ts";
+import type {
+  ContentBlock,
+  Message,
+  ProviderClient,
+} from "../providers/types.ts";
 import { toolsForMode, type Tool, type ToolContext } from "./tools/index.ts";
 import { ToolError } from "./tools/types.ts";
 
@@ -14,6 +20,7 @@ export interface SessionConfig {
   model: string;
   mode: Mode;
   cwd: string;
+  maxTokens?: number;
 }
 
 /** Hard cap on tool-call iterations per user turn, to avoid runaway loops. */
@@ -42,14 +49,27 @@ function systemPrompt(cfg: SessionConfig): string {
     `Write shell commands and file paths in the syntax appropriate for this ` +
     `platform.\n\n` +
     `Use the provided tools to inspect and modify the project. Keep prose ` +
-    `concise. When you finish a task, briefly state what you did.`;
+    `concise. When you finish a task, briefly state what you did.\n\n` +
+    `Conventions - match the project before you change it:\n` +
+    `- Package manager: detect it from the lockfile before installing, adding, ` +
+    `or removing dependencies, and use only that one. bun.lock / bun.lockb → ` +
+    `bun; pnpm-lock.yaml → pnpm; yarn.lock → yarn; package-lock.json → npm. ` +
+    `If none exists, default to npm.\n`;
 
   if (cfg.mode === "plan") {
     return (
       base +
-      `\n\nYou are in PLAN mode. You have read-only tools only — you cannot ` +
-      `write files or run commands. Investigate the project and respond with a ` +
-      `clear, step-by-step implementation plan. Do not claim to have made changes.`
+      `\n\nYou are in PLAN mode. Investigate the project read-only and produce ` +
+      `a clear, step-by-step implementation plan. You may NOT edit existing ` +
+      `files or run shell commands, and you must not change any project source ` +
+      `code. Do not claim to have implemented anything.\n\n` +
+      `Save the finished plan as a markdown file under \`tau/plans/\` in the ` +
+      `project root (create the folder if it doesn't exist) using the \`write\` ` +
+      `tool — this is the ONLY place you may write. Name the file in kebab-case ` +
+      `after the task, e.g. \`tau/plans/add-user-auth.md\`. The file should ` +
+      `contain the full plan in well-structured markdown (a title, a short ` +
+      `summary, then the numbered steps). After saving, tell the user the path ` +
+      `to the plan file.`
     );
   }
   return (
@@ -64,11 +84,13 @@ export class Session {
   private readonly tools: Tool[];
   private readonly toolCtx: ToolContext;
   private readonly system: string;
+  private readonly client: ProviderClient;
 
   constructor(private cfg: SessionConfig) {
     this.tools = toolsForMode(cfg.mode);
     this.toolCtx = { cwd: cfg.cwd };
     this.system = systemPrompt(cfg);
+    this.client = createClient(cfg.provider, cfg.cred);
   }
 
   get mode(): Mode {
@@ -82,54 +104,71 @@ export class Session {
       content: [{ type: "text", text: userText }],
     });
 
-    for (let step = 0; step < MAX_STEPS; step++) {
-      const spin = p.spinner();
-      spin.start(ui.dim(`${this.cfg.provider.name} · ${this.cfg.model}`));
+    const spin = createSpinner("Thinking");
+    try {
+      for (let step = 0; step < MAX_STEPS; step++) {
+        spin.setText("Thinking");
+        spin.resume();
 
-      let result;
-      try {
-        result = await complete({
-          provider: this.cfg.provider,
-          cred: this.cfg.cred,
-          model: this.cfg.model,
-          system: this.system,
-          messages: this.messages,
-          tools: this.tools,
-        });
-        spin.stop(ui.dim("done"));
-      } catch (e: any) {
-        spin.stop(ui.err("request failed"));
-        console.error(ui.err(e.message ?? String(e)));
-        return;
-      }
+        // Stream raw tokens live for instant feedback; on the first token the
+        // pinned spinner steps aside. Once the reply is complete the raw text is
+        // erased and reprinted as rendered markdown (see createLiveText).
+        const live = createLiveText();
+        let streaming = false;
+        const onText = (delta: string): void => {
+          if (!streaming) {
+            streaming = true;
+            spin.pause();
+          }
+          live.push(delta);
+        };
 
-      // Drop empty text blocks — Anthropic rejects them when echoed back.
-      const content = result.content.filter(
-        (b) => b.type !== "text" || b.text.trim().length > 0,
-      );
-      this.messages.push({ role: "assistant", content });
-
-      // Print any assistant text.
-      for (const block of content) {
-        if (block.type === "text" && block.text.trim()) {
-          console.log("\n" + block.text.trim() + "\n");
+        let result;
+        try {
+          result = await this.client.chat(
+            {
+              model: this.cfg.model,
+              system: this.system,
+              messages: this.messages,
+              tools: this.tools,
+              maxTokens: this.cfg.maxTokens,
+            },
+            { onText },
+          );
+        } catch (e: any) {
+          spin.pause();
+          tau.error(e.message ?? String(e));
+          return;
         }
+
+        // Replace the streamed raw text with rendered markdown, set off by blank
+        // lines so it's visually distinct from the surrounding tool-call lines.
+        live.finish();
+
+        // Drop empty text blocks — providers reject them when echoed back.
+        const content = result.content.filter(
+          (b) => b.type !== "text" || b.text.trim().length > 0,
+        );
+        this.messages.push({ role: "assistant", content });
+
+        const toolUses = content.filter(
+          (b): b is Extract<ContentBlock, { type: "tool_use" }> =>
+            b.type === "tool_use",
+        );
+        if (toolUses.length === 0) return; // turn complete
+
+        spin.resume();
+        const results: ContentBlock[] = [];
+        for (const call of toolUses) {
+          results.push(await this.runTool(call));
+        }
+        this.messages.push({ role: "user", content: results });
       }
 
-      const toolUses = content.filter(
-        (b): b is Extract<ContentBlock, { type: "tool_use" }> =>
-          b.type === "tool_use",
-      );
-      if (toolUses.length === 0) return; // turn complete
-
-      const results: ContentBlock[] = [];
-      for (const call of toolUses) {
-        results.push(await this.runTool(call));
-      }
-      this.messages.push({ role: "user", content: results });
+      tau.error(`Stopped after ${MAX_STEPS} steps.`);
+    } finally {
+      spin.stop();
     }
-
-    console.log(ui.warn(`Stopped after ${MAX_STEPS} steps.`));
   }
 
   private async runTool(
@@ -145,14 +184,17 @@ export class Session {
       };
     }
 
-    console.log(ui.accent("  ⚒ " + tool.summarize(call.input)));
+    const summary = tool.summarize(call.input);
     try {
       const output = await tool.run(call.input, this.toolCtx);
+      // Show the call and a brief result note; never echo the raw output.
+      tau.tool(summary, briefResult(tool.name, output));
       return { type: "tool_result", tool_use_id: call.id, content: output };
     } catch (e: any) {
       const message =
         e instanceof ToolError ? e.message : `Tool failed: ${e.message ?? e}`;
-      console.log(ui.err("    " + message));
+      tau.tool(summary, "failed");
+      tau.error(message);
       return {
         type: "tool_result",
         tool_use_id: call.id,
@@ -160,5 +202,21 @@ export class Session {
         is_error: true,
       };
     }
+  }
+}
+
+/** A short, human-readable result note for a tool call — never the raw output. */
+function briefResult(toolName: string, output: string): string {
+  switch (toolName) {
+    case "read": {
+      const lines = output.split("\n").length;
+      return `${lines} line${lines === 1 ? "" : "s"}`;
+    }
+    case "bash": {
+      const m = output.match(/^Exit code: (\d+)/);
+      return m ? `exit ${m[1]}` : "done";
+    }
+    default:
+      return "done";
   }
 }

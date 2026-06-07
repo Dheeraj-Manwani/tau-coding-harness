@@ -97,10 +97,24 @@ bun run typecheck  # tsc --noEmit
 src/
   cli.ts                 entry point; wires up commands
   commands/              auth, providers, models, config, run (+ REPL)
-  providers/registry.ts  provider + model catalog
+  providers/             one module per provider (catalog + SDK client)
+    types.ts             shared message/client contracts
+    registry.ts          aggregates modules; lookups + createClient()
+    anthropic.ts         Anthropic   (@anthropic-ai/sdk)
+    openai-compatible.ts shared OpenAI-protocol adapter (openai SDK)
+    openai.ts            OpenAI
+    deepseek.ts          DeepSeek    (OpenAI-compatible)
+    google.ts            Google Gemini (OpenAI-compatible)
   config/                config dir resolution + credential/preference storage
   agent/
-    client.ts            unified Anthropic / OpenAI chat client
     session.ts           the agent loop (Session)
     tools/               read, write, edit, bash
 ```
+
+### Adding a provider
+
+Create `src/providers/<name>.ts` exporting a `ProviderModule` (catalog metadata
+plus a `createClient` factory), then add it to `MODULES` in `registry.ts`.
+OpenAI-compatible providers just call `createOpenAICompatibleClient` with their
+base URL; native protocols (like Anthropic) wrap their own SDK. Nothing else
+needs to change.

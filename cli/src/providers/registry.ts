@@ -1,110 +1,39 @@
 /**
- * Static catalog of providers and the models tau knows how to talk to.
+ * Provider registry: the single place that knows the full set of providers.
  *
- * Two wire protocols are supported:
- *  - "anthropic"  -> POST {baseUrl}/v1/messages   (Claude native)
- *  - "openai"     -> POST {baseUrl}/chat/completions (OpenAI-compatible)
+ * Each provider lives in its own module exporting a `ProviderModule` (catalog
+ * metadata + a `createClient` factory). To add a provider, create a new module
+ * and add it to `MODULES` below — nothing else needs to change.
  *
- * Most third-party providers (DeepSeek, Google's compat endpoint, ...)
- * speak the OpenAI protocol, so a single client covers all of them.
+ * Two wire protocols are covered today:
+ *  - Anthropic native (`@anthropic-ai/sdk`)         -> see anthropic.ts
+ *  - OpenAI `/chat/completions` (`openai` SDK)       -> see openai-compatible.ts
+ *    (OpenAI, DeepSeek, Google's compat endpoint, …)
  */
+import type { Credential } from "../config/store.ts";
+import type {
+  ClientOptions,
+  ModelInfo,
+  ProviderClient,
+  ProviderInfo,
+  ProviderModule,
+} from "./types.ts";
+import { anthropicModule } from "./anthropic.ts";
+import { openaiModule } from "./openai.ts";
+import { deepseekModule } from "./deepseek.ts";
+import { googleModule } from "./google.ts";
 
-export type Protocol = "anthropic" | "openai";
-
-export interface ModelInfo {
-  /** Wire id sent to the provider. */
-  id: string;
-  /** Human friendly label for menus. */
-  name: string;
-  /** Context window in tokens, for display only. */
-  context?: number;
-  /** Marks the recommended default model for the provider. */
-  recommended?: boolean;
-}
-
-export interface ProviderInfo {
-  id: string;
-  name: string;
-  protocol: Protocol;
-  baseUrl: string;
-  /** Alternate names that resolve to this provider (e.g. "gemini" -> google). */
-  aliases?: string[];
-  models: ModelInfo[];
-}
-
-// TODO: the providers will come from our own api endpoint which will keep refreshing after some time
-export const PROVIDERS: ProviderInfo[] = [
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    protocol: "anthropic",
-    baseUrl: "https://api.anthropic.com",
-    aliases: ["claude"],
-    models: [
-      {
-        id: "claude-opus-4-8",
-        name: "Claude Opus 4.8",
-        context: 1_000_000,
-        recommended: true,
-      },
-      { id: "claude-opus-4-7", name: "Claude Opus 4.7", context: 1_000_000 },
-      { id: "claude-opus-4-6", name: "Claude Opus 4.6", context: 1_000_000 },
-      {
-        id: "claude-sonnet-4-6",
-        name: "Claude Sonnet 4.6",
-        context: 1_000_000,
-      },
-      { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", context: 200_000 },
-    ],
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    protocol: "openai",
-    baseUrl: "https://api.openai.com/v1",
-    models: [
-      { id: "gpt-4o", name: "GPT-4o", context: 128_000, recommended: true },
-      { id: "gpt-4o-mini", name: "GPT-4o mini", context: 128_000 },
-      { id: "o3", name: "o3", context: 200_000 },
-      { id: "o4-mini", name: "o4-mini", context: 200_000 },
-    ],
-  },
-  {
-    id: "deepseek",
-    name: "DeepSeek",
-    protocol: "openai",
-    baseUrl: "https://api.deepseek.com",
-    models: [
-      {
-        id: "deepseek-chat",
-        name: "DeepSeek-V3 (chat)",
-        context: 64_000,
-        recommended: true,
-      },
-      {
-        id: "deepseek-reasoner",
-        name: "DeepSeek-R1 (reasoner)",
-        context: 64_000,
-      },
-    ],
-  },
-  {
-    id: "google",
-    name: "Google Gemini",
-    protocol: "openai",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-    aliases: ["gemini", "google-gemini"],
-    models: [
-      {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
-        context: 1_000_000,
-        recommended: true,
-      },
-      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", context: 1_000_000 },
-    ],
-  },
+// TODO: providers may eventually come from our own API endpoint that refreshes
+// periodically; this static list is the bootstrap/fallback catalog.
+const MODULES: ProviderModule[] = [
+  anthropicModule,
+  openaiModule,
+  deepseekModule,
+  googleModule,
 ];
+
+/** Catalog metadata for every registered provider. */
+export const PROVIDERS: ProviderInfo[] = MODULES.map((m) => m.info);
 
 /**
  * Resolve a provider by its id, display name, or any registered alias.
@@ -142,3 +71,20 @@ export function findModel(
   }
   return undefined;
 }
+
+/** Build a live, credential-bound client for the given provider. */
+export function createClient(
+  provider: ProviderInfo,
+  cred: Credential,
+  opts?: ClientOptions,
+): ProviderClient {
+  const mod = MODULES.find((m) => m.info.id === provider.id);
+  if (!mod) {
+    throw new Error(
+      `No client implementation registered for provider: ${provider.id}`,
+    );
+  }
+  return mod.createClient(cred, opts);
+}
+
+export type { ModelInfo, ProviderInfo } from "./types.ts";

@@ -1,4 +1,8 @@
+import chalk from "chalk";
 import pc from "picocolors";
+
+/** Brand violet — the same hue as the τ mark. */
+const BRAND_VIOLET = "#8075E8";
 
 /** Small wrappers so the colour scheme lives in one place. */
 export const ui = {
@@ -12,6 +16,8 @@ export const ui = {
   info: (s: string) => pc.cyan(s),
   accent: (s: string) => pc.magenta(s),
   bold: (s: string) => pc.bold(s),
+  /** Brand violet — matches the τ mark; used for mode labels. */
+  violet: (s: string) => chalk.hex(BRAND_VIOLET)(s),
 };
 
 export function printError(message: string): void {

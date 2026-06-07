@@ -12,9 +12,12 @@ export const ALL_TOOLS: Tool[] = [readTool, writeTool, editTool, bashTool];
 /**
  * Tools available in a given agent mode.
  *  - build: everything
- *  - plan:  read-only tools only (no write / edit / bash mutations)
+ *  - plan:  read-only tools, plus `write` so the agent can save its plan
+ *           document (it must not edit existing files or run commands)
  */
 export function toolsForMode(mode: "build" | "plan"): Tool[] {
-  if (mode === "plan") return ALL_TOOLS.filter((t) => !t.mutating);
+  if (mode === "plan") {
+    return ALL_TOOLS.filter((t) => !t.mutating || t.name === "write");
+  }
   return ALL_TOOLS;
 }

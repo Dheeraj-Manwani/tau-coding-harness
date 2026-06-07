@@ -7,9 +7,36 @@ export interface ToolSchema {
   additionalProperties?: boolean;
 }
 
+/** The agent's operating mode. */
+export type AgentMode = "plan" | "build";
+
+/** Outcome of a requested mode switch. */
+export interface ModeSwitchResult {
+  /** Whether the mode actually changed. */
+  switched: boolean;
+  /** The mode in effect after the request (unchanged if declined). */
+  mode: AgentMode;
+}
+
 export interface ToolContext {
   /** Directory the agent treats as the project root. */
   cwd: string;
+  /**
+   * Optional guard run by mutating tools (write/edit) against the resolved
+   * absolute target path before touching disk. It should throw a {@link
+   * ToolError} to refuse the write. Used to confine plan mode to `tau/plans/`.
+   */
+  assertWritable?(absPath: string): void;
+  /**
+   * Request switching the agent to `target` mode. The implementation asks the
+   * user to confirm and only changes mode if they accept. Resolves with the
+   * outcome and the mode now in effect. `reason` is an optional user-facing
+   * explanation shown alongside the confirmation prompt.
+   */
+  requestModeSwitch?(
+    target: AgentMode,
+    reason?: string,
+  ): Promise<ModeSwitchResult>;
 }
 
 export interface Tool {

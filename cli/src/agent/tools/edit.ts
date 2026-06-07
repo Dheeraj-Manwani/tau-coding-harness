@@ -27,6 +27,7 @@ export const editTool: Tool = {
       throw new ToolError("`old_string` and `new_string` are identical.");
     }
     const path = isAbsolute(input.path) ? input.path : resolve(ctx.cwd, input.path);
+    ctx.assertWritable?.(path);
 
     let content: string;
     try {

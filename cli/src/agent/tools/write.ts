@@ -24,6 +24,7 @@ export const writeTool: Tool = {
       throw new ToolError("`content` must be a string.");
     }
     const path = isAbsolute(input.path) ? input.path : resolve(ctx.cwd, input.path);
+    ctx.assertWritable?.(path);
     try {
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, input.content, "utf8");

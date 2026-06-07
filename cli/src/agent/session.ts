@@ -1,6 +1,8 @@
+import { isAbsolute, relative, resolve } from "node:path";
+import * as p from "@clack/prompts";
 import type { Credential } from "../config/store.ts";
 import type { ProviderInfo } from "../providers/registry.ts";
-import { createSpinner } from "../ui/spinner.ts";
+import { createSpinner, type Spinner } from "../ui/spinner.ts";
 import { tau } from "../ui/tau.ts";
 import { createLiveText } from "../ui/live.ts";
 import { createClient } from "../providers/registry.ts";
@@ -10,7 +12,11 @@ import type {
   ProviderClient,
 } from "../providers/types.ts";
 import { toolsForMode, type Tool, type ToolContext } from "./tools/index.ts";
-import { ToolError } from "./tools/types.ts";
+import {
+  ToolError,
+  type AgentMode,
+  type ModeSwitchResult,
+} from "./tools/types.ts";
 
 export type Mode = "build" | "plan";
 
@@ -69,7 +75,12 @@ function systemPrompt(cfg: SessionConfig): string {
       `after the task, e.g. \`tau/plans/add-user-auth.md\`. The file should ` +
       `contain the full plan in well-structured markdown (a title, a short ` +
       `summary, then the numbered steps). After saving, tell the user the path ` +
-      `to the plan file.`
+      `to the plan file.\n\n` +
+      `If the user asks you to build, implement, or execute the plan, you ` +
+      `cannot edit project files or run commands while in plan mode. Use the ` +
+      `\`switch_mode\` tool to request switching to build mode (the user must ` +
+      `confirm); once switched, carry out the work. The user can also switch ` +
+      `manually by typing \`/build\`.`
     );
   }
   return (
@@ -81,20 +92,77 @@ function systemPrompt(cfg: SessionConfig): string {
 
 export class Session {
   readonly messages: Message[] = [];
-  private readonly tools: Tool[];
+  // Re-derived whenever the mode changes (see applyMode), so a mid-turn
+  // switch_mode takes effect on the next loop iteration.
+  private tools!: Tool[];
+  private system!: string;
   private readonly toolCtx: ToolContext;
-  private readonly system: string;
   private readonly client: ProviderClient;
+  // The spinner owning the bottom line during an active turn, so a mode-switch
+  // confirmation prompt can step aside without fighting it for the terminal.
+  private spin: Spinner | null = null;
 
   constructor(private cfg: SessionConfig) {
-    this.tools = toolsForMode(cfg.mode);
-    this.toolCtx = { cwd: cfg.cwd };
-    this.system = systemPrompt(cfg);
+    this.toolCtx = {
+      cwd: cfg.cwd,
+      requestModeSwitch: (target, reason) =>
+        this.requestModeSwitch(target, reason),
+    };
     this.client = createClient(cfg.provider, cfg.cred);
+    this.applyMode(cfg.mode);
   }
 
   get mode(): Mode {
     return this.cfg.mode;
+  }
+
+  /**
+   * Re-derive everything that depends on the operating mode: the tool set, the
+   * system prompt, and the plan-mode write guard. Called from the constructor
+   * and on an accepted mode switch.
+   */
+  private applyMode(mode: Mode): void {
+    this.cfg = { ...this.cfg, mode };
+    this.tools = toolsForMode(mode);
+    this.system = systemPrompt(this.cfg);
+    // Plan mode may only write its plan document; hard-enforce that the `write`
+    // tool can't escape tau/plans/ into project source files.
+    this.toolCtx.assertWritable =
+      mode === "plan" ? planWriteGuard(this.cfg.cwd) : undefined;
+  }
+
+  /**
+   * Ask the user to confirm switching to `target` mode. Only changes mode if
+   * they accept. Pauses the live spinner around the prompt so clack owns the
+   * terminal cleanly. Implements {@link ToolContext.requestModeSwitch}.
+   */
+  private async requestModeSwitch(
+    target: AgentMode,
+    reason?: string,
+  ): Promise<ModeSwitchResult> {
+    if (target === this.cfg.mode) {
+      return { switched: false, mode: this.cfg.mode };
+    }
+
+    const spin = this.spin;
+    spin?.pause();
+    let accepted: boolean;
+    try {
+      const answer = await p.confirm({
+        message:
+          `Switch to ${target} mode?` + (reason ? ` (${reason})` : ""),
+      });
+      // isCancel (Ctrl+C) and an explicit "no" both count as declining.
+      accepted = answer === true;
+    } finally {
+      spin?.resume();
+    }
+
+    if (!accepted) {
+      return { switched: false, mode: this.cfg.mode };
+    }
+    this.applyMode(target);
+    return { switched: true, mode: target };
   }
 
   /** Run a full agent loop for a single user message, printing as it goes. */
@@ -105,6 +173,7 @@ export class Session {
     });
 
     const spin = createSpinner("Thinking");
+    this.spin = spin;
     try {
       for (let step = 0; step < MAX_STEPS; step++) {
         spin.setText("Thinking");
@@ -168,6 +237,7 @@ export class Session {
       tau.error(`Stopped after ${MAX_STEPS} steps.`);
     } finally {
       spin.stop();
+      this.spin = null;
     }
   }
 
@@ -205,6 +275,25 @@ export class Session {
   }
 }
 
+/**
+ * Build a write guard for plan mode: refuse any write whose resolved path is
+ * outside `<cwd>/tau/plans`. This is the hard backstop behind the plan-mode
+ * prompt, so the agent can save its plan but cannot touch project files.
+ */
+function planWriteGuard(cwd: string): (absPath: string) => void {
+  const plansDir = resolve(cwd, "tau", "plans");
+  return (absPath: string): void => {
+    const rel = relative(plansDir, absPath);
+    const inside = rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+    if (!inside) {
+      throw new ToolError(
+        `Plan mode can only write inside tau/plans/. Refusing to write ` +
+          `${absPath}. Switch to build mode (/build) to modify project files.`,
+      );
+    }
+  };
+}
+
 /** A short, human-readable result note for a tool call — never the raw output. */
 function briefResult(toolName: string, output: string): string {
   switch (toolName) {
@@ -216,6 +305,8 @@ function briefResult(toolName: string, output: string): string {
       const m = output.match(/^Exit code: (\d+)/);
       return m ? `exit ${m[1]}` : "done";
     }
+    case "switch_mode":
+      return output.startsWith("Switched") ? "switched" : "declined";
     default:
       return "done";
   }

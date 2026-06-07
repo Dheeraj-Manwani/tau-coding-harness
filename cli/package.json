@@ -1,19 +1,26 @@
 {
-  "name": "cli",
-  "module": "index.ts",
+  "name": "tau",
+  "module": "src/cli.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "tau": "src/cli.ts"
+  },
   "scripts": {
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/cli.ts",
+    "start": "bun run src/cli.ts",
+    "tau": "bun run src/cli.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/commander": "^2.12.5"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "commander": "^15.0.0"
+    "@clack/prompts": "^1.5.1",
+    "commander": "^15.0.0",
+    "picocolors": "^1.1.1"
   }
 }

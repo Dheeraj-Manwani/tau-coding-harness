@@ -1,11 +1,29 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
 import { readConfig, updateConfig } from "../config/store.ts";
-import { findModel, getProvider, PROVIDERS } from "../providers/registry.ts";
+import {
+  CatalogError,
+  ensureCatalog,
+  findModel,
+  getProvider,
+  PROVIDERS,
+} from "../providers/registry.ts";
 import { credentialFor } from "./context.ts";
 import { printError, printSuccess, ui } from "../ui/output.ts";
 
+/** Load the live catalog, printing a friendly error and bailing on failure. */
+async function loadCatalog(): Promise<boolean> {
+  try {
+    await ensureCatalog();
+    return true;
+  } catch (e) {
+    printError(e instanceof CatalogError ? e.message : String(e));
+    return false;
+  }
+}
+
 async function list(opts: { provider?: string } = {}): Promise<void> {
+  if (!(await loadCatalog())) return;
   const cfg = await readConfig();
   const providers = opts.provider
     ? PROVIDERS.filter((p) => p.id === opts.provider)
@@ -31,6 +49,7 @@ async function list(opts: { provider?: string } = {}): Promise<void> {
 }
 
 async function setDefault(modelArg?: string): Promise<void> {
+  if (!(await loadCatalog())) return;
   let modelId = modelArg;
 
   if (!modelId) {

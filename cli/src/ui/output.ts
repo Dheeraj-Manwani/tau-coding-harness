@@ -7,7 +7,7 @@ const BRAND_VIOLET = "#8075E8";
 /** Small wrappers so the colour scheme lives in one place. */
 export const ui = {
   /** tau brand prefix. */
-  brand: (s: string) => pc.magenta(pc.bold(s)),
+  brand: (s: string) => chalk.hex(BRAND_VIOLET)(s),
   heading: (s: string) => pc.bold(pc.underline(s)),
   dim: (s: string) => pc.dim(s),
   ok: (s: string) => pc.green(s),

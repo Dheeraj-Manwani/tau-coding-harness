@@ -1,7 +1,9 @@
 import type { Credential } from "../config/store.ts";
 import { getCredential, readConfig } from "../config/store.ts";
 import {
+  CatalogError,
   defaultModelFor,
+  ensureCatalog,
   findModel,
   getProvider,
   PROVIDERS,
@@ -33,7 +35,15 @@ export async function credentialFor(
  * Resolve provider + model + credential from CLI flags, falling back to saved
  * config and finally to the first authenticated provider.
  */
-export async function resolveTarget(opts: ResolveOptions): Promise<ResolvedTarget> {
+export async function resolveTarget(
+  opts: ResolveOptions,
+): Promise<ResolvedTarget> {
+  try {
+    await ensureCatalog();
+  } catch (e) {
+    if (e instanceof CatalogError) throw new ResolveError(e.message);
+    throw e;
+  }
   const cfg = await readConfig();
 
   // 1. Determine the provider.
@@ -44,10 +54,13 @@ export async function resolveTarget(opts: ResolveOptions): Promise<ResolvedTarge
   } else if (opts.model) {
     provider = findModel(opts.model)?.provider;
   }
-  if (!provider && cfg.defaultProvider) provider = getProvider(cfg.defaultProvider);
+  if (!provider && cfg.defaultProvider)
+    provider = getProvider(cfg.defaultProvider);
   if (!provider) provider = await firstAuthenticated();
   if (!provider) {
-    throw new ResolveError("No provider configured. Run `tau login` to add one.");
+    throw new ResolveError(
+      "No provider configured. Run `tau login` to add one.",
+    );
   }
 
   // 2. Credential for that provider. If the provider was inferred from config
@@ -69,7 +82,11 @@ export async function resolveTarget(opts: ResolveOptions): Promise<ResolvedTarge
 
   // 3. Model.
   let model = opts.model;
-  if (!model && cfg.defaultModel && getProvider(provider.id)?.models.some((m) => m.id === cfg.defaultModel)) {
+  if (
+    !model &&
+    cfg.defaultModel &&
+    getProvider(provider.id)?.models.some((m) => m.id === cfg.defaultModel)
+  ) {
     model = cfg.defaultModel;
   }
   if (!model) model = defaultModelFor(provider).id;

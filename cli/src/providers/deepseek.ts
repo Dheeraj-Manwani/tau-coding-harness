@@ -9,15 +9,6 @@ export const deepseekModule: ProviderModule = {
     id: "deepseek",
     name: "DeepSeek",
     baseUrl: BASE_URL,
-    models: [
-      {
-        id: "deepseek-chat",
-        name: "DeepSeek-V3 (chat)",
-        context: 64_000,
-        recommended: true,
-      },
-      { id: "deepseek-reasoner", name: "DeepSeek-R1 (reasoner)", context: 64_000 },
-    ],
   },
 
   createClient(cred: Credential, opts?: ClientOptions): ProviderClient {

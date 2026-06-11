@@ -44,14 +44,25 @@ export interface ModelInfo {
   recommended?: boolean;
 }
 
-/** Static, non-secret description of a provider. */
-export interface ProviderInfo {
+/**
+ * Hand-authored, non-secret provider metadata. Everything here is static; the
+ * model catalog is loaded separately from models.dev at runtime.
+ */
+export interface ProviderMeta {
   id: string;
   name: string;
   /** API base URL handed to the provider's SDK. */
   baseUrl: string;
   /** Alternate names that resolve to this provider (e.g. "gemini" -> google). */
   aliases?: string[];
+}
+
+/**
+ * A provider as the rest of the app sees it: static metadata plus the model
+ * catalog loaded from models.dev by `ensureCatalog()`. `models` is empty until
+ * that load has succeeded.
+ */
+export interface ProviderInfo extends ProviderMeta {
   models: ModelInfo[];
 }
 
@@ -105,7 +116,7 @@ export interface ClientOptions {
  * these from a new module and registering it.
  */
 export interface ProviderModule {
-  info: ProviderInfo;
+  info: ProviderMeta;
   createClient(cred: Credential, opts?: ClientOptions): ProviderClient;
 }
 

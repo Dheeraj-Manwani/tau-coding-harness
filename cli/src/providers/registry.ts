@@ -22,9 +22,15 @@ import { anthropicModule } from "./anthropic.ts";
 import { openaiModule } from "./openai.ts";
 import { deepseekModule } from "./deepseek.ts";
 import { googleModule } from "./google.ts";
+import {
+  CatalogError,
+  fetchRawCatalog,
+  modelsForProvider,
+  type CatalogOptions,
+} from "./catalog.ts";
 
-// TODO: providers may eventually come from our own API endpoint that refreshes
-// periodically; this static list is the bootstrap/fallback catalog.
+// Providers carry only static metadata; their model lists are loaded from
+// models.dev at runtime via `ensureCatalog()`.
 const MODULES: ProviderModule[] = [
   anthropicModule,
   openaiModule,
@@ -32,8 +38,39 @@ const MODULES: ProviderModule[] = [
   googleModule,
 ];
 
-/** Catalog metadata for every registered provider. */
-export const PROVIDERS: ProviderInfo[] = MODULES.map((m) => m.info);
+/**
+ * Every registered provider. `models` starts empty and is filled in by
+ * `ensureCatalog()`; consumers must await that before reading it.
+ */
+export const PROVIDERS: ProviderInfo[] = MODULES.map((m) => ({
+  ...m.info,
+  models: [],
+}));
+
+let catalogPromise: Promise<void> | undefined;
+
+/**
+ * Populate every provider's `models` from the live models.dev catalog. Runs at
+ * most once per process (the result is memoized). Throws {@link CatalogError}
+ * when the catalog can't be loaded (offline with no prior cache); callers
+ * should surface that message. Call this before reading the catalog in any
+ * command that lists or resolves models.
+ */
+export function ensureCatalog(opts?: CatalogOptions): Promise<void> {
+  return (catalogPromise ??= hydrateCatalog(opts));
+}
+
+async function hydrateCatalog(opts?: CatalogOptions): Promise<void> {
+  const raw = await fetchRawCatalog(opts);
+  if (!raw) {
+    throw new CatalogError(
+      "Couldn't load the model catalog from models.dev. Check your internet connection and try again.",
+    );
+  }
+  for (const provider of PROVIDERS) {
+    provider.models = modelsForProvider(raw, provider.id);
+  }
+}
 
 /**
  * Resolve a provider by its id, display name, or any registered alias.
@@ -56,9 +93,13 @@ export function getModel(
   return getProvider(providerId)?.models.find((m) => m.id === modelId);
 }
 
-/** Recommended (or first) model for a provider. */
+/** Default model for a provider — the newest one. Requires a loaded catalog. */
 export function defaultModelFor(provider: ProviderInfo): ModelInfo {
-  return provider.models.find((m) => m.recommended) ?? provider.models[0]!;
+  const model = provider.models[0];
+  if (!model) {
+    throw new CatalogError(`No models available for ${provider.name}.`);
+  }
+  return model;
 }
 
 /** Locate which provider owns a given model id (best-effort). */
@@ -87,4 +128,5 @@ export function createClient(
   return mod.createClient(cred, opts);
 }
 
+export { CatalogError } from "./catalog.ts";
 export type { ModelInfo, ProviderInfo } from "./types.ts";

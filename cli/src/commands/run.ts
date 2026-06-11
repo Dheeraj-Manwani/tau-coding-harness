@@ -65,7 +65,7 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
   }
 
   p.intro(
-    ui.brand("tau") +
+    ui.brand("τ tau") +
       ui.dim(`  ${target.provider.name} · ${target.model} · ${mode} mode`),
   );
   console.log(
@@ -85,7 +85,8 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
     const modeHint = ui.dim(`(/${other} for ${other} mode)`);
     const input = await p.text({
       message: `${label} ${modeHint}`,
-      placeholder: "type a request, or / for commands (/help /mode /clear /exit)",
+      placeholder:
+        "type a request, or / for commands (/help /mode /clear /exit)",
     });
     if (p.isCancel(input)) {
       p.outro(ui.dim("Bye."));

@@ -1,7 +1,12 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
 import { readConfig, updateConfig } from "../config/store.ts";
-import { getProvider, PROVIDERS } from "../providers/registry.ts";
+import {
+  CatalogError,
+  ensureCatalog,
+  getProvider,
+  PROVIDERS,
+} from "../providers/registry.ts";
 import { credentialFor } from "./context.ts";
 import { printError, printSuccess, ui } from "../ui/output.ts";
 
@@ -23,6 +28,12 @@ async function list(): Promise<void> {
 }
 
 async function setDefault(providerArg?: string): Promise<void> {
+  try {
+    await ensureCatalog();
+  } catch (e) {
+    printError(e instanceof CatalogError ? e.message : String(e));
+    return;
+  }
   let providerId = providerArg;
   if (!providerId) {
     const choice = await p.select({

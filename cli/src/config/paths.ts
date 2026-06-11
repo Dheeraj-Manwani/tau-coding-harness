@@ -25,3 +25,8 @@ export function configPath(): string {
 export function sessionPath(): string {
   return join(configDir(), "session.json");
 }
+
+/** Path to the cached models.dev catalog (refreshed periodically). */
+export function catalogCachePath(): string {
+  return join(configDir(), "models.dev.json");
+}

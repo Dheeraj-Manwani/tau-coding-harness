@@ -7,6 +7,7 @@
  */
 export {
   PROVIDERS,
+  ensureCatalog,
   getProvider,
   getModel,
   defaultModelFor,

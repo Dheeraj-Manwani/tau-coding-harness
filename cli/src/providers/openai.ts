@@ -9,12 +9,6 @@ export const openaiModule: ProviderModule = {
     id: "openai",
     name: "OpenAI",
     baseUrl: BASE_URL,
-    models: [
-      { id: "gpt-4o", name: "GPT-4o", context: 128_000, recommended: true },
-      { id: "gpt-4o-mini", name: "GPT-4o mini", context: 128_000 },
-      { id: "o3", name: "o3", context: 200_000 },
-      { id: "o4-mini", name: "o4-mini", context: 200_000 },
-    ],
   },
 
   createClient(cred: Credential, opts?: ClientOptions): ProviderClient {

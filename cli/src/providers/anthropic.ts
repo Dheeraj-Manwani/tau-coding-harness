@@ -22,18 +22,6 @@ export const anthropicModule: ProviderModule = {
     name: "Anthropic",
     baseUrl: BASE_URL,
     aliases: ["claude"],
-    models: [
-      {
-        id: "claude-opus-4-8",
-        name: "Claude Opus 4.8",
-        context: 1_000_000,
-        recommended: true,
-      },
-      { id: "claude-opus-4-7", name: "Claude Opus 4.7", context: 1_000_000 },
-      { id: "claude-opus-4-6", name: "Claude Opus 4.6", context: 1_000_000 },
-      { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", context: 1_000_000 },
-      { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", context: 200_000 },
-    ],
   },
 
   createClient(cred: Credential, opts?: ClientOptions): ProviderClient {

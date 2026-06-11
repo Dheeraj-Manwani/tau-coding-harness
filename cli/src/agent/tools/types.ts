@@ -37,6 +37,14 @@ export interface ToolContext {
     target: AgentMode,
     reason?: string,
   ): Promise<ModeSwitchResult>;
+  /**
+   * Ask the user `question` and resolve with their answer, or `null` if they
+   * dismiss it (Ctrl+C / Esc). When `options` is given the user picks one (or
+   * an "Other…" escape to type a reply); otherwise it's a free-text prompt. The
+   * implementation owns the terminal — it pauses any live spinner so the prompt
+   * renders cleanly, mirroring {@link requestModeSwitch}.
+   */
+  promptUser?(question: string, options?: string[]): Promise<string | null>;
 }
 
 export interface Tool {

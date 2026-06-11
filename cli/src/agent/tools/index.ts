@@ -4,6 +4,7 @@ import { writeTool } from "./write.ts";
 import { editTool } from "./edit.ts";
 import { bashTool } from "./bash.ts";
 import { switchModeTool } from "./switch-mode.ts";
+import { promptUserTool } from "./prompt-user.ts";
 
 export type { Tool, ToolContext } from "./types.ts";
 export { ToolError } from "./types.ts";
@@ -14,6 +15,7 @@ export const ALL_TOOLS: Tool[] = [
   editTool,
   bashTool,
   switchModeTool,
+  promptUserTool,
 ];
 
 /**

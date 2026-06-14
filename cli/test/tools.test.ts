@@ -82,13 +82,37 @@ describe("bash", () => {
 });
 
 describe("toolsForMode", () => {
-  test("plan mode exposes only read-only tools", () => {
-    const names = toolsForMode("plan").map((t) => t.name);
-    expect(names).toEqual(["read"]);
+  test("plan mode exposes non-mutating tools plus write", () => {
+    const names = toolsForMode("plan").map((t) => t.name).sort();
+    expect(names).toEqual([
+      "dispatch_review_agent",
+      "dispatch_search_agent",
+      "prompt_user",
+      "read",
+      "switch_mode",
+      "write",
+    ]);
   });
 
-  test("build mode exposes all four tools", () => {
+  test("build mode exposes every tool", () => {
     const names = toolsForMode("build").map((t) => t.name).sort();
-    expect(names).toEqual(["bash", "edit", "read", "write"]);
+    expect(names).toEqual([
+      "bash",
+      "dispatch_code_agent",
+      "dispatch_review_agent",
+      "dispatch_search_agent",
+      "edit",
+      "prompt_user",
+      "read",
+      "switch_mode",
+      "write",
+    ]);
+  });
+
+  test("the mutating code-dispatch tool is hidden in plan mode", () => {
+    const plan = toolsForMode("plan").map((t) => t.name);
+    expect(plan).not.toContain("dispatch_code_agent");
+    expect(plan).not.toContain("bash");
+    expect(plan).not.toContain("edit");
   });
 });

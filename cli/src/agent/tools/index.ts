@@ -5,6 +5,9 @@ import { editTool } from "./edit.ts";
 import { bashTool } from "./bash.ts";
 import { switchModeTool } from "./switch-mode.ts";
 import { promptUserTool } from "./prompt-user.ts";
+import { dispatchSearchAgent } from "./dispatch-search-agent.ts";
+import { dispatchReviewAgent } from "./dispatch-review-agent.ts";
+import { dispatchCodeAgent } from "./dispatch-code-agent.ts";
 
 export type { Tool, ToolContext } from "./types.ts";
 export { ToolError } from "./types.ts";
@@ -16,6 +19,9 @@ export const ALL_TOOLS: Tool[] = [
   bashTool,
   switchModeTool,
   promptUserTool,
+  dispatchSearchAgent,
+  dispatchReviewAgent,
+  dispatchCodeAgent,
 ];
 
 /**

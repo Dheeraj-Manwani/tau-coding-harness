@@ -10,6 +10,20 @@ export interface ToolSchema {
 /** The agent's operating mode. */
 export type AgentMode = "plan" | "build";
 
+/** The kinds of sub-agent a dispatch tool can spawn. */
+export type SubAgentKind = "search" | "review" | "code";
+
+/** A request to spawn a headless sub-agent, made by a dispatch tool. */
+export interface SubAgentSpec {
+  /** Which specialized sub-agent to run. */
+  kind: SubAgentKind;
+  /** The task or question handed to the sub-agent. */
+  task: string;
+  /** Optional background the sub-agent needs (it shares none of the parent's
+   *  conversation). */
+  context?: string;
+}
+
 /** Outcome of a requested mode switch. */
 export interface ModeSwitchResult {
   /** Whether the mode actually changed. */
@@ -45,6 +59,18 @@ export interface ToolContext {
    * renders cleanly, mirroring {@link requestModeSwitch}.
    */
   promptUser?(question: string, options?: string[]): Promise<string | null>;
+  /**
+   * Spawn a headless sub-agent to handle `spec` and resolve with its final
+   * text summary. Implemented by the {@link Session}; absent inside a sub-agent
+   * (they may not recurse). Dispatch tools throw a {@link ToolError} when this
+   * is unavailable.
+   */
+  spawnSubAgent?(spec: SubAgentSpec): Promise<string>;
+  /**
+   * Nesting depth of the current agent: 0 at the top level, incremented for
+   * each sub-agent. Used to cap recursion.
+   */
+  subAgentDepth?: number;
 }
 
 export interface Tool {

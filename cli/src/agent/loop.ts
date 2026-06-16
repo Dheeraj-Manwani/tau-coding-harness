@@ -22,6 +22,10 @@ export interface AgentReporter {
   modelError(message: string): void;
   /** This step's tool calls are about to run. */
   beginTools(): void;
+  /** A specific tool call is about to run — its `summary` is the same one
+   *  later passed to {@link toolDone}. Optional: front-ends that show a live
+   *  per-tool status (e.g. the TUI status line) implement this. */
+  beginTool?(toolName: string, summary: string): void;
   /** A tool call finished (success or error). `output` is its raw result. */
   toolDone(
     toolName: string,
@@ -138,6 +142,7 @@ async function runTool(
   }
 
   const summary = tool.summarize(call.input);
+  reporter.beginTool?.(tool.name, summary);
   try {
     const output = await tool.run(call.input, toolCtx);
     reporter.toolDone(tool.name, summary, output, false);

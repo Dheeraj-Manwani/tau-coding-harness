@@ -5,6 +5,7 @@ import { readConfig } from "../config/store.ts";
 import { Session, type Mode, type SessionConfig } from "../agent/session.ts";
 import { resolveTarget, ResolveError } from "./context.ts";
 import { printError, ui } from "../ui/output.ts";
+import { launchTui } from "../tui/index.tsx";
 
 interface RunOptions {
   model?: string;
@@ -14,6 +15,8 @@ interface RunOptions {
   cwd?: string;
   once?: boolean;
   maxTokens?: string;
+  /** `--no-tui` sets this false to use the legacy line-based REPL. */
+  tui?: boolean;
 }
 
 async function run(promptParts: string[], opts: RunOptions): Promise<void> {
@@ -61,6 +64,14 @@ async function run(promptParts: string[], opts: RunOptions): Promise<void> {
       return;
     }
     await session.send(initial);
+    return;
+  }
+
+  // Default interactive experience: the full-screen Ink TUI. Requires a real
+  // terminal on both ends; `--no-tui` or a non-TTY falls back to the line REPL.
+  const interactiveTty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  if (opts.tui !== false && interactiveTty) {
+    await launchTui(sessionCfg, initial || undefined);
     return;
   }
 
@@ -204,6 +215,7 @@ export function registerRun(program: Command): void {
     .option("--build", "Start in build mode (all tools)")
     .option("-C, --cwd <dir>", "Working directory for the agent")
     .option("--once", "Run the prompt once and exit (no REPL)")
+    .option("--no-tui", "Use the legacy line-based REPL instead of the TUI")
     .option("--max-tokens <n>", "Max output tokens per response")
     .action((parts: string[], opts: RunOptions) => run(parts, opts));
 }

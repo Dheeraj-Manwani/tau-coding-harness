@@ -108,7 +108,6 @@ function Select({
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text color={BRAND_VIOLET}>{`${TAU}  `}</Text>
         <Text>{question}</Text>
       </Box>
       {freetext ? (

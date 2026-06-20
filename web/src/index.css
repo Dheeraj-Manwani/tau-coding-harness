@@ -3,162 +3,188 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
-@custom-variant dark (&:is(.dark *));
+/* ───────────────────────────────────────────────────────────────────────────
+ * Space / cosmos palette — the single source of truth for the theme.
+ * This is a dark-only site: both :root and .dark resolve to the same values.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root,
+.dark {
+  color-scheme: dark;
 
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: oklch(0.922 0 0);
-  --code-bg: #f4f3ec;
-  --accent: oklch(0.97 0 0);
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Base / backgrounds */
+  --space-void: #07070f; /* html/body bg, deepest surface */
+  --space-surface: #0c0f14; /* cards, panels (slightly lifted) */
+  --space-overlay: #1e2532; /* hover states, dropdowns, modals */
 
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Comet Silver scale (text + borders) */
+  --silver-900: #e2e8f0; /* primary body text (not pure white) */
+  --silver-600: #94a3b8; /* muted / secondary text, icons */
+  --silver-400: #4a5568; /* borders, dividers */
+  --silver-200: #2d3748; /* subtle borders, input bg on surface */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Pulsar Blue scale (interactive / info) */
+  --blue-500: #60a5fa; /* links, focus rings, info badges */
+  --blue-300: #a0c4fd; /* hover state of links */
+  --blue-900: #040d1f; /* text on blue bg fills */
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* ── shadcn token overrides → mapped to the space palette ─────────────── */
+  --background: var(--space-void);
+  --foreground: var(--silver-900);
+  --card: var(--space-surface);
+  --card-foreground: var(--silver-900);
+  --popover: var(--space-overlay);
+  --popover-foreground: var(--silver-900);
+  --primary: var(--blue-500);
+  --primary-foreground: var(--blue-900);
+  --secondary: var(--space-overlay);
+  --secondary-foreground: var(--silver-600);
+  --muted: var(--space-overlay);
+  --muted-foreground: var(--silver-600);
+  --accent: var(--space-overlay);
+  --accent-foreground: var(--silver-900);
+  --destructive: #f87171;
+  --border: var(--silver-200);
+  --input: var(--space-overlay);
+  --ring: var(--blue-500);
 
-  --background: oklch(1 0 0);
+  /* Brand vars consumed by shadcn primitives (focus rings, selection) —
+     remapped from the old violet to Pulsar Blue for a cohesive theme. */
+  --brand-violet: var(--blue-500);
+  --brand-violet-light: var(--blue-300);
+  --brand-violet-deep: #3b82f6;
+  --brand-violet-dim: #2563eb;
+  --flux-green: #28a874;
+  --error-red: #f87171;
 
-  --foreground: oklch(0.145 0 0);
+  /* Legacy element-level tokens (h1/h2/code base styles below). */
+  --text: var(--silver-900);
+  --text-h: #ffffff;
+  --code-bg: var(--space-surface);
 
-  --card: oklch(1 0 0);
+  /* Workspace / IDE tokens — dark space surfaces. */
+  --bg-base: var(--space-void);
+  --bg-surface: var(--space-surface);
+  --bg-elevated: var(--space-overlay);
+  --text-primary: var(--silver-900);
+  --text-secondary: var(--silver-600);
+  --text-tertiary: var(--silver-400);
+  --accent-primary: var(--blue-500);
+  --accent-secondary: var(--blue-300);
 
-  --card-foreground: oklch(0.145 0 0);
-
-  --popover: oklch(1 0 0);
-
-  --popover-foreground: oklch(0.145 0 0);
-
-  --primary: oklch(0.457 0.24 277.023);
-
-  --primary-foreground: oklch(0.962 0.018 272.314);
-
-  --secondary: oklch(0.967 0.001 286.375);
-
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-
-  --muted: oklch(0.97 0 0);
-
-  --muted-foreground: oklch(0.556 0 0);
-
-  --accent-foreground: oklch(0.205 0 0);
-
-  --destructive: oklch(0.577 0.245 27.325);
-
-  --input: oklch(0.922 0 0);
-
-  --ring: oklch(0.708 0 0);
-
-  --chart-1: oklch(0.879 0.169 91.605);
-
-  --chart-2: oklch(0.769 0.188 70.08);
-
-  --chart-3: oklch(0.666 0.179 58.318);
-
-  --chart-4: oklch(0.555 0.163 48.998);
-
-  --chart-5: oklch(0.473 0.137 46.201);
+  --sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --heading: "Inter Variable", Inter, system-ui, sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
 
   --radius: 0.625rem;
 
-  --sidebar: oklch(0.985 0 0);
+  /* Charts + sidebar tokens (kept for any shadcn component that reads them). */
+  --chart-1: var(--blue-500);
+  --chart-2: var(--blue-300);
+  --chart-3: #818cf8;
+  --chart-4: #c084fc;
+  --chart-5: #22d3ee;
+  --sidebar: var(--space-surface);
+  --sidebar-foreground: var(--silver-900);
+  --sidebar-primary: var(--blue-500);
+  --sidebar-primary-foreground: var(--blue-900);
+  --sidebar-accent: var(--space-overlay);
+  --sidebar-accent-foreground: var(--silver-900);
+  --sidebar-border: var(--silver-200);
+  --sidebar-ring: var(--blue-500);
+}
 
-  --sidebar-foreground: oklch(0.145 0 0);
+/* ───────────────────────────────────────────────────────────────────────────
+ * Named Tailwind tokens — usable as bg-space-void, text-silver-900,
+ * border-silver-400, text-blue-500, etc. (Tailwind v4 CSS-first config.)
+ * ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
 
-  --sidebar-primary: oklch(0.511 0.262 276.966);
+  --color-space-void: #07070f;
+  --color-space-surface: #0c0f14;
+  --color-space-overlay: #1e2532;
 
-  --sidebar-primary-foreground: oklch(0.962 0.018 272.314);
+  --color-silver-900: #e2e8f0;
+  --color-silver-600: #94a3b8;
+  --color-silver-400: #4a5568;
+  --color-silver-200: #2d3748;
 
-  --sidebar-accent: oklch(0.97 0 0);
+  --color-blue-500: #60a5fa;
+  --color-blue-300: #a0c4fd;
+  --color-blue-900: #040d1f;
+}
 
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+/* ───────────────────────────────────────────────────────────────────────────
+ * HTML / body base + CSS-only star field.
+ * ───────────────────────────────────────────────────────────────────────── */
+html {
+  background-color: var(--space-void);
+  /* ~12 stars at varied positions, sizes and opacities. Tiles seamlessly. */
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 15%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 60%, rgba(255, 255, 255, 0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 45%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 78%, rgba(255, 255, 255, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 88%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 65% 80%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 68%, rgba(255, 255, 255, 0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 48%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 22%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 38%, rgba(160, 196, 253, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 28% 55%, rgba(255, 255, 255, 0.18) 0%, transparent 100%);
+  background-size: 400px 300px;
+  background-repeat: repeat;
+  background-attachment: fixed;
+  color-scheme: dark;
+}
 
-  --sidebar-border: oklch(0.922 0 0);
+html,
+body,
+#root {
+  min-height: 100vh;
+  color: var(--silver-900);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  --sidebar-ring: oklch(0.708 0 0)}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* Keep the star field on <html> visible through body / #root. */
+body {
+  margin: 0;
+  background: transparent;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  background: transparent;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
-
+/* ── Typography scale ────────────────────────────────────────────────────── */
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+  color: var(--silver-900);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+
+h2,
+h3 {
+  font-weight: 500;
 }
+
 p {
   margin: 0;
+  line-height: 1.7;
 }
 
 code,
@@ -166,19 +192,36 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--blue-500);
 }
 
 code {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--space-surface);
 }
 
+/* White logo text with a soft blue bloom. */
+.logo-glow {
+  color: #ffffff;
+  text-shadow:
+    0 0 12px #93c5fd,
+    0 0 32px #60a5fa44;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * shadcn token bridge — maps the runtime CSS vars above to Tailwind color
+ * utilities (bg-background, text-foreground, border-border, …).
+ * ───────────────────────────────────────────────────────────────────────── */
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Inter Variable', sans-serif;
+  --color-brand: var(--brand-violet);
+  --color-brand-light: var(--brand-violet-light);
+  --color-brand-deep: var(--brand-violet-deep);
+  --color-brand-dim: var(--brand-violet-dim);
+  --color-flux: var(--flux-green);
+  --color-error-red: var(--error-red);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -219,44 +262,14 @@ code {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.398 0.195 277.366);
-  --primary-foreground: oklch(0.962 0.018 272.314);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.879 0.169 91.605);
-  --chart-2: oklch(0.769 0.188 70.08);
-  --chart-3: oklch(0.666 0.179 58.318);
-  --chart-4: oklch(0.555 0.163 48.998);
-  --chart-5: oklch(0.473 0.137 46.201);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.585 0.233 277.117);
-  --sidebar-primary-foreground: oklch(0.962 0.018 272.314);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;}
+    @apply border-border outline-ring/50;
+  }
   body {
-    @apply bg-background text-foreground;}
+    @apply bg-background text-foreground;
+  }
   html {
-    @apply font-sans;}}
+    @apply font-sans;
+  }
+}

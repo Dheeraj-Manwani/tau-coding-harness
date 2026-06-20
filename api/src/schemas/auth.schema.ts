@@ -32,12 +32,3 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshInput = z.infer<typeof refreshSchema>;
 export type LogoutInput = z.infer<typeof logoutSchema>;
-
-export function parse<T>(schema: z.ZodType<T>, data: unknown): T {
-  const result = schema.safeParse(data);
-  if (!result.success) {
-    const first = result.error.issues[0];
-    throw Errors.badRequest(first?.message ?? "Invalid request");
-  }
-  return result.data;
-}

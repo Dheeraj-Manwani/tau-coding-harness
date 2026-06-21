@@ -1,14 +1,25 @@
 import { env } from "./lib/env";
 import express from "express";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "passport";
 import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
+import { requestLogger } from "./middleware/logger.middleware";
 
 const app = express();
 const PORT = env.PORT;
+
+app.use(requestLogger);
+
+app.use(
+  cors({
+    origin: [env.APP_URL],
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 app.use(cookieParser());

@@ -22,6 +22,13 @@ export function createUser(data: {
   return prisma.user.create({ data });
 }
 
+export function markEmailVerified(userId: string): Promise<User> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { emailVerifiedAt: new Date() },
+  });
+}
+
 export function createOAuthUser(data: {
   email: string;
   emailVerifiedAt: Date;

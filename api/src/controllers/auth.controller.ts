@@ -3,14 +3,15 @@ import type { ClientType, Prisma, User } from "../generated/prisma/client";
 import type { AuthResult } from "../services/auth.service";
 import * as authService from "../services/auth.service";
 import {
-  parse,
   registerSchema,
   loginSchema,
   refreshSchema,
   logoutSchema,
+  verifyEmailSchema,
 } from "../schemas/auth.schema";
 import { Errors } from "../lib/errors";
 import { env } from "../lib/env";
+import { parse } from "../lib/utils";
 
 const REFRESH_COOKIE = "refresh_token";
 const isProd = env.NODE_ENV === "production";
@@ -170,6 +171,34 @@ export async function googleCallback(
     const redirectBase = env.OAUTH_SUCCESS_REDIRECT;
 
     res.redirect(`${redirectBase}#access_token=${result.tokens.accessToken}`);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyEmail(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { token } = parse(verifyEmailSchema, req.body);
+    const user = await authService.verifyEmail(token);
+    res.status(200).json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resendVerification(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) throw Errors.unauthorized("Authentication required");
+    await authService.resendVerification(req.user.id);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

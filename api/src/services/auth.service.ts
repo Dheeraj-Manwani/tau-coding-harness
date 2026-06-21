@@ -3,7 +3,7 @@ import type { ClientType, Prisma, User } from "../generated/prisma/client";
 import * as authRepository from "../repositories/auth.repository";
 import * as tokens from "../lib/tokens";
 import type { IssuedTokens } from "../lib/tokens";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, verifyEmailToken } from "../lib/email";
 import { AppError, Errors } from "../lib/errors";
 
 const ARGON2_OPTIONS: argon2.Options = {
@@ -109,6 +109,22 @@ export async function refresh(input: {
   });
 
   return { user: toSafeUser(user), tokens: issued };
+}
+
+export async function verifyEmail(token: string): Promise<SafeUser> {
+  const { userId } = verifyEmailToken(token);
+  const user = await authRepository.findUserById(userId);
+  if (!user) throw Errors.notFound("User not found");
+  if (user.emailVerifiedAt) return toSafeUser(user);
+  const updated = await authRepository.markEmailVerified(userId);
+  return toSafeUser(updated);
+}
+
+export async function resendVerification(userId: string): Promise<void> {
+  const user = await authRepository.findUserById(userId);
+  if (!user) throw Errors.notFound("User not found");
+  if (user.emailVerifiedAt) return;
+  await sendVerificationEmail({ userId: user.id, email: user.email });
 }
 
 export async function logout(rawToken: string | undefined): Promise<void> {

@@ -2,30 +2,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
-import { z } from "zod";
+import toast from "react-hot-toast";
 
 import TauLogoAnimation from "@/src/components/tauAnimation";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
-import { ApiError, register as registerUser } from "@/src/lib/auth-api";
-
-const signUpSchema = z
-  .object({
-    email: z.string().min(1, "Email is required").email("Enter a valid email"),
-    password: z.string().min(8, "Use at least 8 characters"),
-    confirmPassword: z.string().min(1, "Confirm your password"),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type SignUpValues = z.infer<typeof signUpSchema>;
+import { ApiError } from "@/src/lib/api-client";
+import { GoogleButton } from "@/src/features/auth/GoogleButton";
+import { useRegister } from "@/src/features/auth/mutations";
+import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
 
 function SignUp() {
   const navigate = useNavigate();
+  const registerMutation = useRegister();
   const {
     register: field,
     handleSubmit,
@@ -37,26 +28,37 @@ function SignUp() {
 
   const onSubmit = async (values: SignUpValues) => {
     try {
-      const { user } = await registerUser({
+      const { user } = await registerMutation.mutateAsync({
         email: values.email,
         password: values.password,
       });
       toast.success(`Welcome to tau, ${user.email}`);
-      navigate("/project");
+      navigate("/", { replace: true });
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Something went wrong");
+      toast.error(
+        err instanceof ApiError ? err.message : "Something went wrong",
+      );
     }
   };
 
   return (
     <div className="flex min-h-[100svh] flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm text-left">
-        <TauLogoAnimation size={88} className="mx-auto mb-6" />
+        <TauLogoAnimation
+          size={88}
+          className="mx-auto mb-6"
+          accentColor="#60A5FA"
+          coreColor="#FFFFFF"
+        />
         <h1 className="mb-6 text-center text-2xl font-semibold text-foreground">
           Create your account
         </h1>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4"
+          noValidate
+        >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -74,24 +76,24 @@ function SignUp() {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="new-password"
               placeholder="At least 8 characters"
               aria-invalid={!!errors.password}
               {...field("password")}
             />
             {errors.password && (
-              <p className="text-xs text-destructive">{errors.password.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.password.message}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
               autoComplete="new-password"
               placeholder="Re-enter your password"
               aria-invalid={!!errors.confirmPassword}
@@ -110,9 +112,20 @@ function SignUp() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <div className="my-4 flex items-center gap-3 text-xs text-silver-600">
+          <span className="h-px flex-1 bg-silver-400/30" />
+          or
+          <span className="h-px flex-1 bg-silver-400/30" />
+        </div>
+
+        <GoogleButton label="Sign up with Google" />
+
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-foreground hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-foreground hover:underline"
+          >
             Sign in
           </Link>
         </p>

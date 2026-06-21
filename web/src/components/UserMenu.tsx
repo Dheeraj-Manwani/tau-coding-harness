@@ -1,0 +1,56 @@
+import { DropdownMenu } from "radix-ui";
+import { LogOutIcon } from "lucide-react";
+
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { useMe } from "@/src/features/auth/queries";
+import { useLogout } from "@/src/features/auth/mutations";
+
+export function UserMenu() {
+  const { data: user } = useMe();
+  const logout = useLogout();
+
+  if (!user) return null;
+
+  const initials = user.email.slice(0, 2).toUpperCase();
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className="rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+        >
+          <Avatar>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenu.Trigger>
+
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-50 min-w-60 rounded-lg border border-silver-400/30 bg-space-surface p-1 text-left shadow-xl"
+        >
+          <div className="px-3 py-2.5">
+            <p className="text-xs text-silver-600">Signed in as</p>
+            <p className="truncate text-sm font-medium text-silver-900">
+              {user.email}
+            </p>
+          </div>
+
+          <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
+
+          <DropdownMenu.Item
+            onSelect={() => logout.mutate()}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
+          >
+            <LogOutIcon className="size-4" />
+            Log out
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}

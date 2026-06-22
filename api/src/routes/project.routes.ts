@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { initializeProject } from "../controllers/project.controller";
 
 const router = Router();
 

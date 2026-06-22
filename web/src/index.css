@@ -260,6 +260,40 @@ code {
     0 0 32px #60a5fa44;
 }
 
+/* Minimal, dark custom scrollbars — thin track, silver thumb. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--silver-400) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--silver-400);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--silver-600);
+}
+
+/* Fully hidden scrollbar (e.g. the editor tab strip). */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Soft translucent focus glow for input wrappers (chat composer). */
+.focus-glow:focus-within {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue-500) 20%, transparent);
+}
+
 /* Navbar logo mark: recolors the τ glyph PNG to the brand blue via a mask
    (the raw asset is the old violet) and adds a soft brand bloom. */
 .logo-mark {

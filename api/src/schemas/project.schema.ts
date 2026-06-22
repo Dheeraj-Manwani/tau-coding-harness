@@ -25,8 +25,14 @@ export const listProjectsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+export const listMessagesQuerySchema = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
 export type MessageRole = z.infer<typeof messageRole>;
 export type MessageType = z.infer<typeof messageType>;
 export type MessageInput = z.infer<typeof messageSchema>;
 export type ProjectIdParam = z.infer<typeof projectIdParamSchema>;
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
+export type ListMessagesQuery = z.infer<typeof listMessagesQuerySchema>;

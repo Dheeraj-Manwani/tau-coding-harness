@@ -38,6 +38,11 @@ export function requireAuth(
   }
 }
 
+export function requireUserId(req: Request): string {
+  if (!req.user) throw Errors.unauthorized("Authentication required");
+  return req.user.id;
+}
+
 export function optionalAuth(
   req: Request,
   _res: Response,

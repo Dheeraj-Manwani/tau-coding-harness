@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  oauthAccounts OAuthAccount[]
+  refreshTokens RefreshToken[]
+  projects      Project[]
+  tokenUsage    TokenUsage[]
+}
+
+model OAuthAccount {
+  id                String    @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+enum ClientType {
+  web
+  mobile
+}
+
+model RefreshToken {
+  id         String     @id @default(uuid())
+  userId     String
+  tokenHash  String     @unique
+  clientType ClientType
+  deviceInfo Json?
+  createdAt  DateTime   @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "idx_refresh_tokens_user")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sandboxId        String?
+  sandboxStatus    SandboxStatus @default(NONE)
+  sandboxExpiresAt DateTime?
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  jobs       Job[]
+  snapshots  Snapshot[]
+  tokenUsage TokenUsage[]
+
+  @@index([userId])
+}
+
+enum SandboxStatus {
+  NONE
+  PROVISIONING
+  READY
+  HIBERNATED
+  DEAD
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum MessageType {
+  USER
+  RESULT
+  ERROR
+  TOOL_REQ
+  TOOL_RES
+}
+
+model Message {
+  id   String      @id @default(uuid())
+  role MessageRole
+  type MessageType
+
+  content  Json
+  sequence Int
+
+  inputTokens  Int @default(0)
+  outputTokens Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id])
+
+  fragment  Fragment?
+  toolCalls ToolCall[]
+
+  @@unique([projectId, sequence])
+  @@index([projectId])
+  @@index([jobId])
+}
+
+model ToolCall {
+  id        String  @id @default(uuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  toolCallId String
+  toolName   String
+  input      Json
+
+  status      ToolCallStatus @default(PENDING)
+  output      Json?
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  snapshotId String?
+  snapshot   Snapshot? @relation(fields: [snapshotId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@index([toolCallId])
+  @@index([snapshotId])
+}
+
+enum ToolCallStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model Job {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  status JobStatus @default(QUEUED)
+  type   JobType   @default(GENERATION)
+  prompt String
+
+  baseSnapshotId String?
+  baseSnapshot   Snapshot? @relation("JobBaseSnapshot", fields: [baseSnapshotId], references: [id])
+
+  queueJobId String? @unique
+
+  queuedAt    DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  error         String?
+  attemptNumber Int     @default(1)
+  maxAttempts   Int     @default(2)
+
+  messages   Message[]
+  tokenUsage TokenUsage[]
+  fragments  Fragment[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobType {
+  GENERATION
+  RECOVERY
+}
+
+model Snapshot {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  s3Key     String
+  s3Bucket  String
+  sizeBytes Int?
+
+  upToSequence Int
+
+  trigger SnapshotTrigger @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+
+  toolCalls ToolCall[]
+  jobs      Job[]      @relation("JobBaseSnapshot")
+
+  @@index([projectId])
+  @@index([projectId, createdAt(sort: Desc)])
+}
+
+enum SnapshotTrigger {
+  SCHEDULED
+  PRE_DEPLOY
+  ON_COMPLETE
+  MANUAL
+}
+
+model Fragment {
+  id        String  @id @default(uuid())
+  messageId String  @unique
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  sandboxUrl  String
+  title       String
+  description String?
+
+  files      Json
+  filesS3Key String?
+  jobId      String?
+  job        Job?    @relation(fields: [jobId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Usage {
+  key    String    @id
+  points Int
+  expire DateTime?
+}
+
+model TokenUsage {
+  id        String @id @default(uuid())
+  userId    String
+  projectId String
+  jobId     String
+  model     String
+
+  inputTokens  Int
+  outputTokens Int
+
+  recordedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  job     Job     @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([jobId])
+  @@index([recordedAt])
+}

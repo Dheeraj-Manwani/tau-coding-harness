@@ -4,12 +4,29 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "generate": "prisma generate",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/archiver": "^8.0.0",
+    "@types/bun": "latest",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1075.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "archiver": "^8.0.0",
+    "bullmq": "^5.79.1",
+    "e2b": "^2.30.5",
+    "ioredis": "^5.11.1",
+    "openai": "^6.44.0",
+    "zod": "^4.4.3"
   }
 }

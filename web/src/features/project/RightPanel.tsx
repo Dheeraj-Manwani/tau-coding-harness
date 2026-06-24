@@ -36,7 +36,6 @@ const TABS: { id: Tab; icon: typeof CodeIcon }[] = [
   { id: "preview", icon: TvMinimalIcon },
   { id: "code", icon: CodeIcon },
 ];
-const MOCK_URL = "https://tau-app.local/";
 
 const DEVICES: {
   id: PreviewDevice;
@@ -111,6 +110,9 @@ function DeviceSwitcher() {
 }
 
 function UrlBar() {
+  const previewUrl = useProjectStore((s) => s.previewUrl);
+  const hasUrl = Boolean(previewUrl);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -121,7 +123,8 @@ function UrlBar() {
     >
       <input
         readOnly
-        value={MOCK_URL}
+        value={previewUrl ?? ""}
+        placeholder="No preview yet — tau will build one"
         onClick={(e) => e.currentTarget.select()}
         className="w-full flex-1 cursor-default rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] px-3 py-1.5 text-xs text-[var(--silver-600)] focus:outline-none"
       />
@@ -130,9 +133,10 @@ function UrlBar() {
           <motion.button
             type="button"
             whileHover={{ scale: 1.1 }}
-            onClick={() => window.open(MOCK_URL, "_blank")}
+            disabled={!hasUrl}
+            onClick={() => previewUrl && window.open(previewUrl, "_blank")}
             aria-label="Open in new tab"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ExternalLinkIcon className="size-4" />
           </motion.button>

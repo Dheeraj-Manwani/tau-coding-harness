@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import { StarsBackground } from "@/src/components/ui/stars-background";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { useInitProject } from "@/src/features/project/api";
+import { ApiError } from "@/src/lib/api-client";
 
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
@@ -16,9 +19,10 @@ const SUGGESTIONS = [
 
 function Home() {
   const navigate = useNavigate();
+  const initProject = useInitProject();
   const [prompt, setPrompt] = useState("");
   const [suggestion, setSuggestion] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = initProject.isPending;
   const showPlaceholder = prompt.length === 0;
 
   // Cycle through suggestions while the input is empty.
@@ -32,12 +36,20 @@ function Home() {
   }, [showPlaceholder, isSubmitting]);
 
   const submit = () => {
-    if (prompt.trim().length === 0 || isSubmitting) return;
-    // Spin the send button, then hand off to the project route — the composer
-    // morphs into the chat dock via its shared layoutId during navigation.
-    setIsSubmitting(true);
-    const id = crypto.randomUUID();
-    setTimeout(() => navigate(`/project/${id}`), 280);
+    const message = prompt.trim();
+    if (message.length === 0 || isSubmitting) return;
+    // Create the project + enqueue the first job, then hand off to the project
+    // route — the composer morphs into the chat dock via its shared layoutId.
+    // The prompt + jobId ride along in router state so the workspace can show
+    // the message and subscribe to the live stream immediately.
+    initProject.mutate(message, {
+      onSuccess: ({ projectId, jobId }) =>
+        navigate(`/project/${projectId}`, { state: { jobId, prompt: message } }),
+      onError: (err) =>
+        toast.error(
+          err instanceof ApiError ? err.message : "Couldn't start your project",
+        ),
+    });
   };
 
   return (

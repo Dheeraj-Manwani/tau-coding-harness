@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { okaidia } from "react-syntax-highlighter/dist/esm/styles/prism";
 import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
@@ -24,7 +24,7 @@ import {
   ContextMenuTrigger,
 } from "@/src/components/ui/context-menu";
 
-// Register only the languages used by the mock files (keeps the bundle small).
+// Register the common web languages the agent emits (keeps the bundle small).
 SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("typescript", typescript);
 SyntaxHighlighter.registerLanguage("jsx", jsx);
@@ -36,7 +36,6 @@ SyntaxHighlighter.registerLanguage("markup", markup);
 import { cn } from "@/src/lib/utils";
 import { File, Folder, Tree } from "@/src/components/ui/file-tree";
 import { useProjectStore } from "@/src/stores/useProjectStore";
-import { MOCK_FILES } from "@/src/features/project/mockFiles";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
 
 /** Material (VS Code) file icon for a filename, sized to fit inline. */
@@ -60,18 +59,100 @@ function MaterialIcon({
   );
 }
 
+function basename(path: string): string {
+  return path.split("/").pop() ?? path;
+}
+
 function languageFor(name: string): string {
   if (name.endsWith(".tsx")) return "tsx";
   if (name.endsWith(".ts")) return "typescript";
   if (name.endsWith(".jsx")) return "jsx";
-  if (name.endsWith(".js")) return "javascript";
+  if (name.endsWith(".js") || name.endsWith(".mjs")) return "javascript";
   if (name.endsWith(".json")) return "json";
   if (name.endsWith(".css")) return "css";
-  if (name.endsWith(".html")) return "markup";
+  if (name.endsWith(".html") || name.endsWith(".svg")) return "markup";
   return "text";
 }
 
+// ── Dynamic file tree ───────────────────────────────────────────────────────
+
+interface TreeNode {
+  name: string;
+  path: string;
+  isFile: boolean;
+  children: TreeNode[];
+}
+
+/** Turn a flat list of file paths into a nested folder/file tree. */
+function buildTree(paths: string[]): TreeNode[] {
+  const root: TreeNode = { name: "", path: "", isFile: false, children: [] };
+
+  for (const fullPath of paths) {
+    const parts = fullPath.split("/").filter(Boolean);
+    let node = root;
+    let acc = "";
+    parts.forEach((segment, i) => {
+      acc = acc ? `${acc}/${segment}` : segment;
+      const isFile = i === parts.length - 1;
+      let child = node.children.find(
+        (c) => c.name === segment && c.isFile === isFile,
+      );
+      if (!child) {
+        child = { name: segment, path: acc, isFile, children: [] };
+        node.children.push(child);
+      }
+      node = child;
+    });
+  }
+
+  const sortRec = (n: TreeNode) => {
+    n.children.sort((a, b) =>
+      a.isFile !== b.isFile
+        ? a.isFile
+          ? 1
+          : -1
+        : a.name.localeCompare(b.name),
+    );
+    n.children.forEach(sortRec);
+  };
+  sortRec(root);
+  return root.children;
+}
+
+function folderPaths(nodes: TreeNode[]): string[] {
+  return nodes.flatMap((n) =>
+    n.isFile ? [] : [n.path, ...folderPaths(n.children)],
+  );
+}
+
+function renderNodes(
+  nodes: TreeNode[],
+  activeFileId: string,
+  openFile: (id: string) => void,
+): React.ReactNode {
+  return nodes.map((node) =>
+    node.isFile ? (
+      <File
+        key={node.path}
+        value={node.path}
+        handleSelect={openFile}
+        isSelect={activeFileId === node.path}
+        fileIcon={<MaterialIcon name={node.name} className="size-4" />}
+      >
+        <span>{node.name}</span>
+      </File>
+    ) : (
+      <Folder key={node.path} value={node.path} element={node.name}>
+        {renderNodes(node.children, activeFileId, openFile)}
+      </Folder>
+    ),
+  );
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+
 function TabBar() {
+  const files = useProjectStore((s) => s.files);
   const openFiles = useProjectStore((s) => s.openFiles);
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const setActiveFile = useProjectStore((s) => s.setActiveFile);
@@ -132,8 +213,8 @@ function TabBar() {
         className="scrollbar-none flex min-w-0 flex-1 items-end gap-px overflow-x-auto px-1 pt-1"
       >
         {openFiles.map((id, index) => {
-          const file = MOCK_FILES[id];
-          if (!file) return null;
+          if (!files[id]) return null;
+          const name = basename(id);
           const isActive = id === activeFileId;
           const isLast = index === openFiles.length - 1;
           return (
@@ -152,11 +233,11 @@ function TabBar() {
                     borderTopRightRadius: "var(--radius)",
                   }}
                 >
-                  <MaterialIcon name={file.name} className="size-3.5" />
-                  <span className="whitespace-nowrap">{file.name}</span>
+                  <MaterialIcon name={name} className="size-3.5" />
+                  <span className="whitespace-nowrap">{name}</span>
                   <button
                     type="button"
-                    aria-label={`Close ${file.name}`}
+                    aria-label={`Close ${name}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       closeFile(id);
@@ -208,8 +289,9 @@ function TabBar() {
 }
 
 function CodeEditor() {
+  const files = useProjectStore((s) => s.files);
   const activeFileId = useProjectStore((s) => s.activeFileId);
-  const file = activeFileId ? MOCK_FILES[activeFileId] : undefined;
+  const file = activeFileId ? files[activeFileId] : undefined;
 
   if (!file) {
     return (
@@ -219,12 +301,14 @@ function CodeEditor() {
     );
   }
 
+  const name = basename(file.path);
+
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
       <TabBar />
       <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
         <SyntaxHighlighter
-          language={languageFor(file.name)}
+          language={languageFor(name)}
           style={okaidia}
           showLineNumbers
           lineNumberStyle={{
@@ -260,12 +344,20 @@ function CodeEditor() {
 }
 
 export function CodePane() {
+  const files = useProjectStore((s) => s.files);
   const codeTreeWidth = useProjectStore((s) => s.codeTreeWidth);
   const setCodeTreeWidth = useProjectStore((s) => s.setCodeTreeWidth);
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const openFile = useProjectStore((s) => s.openFile);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const paths = useMemo(() => Object.keys(files), [files]);
+  const tree = useMemo(() => buildTree(paths), [paths]);
+  const expanded = useMemo(() => folderPaths(tree), [tree]);
+  // Re-mount the Tree (re-applying expanded folders) only when the folder
+  // structure changes — not on every file content chunk.
+  const treeKey = expanded.join("|");
 
   const handleDrag = (clientX: number) => {
     const el = containerRef.current;
@@ -276,48 +368,26 @@ export function CodePane() {
     setCodeTreeWidth(next);
   };
 
-  const treeFile = (id: string, label: string) => (
-    <File
-      value={id}
-      handleSelect={openFile}
-      isSelect={activeFileId === id}
-      fileIcon={<MaterialIcon name={label} className="size-4" />}
-    >
-      <span>{label}</span>
-    </File>
-  );
-
   return (
     <div ref={containerRef} className="flex h-full w-full overflow-hidden">
       <div
         style={{ width: codeTreeWidth }}
         className="shrink-0 overflow-hidden bg-[var(--space-surface)] py-2 text-[var(--silver-900)]"
       >
-        <Tree
-          className="scrollbar-thin"
-          initialSelectedId={activeFileId}
-          initialExpandedItems={["src", "components", "pages"]}
-        >
-          <Folder element="src" value="src">
-            <Folder element="components" value="components">
-              {treeFile("hero", "Hero.tsx")}
-              {treeFile("features", "Features.tsx")}
-              {treeFile("pricing", "Pricing.tsx")}
-            </Folder>
-            <Folder element="pages" value="pages">
-              {treeFile("homePage", "Home.tsx")}
-            </Folder>
-            {treeFile("app", "App.tsx")}
-            {treeFile("main", "main.tsx")}
-            {treeFile("indexCss", "index.css")}
-          </Folder>
-          <Folder element="public" value="public">
-            {treeFile("indexHtml", "index.html")}
-          </Folder>
-          {treeFile("pkg", "package.json")}
-          {treeFile("viteConfig", "vite.config.ts")}
-          {treeFile("tsconfig", "tsconfig.json")}
-        </Tree>
+        {paths.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-[var(--silver-600)]">
+            Files will appear here as tau builds your app.
+          </div>
+        ) : (
+          <Tree
+            key={treeKey}
+            className="scrollbar-thin"
+            initialSelectedId={activeFileId}
+            initialExpandedItems={expanded}
+          >
+            {renderNodes(tree, activeFileId, openFile)}
+          </Tree>
+        )}
       </div>
 
       <ResizeHandle onDrag={handleDrag} />

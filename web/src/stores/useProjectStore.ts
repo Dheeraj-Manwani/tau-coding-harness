@@ -1,5 +1,11 @@
 import { create } from "zustand";
 
+import type {
+  JobEvent,
+  ProjectDetail,
+  ProjectMessage,
+} from "@/src/features/project/types";
+
 export type ChatRole = "user" | "ai";
 
 export interface Message {
@@ -12,63 +18,75 @@ export interface Message {
 export type Tab = "preview" | "code";
 export type PreviewDevice = "mobile" | "tablet" | "desktop";
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "m1",
-    role: "user",
-    content:
-      "Build me a landing page for a SaaS product — a hero section, a features grid, and a pricing table.",
-    timestamp: Date.now() - 1000 * 60 * 12,
-  },
-  {
-    id: "m2",
-    role: "ai",
-    content:
-      "Done! I scaffolded a Vite + React + TypeScript app and built a responsive landing page. It has a Hero with a headline and CTA, a three-column Features grid, and a Pricing section. Everything uses Tailwind and is mobile-friendly. Take a look at the preview.",
-    timestamp: Date.now() - 1000 * 60 * 11,
-  },
-  {
-    id: "m3",
-    role: "user",
-    content:
-      "Nice. Make the hero background a subtle gradient and give the CTA button a hover state.",
-    timestamp: Date.now() - 1000 * 60 * 7,
-  },
-  {
-    id: "m4",
-    role: "ai",
-    content:
-      "Updated the Hero component — the background now uses a soft top-to-bottom gradient, and the primary button scales slightly and brightens on hover. I also bumped the heading contrast a touch for readability.",
-    timestamp: Date.now() - 1000 * 60 * 6,
-  },
-  {
-    id: "m5",
-    role: "user",
-    content:
-      "Add a pricing section with three tiers: Starter, Pro, Enterprise.",
-    timestamp: Date.now() - 1000 * 60 * 2,
-  },
-  {
-    id: "m6",
-    role: "ai",
-    content:
-      "Added a Pricing component with three tiers. Pro is highlighted as the recommended plan with a badge, and each card lists its features with a checkmark. The grid collapses to a single column on smaller screens.",
-    timestamp: Date.now() - 1000 * 60,
-  },
-];
+/** A file in the generated app, keyed by its sandbox-relative path. */
+export interface ProjectFile {
+  path: string;
+  content: string;
+}
 
-const AI_REPLIES = [
-  "Got it — I've applied that change and refreshed the preview. Let me know if you'd like any tweaks.",
-  "Done. I updated the relevant components and kept everything consistent with the existing styles.",
-  "Sure thing! I implemented that and verified it renders correctly across the device sizes.",
-  "Updated. I also did a quick pass to make sure the layout stays responsive.",
-];
+/** Lifecycle of the project's active generation job. */
+export type JobStatus = "idle" | "streaming" | "done" | "error" | "cancelled";
 
-let replyCursor = 0;
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const now = () => Date.now();
+
+function userMessage(content: string): Message {
+  return { id: crypto.randomUUID(), role: "user", content, timestamp: now() };
+}
+
+/** Decode a persisted message row into a chat bubble, or `null` to skip it
+ *  (tool requests/results aren't shown in the conversation). */
+function toChatMessage(row: ProjectMessage): Message | null {
+  const ts = Date.parse(row.createdAt) || now();
+
+  if (row.role === "USER" && row.type === "USER") {
+    const blocks = row.content as { type?: string; text?: string }[] | string;
+    const text = Array.isArray(blocks)
+      ? blocks.map((b) => b?.text ?? "").join("")
+      : String(blocks ?? "");
+    return { id: row.id, role: "user", content: text, timestamp: ts };
+  }
+
+  if (row.role === "ASSISTANT" && row.type === "RESULT") {
+    const c = row.content as { content?: string } | string;
+    const text = typeof c === "string" ? c : (c?.content ?? "");
+    if (!text.trim()) return null;
+    return { id: row.id, role: "ai", content: text, timestamp: ts };
+  }
+
+  return null;
+}
+
+function basename(path: string): string {
+  return path.split("/").pop() ?? path;
+}
+
+// ── State ───────────────────────────────────────────────────────────────────
 
 interface ProjectState {
+  // Identity / lifecycle
+  projectId: string | null;
+  currentJobId: string | null;
+  status: JobStatus;
+  /** Short human label of what the agent is doing right now (tool/shell). */
+  activity: string | null;
+  hydrated: boolean;
+
+  // Chat
   chatMessages: Message[];
   isAiTyping: boolean;
+  /** The in-progress assistant bubble currently being streamed into. */
+  streamingId: string | null;
+
+  // Generated app
+  files: Record<string, ProjectFile>;
+  previewUrl: string | null;
+
+  // Cancellation hook, registered by the active WebSocket stream.
+  cancelStream: (() => void) | null;
+
+  // UI (local, not server-derived)
   isChatOpen: boolean;
   activeTab: Tab;
   openFiles: string[];
@@ -77,7 +95,19 @@ interface ProjectState {
   splitPosition: number;
   codeTreeWidth: number;
 
-  sendMessage: (content: string) => void;
+  // ── Actions ──
+  /** Reset everything when entering (or switching to) a project. */
+  initProject: (projectId: string) => void;
+  /** Seed chat/files/preview from the persisted project once on entry. */
+  hydrate: (detail: ProjectDetail) => void;
+  /** Begin streaming a job; optionally append the prompt as a user bubble. */
+  startJob: (jobId: string, prompt?: string) => void;
+  /** Append a user bubble immediately (optimistic, before the job id is known). */
+  appendUserMessage: (content: string) => void;
+  /** Apply one live event from the ws-gateway stream. */
+  applyEvent: (event: JobEvent) => void;
+  setCanceller: (fn: (() => void) | null) => void;
+
   toggleChat: () => void;
   setActiveTab: (tab: Tab) => void;
   openFile: (id: string) => void;
@@ -90,59 +120,94 @@ interface ProjectState {
   setCodeTreeWidth: (px: number) => void;
 }
 
-export const useProjectStore = create<ProjectState>((set) => ({
-  chatMessages: INITIAL_MESSAGES,
+/** State reset whenever we enter a project (UI prefs below are preserved). */
+const FRESH = {
+  currentJobId: null,
+  status: "idle" as JobStatus,
+  activity: null,
+  hydrated: false,
+  chatMessages: [] as Message[],
   isAiTyping: false,
+  streamingId: null,
+  files: {} as Record<string, ProjectFile>,
+  previewUrl: null,
+  cancelStream: null,
+  activeTab: "preview" as Tab,
+  openFiles: [] as string[],
+  activeFileId: "",
+};
+
+export const useProjectStore = create<ProjectState>((set, get) => ({
+  projectId: null,
+  ...FRESH,
+
+  // Persisted UI defaults (kept across projects).
   isChatOpen: true,
-  activeTab: "preview",
-  openFiles: ["app"],
-  activeFileId: "app",
   previewDevice: "desktop",
   splitPosition: 400,
   codeTreeWidth: 240,
 
-  sendMessage: (content) => {
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content,
-      timestamp: Date.now(),
-    };
-    set((s) => ({
-      chatMessages: [...s.chatMessages, userMessage],
-      isAiTyping: true,
-    }));
-
-    // Fake the assistant "thinking", then resolve to a canned reply.
-    setTimeout(() => {
-      const reply = AI_REPLIES[replyCursor % AI_REPLIES.length];
-      replyCursor += 1;
-      set((s) => ({
-        isAiTyping: false,
-        chatMessages: [
-          ...s.chatMessages,
-          {
-            id: crypto.randomUUID(),
-            role: "ai",
-            content: reply,
-            timestamp: Date.now(),
-          },
-        ],
-      }));
-    }, 1200);
+  initProject: (projectId) => {
+    if (get().projectId === projectId) return; // already on this project
+    set({ projectId, ...FRESH });
   },
+
+  hydrate: (detail) =>
+    set((s) => {
+      if (s.hydrated) return { hydrated: true };
+
+      // Only seed chat from the DB if we haven't already shown anything
+      // (e.g. an optimistic prompt from navigation) — never clobber a stream.
+      const chatMessages =
+        s.chatMessages.length === 0
+          ? detail.messages
+              .map(toChatMessage)
+              .filter((m): m is Message => m !== null)
+          : s.chatMessages;
+
+      const files: Record<string, ProjectFile> = { ...s.files };
+      for (const f of detail.latestFragment?.files ?? []) {
+        files[f.path] ??= { path: f.path, content: f.content };
+      }
+
+      const previewUrl =
+        s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
+
+      return { hydrated: true, chatMessages, files, previewUrl };
+    }),
+
+  startJob: (jobId, prompt) =>
+    set((s) => {
+      const alreadyShown =
+        prompt != null &&
+        s.chatMessages.some((m) => m.role === "user" && m.content === prompt);
+      return {
+        currentJobId: jobId,
+        status: "streaming",
+        isAiTyping: true,
+        chatMessages:
+          prompt && !alreadyShown
+            ? [...s.chatMessages, userMessage(prompt)]
+            : s.chatMessages,
+      };
+    }),
+
+  appendUserMessage: (content) =>
+    set((s) => ({ chatMessages: [...s.chatMessages, userMessage(content)] })),
+
+  applyEvent: (event) => applyEvent(set, event),
+
+  setCanceller: (fn) => set({ cancelStream: fn }),
 
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   setActiveTab: (activeTab) => set({ activeTab }),
 
-  // Open a file's tab (or focus it if already open) and make it active.
   openFile: (id) =>
     set((s) => ({
       openFiles: s.openFiles.includes(id) ? s.openFiles : [...s.openFiles, id],
       activeFileId: id,
     })),
 
-  // Close a tab; if it was active, fall back to the nearest remaining tab.
   closeFile: (id) =>
     set((s) => {
       const idx = s.openFiles.indexOf(id);
@@ -154,7 +219,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
       return { openFiles, activeFileId };
     }),
 
-  // Close every tab after the given one; keep the active tab valid.
   closeFilesToRight: (id) =>
     set((s) => {
       const idx = s.openFiles.indexOf(id);
@@ -173,3 +237,171 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setSplitPosition: (splitPosition) => set({ splitPosition }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
+
+// ── Event reducer ───────────────────────────────────────────────────────────
+
+type SetState = (
+  partial: Partial<ProjectState> | ((s: ProjectState) => Partial<ProjectState>),
+) => void;
+
+/** Ensure there is a streaming assistant bubble to append text into. */
+function ensureStreamingBubble(s: ProjectState): {
+  chatMessages: Message[];
+  streamingId: string;
+} {
+  if (s.streamingId) {
+    return { chatMessages: s.chatMessages, streamingId: s.streamingId };
+  }
+  const bubble: Message = {
+    id: crypto.randomUUID(),
+    role: "ai",
+    content: "",
+    timestamp: now(),
+  };
+  return { chatMessages: [...s.chatMessages, bubble], streamingId: bubble.id };
+}
+
+/** Close the current streaming bubble, dropping it if it never got content. */
+function finalizeStreaming(s: ProjectState): {
+  streamingId: null;
+  chatMessages: Message[];
+} {
+  if (!s.streamingId) return { streamingId: null, chatMessages: s.chatMessages };
+  const bubble = s.chatMessages.find((m) => m.id === s.streamingId);
+  const drop = !bubble || bubble.content.trim().length === 0;
+  return {
+    streamingId: null,
+    chatMessages: drop
+      ? s.chatMessages.filter((m) => m.id !== s.streamingId)
+      : s.chatMessages,
+  };
+}
+
+function applyEvent(set: SetState, event: JobEvent): void {
+  switch (event.type) {
+    case "thinking":
+      set({ isAiTyping: true, status: "streaming", activity: event.message });
+      return;
+
+    case "llm_chunk":
+      set((s) => {
+        const { chatMessages, streamingId } = ensureStreamingBubble(s);
+        return {
+          isAiTyping: true,
+          streamingId,
+          chatMessages: chatMessages.map((m) =>
+            m.id === streamingId
+              ? { ...m, content: m.content + event.content }
+              : m,
+          ),
+        };
+      });
+      return;
+
+    case "tool_req":
+      // Each tool turn closes the prior thinking bubble so the final title
+      // lands in its own bubble rather than merging with intermediate text.
+      set((s) => ({
+        ...finalizeStreaming(s),
+        isAiTyping: true,
+        activity: `Using ${event.toolName}`,
+      }));
+      return;
+
+    case "file_start":
+      set((s) => {
+        const files = { ...s.files };
+        files[event.path] ??= { path: event.path, content: "" };
+        const openFiles = s.openFiles.includes(event.path)
+          ? s.openFiles
+          : [...s.openFiles, event.path];
+        return {
+          files,
+          openFiles,
+          activeFileId: event.path,
+          activeTab: "code",
+          activity: `Writing ${basename(event.path)}`,
+        };
+      });
+      return;
+
+    case "file_chunk":
+      set((s) => {
+        const existing = s.files[event.path] ?? {
+          path: event.path,
+          content: "",
+        };
+        return {
+          files: {
+            ...s.files,
+            [event.path]: {
+              ...existing,
+              content: existing.content + event.content,
+            },
+          },
+        };
+      });
+      return;
+
+    case "file_done":
+      return;
+
+    case "shell_output":
+      set({ activity: event.line.trim() || null });
+      return;
+
+    case "preview_ready":
+      set({ previewUrl: event.url, activeTab: "preview" });
+      return;
+
+    case "done":
+      set((s) => ({
+        ...finalizeStreaming(s),
+        isAiTyping: false,
+        status: "done",
+        activity: null,
+        currentJobId: null,
+      }));
+      return;
+
+    case "cancelled":
+      set((s) => ({
+        ...finalizeStreaming(s),
+        isAiTyping: false,
+        status: "cancelled",
+        activity: null,
+        currentJobId: null,
+      }));
+      return;
+
+    case "error":
+      set((s) => {
+        const fin = finalizeStreaming(s);
+        const message =
+          typeof event.message === "string"
+            ? event.message
+            : "Something went wrong during generation.";
+        return {
+          streamingId: null,
+          isAiTyping: false,
+          status: "error",
+          activity: null,
+          currentJobId: null,
+          chatMessages: [
+            ...fin.chatMessages,
+            {
+              id: crypto.randomUUID(),
+              role: "ai",
+              content: `⚠️ ${message}`,
+              timestamp: now(),
+            },
+          ],
+        };
+      });
+      return;
+
+    default:
+      // Unknown / gateway frames (e.g. its own "error") — ignore quietly.
+      return;
+  }
+}

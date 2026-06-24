@@ -1,15 +1,55 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
+import { useProject } from "@/src/features/project/api";
+import { useJobStream } from "@/src/features/project/useJobStream";
 
 const MIN_LEFT = 240;
 const MIN_RIGHT = 400;
 
+/** Loads persisted project state, replays any in-flight prompt from navigation,
+ *  hydrates the store, and opens the live job stream. */
+function useProjectBootstrap() {
+  const { id: projectId } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navState = location.state as { jobId?: string; prompt?: string } | null;
+
+  const initProject = useProjectStore((s) => s.initProject);
+  const startJob = useProjectStore((s) => s.startJob);
+  const hydrate = useProjectStore((s) => s.hydrate);
+
+  const { data } = useProject(projectId);
+
+  // Reset store on (re-)entry, then replay the just-submitted prompt/job.
+  useEffect(() => {
+    if (!projectId) return;
+    initProject(projectId);
+    if (navState?.jobId) startJob(navState.jobId, navState.prompt);
+    // navState is read once on entry; subsequent renders shouldn't re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  // Seed chat/files/preview from the DB once it loads (guarded inside hydrate),
+  // and resume an in-flight job if we aren't already streaming one (reload).
+  useEffect(() => {
+    if (!data) return;
+    hydrate(data);
+    if (data.activeJobId && !useProjectStore.getState().currentJobId) {
+      startJob(data.activeJobId);
+    }
+  }, [data, hydrate, startJob]);
+
+  useJobStream();
+}
+
 export default function ProjectPage() {
+  useProjectBootstrap();
+
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const splitPosition = useProjectStore((s) => s.splitPosition);
   const setSplitPosition = useProjectStore((s) => s.setSplitPosition);

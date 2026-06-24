@@ -155,12 +155,18 @@ export async function getProject(projectId: string, userId: string) {
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  const [messages, latestFragment] = await Promise.all([
+  const [messages, latestFragment, activeJob] = await Promise.all([
     projectRepo.findRecentMessages(projectId, 50),
     projectRepo.findLatestFragment(projectId),
+    projectRepo.findActiveJob(projectId),
   ]);
 
-  return { project, messages, latestFragment };
+  return {
+    project,
+    messages,
+    latestFragment,
+    activeJobId: activeJob?.id ?? null,
+  };
 }
 
 export async function listMessages(

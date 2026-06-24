@@ -21,20 +21,54 @@ const worker = new Worker<JobPayload>(
   async (job) => {
     const { jobId, projectId, userId, prompt } = job.data;
 
-    await prisma.job.update({
-      where: { id: jobId },
-      data: { status: JobStatus.RUNNING, startedAt: new Date() },
+    const controlChannel = `job:${jobId}:control`;
+    const sub = redis.duplicate();
+    let cancelled = false;
+
+    sub.on("message", async (_channel, message) => {
+      try {
+        const msg = JSON.parse(message) as { type?: string };
+        if (msg.type === "cancel") {
+          cancelled = true;
+          await worker.pause();
+          await prisma.job.update({
+            where: { id: jobId },
+            data: { status: JobStatus.CANCELLED, completedAt: new Date() },
+          });
+          const index = await redis.llen(`job:${jobId}:events`);
+          await publish(jobId, { type: "cancelled" }, index);
+        }
+      } catch (err) {
+        console.error(`[worker] bad control message on ${controlChannel}`, err);
+      }
     });
+    await sub.subscribe(controlChannel);
 
-    await publish(jobId, { type: "thinking", message: "Starting generation" }, 0);
+    try {
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.RUNNING, startedAt: new Date() },
+      });
 
-    const sandbox = await provisionSandbox(projectId);
-    await runAgentLoop(jobId, projectId, userId, prompt, sandbox);
+      await publish(
+        jobId,
+        { type: "thinking", message: "Starting generation" },
+        0,
+      );
 
-    await prisma.job.update({
-      where: { id: jobId },
-      data: { status: JobStatus.COMPLETED, completedAt: new Date() },
-    });
+      const sandbox = await provisionSandbox(projectId);
+      await runAgentLoop(jobId, projectId, userId, prompt, sandbox);
+
+      if (!cancelled) {
+        await prisma.job.update({
+          where: { id: jobId },
+          data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+        });
+      }
+    } finally {
+      await sub.unsubscribe(controlChannel);
+      await sub.quit();
+    }
   },
   {
     connection,

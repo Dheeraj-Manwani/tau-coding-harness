@@ -21,15 +21,53 @@ type FunctionToolCall =
 
 const MAX_TOKENS = 8192;
 
-const SYSTEM_PROMPT = [
-  "You are Tau, an autonomous coding agent that builds and edits web applications",
-  "inside a sandboxed environment. Use the provided tools to create, read, and",
-  "delete files and run commands. Make focused changes and stop when the user's",
-  "request is satisfied.",
-].join(" ");
+const PREVIEW_PORT = 3000;
+
+const SYSTEM_PROMPT = `You are Tau, an autonomous coding agent that builds working web applications inside an E2B sandbox.
+
+You build a React + Vite application. Follow these rules:
+- Use the \`create_file\` tool to write every file the app needs (package.json, vite.config, index.html, and all source files). Always write complete file contents — never use placeholders or "...".
+- Place source files under \`src/\` and keep an \`index.html\` at the project root.
+- Use the \`run_command\` tool to install dependencies (e.g. \`npm install\`) and to verify the project builds/compiles before starting it.
+- When the app is ready, start the preview server as the final command: \`run_command("npm run dev -- --port ${PREVIEW_PORT}")\`. The dev server must listen on port ${PREVIEW_PORT}.
+- After the server is started, stop calling tools and reply with a single final text message containing ONLY a short title for what you built (5 words maximum, no quotes, no punctuation at the end). This title is used to label the result.
+
+Work autonomously: create all files and run the necessary commands without asking the user questions.`;
 
 function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
+}
+
+interface FragmentFile {
+  path: string;
+  content: string;
+  language: string;
+}
+
+const LANGUAGE_BY_EXT: Record<string, string> = {
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  json: "json",
+  html: "html",
+  css: "css",
+  scss: "scss",
+  md: "markdown",
+  svg: "xml",
+};
+
+function languageFromPath(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return LANGUAGE_BY_EXT[ext] ?? ext ?? "plaintext";
+}
+
+function deriveTitle(content: string | null): string {
+  const text = (content ?? "").trim();
+  if (!text) return "Untitled";
+  const firstLine = text.split("\n")[0]?.trim() ?? "";
+  const title = firstLine.split(/\s+/).slice(0, 5).join(" ");
+  return title.slice(0, 80) || "Untitled";
 }
 
 interface StoredAssistant {
@@ -95,6 +133,8 @@ export async function runAgentLoop(
       ...(await loadHistory(projectId)),
     ];
 
+    const createdFiles: FragmentFile[] = [];
+
     while (true) {
       const stream = deepseek.chat.completions.stream({
         model: env.DEEPSEEK_MODEL,
@@ -159,6 +199,20 @@ export async function runAgentLoop(
       });
 
       if (!isToolTurn) {
+        const host = sandbox.getHost(PREVIEW_PORT);
+        const url = `https://${host}`;
+        await publish(jobId, { type: "preview_ready", url }, nextIndex());
+
+        await prisma.fragment.create({
+          data: {
+            message: { connect: { id: assistantMessageId } },
+            job: { connect: { id: jobId } },
+            sandboxUrl: url,
+            title: deriveTitle(assistant.content),
+            files: createdFiles as unknown as Prisma.InputJsonValue,
+          },
+        });
+
         await publish(jobId, { type: "done" }, nextIndex());
         break;
       }
@@ -203,7 +257,13 @@ export async function runAgentLoop(
 
         let output: unknown;
         try {
-          output = await executeTool(toolName, input, sandbox);
+          output = await executeTool(
+            toolName,
+            input,
+            sandbox,
+            jobId,
+            nextIndex,
+          );
           await prisma.toolCall.update({
             where: { id: toolCallRow.id },
             data: {
@@ -212,6 +272,20 @@ export async function runAgentLoop(
               completedAt: new Date(),
             },
           });
+
+          if (toolName === "create_file") {
+            const fileInput = input as { path?: unknown; content?: unknown };
+            if (
+              typeof fileInput.path === "string" &&
+              typeof fileInput.content === "string"
+            ) {
+              createdFiles.push({
+                path: fileInput.path,
+                content: fileInput.content,
+                language: languageFromPath(fileInput.path),
+              });
+            }
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           output = { error: message };

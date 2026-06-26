@@ -5,6 +5,7 @@ import {
   ExternalLinkIcon,
   MonitorIcon,
   PanelLeftOpenIcon,
+  RotateCwIcon,
   SmartphoneIcon,
   TabletIcon,
   TvMinimalIcon,
@@ -111,6 +112,7 @@ function DeviceSwitcher() {
 
 function UrlBar() {
   const previewUrl = useProjectStore((s) => s.previewUrl);
+  const reloadPreview = useProjectStore((s) => s.reloadPreview);
   const hasUrl = Boolean(previewUrl);
 
   return (
@@ -121,6 +123,22 @@ function UrlBar() {
       transition={{ duration: 0.15 }}
       className="flex flex-1 items-center gap-2"
     >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ rotate: 180 }}
+            disabled={!hasUrl}
+            onClick={() => hasUrl && reloadPreview()}
+            aria-label="Reload preview"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RotateCwIcon className="size-4" />
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent>Reload preview</TooltipContent>
+      </Tooltip>
       <input
         readOnly
         value={previewUrl ?? ""}

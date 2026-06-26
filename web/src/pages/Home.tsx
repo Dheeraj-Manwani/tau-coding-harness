@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject } from "@/src/features/project/api";
 import { ApiError } from "@/src/lib/api-client";
 
@@ -63,7 +64,7 @@ function Home() {
   };
 
   return (
-    <>
+    <div className="h-full overflow-y-auto">
       <SparkleParticles
         className="fixed inset-0 -z-10"
         particleColor={STAR_COLORS}
@@ -110,7 +111,9 @@ function Home() {
           </div>
         </div>
       </div>
-    </>
+
+      <MyProjects />
+    </div>
   );
 }
 

@@ -4,13 +4,25 @@ import { api } from "@/src/lib/api-client";
 import type {
   AddMessageResponse,
   InitProjectResponse,
+  ListProjectsResponse,
   ProjectDetail,
 } from "./types";
 
 export const projectKeys = {
   all: ["project"] as const,
+  list: () => ["project", "list"] as const,
   detail: (id: string) => ["project", id] as const,
 };
+
+/** `GET /project` — the signed-in user's projects, newest first. */
+export function useProjects() {
+  return useQuery({
+    queryKey: projectKeys.list(),
+    queryFn: () =>
+      api.get<ListProjectsResponse>("/project").then((r) => r.data.projects),
+    staleTime: 30_000,
+  });
+}
 
 /** Load a project's persisted state (messages + latest fragment) on entry. */
 export function useProject(projectId: string | undefined) {

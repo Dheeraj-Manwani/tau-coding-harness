@@ -82,6 +82,8 @@ interface ProjectState {
   // Generated app
   files: Record<string, ProjectFile>;
   previewUrl: string | null;
+  /** Bumped to force the preview iframe to remount (manual reload). */
+  previewNonce: number;
 
   // Cancellation hook, registered by the active WebSocket stream.
   cancelStream: (() => void) | null;
@@ -110,6 +112,8 @@ interface ProjectState {
 
   toggleChat: () => void;
   setActiveTab: (tab: Tab) => void;
+  /** Remount the preview iframe to reload the running app. */
+  reloadPreview: () => void;
   openFile: (id: string) => void;
   closeFile: (id: string) => void;
   closeOtherFiles: (id: string) => void;
@@ -132,6 +136,7 @@ const FRESH = {
   streamingId: null,
   files: {} as Record<string, ProjectFile>,
   previewUrl: null,
+  previewNonce: 0,
   cancelStream: null,
   activeTab: "preview" as Tab,
   openFiles: [] as string[],
@@ -202,6 +207,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   setActiveTab: (activeTab) => set({ activeTab }),
+  reloadPreview: () => set((s) => ({ previewNonce: s.previewNonce + 1 })),
 
   openFile: (id) =>
     set((s) => ({

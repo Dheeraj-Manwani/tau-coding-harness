@@ -148,6 +148,27 @@ export async function addMessage(
   return { jobId };
 }
 
+export async function listProjects(
+  userId: string,
+  opts: { cursor?: string; limit: number },
+) {
+  const { projects, nextCursor } = await projectRepo.listProjectsByUser(
+    userId,
+    opts,
+  );
+
+  return {
+    projects: projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      sandboxStatus: p.sandboxStatus,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    })),
+    nextCursor,
+  };
+}
+
 export async function getProject(projectId: string, userId: string) {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");

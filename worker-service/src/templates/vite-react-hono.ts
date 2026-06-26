@@ -26,6 +26,11 @@ export default App
 EOF`,
   )
   .runCmd("sed -i '/vite.svg/d' index.html")
+  // Default the app to dark mode (Spotify-style). The theme itself is written
+  // into src/index.css after shadcn init below.
+  .runCmd(
+    `sed -i 's/<html lang="en">/<html lang="en" class="dark">/' index.html`,
+  )
 
   // 2) git init so snapshots can use `git ls-files` (auto-respects .gitignore)
   //    and you get history for free. The Vite scaffold already ignores
@@ -136,6 +141,143 @@ EOF`,
       "tabs accordion avatar scroll-area table",
   )
 
+  // 7a) Overwrite the shadcn-generated theme with a dark, Spotify-inspired
+  //     palette.
+  .runCmd(
+    `cat > src/index.css <<'EOF'
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* :root is the LIGHT theme (active when the .dark class is absent). The app
+   ships dark by default via <html class="dark"> below; this block exists so a
+   theme switcher / light-mode request works by simply toggling that class. */
+:root {
+  --radius: 0.625rem;
+
+  --background: #ffffff;
+  --foreground: #121212;
+  --card: #ffffff;
+  --card-foreground: #121212;
+  --popover: #ffffff;
+  --popover-foreground: #121212;
+  --primary: #1db954;
+  --primary-foreground: #000000;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #121212;
+  --muted: #f0f0f0;
+  --muted-foreground: #6a6a6a;
+  --accent: #1ed760;
+  --accent-foreground: #000000;
+  --destructive: #e22134;
+  --border: #e5e5e5;
+  --input: #d4d4d4;
+  --ring: #1db954;
+
+  --chart-1: #1db954;
+  --chart-2: #1ed760;
+  --chart-3: #1aa34a;
+  --chart-4: #169c46;
+  --chart-5: #14833b;
+
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #121212;
+  --sidebar-primary: #1db954;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #ebebeb;
+  --sidebar-accent-foreground: #121212;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #1db954;
+}
+
+/* .dark is the DEFAULT Spotify dark theme (html.dark is set in index.html). */
+.dark {
+  --background: #121212;
+  --foreground: #ffffff;
+  --card: #181818;
+  --card-foreground: #ffffff;
+  --popover: #282828;
+  --popover-foreground: #ffffff;
+  --primary: #1db954;
+  --primary-foreground: #000000;
+  --secondary: #282828;
+  --secondary-foreground: #ffffff;
+  --muted: #282828;
+  --muted-foreground: #b3b3b3;
+  --accent: #1ed760;
+  --accent-foreground: #000000;
+  --destructive: #e22134;
+  --border: #282828;
+  --input: #404040;
+  --ring: #1db954;
+
+  --chart-1: #1db954;
+  --chart-2: #1ed760;
+  --chart-3: #1aa34a;
+  --chart-4: #169c46;
+  --chart-5: #14833b;
+
+  --sidebar: #000000;
+  --sidebar-foreground: #b3b3b3;
+  --sidebar-primary: #1db954;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #282828;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #282828;
+  --sidebar-ring: #1db954;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+EOF`,
+  )
+
   // 7b) Form deps only
   .runCmd(
     "bun add react-hook-form@^7 @radix-ui/react-slot@^1 zod@^3 @hookform/resolvers@^3",
@@ -243,6 +385,7 @@ EOF`,
 - Toasts: \`<Toaster />\` (sonner) is mounted in \`src/main.tsx\` — call \`toast()\` from \`sonner\` anywhere
 - Tooltips: \`<TooltipProvider>\` wraps the app in \`src/main.tsx\` — use \`<Tooltip>\` without re-wrapping
 - \`src/App.tsx\` has a catch-all \`*\` 404 route — keep it last when adding routes
+- Theme: **Spotify-inspired**, **dark by default** (\`<html class="dark">\`). Both themes live in \`src/index.css\`: \`:root\` = light, \`.dark\` = dark (Spotify green \`#1DB954\` primary; dark surfaces step \`#121212\` -> \`#181818\` -> \`#282828\`, muted text \`#b3b3b3\`). Style with shadcn tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`bg-card\`, \`text-muted-foreground\`, \`border-border\`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the \`dark\` class on \`<html>\` (persist the choice in \`localStorage\`); for light-only, default to no \`dark\` class. Edit the palettes in \`index.css\` rather than introducing parallel color systems.
 - Secrets go in \`.env\` (gitignored); never commit them
 
 ## Hono API cheat-sheet (server/index.ts)

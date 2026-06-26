@@ -38,6 +38,21 @@ export interface ProjectSummary {
   sandboxStatus: string;
 }
 
+/** A row in the user's project list (`GET /project`). */
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  sandboxStatus: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Shape of `GET /project`. */
+export interface ListProjectsResponse {
+  projects: ProjectListItem[];
+  nextCursor: string | null;
+}
+
 /** Shape of `GET /project/:projectId`. */
 export interface ProjectDetail {
   project: ProjectSummary;

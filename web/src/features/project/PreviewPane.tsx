@@ -12,6 +12,7 @@ const DEVICE_WIDTH: Record<string, number> = {
 
 export function PreviewPane({ device }: { device: string }) {
   const previewUrl = useProjectStore((s) => s.previewUrl);
+  const previewNonce = useProjectStore((s) => s.previewNonce);
   const isStreaming = useProjectStore((s) => s.status === "streaming");
 
   return (
@@ -34,7 +35,7 @@ export function PreviewPane({ device }: { device: string }) {
       >
         {previewUrl ? (
           <iframe
-            key={previewUrl}
+            key={`${previewUrl}-${previewNonce}`}
             src={previewUrl}
             title="App preview"
             className="h-full w-full border-0 bg-white"

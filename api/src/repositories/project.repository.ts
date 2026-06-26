@@ -61,6 +61,23 @@ export function findProjectById(id: string): Promise<Project | null> {
   return prisma.project.findUnique({ where: { id } });
 }
 
+export async function listProjectsByUser(
+  userId: string,
+  opts: { cursor?: string; limit: number },
+): Promise<{ projects: Project[]; nextCursor: string | null }> {
+  const rows = await prisma.project.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    take: opts.limit + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+  });
+
+  const hasMore = rows.length > opts.limit;
+  const projects = hasMore ? rows.slice(0, opts.limit) : rows;
+  const nextCursor = hasMore ? (projects.at(-1)?.id ?? null) : null;
+  return { projects, nextCursor };
+}
+
 export function findActiveJob(projectId: string): Promise<Job | null> {
   return prisma.job.findFirst({
     where: {

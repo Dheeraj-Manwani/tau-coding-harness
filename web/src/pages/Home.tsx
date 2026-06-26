@@ -2,11 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import { StarsBackground } from "@/src/components/ui/stars-background";
+import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useInitProject } from "@/src/features/project/api";
 import { ApiError } from "@/src/lib/api-client";
+
+const STAR_COLORS = [
+  "rgba(203, 213, 225, 0.7)",
+  "rgba(203, 213, 225, 0.7)",
+  "rgba(203, 213, 225, 0.7)",
+  "rgba(226, 232, 240, 0.75)",
+  "rgba(253, 230, 138, 0.7)",
+  "rgba(186, 230, 253, 0.7)",
+];
 
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
@@ -55,12 +64,15 @@ function Home() {
 
   return (
     <>
-      <StarsBackground
-        className="fixed inset-0 -z-10 pointer-events-none"
-        pointerEvents={false}
-        factor={2}
-        speed={50}
-        starColor="rgba(226, 232, 240, 0.55)"
+      <SparkleParticles
+        className="fixed inset-0 -z-10"
+        particleColor={STAR_COLORS}
+        baseDensity={70}
+        maxParticleSize={1.4}
+        maxOpacity={0.7}
+        minParticleOpacity={0.4}
+        maxSpeed={0.5}
+        enableShootingStars
       />
       <div className="flex min-h-[70svh] flex-col items-center justify-center">
         <div className="relative z-10 w-full max-w-2xl px-6 text-center">

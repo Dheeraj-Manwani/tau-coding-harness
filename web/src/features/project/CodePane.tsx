@@ -157,6 +157,7 @@ function TabBar() {
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const setActiveFile = useProjectStore((s) => s.setActiveFile);
   const closeFile = useProjectStore((s) => s.closeFile);
+  const closeOtherFiles = useProjectStore((s) => s.closeOtherFiles);
   const closeFilesToRight = useProjectStore((s) => s.closeFilesToRight);
   const closeAllFiles = useProjectStore((s) => s.closeAllFiles);
 
@@ -252,6 +253,13 @@ function TabBar() {
                 <ContextMenuItem onSelect={() => closeFile(id)}>
                   <XIcon />
                   Close
+                </ContextMenuItem>
+                <ContextMenuItem
+                  disabled={openFiles.length <= 1}
+                  onSelect={() => closeOtherFiles(id)}
+                >
+                  <XIcon />
+                  Close other tabs
                 </ContextMenuItem>
                 <ContextMenuItem
                   disabled={isLast}

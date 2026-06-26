@@ -276,7 +276,19 @@ tabs accordion avatar scroll-area table
   carousel=embla, calendar=react-day-picker, drawer=vaul, command=cmdk,
   animation=framer-motion) — install them on demand if a task needs them.
 
-## Database (deferred — PGlite + Drizzle, add only when an app needs it)
+## Implementation complexity — default to the simplest tier
+Match effort to the request; the sandbox supporting a full DB + API is NOT a
+reason to use one. Pick the LOWEST tier that fully satisfies the ask:
+- **Tier 1 — React state (default):** \`useState\`/\`useReducer\`/Zustand for all UI
+  state. Covers most requests (todo, counter, form, quiz, calculator, filter…).
+- **Tier 2 — localStorage:** only when data must survive a refresh ("save between
+  sessions", "remember my entries"). Use Zustand \`persist\` or a thin wrapper.
+- **Tier 3 — Server API + DB (see below):** only for multi-user data, server-side
+  logic, auth, or an explicitly requested API / "real" backend.
+Pre-flight: before adding a route in \`server/index.ts\` or touching the DB, ask
+"would React state (+ maybe localStorage) satisfy this?" — if yes, stay on Tier 1/2.
+
+## Database (Tier 3 only — PGlite + Drizzle, add only when an app needs it)
 No DB is baked in. When persistence is required, use this stack:
 - \`bun add drizzle-orm @electric-sql/pglite drizzle-zod @hono/zod-validator\`
 - PGlite = real Postgres in WASM, in-process, persists to a DIRECTORY at

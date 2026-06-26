@@ -304,6 +304,13 @@ code {
   filter: drop-shadow(0 0 8px #60a5fa66);
 }
 
+/* White variant (e.g. on the home hero) — recolors the glyph white and swaps
+   the brand-blue bloom for a soft neutral one. */
+.logo-mark--white {
+  background-color: #cbd5e1;
+  filter: drop-shadow(0 0 6px rgba(203, 213, 225, 0.2));
+}
+
 /* ───────────────────────────────────────────────────────────────────────────
  * shadcn token bridge — maps the runtime CSS vars above to Tailwind color
  * utilities (bg-background, text-foreground, border-border, …).

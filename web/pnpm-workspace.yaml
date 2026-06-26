@@ -1,0 +1,5 @@
+# @tsparticles/engine's only install script is a compatibility checker that
+# warns about conflicting legacy particles packages -- it builds nothing the
+# runtime needs, so we explicitly decline to run it (false = don't build).
+allowBuilds:
+  '@tsparticles/engine': false

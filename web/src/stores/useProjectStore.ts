@@ -112,6 +112,7 @@ interface ProjectState {
   setActiveTab: (tab: Tab) => void;
   openFile: (id: string) => void;
   closeFile: (id: string) => void;
+  closeOtherFiles: (id: string) => void;
   closeFilesToRight: (id: string) => void;
   closeAllFiles: () => void;
   setActiveFile: (id: string) => void;
@@ -217,6 +218,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           ? (openFiles[idx] ?? openFiles[idx - 1] ?? "")
           : s.activeFileId;
       return { openFiles, activeFileId };
+    }),
+
+  closeOtherFiles: (id) =>
+    set((s) => {
+      if (!s.openFiles.includes(id)) return {};
+      return { openFiles: [id], activeFileId: id };
     }),
 
   closeFilesToRight: (id) =>

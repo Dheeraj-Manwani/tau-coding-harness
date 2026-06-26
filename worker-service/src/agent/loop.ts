@@ -187,6 +187,7 @@ export async function runAgentLoop(
       if (!isToolTurn) {
         const host = sandbox.getHost(PREVIEW_PORT);
         const url = `https://${host}`;
+        console.log("sandbox url ::::::::::::: ", url);
         await publish(jobId, { type: "preview_ready", url }, nextIndex());
 
         await prisma.fragment.create({

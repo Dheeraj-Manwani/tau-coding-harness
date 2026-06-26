@@ -37,7 +37,7 @@ export function PromptComposer({
   return (
     <div
       className={cn(
-        "border border-silver-400/30 bg-space-surface shadow-xl focus-within:border-brand/60 focus-within:ring-3 focus-within:ring-brand/15",
+        "border border-silver-400/40 bg-space-surface shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10",
         compact ? "rounded-xl p-2" : "rounded-2xl p-3",
       )}
     >

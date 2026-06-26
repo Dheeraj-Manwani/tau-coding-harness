@@ -22,6 +22,7 @@ export async function provisionSandbox(projectId: string): Promise<Sandbox> {
 
   if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
     try {
+      console.log("returning existing sadbox =========== ", project.sandboxId);
       return await getSandbox(project.sandboxId);
     } catch (err) {
       console.warn(
@@ -42,6 +43,7 @@ export async function provisionSandbox(projectId: string): Promise<Sandbox> {
       sandboxStatus: SandboxStatus.READY,
     },
   });
+  console.log("new sadbox =========== ", sandbox.sandboxId);
 
   return sandbox;
 }

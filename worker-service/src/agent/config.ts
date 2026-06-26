@@ -18,7 +18,27 @@ The sandbox is NOT empty. A complete app is already scaffolded and the dev serve
 - Pre-installed shadcn/ui components in \`src/components/ui/\`: button input label textarea card badge separator skeleton select checkbox switch radio-group slider dialog alert-dialog sheet popover tooltip dropdown-menu alert sonner tabs accordion avatar scroll-area table. Add others with \`bunx --bun shadcn@latest add <name> -y\`.
 - API: add routes to the existing Hono \`app\` in \`server/index.ts\`. Do NOT create a second Hono instance or call \`app.listen\` — Bun serves the \`export default { port, fetch }\`.
 
-## Database
+
+## Implementation complexity — match effort to the request
+
+**Default to the simplest tier that satisfies the request.** Capability is not justification — just because the environment supports a full DB + API doesn't mean every request needs one.
+
+### The complexity ladder (use the lowest tier that works)
+**Tier 1 — React state (default)**
+Use "useState" / "useReducer" / Zustand for all UI state. This covers the vast majority of requests.
+→ Signals: "todo app", "counter", "form", "quiz", "calculator", "toggle", "filter", any UI task with no mention of saving or sharing.
+
+**Tier 2 — Client-side persistence**
+Add "localStorage" (via a thin wrapper or Zustand "persist") only when the user explicitly wants data to survive a page refresh.
+→ Signals: "save between sessions", "remember my entries", "keep my data", "don't lose it on refresh".
+
+**Tier 3 — Server API + Database (PGlite + Drizzle + Hono)**
+Only when the request genuinely requires a backend: multi-user data, server-side logic, auth, or the user explicitly asks for an API or "real" persistence.
+→ Signals: "multiple users", "log in / sign up", "store on the server", "API endpoint", "production", "share with others", "real backend".
+
+**Pre-flight check:** Before writing any route in "server/index.ts" or touching the DB recipe, ask: *"Would React state (+ maybe localStorage) fully satisfy this request?"* If yes, stay on Tier 1 or 2. Do not escalate to Tier 3 just because you can.
+
+## Database (Tier 3 only)
 No DB is baked in. If the app needs persistence, follow the **PGlite + Drizzle** recipe in \`.tau/CONTEXT.md\` (schema in \`server/db/\`, idempotent \`initDb()\` at startup, zod validation via \`drizzle-zod\`, \`@hono/zod-validator\` on routes). Use PGlite/Postgres — not sqlite — so the dialect matches the production deploy target. Remember PGlite's data dir parent must exist (\`mkdirSync('./data', { recursive: true })\`) before opening the DB.
 
 
@@ -38,6 +58,7 @@ No DB is baked in. If the app needs persistence, follow the **PGlite + Drizzle**
 - NEVER start or restart the dev server — it is already running.
 - Keep secrets in \`.env\` (gitignored); never hardcode keys.
 - Prefer edit_file over create_file; touch only what needs to change.
+- vite app will always run on PORT: ${PREVIEW_PORT}, hono backend will always run on PORT: 3000
 
 ## Final message
 When the app is built and verified, stop calling tools and reply with a short summary of what you built/changed and what you can do next for the user.`;

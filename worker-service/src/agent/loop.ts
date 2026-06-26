@@ -13,26 +13,12 @@ import {
   ToolCallStatus,
 } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
+import { MAX_TOKENS, PREVIEW_PORT, SYSTEM_PROMPT } from "./config";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
 type FunctionToolCall =
   OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
-
-const MAX_TOKENS = 8192;
-
-const PREVIEW_PORT = 3000;
-
-const SYSTEM_PROMPT = `You are Tau, an autonomous coding agent that builds working web applications inside an E2B sandbox.
-
-You build a React + Vite application. Follow these rules:
-- Use the \`create_file\` tool to write every file the app needs (package.json, vite.config, index.html, and all source files). Always write complete file contents — never use placeholders or "...".
-- Place source files under \`src/\` and keep an \`index.html\` at the project root.
-- Use the \`run_command\` tool to install dependencies (e.g. \`npm install\`) and to verify the project builds/compiles before starting it.
-- When the app is ready, start the preview server as the final command: \`run_command("npm run dev -- --port ${PREVIEW_PORT}")\`. The dev server must listen on port ${PREVIEW_PORT}.
-- After the server is started, stop calling tools and reply with a single final text message containing ONLY a short title for what you built (5 words maximum, no quotes, no punctuation at the end). This title is used to label the result.
-
-Work autonomously: create all files and run the necessary commands without asking the user questions.`;
 
 function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
@@ -279,11 +265,45 @@ export async function runAgentLoop(
               typeof fileInput.path === "string" &&
               typeof fileInput.content === "string"
             ) {
-              createdFiles.push({
-                path: fileInput.path,
-                content: fileInput.content,
-                language: languageFromPath(fileInput.path),
-              });
+              const existing = createdFiles.find(
+                (f) => f.path === fileInput.path,
+              );
+              if (existing) {
+                existing.content = fileInput.content;
+              } else {
+                createdFiles.push({
+                  path: fileInput.path,
+                  content: fileInput.content,
+                  language: languageFromPath(fileInput.path),
+                });
+              }
+            }
+          } else if (toolName === "edit_file") {
+            const editInput = input as {
+              path?: unknown;
+              old_string?: unknown;
+              new_string?: unknown;
+              replace_all?: unknown;
+            };
+            if (
+              typeof editInput.path === "string" &&
+              typeof editInput.old_string === "string" &&
+              typeof editInput.new_string === "string"
+            ) {
+              const existing = createdFiles.find(
+                (f) => f.path === editInput.path,
+              );
+              if (existing) {
+                existing.content =
+                  editInput.replace_all === true
+                    ? existing.content
+                        .split(editInput.old_string)
+                        .join(editInput.new_string)
+                    : existing.content.replace(
+                        editInput.old_string,
+                        editInput.new_string,
+                      );
+              }
             }
           }
         } catch (err) {

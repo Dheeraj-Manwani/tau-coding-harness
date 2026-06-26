@@ -69,6 +69,66 @@ function StarLayer({
   );
 }
 
+type CloudConfig = {
+  left: string;
+  /** Vertical position within the 2000px band, in px. */
+  top: number;
+  width: number;
+  height: number;
+  opacity: number;
+};
+
+/** A tileable band of soft nebula-like clouds spread over a 2000px height. */
+const CLOUDS: CloudConfig[] = [
+  { left: "6%", top: 140, width: 440, height: 190, opacity: 0.1 },
+  { left: "60%", top: 360, width: 540, height: 230, opacity: 0.08 },
+  { left: "28%", top: 760, width: 480, height: 210, opacity: 0.12 },
+  { left: "76%", top: 1080, width: 400, height: 180, opacity: 0.09 },
+  { left: "12%", top: 1420, width: 560, height: 250, opacity: 0.1 },
+  { left: "48%", top: 1740, width: 460, height: 200, opacity: 0.08 },
+];
+
+/** One band of cloud blobs (rendered twice by CloudLayer for a seamless loop). */
+function Clouds() {
+  return (
+    <>
+      {CLOUDS.map((c, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: c.left,
+            top: c.top,
+            width: c.width,
+            height: c.height,
+            opacity: c.opacity,
+            background:
+              "radial-gradient(ellipse at center, rgba(160, 196, 253, 0.9) 0%, rgba(99, 102, 241, 0.35) 42%, transparent 70%)",
+            filter: "blur(42px)",
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Clouds that drift upward in lockstep with the stars, tiled for a seamless loop. */
+function CloudLayer({ transition }: { transition: Transition }) {
+  return (
+    <motion.div
+      data-slot="cloud-layer"
+      animate={{ y: [0, -2000] }}
+      transition={transition}
+      className="absolute top-0 left-0 w-full h-[2000px]"
+    >
+      <Clouds />
+      <div className="absolute left-0 top-[2000px] w-full">
+        <Clouds />
+      </div>
+    </motion.div>
+  );
+}
+
 type ShootingStarConfig = {
   top: string;
   left: string;
@@ -208,6 +268,9 @@ function StarsBackground({
         style={{ x: springX, y: springY }}
         className={cn({ "pointer-events-none": !pointerEvents })}
       >
+        <CloudLayer
+          transition={{ repeat: Infinity, duration: speed * 2.5, ease: "linear" }}
+        />
         <StarLayer
           count={1400}
           size={1}

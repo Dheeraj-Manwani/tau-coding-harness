@@ -39,12 +39,13 @@ function Home() {
     const message = prompt.trim();
     if (message.length === 0 || isSubmitting) return;
     // Create the project + enqueue the first job, then hand off to the project
-    // route — the composer morphs into the chat dock via its shared layoutId.
-    // The prompt + jobId ride along in router state so the workspace can show
-    // the message and subscribe to the live stream immediately.
+    // route. The prompt + jobId ride along in router state so the workspace can
+    // show the message and subscribe to the live stream immediately.
     initProject.mutate(message, {
       onSuccess: ({ projectId, jobId }) =>
-        navigate(`/project/${projectId}`, { state: { jobId, prompt: message } }),
+        navigate(`/project/${projectId}`, {
+          state: { jobId, prompt: message },
+        }),
       onError: (err) =>
         toast.error(
           err instanceof ApiError ? err.message : "Couldn't start your project",

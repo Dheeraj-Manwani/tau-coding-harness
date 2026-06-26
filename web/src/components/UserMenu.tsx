@@ -19,7 +19,7 @@ export function UserMenu() {
         <button
           type="button"
           aria-label="Account menu"
-          className="rounded-full outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+          className="rounded-full outline-none transition-opacity hover:opacity-90 cursor-pointer"
         >
           <Avatar>
             <AvatarFallback>{initials}</AvatarFallback>

@@ -1,13 +1,8 @@
 import type { ReactNode } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { motion } from "motion/react";
 import { ArrowUpIcon, Loader2Icon, PaperclipIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
-
-// Shared layoutId so Framer morphs this card between the Home (centered) and
-// ChatPanel (bottom-left) positions during the route transition.
-export const COMPOSER_LAYOUT_ID = "prompt-composer";
 
 interface PromptComposerProps {
   value: string;
@@ -40,9 +35,7 @@ export function PromptComposer({
   const canSubmit = hasText && !isSubmitting;
 
   return (
-    <motion.div
-      layoutId={COMPOSER_LAYOUT_ID}
-      transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+    <div
       className={cn(
         "border border-silver-400/30 bg-space-surface shadow-xl focus-within:border-brand/60 focus-within:ring-3 focus-within:ring-brand/15",
         compact ? "rounded-xl p-2" : "rounded-2xl p-3",
@@ -102,6 +95,6 @@ export function PromptComposer({
           )}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

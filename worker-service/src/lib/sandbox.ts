@@ -5,8 +5,13 @@ import { SandboxStatus } from "../generated/prisma/enums";
 
 export type { Sandbox } from "e2b";
 
+const TEMPLATE = "vite-hono-app";
+export const WORK_DIR = "/home/user/app";
+
 export function getSandbox(sandboxId: string): Promise<Sandbox> {
-  return Sandbox.connect(sandboxId, { apiKey: env.E2B_API_KEY });
+  return Sandbox.connect(sandboxId, {
+    timeoutMs: 10 * 60_000,
+  });
 }
 
 export async function provisionSandbox(projectId: string): Promise<Sandbox> {
@@ -26,7 +31,9 @@ export async function provisionSandbox(projectId: string): Promise<Sandbox> {
     }
   }
 
-  const sandbox = await Sandbox.create({ apiKey: env.E2B_API_KEY });
+  const sandbox = await Sandbox.create(TEMPLATE, {
+    timeoutMs: 10 * 60_000,
+  });
 
   await prisma.project.update({
     where: { id: projectId },

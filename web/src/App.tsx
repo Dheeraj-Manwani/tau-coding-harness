@@ -1,5 +1,5 @@
 import { useLocation, useOutlet } from "react-router-dom";
-import { AnimatePresence, LayoutGroup, motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { UserMenu } from "@/src/components/UserMenu";
 
@@ -24,24 +24,20 @@ function App() {
       )}
 
       <main className="relative min-h-0 flex-1">
-        {/* LayoutGroup lets the prompt composer's shared layoutId morph between
-            the Home (centered) and project (bottom-left dock) positions; the
-            pages cross-fade as absolutely-stacked layers so they overlap during
-            the morph instead of stacking in flow. */}
-        <LayoutGroup>
-          <AnimatePresence mode="sync">
-            <motion.div
-              key={routeKey}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1, ease: "easeInOut" }}
-              className="absolute inset-0"
-            >
-              {outlet}
-            </motion.div>
-          </AnimatePresence>
-        </LayoutGroup>
+        {/* Pages cross-fade as absolutely-stacked layers so they overlap during
+            the route change instead of stacking in flow. */}
+        <AnimatePresence mode="sync">
+          <motion.div
+            key={routeKey}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="absolute inset-0"
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

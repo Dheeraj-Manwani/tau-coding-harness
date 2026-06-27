@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 
+import { cn } from "@/src/lib/utils";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
 import { useProject } from "@/src/features/project/api";
 import { useJobStream } from "@/src/features/project/useJobStream";
+import {
+  clearFreshBuild,
+  hasFreshBuild,
+} from "@/src/features/project/revealSession";
 
 const MIN_LEFT = 240;
 const MIN_RIGHT = 400;
@@ -47,17 +52,42 @@ function useProjectBootstrap() {
   useJobStream();
 }
 
+const REVEAL_SPRING = { type: "spring", stiffness: 320, damping: 34 } as const;
+
 export default function ProjectPage() {
   useProjectBootstrap();
+
+  const { id: projectId } = useParams<{ id: string }>();
+  const [cameFromHome] = useState(() =>
+    projectId ? hasFreshBuild(projectId) : false,
+  );
+  useEffect(() => {
+    if (projectId) clearFreshBuild(projectId);
+  }, [projectId]);
 
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const splitPosition = useProjectStore((s) => s.splitPosition);
   const setSplitPosition = useProjectStore((s) => s.setSplitPosition);
+  const buildStarted = useProjectStore((s) => s.buildStarted);
+  const centered = cameFromHome && !buildStarted;
 
   const containerRef = useRef<HTMLDivElement>(null);
   // While dragging, width must track the pointer 1:1 (no spring); the spring is
-  // only for the collapse/expand slide.
+  // only for the collapse/expand and dock-left slide.
   const [isDragging, setIsDragging] = useState(false);
+
+  // Measure the container so the chat width can animate in pixels (px↔px is
+  // smooth; animating "100%"↔px snaps). Pre-build the chat fills this width.
+  const [containerWidth, setContainerWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const handleDrag = (clientX: number) => {
     const el = containerRef.current;
@@ -71,6 +101,10 @@ export default function ProjectPage() {
     setSplitPosition(next);
   };
 
+  // Centered (full width) only during the home-launched pre-build phase; docked
+  // at splitPosition otherwise. Fall back to "100%" until the first measurement.
+  const chatWidth = centered ? containerWidth || "100%" : splitPosition;
+
   return (
     <div ref={containerRef} className="flex h-full w-full overflow-hidden">
       <AnimatePresence initial={false}>
@@ -78,21 +112,23 @@ export default function ProjectPage() {
           <motion.div
             key="chat"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: splitPosition, opacity: 1 }}
+            animate={{ width: chatWidth, opacity: 1 }}
             exit={{ width: 0, x: -40, opacity: 0 }}
-            transition={
-              isDragging
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 320, damping: 34 }
-            }
+            transition={isDragging ? { duration: 0 } : REVEAL_SPRING}
             className="shrink-0 overflow-hidden"
           >
-            <ChatPanel />
+            {/* Centered, max-width column while the chat owns the whole screen;
+                full-bleed once it docks to the left at splitPosition. */}
+            <div
+              className={cn("mx-auto h-full w-full", centered && "max-w-2xl")}
+            >
+              <ChatPanel showCollapse={!centered} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {isChatOpen && (
+      {isChatOpen && !centered && (
         <ResizeHandle
           onDrag={handleDrag}
           onDragStart={() => setIsDragging(true)}
@@ -100,12 +136,24 @@ export default function ProjectPage() {
         />
       )}
 
-      {/* Plain flex child: it reclaims space in real time as the left panel's
-          width animates (on collapse) or is dragged — no layout prop, which
-          would otherwise lag a frame behind the drag handle. */}
-      <div className="min-w-0 flex-1">
-        <RightPanel />
-      </div>
+      {/* Hidden only during the centered pre-build phase. On any non-home entry
+          `centered` is false from the first commit, so the workspace is present
+          immediately and `AnimatePresence initial={false}` shows it with no
+          slide; for a home-launched build it mounts on the first file and slides
+          in from the right like a panel toggled open. */}
+      <AnimatePresence initial={false}>
+        {!centered && (
+          <motion.div
+            key="workspace"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={REVEAL_SPRING}
+            className="min-w-0 flex-1"
+          >
+            <RightPanel />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

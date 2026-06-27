@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
 
 import { SparkleParticles } from "@/src/components/ui/star-particles";
@@ -7,6 +8,7 @@ import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject } from "@/src/features/project/api";
+import { markFreshBuild } from "@/src/features/project/revealSession";
 import { ApiError } from "@/src/lib/api-client";
 
 const STAR_COLORS = [
@@ -32,6 +34,7 @@ function Home() {
   const initProject = useInitProject();
   const [prompt, setPrompt] = useState("");
   const [suggestion, setSuggestion] = useState(0);
+  const [initializing, setInitializing] = useState(false);
   const isSubmitting = initProject.isPending;
   const showPlaceholder = prompt.length === 0;
 
@@ -48,18 +51,24 @@ function Home() {
   const submit = () => {
     const message = prompt.trim();
     if (message.length === 0 || isSubmitting) return;
+    setInitializing(true);
     // Create the project + enqueue the first job, then hand off to the project
     // route. The prompt + jobId ride along in router state so the workspace can
     // show the message and subscribe to the live stream immediately.
     initProject.mutate(message, {
-      onSuccess: ({ projectId, jobId }) =>
+      onSuccess: ({ projectId, jobId }) => {
+        // Flag this project so its page plays the centered → split reveal once.
+        markFreshBuild(projectId);
         navigate(`/project/${projectId}`, {
           state: { jobId, prompt: message },
-        }),
-      onError: (err) =>
+        });
+      },
+      onError: (err) => {
+        setInitializing(false);
         toast.error(
           err instanceof ApiError ? err.message : "Couldn't start your project",
-        ),
+        );
+      },
     });
   };
 
@@ -112,7 +121,13 @@ function Home() {
         </div>
       </div>
 
-      <MyProjects />
+      <AnimatePresence mode="wait">
+        {!initializing && (
+          <motion.div key="projects" exit={{ opacity: 0 }}>
+            <MyProjects />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

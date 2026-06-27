@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 
+import TauLogoAnimation from "@/src/components/tauAnimation";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 
 // Numeric px so Framer can interpolate smoothly (no unit-mixing snap). Desktop
@@ -42,11 +43,9 @@ export function PreviewPane({ device }: { device: string }) {
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+            <TauLogoAnimation size={260} />
             <span className="text-sm font-medium text-[var(--silver-600)]">
-              Preview
-            </span>
-            <span className="text-xs text-[var(--silver-400)]">
               {isStreaming
                 ? "tau is building your app…"
                 : "Your app renders here"}

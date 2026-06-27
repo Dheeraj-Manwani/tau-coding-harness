@@ -72,6 +72,10 @@ interface ProjectState {
   /** Short human label of what the agent is doing right now (tool/shell). */
   activity: string | null;
   hydrated: boolean;
+  /** Flips true once the agent starts writing files (or a preview exists). Drives
+   *  the home→workspace reveal: chat is centered until this is true, then it docks
+   *  left and the preview/code panel slides in from the right. */
+  buildStarted: boolean;
 
   // Chat
   chatMessages: Message[];
@@ -131,6 +135,7 @@ const FRESH = {
   status: "idle" as JobStatus,
   activity: null,
   hydrated: false,
+  buildStarted: false,
   chatMessages: [] as Message[],
   isAiTyping: false,
   streamingId: null,
@@ -179,7 +184,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
 
-      return { hydrated: true, chatMessages, files, previewUrl };
+      // An already-built project (has files or a preview) shows the workspace
+      // immediately on entry — the reveal animation only plays for live builds.
+      const buildStarted =
+        s.buildStarted || Object.keys(files).length > 0 || previewUrl != null;
+
+      return { hydrated: true, chatMessages, files, previewUrl, buildStarted };
     }),
 
   startJob: (jobId, prompt) =>
@@ -334,6 +344,8 @@ function applyEvent(set: SetState, event: JobEvent): void {
           activeFileId: event.path,
           activeTab: "code",
           activity: `Writing ${basename(event.path)}`,
+          // First file written → reveal the workspace (slides in from the right).
+          buildStarted: true,
         };
       });
       return;
@@ -364,7 +376,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "preview_ready":
-      set({ previewUrl: event.url, activeTab: "preview" });
+      set({ previewUrl: event.url, activeTab: "preview", buildStarted: true });
       return;
 
     case "done":

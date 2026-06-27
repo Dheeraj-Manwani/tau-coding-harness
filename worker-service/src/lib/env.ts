@@ -14,7 +14,7 @@ const envSchema = z.object({
   // baseURL + model are not in the sprint spec but are required to actually
   // reach Deepseek; sensible defaults match the api service.
   DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
-  DEEPSEEK_MODEL: z.string().default("deepseek-chat"),
+  DEEPSEEK_MODEL: z.string().default("deepseek-v4-pro"),
 
   // ── E2B sandbox ──
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),

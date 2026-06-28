@@ -6,12 +6,16 @@ import type {
   InitProjectResponse,
   ListProjectsResponse,
   ProjectDetail,
+  ProjectFileResponse,
+  ProjectTree,
 } from "./types";
 
 export const projectKeys = {
   all: ["project"] as const,
   list: () => ["project", "list"] as const,
   detail: (id: string) => ["project", id] as const,
+  tree: (id: string) => ["project", id, "tree"] as const,
+  file: (id: string, path: string) => ["project", id, "file", path] as const,
 };
 
 /** `GET /project` — the signed-in user's projects, newest first. */
@@ -64,5 +68,39 @@ export function useAddMessage(projectId: string) {
       // The new job will write messages/fragments; let the next entry refetch.
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     },
+  });
+}
+
+/** `GET /project/:id/tree` — the full file manifest with headSequence. */
+export function useProjectTree(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectKeys.tree(projectId ?? ""),
+    queryFn: () =>
+      api
+        .get<ProjectTree>(`/project/${projectId}/tree`)
+        .then((r) => r.data),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+/** `GET /project/:id/file?path=…` — lazy-load a single file's body.
+ *  Only fetches when `path` is non-empty and `enabled` is true. */
+export function useProjectFile(
+  projectId: string | undefined,
+  path: string,
+  options: { enabled: boolean },
+) {
+  return useQuery({
+    queryKey: projectKeys.file(projectId ?? "", path),
+    queryFn: () =>
+      api
+        .get<ProjectFileResponse>(
+          `/project/${projectId}/file?path=${encodeURIComponent(path)}`,
+        )
+        .then((r) => r.data),
+    enabled: Boolean(projectId && path) && options.enabled,
+    staleTime: Infinity,
+    retry: false,
   });
 }

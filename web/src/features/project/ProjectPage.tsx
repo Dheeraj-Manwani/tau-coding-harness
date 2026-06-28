@@ -7,7 +7,7 @@ import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
-import { useProject } from "@/src/features/project/api";
+import { useProject, useProjectTree } from "@/src/features/project/api";
 import { useJobStream } from "@/src/features/project/useJobStream";
 import {
   clearFreshBuild,
@@ -27,8 +27,10 @@ function useProjectBootstrap() {
   const initProject = useProjectStore((s) => s.initProject);
   const startJob = useProjectStore((s) => s.startJob);
   const hydrate = useProjectStore((s) => s.hydrate);
+  const hydrateTree = useProjectStore((s) => s.hydrateTree);
 
   const { data } = useProject(projectId);
+  const { data: tree } = useProjectTree(projectId);
 
   // Reset store on (re-)entry, then replay the just-submitted prompt/job.
   useEffect(() => {
@@ -39,7 +41,7 @@ function useProjectBootstrap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // Seed chat/files/preview from the DB once it loads (guarded inside hydrate),
+  // Seed chat/preview from the DB once it loads (guarded inside hydrate),
   // and resume an in-flight job if we aren't already streaming one (reload).
   useEffect(() => {
     if (!data) return;
@@ -48,6 +50,11 @@ function useProjectBootstrap() {
       startJob(data.activeJobId);
     }
   }, [data, hydrate, startJob]);
+
+  // Populate the file tree from the manifest endpoint.
+  useEffect(() => {
+    if (tree) hydrateTree(tree);
+  }, [tree, hydrateTree]);
 
   useJobStream();
 }

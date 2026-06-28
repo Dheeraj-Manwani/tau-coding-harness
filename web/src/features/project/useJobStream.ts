@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 
 import { env } from "@/src/lib/env";
-import { getAccessToken, refreshOnce } from "@/src/lib/api-client";
+import { api, getAccessToken, refreshOnce } from "@/src/lib/api-client";
 import { useProjectStore } from "@/src/stores/useProjectStore";
-import type { JobEvent } from "./types";
+import type { JobEvent, ProjectTree } from "./types";
 
 const MAX_BACKOFF_MS = 10_000;
 
@@ -29,7 +29,9 @@ const watermarks = new Map<string, number>();
  */
 export function useJobStream(): void {
   const jobId = useProjectStore((s) => s.currentJobId);
+  const projectId = useProjectStore((s) => s.projectId);
   const applyEvent = useProjectStore((s) => s.applyEvent);
+  const hydrateTree = useProjectStore((s) => s.hydrateTree);
   const setCanceller = useProjectStore((s) => s.setCanceller);
 
   useEffect(() => {
@@ -80,6 +82,16 @@ export function useJobStream(): void {
           if (event.index <= (watermarks.get(jobId) ?? -1)) return;
           watermarks.set(jobId, event.index);
         }
+        if (event.type === "resync" && projectId) {
+          // Replay window expired — re-fetch the tree to recover missed writes.
+          api
+            .get<ProjectTree>(`/project/${projectId}/tree`)
+            .then((r) => hydrateTree(r.data))
+            .catch((err) =>
+              console.error("[useJobStream] resync tree fetch failed:", err),
+            );
+          return;
+        }
         applyEvent(event);
       };
 
@@ -117,5 +129,5 @@ export function useJobStream(): void {
         socket.close();
       }
     };
-  }, [jobId, applyEvent, setCanceller]);
+  }, [jobId, projectId, applyEvent, hydrateTree, setCanceller]);
 }

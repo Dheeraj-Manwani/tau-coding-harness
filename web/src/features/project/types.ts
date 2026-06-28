@@ -17,18 +17,10 @@ export interface ProjectMessage {
   createdAt: string;
 }
 
-/** A file inside a Fragment's `files` array. */
-export interface FragmentFile {
-  path: string;
-  content: string;
-  language?: string;
-}
-
 export interface Fragment {
   id: string;
   sandboxUrl: string | null;
   title: string | null;
-  files: FragmentFile[] | null;
   createdAt: string;
 }
 
@@ -71,6 +63,17 @@ export interface AddMessageResponse {
   jobId: string;
 }
 
+/** `GET /project/:id/tree` response. */
+export interface ProjectTree {
+  files: { path: string; sizeBytes: number }[];
+  headSequence: number;
+}
+
+/** `GET /project/:id/file?path=…` response. */
+export interface ProjectFileResponse {
+  content: string;
+}
+
 // ── Live events (worker → Redis → ws-gateway) ───────────────────────────────
 
 /** Every event carries the monotonic `index` used for replay/dedup. */
@@ -86,9 +89,11 @@ export type JobEvent = BaseEvent &
     | { type: "tool_res"; toolCallId: string; output: unknown }
     | { type: "file_start"; path: string }
     | { type: "file_chunk"; path: string; content: string }
-    | { type: "file_done"; path: string }
+    | { type: "file_done"; path: string; headSequence?: number }
+    | { type: "file_delete"; path: string; headSequence: number }
     | { type: "shell_output"; stream: "stdout" | "stderr"; line: string }
     | { type: "preview_ready"; url: string }
+    | { type: "resync" }
     | { type: "cancelled" }
     | { type: "done" }
     | { type: "error"; message: string }

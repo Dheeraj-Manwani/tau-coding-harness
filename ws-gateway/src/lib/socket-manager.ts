@@ -128,6 +128,15 @@ export class SocketManager {
     }
 
     const raw = await this.redisPub.lrange(eventsKey(jobId), 0, -1);
+
+    // Replay window expired: the Redis list is gone but the client had prior
+    // state (lastEventIndex ≥ 0). Tell the client to re-fetch the tree so it
+    // can resync without losing files written after the window closed.
+    if (raw.length === 0 && lastEventIndex >= 0) {
+      this.safeSend(socket, JSON.stringify({ type: "resync" }));
+      return;
+    }
+
     for (const entry of raw) {
       let event: JobEvent;
       try {

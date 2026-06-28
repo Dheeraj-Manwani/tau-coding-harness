@@ -7,7 +7,12 @@ import { deepseek } from "../lib/deepseek";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
 import { getBlobText } from "../lib/s3";
-import { MessageRole, MessageType, JobType, SandboxStatus } from "../generated/prisma/enums";
+import {
+  MessageRole,
+  MessageType,
+  JobType,
+  SandboxStatus,
+} from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
 
 const MAX_NAME_LENGTH = 80;
@@ -231,10 +236,14 @@ export async function getProjectFile(
   }
 
   // Sandbox-first: return live content when sandbox is up.
+  const WORK_DIR = "/home/user/app";
   if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
     try {
       const sandbox = await Sandbox.connect(project.sandboxId);
-      const content = await sandbox.files.read(filePath);
+      const absPath = filePath.startsWith("/")
+        ? filePath
+        : `${WORK_DIR}/${filePath}`;
+      const content = await sandbox.files.read(absPath);
       return { content };
     } catch {
       // Sandbox unreachable — fall through to R2 blob.

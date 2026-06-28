@@ -4,6 +4,7 @@ import type {
   JobEvent,
   ProjectDetail,
   ProjectMessage,
+  ProjectTree,
 } from "@/src/features/project/types";
 
 export type ChatRole = "user" | "ai";
@@ -18,10 +19,11 @@ export interface Message {
 export type Tab = "preview" | "code";
 export type PreviewDevice = "mobile" | "tablet" | "desktop";
 
-/** A file in the generated app, keyed by its sandbox-relative path. */
+/** A file in the generated app, keyed by its sandbox-relative path.
+ *  `content` is absent for manifest-only entries; lazy-loaded on click. */
 export interface ProjectFile {
   path: string;
-  content: string;
+  content?: string;
 }
 
 /** Lifecycle of the project's active generation job. */
@@ -62,6 +64,11 @@ function basename(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
+const WORK_DIR = "/home/user/app";
+function normalizePath(p: string): string {
+  return p.startsWith(`${WORK_DIR}/`) ? p.slice(WORK_DIR.length + 1) : p;
+}
+
 // ── State ───────────────────────────────────────────────────────────────────
 
 interface ProjectState {
@@ -85,6 +92,9 @@ interface ProjectState {
 
   // Generated app
   files: Record<string, ProjectFile>;
+  headSequence: number | null;
+  /** Path of the file currently being written by the agent, or null. */
+  writingPath: string | null;
   previewUrl: string | null;
   /** Bumped to force the preview iframe to remount (manual reload). */
   previewNonce: number;
@@ -106,6 +116,10 @@ interface ProjectState {
   initProject: (projectId: string) => void;
   /** Seed chat/files/preview from the persisted project once on entry. */
   hydrate: (detail: ProjectDetail) => void;
+  /** Populate the file tree from the manifest (paths only, no bodies). */
+  hydrateTree: (tree: ProjectTree) => void;
+  /** Cache a lazily-loaded file body in the store. */
+  setFileContent: (path: string, content: string) => void;
   /** Begin streaming a job; optionally append the prompt as a user bubble. */
   startJob: (jobId: string, prompt?: string) => void;
   /** Append a user bubble immediately (optimistic, before the job id is known). */
@@ -140,6 +154,8 @@ const FRESH = {
   isAiTyping: false,
   streamingId: null,
   files: {} as Record<string, ProjectFile>,
+  headSequence: null as number | null,
+  writingPath: null as string | null,
   previewUrl: null,
   previewNonce: 0,
   cancelStream: null,
@@ -176,21 +192,41 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
               .filter((m): m is Message => m !== null)
           : s.chatMessages;
 
-      const files: Record<string, ProjectFile> = { ...s.files };
-      for (const f of detail.latestFragment?.files ?? []) {
-        files[f.path] ??= { path: f.path, content: f.content };
-      }
-
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
 
-      // An already-built project (has files or a preview) shows the workspace
-      // immediately on entry — the reveal animation only plays for live builds.
-      const buildStarted =
-        s.buildStarted || Object.keys(files).length > 0 || previewUrl != null;
+      const buildStarted = s.buildStarted || previewUrl != null;
 
-      return { hydrated: true, chatMessages, files, previewUrl, buildStarted };
+      return { hydrated: true, chatMessages, previewUrl, buildStarted };
     }),
+
+  hydrateTree: (tree) =>
+    set((s) => {
+      // Rebuild the file map from the manifest, preserving any body already
+      // in the store (e.g. from an active or just-completed stream).
+      // Normalize paths: old DB records may have absolute paths like
+      // /home/user/app/src/App.tsx; strip the WORK_DIR prefix so the tree
+      // key always matches what buildTree and openFile produce.
+      const files: Record<string, ProjectFile> = {};
+      for (const f of tree.files) {
+        const path = normalizePath(f.path);
+        files[path] = s.files[path] ?? { path };
+      }
+      // Keep streamed files that haven't been committed to the manifest yet
+      // (persistFile runs async; a refetch may arrive before it completes).
+      for (const [path, file] of Object.entries(s.files)) {
+        if (!files[path] && file.content !== undefined) {
+          files[path] = file;
+        }
+      }
+      const buildStarted = s.buildStarted || Object.keys(files).length > 0;
+      return { files, headSequence: tree.headSequence, buildStarted };
+    }),
+
+  setFileContent: (path, content) =>
+    set((s) => ({
+      files: { ...s.files, [path]: { ...s.files[path], path, content } },
+    })),
 
   startJob: (jobId, prompt) =>
     set((s) => {
@@ -331,44 +367,66 @@ function applyEvent(set: SetState, event: JobEvent): void {
       }));
       return;
 
-    case "file_start":
+    case "file_start": {
+      const path = normalizePath(event.path);
       set((s) => {
         const files = { ...s.files };
-        files[event.path] ??= { path: event.path, content: "" };
-        const openFiles = s.openFiles.includes(event.path)
-          ? s.openFiles
-          : [...s.openFiles, event.path];
+        // Always reset content to "" so file_chunk can append cleanly.
+        // Preserve any other fields (e.g. path) that may come from hydrateTree.
+        files[path] = {
+          ...(s.files[path] ?? { path }),
+          content: "",
+        };
         return {
           files,
-          openFiles,
-          activeFileId: event.path,
-          activeTab: "code",
-          activity: `Writing ${basename(event.path)}`,
-          // First file written → reveal the workspace (slides in from the right).
+          writingPath: path,
+          activity: `Writing ${basename(path)}`,
           buildStarted: true,
         };
       });
       return;
+    }
 
-    case "file_chunk":
+    case "file_chunk": {
+      const path = normalizePath(event.path);
       set((s) => {
-        const existing = s.files[event.path] ?? {
-          path: event.path,
-          content: "",
-        };
+        const existing = s.files[path] ?? { path, content: "" };
         return {
           files: {
             ...s.files,
-            [event.path]: {
+            [path]: {
               ...existing,
-              content: existing.content + event.content,
+              content: (existing.content ?? "") + event.content,
             },
           },
         };
       });
       return;
+    }
 
     case "file_done":
+      set(event.headSequence !== undefined
+        ? { writingPath: null, headSequence: event.headSequence }
+        : { writingPath: null });
+      return;
+
+    case "file_delete": {
+      const path = normalizePath(event.path);
+      set((s) => {
+        const files = { ...s.files };
+        delete files[path];
+        const openFiles = s.openFiles.filter((f) => f !== path);
+        const activeFileId =
+          s.activeFileId === path
+            ? (openFiles[openFiles.indexOf(path)] ?? openFiles.at(-1) ?? "")
+            : s.activeFileId;
+        return { files, openFiles, activeFileId, headSequence: event.headSequence };
+      });
+      return;
+    }
+
+    case "resync":
+      // Handled in useJobStream before reaching here; nothing to do in the reducer.
       return;
 
     case "shell_output":
@@ -376,7 +434,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "preview_ready":
-      set({ previewUrl: event.url, activeTab: "preview", buildStarted: true });
+      set({ previewUrl: event.url, buildStarted: true });
       return;
 
     case "done":
@@ -385,6 +443,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
         isAiTyping: false,
         status: "done",
         activity: null,
+        writingPath: null,
         currentJobId: null,
       }));
       return;
@@ -395,6 +454,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
         isAiTyping: false,
         status: "cancelled",
         activity: null,
+        writingPath: null,
         currentJobId: null,
       }));
       return;
@@ -411,6 +471,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           isAiTyping: false,
           status: "error",
           activity: null,
+          writingPath: null,
           currentJobId: null,
           chatMessages: [
             ...fin.chatMessages,

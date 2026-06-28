@@ -13,6 +13,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsRightIcon,
+  LoaderCircleIcon,
   XIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ SyntaxHighlighter.registerLanguage("markup", markup);
 import { cn } from "@/src/lib/utils";
 import { File, Folder, Tree } from "@/src/components/ui/file-tree";
 import { useProjectStore } from "@/src/stores/useProjectStore";
+import { useProjectFile } from "@/src/features/project/api";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
 
 /** Material (VS Code) file icon for a filename, sized to fit inline. */
@@ -128,6 +130,7 @@ function folderPaths(nodes: TreeNode[]): string[] {
 function renderNodes(
   nodes: TreeNode[],
   activeFileId: string,
+  writingPath: string | null,
   openFile: (id: string) => void,
 ): React.ReactNode {
   return nodes.map((node) =>
@@ -139,11 +142,16 @@ function renderNodes(
         isSelect={activeFileId === node.path}
         fileIcon={<MaterialIcon name={node.name} className="size-4" />}
       >
-        <span>{node.name}</span>
+        <span className="flex items-center gap-1.5">
+          {node.name}
+          {writingPath === node.path && (
+            <LoaderCircleIcon className="size-3 shrink-0 animate-spin opacity-60" />
+          )}
+        </span>
       </File>
     ) : (
       <Folder key={node.path} value={node.path} element={node.name}>
-        {renderNodes(node.children, activeFileId, openFile)}
+        {renderNodes(node.children, activeFileId, writingPath, openFile)}
       </Folder>
     ),
   );
@@ -299,7 +307,22 @@ function TabBar() {
 function CodeEditor() {
   const files = useProjectStore((s) => s.files);
   const activeFileId = useProjectStore((s) => s.activeFileId);
+  const projectId = useProjectStore((s) => s.projectId);
+  const setFileContent = useProjectStore((s) => s.setFileContent);
   const file = activeFileId ? files[activeFileId] : undefined;
+
+  const needsLoad = file !== undefined && file.content === undefined;
+  const { data: fetched, isLoading, isError } = useProjectFile(
+    projectId ?? undefined,
+    activeFileId,
+    { enabled: needsLoad },
+  );
+
+  useEffect(() => {
+    if (fetched !== undefined && activeFileId) {
+      setFileContent(activeFileId, fetched.content);
+    }
+  }, [fetched, activeFileId, setFileContent]);
 
   if (!file) {
     return (
@@ -309,7 +332,24 @@ function CodeEditor() {
     );
   }
 
+  if (needsLoad && isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
+        Loading…
+      </div>
+    );
+  }
+
+  if (needsLoad && isError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
+        Could not load file contents.
+      </div>
+    );
+  }
+
   const name = basename(file.path);
+  const content = file.content ?? fetched?.content ?? "";
 
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
@@ -332,8 +372,6 @@ function CodeEditor() {
             minHeight: "100%",
           }}
           codeTagProps={{
-            // Override the global `code {}` base styles (which force
-            // inline-flex + padding/bg) so the editor renders as a block.
             style: {
               fontFamily: "var(--mono)",
               display: "block",
@@ -344,7 +382,7 @@ function CodeEditor() {
             },
           }}
         >
-          {file.content}
+          {content}
         </SyntaxHighlighter>
       </div>
     </div>
@@ -356,6 +394,7 @@ export function CodePane() {
   const codeTreeWidth = useProjectStore((s) => s.codeTreeWidth);
   const setCodeTreeWidth = useProjectStore((s) => s.setCodeTreeWidth);
   const activeFileId = useProjectStore((s) => s.activeFileId);
+  const writingPath = useProjectStore((s) => s.writingPath);
   const openFile = useProjectStore((s) => s.openFile);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -393,7 +432,7 @@ export function CodePane() {
             initialSelectedId={activeFileId}
             initialExpandedItems={expanded}
           >
-            {renderNodes(tree, activeFileId, openFile)}
+            {renderNodes(tree, activeFileId, writingPath, openFile)}
           </Tree>
         )}
       </div>

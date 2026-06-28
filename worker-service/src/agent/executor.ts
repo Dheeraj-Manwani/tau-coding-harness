@@ -7,6 +7,12 @@ import { putBlob } from "../lib/s3";
 import { allocateHeadSequence } from "../lib/headSequence";
 
 const CHUNK_SIZE = 80;
+const WORK_DIR = "/home/user/app";
+
+/** Strip the sandbox WORK_DIR prefix so all stored/published paths are relative. */
+function toRelativePath(p: string): string {
+  return p.startsWith(`${WORK_DIR}/`) ? p.slice(WORK_DIR.length + 1) : p;
+}
 
 function chunkString(s: string, size: number): string[] {
   const chunks: string[] = [];
@@ -96,19 +102,20 @@ async function createFile(
   const p = asString(path, "path");
   const c = asString(content, "content");
 
-  await publish(jobId, { type: "file_start", path: p }, indexer());
+  const relPath = toRelativePath(p);
+  await publish(jobId, { type: "file_start", path: relPath }, indexer());
 
   await sandbox.files.write(p, c);
 
   for (const chunk of chunkString(c, CHUNK_SIZE)) {
     await publish(
       jobId,
-      { type: "file_chunk", path: p, content: chunk },
+      { type: "file_chunk", path: relPath, content: chunk },
       indexer(),
     );
   }
 
-  await persistFile(jobId, projectId, userId, p, c, indexer);
+  await persistFile(jobId, projectId, userId, relPath, c, indexer);
   return { success: true, path: p };
 }
 
@@ -147,19 +154,20 @@ async function editFile(
     ? original.split(oldStr).join(newStr)
     : original.replace(oldStr, newStr);
 
-  await publish(jobId, { type: "file_start", path: p }, indexer());
+  const relPath = toRelativePath(p);
+  await publish(jobId, { type: "file_start", path: relPath }, indexer());
 
   await sandbox.files.write(p, updated);
 
   for (const chunk of chunkString(updated, CHUNK_SIZE)) {
     await publish(
       jobId,
-      { type: "file_chunk", path: p, content: chunk },
+      { type: "file_chunk", path: relPath, content: chunk },
       indexer(),
     );
   }
 
-  await persistFile(jobId, projectId, userId, p, updated, indexer);
+  await persistFile(jobId, projectId, userId, relPath, updated, indexer);
   return { success: true, path: p, replacements: replaceAll ? occurrences : 1 };
 }
 
@@ -177,24 +185,25 @@ async function deleteFile(
   indexer: () => number,
 ) {
   const p = asString((input as { path?: unknown }).path, "path");
+  const relPath = toRelativePath(p);
   await sandbox.files.remove(p);
 
   // Invariant 3: remove manifest row + bump headSequence in one tx; blob is left untouched.
   const existing = await prisma.projectFile.findUnique({
-    where: { projectId_path: { projectId, path: p } },
+    where: { projectId_path: { projectId, path: relPath } },
     select: { id: true },
   });
 
   if (existing) {
     const seq = await prisma.$transaction(async (tx) => {
       await tx.projectFile.delete({
-        where: { projectId_path: { projectId, path: p } },
+        where: { projectId_path: { projectId, path: relPath } },
       });
       return allocateHeadSequence(tx, projectId);
     });
     await publish(
       jobId,
-      { type: "file_delete", path: p, headSequence: seq },
+      { type: "file_delete", path: relPath, headSequence: seq },
       indexer(),
     );
   }

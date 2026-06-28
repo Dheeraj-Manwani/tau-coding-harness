@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   CodeIcon,
   ExternalLinkIcon,
+  LoaderCircleIcon,
   MonitorIcon,
   PanelLeftOpenIcon,
   RotateCwIcon,
@@ -51,6 +52,7 @@ const DEVICES: {
 function TabToggle() {
   const activeTab = useProjectStore((s) => s.activeTab);
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
+  const isWriting = useProjectStore((s) => s.writingPath !== null);
 
   return (
     <div className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1">
@@ -74,7 +76,11 @@ function TabToggle() {
             />
           )}
           <span className="relative z-10 flex items-center gap-1.5">
-            <Icon className="size-3.5" />
+            {id === "code" && isWriting ? (
+              <LoaderCircleIcon className="size-3.5 animate-spin" />
+            ) : (
+              <Icon className="size-3.5" />
+            )}
             {id}
           </span>
         </button>

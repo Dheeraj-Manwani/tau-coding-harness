@@ -50,11 +50,7 @@ const worker = new Worker<JobPayload>(
         data: { status: JobStatus.RUNNING, startedAt: new Date() },
       });
 
-      await publish(
-        jobId,
-        { type: "thinking", message: "Starting generation" },
-        0,
-      );
+      await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
 
       const sandbox = await provisionSandbox(projectId);
       await runAgentLoop(jobId, projectId, userId, prompt, sandbox);

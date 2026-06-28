@@ -52,8 +52,10 @@ const worker = new Worker<JobPayload>(
 
       await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
 
-      const sandbox = await provisionSandbox(projectId);
-      await runAgentLoop(jobId, projectId, userId, prompt, sandbox);
+      const sandbox = await provisionSandbox(projectId, userId, jobId);
+
+      const startIndex = await redis.llen(`job:${jobId}:events`);
+      await runAgentLoop(jobId, projectId, userId, prompt, sandbox, startIndex);
 
       if (!cancelled) {
         await prisma.job.update({

@@ -13,8 +13,8 @@ function App() {
   return (
     <div className="flex h-[100svh] flex-col">
       {!isProject && (
-        <header className="shrink-0">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
+          <div className="pointer-events-auto mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             <span
               className={cn("logo-mark size-6", isHome && "logo-mark--white")}
               role="img"
@@ -25,7 +25,7 @@ function App() {
         </header>
       )}
 
-      <main className="min-h-0 flex-1">{outlet}</main>
+      <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
     </div>
   );
 }

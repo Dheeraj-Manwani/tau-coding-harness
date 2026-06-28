@@ -67,7 +67,9 @@ export function useJobStream(): void {
         // Resume from the last index we applied so the gateway replays only
         // newer events (no duplicates) after a reconnect.
         const lastEventIndex = watermarks.get(jobId) ?? -1;
-        socket?.send(JSON.stringify({ type: "subscribe", jobId, lastEventIndex }));
+        socket?.send(
+          JSON.stringify({ type: "subscribe", jobId, lastEventIndex }),
+        );
       };
 
       socket.onmessage = (e) => {

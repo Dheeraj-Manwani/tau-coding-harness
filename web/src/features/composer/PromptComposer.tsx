@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { ArrowUpIcon, Loader2Icon, PaperclipIcon } from "lucide-react";
+import { ArrowUpIcon, Loader2Icon, PaperclipIcon, SquareIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
 
@@ -17,6 +17,8 @@ interface PromptComposerProps {
   autoFocus?: boolean;
   /** Tighter padding, radius, text and controls — used in the chat panel. */
   compact?: boolean;
+  /** When provided, replaces the send button with a red stop button. */
+  onStop?: () => void;
 }
 
 export function PromptComposer({
@@ -30,6 +32,7 @@ export function PromptComposer({
   maxRows = 4,
   autoFocus = false,
   compact = false,
+  onStop,
 }: PromptComposerProps) {
   const hasText = value.trim().length > 0;
   const canSubmit = hasText && !isSubmitting;
@@ -75,25 +78,39 @@ export function PromptComposer({
           <PaperclipIcon className="size-4" />
         </button>
 
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          aria-label="Send prompt"
-          className={cn(
-            "flex items-center justify-center rounded-lg transition-[background-color,transform]",
-            compact ? "size-7" : "size-9",
-            hasText
-              ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
-              : "cursor-not-allowed bg-space-overlay text-silver-600",
-          )}
-        >
-          {isSubmitting ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            <ArrowUpIcon className="size-4" />
-          )}
-        </button>
+        {onStop ? (
+          <button
+            type="button"
+            onClick={onStop}
+            aria-label="Stop generating"
+            className={cn(
+              "flex items-center justify-center rounded-lg bg-[var(--space-overlay)] text-[var(--silver-900)] ring-1 ring-[var(--silver-400)] transition-[background-color,transform] hover:bg-[var(--space-surface)] active:scale-95",
+              compact ? "size-7" : "size-9",
+            )}
+          >
+            <SquareIcon className="size-3.5 fill-current" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            aria-label="Send prompt"
+            className={cn(
+              "flex items-center justify-center rounded-lg transition-[background-color,transform]",
+              compact ? "size-7" : "size-9",
+              hasText
+                ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
+                : "cursor-not-allowed bg-space-overlay text-silver-600",
+            )}
+          >
+            {isSubmitting ? (
+              <Loader2Icon className="size-4 animate-spin" />
+            ) : (
+              <ArrowUpIcon className="size-4" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

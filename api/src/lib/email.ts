@@ -98,8 +98,6 @@ export async function sendVerificationEmail(input: {
     subject: "Verify your email",
     html: verificationEmailHtml(verifyUrl),
   });
-
-  console.log("from : ", FROM, "to :: ", input.email, res);
 }
 
 /** Verify an email-verification JWT and return the user id it was issued for. */

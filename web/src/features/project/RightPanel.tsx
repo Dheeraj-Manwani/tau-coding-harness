@@ -129,29 +129,31 @@ function UrlBar() {
       transition={{ duration: 0.15 }}
       className="flex flex-1 items-center gap-2"
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ rotate: 180 }}
-            disabled={!hasUrl}
-            onClick={() => hasUrl && reloadPreview()}
-            aria-label="Reload preview"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <RotateCwIcon className="size-4" />
-          </motion.button>
-        </TooltipTrigger>
-        <TooltipContent>Reload preview</TooltipContent>
-      </Tooltip>
-      <input
-        readOnly
-        value={previewUrl ?? ""}
-        placeholder="No preview yet — tau will build one"
-        onClick={(e) => e.currentTarget.select()}
-        className="w-full flex-1 cursor-default rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] px-3 py-1.5 text-xs text-[var(--silver-600)] focus:outline-none"
-      />
+      <div className="relative flex flex-1 items-center">
+        <input
+          readOnly
+          value={previewUrl ?? ""}
+          placeholder="No preview yet — tau will build one"
+          onClick={(e) => e.currentTarget.select()}
+          className="w-full cursor-default rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] py-1.5 pl-3 pr-8 text-xs text-[var(--silver-600)] focus:outline-none"
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ rotate: 180 }}
+              disabled={!hasUrl}
+              onClick={() => hasUrl && reloadPreview()}
+              aria-label="Reload preview"
+              className="absolute right-1.5 flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--silver-600)] transition-colors hover:text-(--silver-900) disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RotateCwIcon className="size-3.5" />
+            </motion.button>
+          </TooltipTrigger>
+          <TooltipContent>Reload preview</TooltipContent>
+        </Tooltip>
+      </div>
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.button

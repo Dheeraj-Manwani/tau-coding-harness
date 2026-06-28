@@ -1,20 +1,47 @@
 import { motion } from "motion/react";
 
-import TauLogoAnimation from "@/src/components/tauAnimation";
+import BorderGlow from "@/src/components/ui/glow-loader";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 
-// Numeric px so Framer can interpolate smoothly (no unit-mixing snap). Desktop
-// uses a large sentinel that the `w-full` parent caps — i.e. effectively full.
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
   tablet: 768,
   desktop: 9999,
 };
 
+function PreviewPlaceholder() {
+  return (
+    <div className="flex h-full items-center justify-center p-0">
+      <BorderGlow
+        autoAnimate
+        autoAnimateDuration={3200}
+        coneSpread={8}
+        borderRadius={20}
+        backgroundColor="var(--space-surface)"
+        glowColor="253 91 85"
+        colors={["#8b7bff", "#f472b6", "#38bdf8"]}
+        glowRadius={32}
+        glowIntensity={0.9}
+        fillOpacity={0.3}
+        className=" px-8 mx-0 py-5"
+      >
+        <div className="flex flex-col items-center gap-3">
+          <span className="logo-mark size-12" role="img" aria-label="tau" />
+
+          <div className="flex flex-col items-center  text-center">
+            <span className="text-sm font-semibold text-(--silver-900)">
+              tau is building your app…
+            </span>
+          </div>
+        </div>
+      </BorderGlow>
+    </div>
+  );
+}
+
 export function PreviewPane({ device }: { device: string }) {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewNonce = useProjectStore((s) => s.previewNonce);
-  const isStreaming = useProjectStore((s) => s.status === "streaming");
 
   return (
     <div className="flex h-full items-center justify-center overflow-auto p-6">
@@ -22,17 +49,7 @@ export function PreviewPane({ device }: { device: string }) {
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
         className="relative h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)]"
-        style={
-          previewUrl
-            ? { backgroundColor: "var(--space-void)" }
-            : {
-                // Faint grid pattern so the empty preview reads as a canvas.
-                backgroundColor: "var(--space-surface)",
-                backgroundImage:
-                  "linear-gradient(var(--space-overlay) 1px, transparent 1px), linear-gradient(90deg, var(--space-overlay) 1px, transparent 1px)",
-                backgroundSize: "24px 24px",
-              }
-        }
+        style={{ backgroundColor: "var(--space-void)" }}
       >
         {previewUrl ? (
           <iframe
@@ -43,14 +60,7 @@ export function PreviewPane({ device }: { device: string }) {
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-            <TauLogoAnimation size={260} />
-            <span className="text-sm font-medium text-[var(--silver-600)]">
-              {isStreaming
-                ? "tau is building your app…"
-                : "Your app renders here"}
-            </span>
-          </div>
+          <PreviewPlaceholder />
         )}
       </motion.div>
     </div>

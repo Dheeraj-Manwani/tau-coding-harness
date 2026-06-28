@@ -312,11 +312,13 @@ function CodeEditor() {
   const file = activeFileId ? files[activeFileId] : undefined;
 
   const needsLoad = file !== undefined && file.content === undefined;
-  const { data: fetched, isLoading, isError } = useProjectFile(
-    projectId ?? undefined,
-    activeFileId,
-    { enabled: needsLoad },
-  );
+  const {
+    data: fetched,
+    isLoading,
+    isError,
+  } = useProjectFile(projectId ?? undefined, activeFileId, {
+    enabled: needsLoad,
+  });
 
   useEffect(() => {
     if (fetched !== undefined && activeFileId) {
@@ -326,24 +328,15 @@ function CodeEditor() {
 
   if (!file) {
     return (
-      <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
-        Select a file to view its contents
-      </div>
-    );
-  }
-
-  if (needsLoad && isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
-        Loading…
-      </div>
-    );
-  }
-
-  if (needsLoad && isError) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
-        Could not load file contents.
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[var(--space-void)]">
+        <span
+          className="logo-mark size-8 opacity-50 "
+          role="img"
+          aria-label="tau"
+        />
+        <span className="text-sm text-(--silver-600)">
+          Select a file to view its contents
+        </span>
       </div>
     );
   }
@@ -354,37 +347,47 @@ function CodeEditor() {
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
       <TabBar />
-      <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
-        <SyntaxHighlighter
-          language={languageFor(name)}
-          style={okaidia}
-          showLineNumbers
-          lineNumberStyle={{
-            minWidth: "2.5em",
-            paddingRight: "1em",
-            opacity: 0.5,
-            userSelect: "none",
-          }}
-          customStyle={{
-            margin: 0,
-            padding: "0.75rem 0",
-            fontSize: "13px",
-            minHeight: "100%",
-          }}
-          codeTagProps={{
-            style: {
-              fontFamily: "var(--mono)",
-              display: "block",
-              background: "transparent",
-              padding: 0,
-              borderRadius: 0,
-              whiteSpace: "pre",
-            },
-          }}
-        >
-          {content}
-        </SyntaxHighlighter>
-      </div>
+      {needsLoad && isLoading ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--space-void)]">
+          <LoaderCircleIcon className="size-5 animate-spin text-[var(--silver-600)]" />
+        </div>
+      ) : needsLoad && isError ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
+          Could not load file contents.
+        </div>
+      ) : (
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
+          <SyntaxHighlighter
+            language={languageFor(name)}
+            style={okaidia}
+            showLineNumbers
+            lineNumberStyle={{
+              minWidth: "2.5em",
+              paddingRight: "1em",
+              opacity: 0.5,
+              userSelect: "none",
+            }}
+            customStyle={{
+              margin: 0,
+              padding: "0.75rem 0",
+              fontSize: "13px",
+              minHeight: "100%",
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: "var(--mono)",
+                display: "block",
+                background: "transparent",
+                padding: 0,
+                borderRadius: 0,
+                whiteSpace: "pre",
+              },
+            }}
+          >
+            {content}
+          </SyntaxHighlighter>
+        </div>
+      )}
     </div>
   );
 }
@@ -430,7 +433,7 @@ export function CodePane() {
             key={treeKey}
             className="scrollbar-thin"
             initialSelectedId={activeFileId}
-            initialExpandedItems={expanded}
+            initialExpandedItems={[]}
           >
             {renderNodes(tree, activeFileId, writingPath, openFile)}
           </Tree>

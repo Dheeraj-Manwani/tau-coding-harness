@@ -85,9 +85,10 @@ export async function runAgentLoop(
   userId: string,
   prompt: string,
   sandbox: Sandbox,
+  startIndex = 1,
 ): Promise<void> {
   void prompt;
-  const nextIndex = makeIndexer(1); // index 0 is the worker's "thinking" event.
+  const nextIndex = makeIndexer(startIndex);
 
   try {
     const messages: MessageParam[] = [
@@ -111,6 +112,7 @@ export async function runAgentLoop(
             { type: "llm_chunk", content: delta },
             nextIndex(),
           );
+          process.stdout.write(delta);
         }
       }
 
@@ -161,7 +163,6 @@ export async function runAgentLoop(
       if (!isToolTurn) {
         const host = sandbox.getHost(PREVIEW_PORT);
         const url = `https://${host}`;
-        console.log("sandbox url ::::::::::::: ", url);
         await publish(jobId, { type: "preview_ready", url }, nextIndex());
 
         await prisma.fragment.create({

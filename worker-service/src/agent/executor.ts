@@ -267,6 +267,7 @@ export async function executeTool(
   userId: string,
   indexer: () => number,
 ): Promise<unknown> {
+  console.log("tool call :: ", name, input);
   switch (name) {
     case "create_file":
       return createFile(input, sandbox, jobId, projectId, userId, indexer);

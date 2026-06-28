@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { PanelLeftCloseIcon, SquareIcon } from "lucide-react";
+import { ChevronDownIcon, HomeIcon, PanelLeftCloseIcon } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
 
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useProjectStore, type Message } from "@/src/stores/useProjectStore";
-import { useAddMessage } from "@/src/features/project/api";
+import { useAddMessage, useProject } from "@/src/features/project/api";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
 
 function formatRelativeTime(ts: number): string {
@@ -78,6 +84,54 @@ function TypingBubble({ activity }: { activity: string | null }) {
   );
 }
 
+function ProjectSwitcher({ projectId }: { projectId: string }) {
+  const navigate = useNavigate();
+  const { data: detail } = useProject(projectId);
+  const name = detail?.project.name ?? "Project";
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = nameRef.current;
+    if (el) setIsTruncated(el.scrollWidth > el.clientWidth);
+  }, [name]);
+
+  return (
+    <DropdownMenu.Root>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              className="group flex items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
+            >
+              <span ref={nameRef} className="max-w-[220px] truncate">{name}</span>
+              <ChevronDownIcon className="size-3.5 shrink-0 text-[var(--silver-600)] transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </DropdownMenu.Trigger>
+        </TooltipTrigger>
+        {isTruncated && <TooltipContent>{name}</TooltipContent>}
+      </Tooltip>
+
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={6}
+          className="z-50 w-64 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1.5 shadow-2xl"
+        >
+          <DropdownMenu.Item
+            onSelect={() => navigate("/")}
+            className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
+          >
+            <HomeIcon className="size-3.5 shrink-0" />
+            Home
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const { id: projectId } = useParams<{ id: string }>();
   const messages = useProjectStore((s) => s.chatMessages);
@@ -129,14 +183,8 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
-      <div className="flex items-center justify-between px-4 py-3">
-        <Link
-          to="/"
-          aria-label="Go to home"
-          className="transition-opacity hover:opacity-80"
-        >
-          <span className="logo-mark size-6" role="img" aria-label="tau" />
-        </Link>
+      <div className="flex items-center justify-between px-3 py-2.5">
+        {projectId && <ProjectSwitcher projectId={projectId} />}
         {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
         {showCollapse && (
@@ -168,26 +216,12 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
         </AnimatePresence>
       </div>
 
-      <div className="border-t border-[var(--silver-200)] p-3">
-        <AnimatePresence>
-          {isStreaming && cancelStream && (
-            <motion.button
-              type="button"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              onClick={() => cancelStream()}
-              className="mb-2 flex items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-overlay)] px-2.5 py-1 text-xs text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
-            >
-              <SquareIcon className="size-3 fill-current" />
-              Stop generating
-            </motion.button>
-          )}
-        </AnimatePresence>
+      <div className="border-[var(--silver-200)] p-3">
         <PromptComposer
           value={draft}
           onChange={setDraft}
           onSubmit={submit}
+          onStop={isStreaming && cancelStream ? cancelStream : undefined}
           placeholder={
             isStreaming ? "tau is working…" : "Ask tau to change something…"
           }

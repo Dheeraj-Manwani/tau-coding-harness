@@ -124,3 +124,22 @@ export function findLatestFragment(
     orderBy: { createdAt: "desc" },
   });
 }
+
+export function findProjectWithTree(id: string) {
+  return prisma.project.findUnique({
+    where: { id },
+    include: {
+      files: {
+        select: { path: true, sizeBytes: true },
+        orderBy: { path: "asc" },
+      },
+    },
+  });
+}
+
+export function findProjectFileRecord(projectId: string, path: string) {
+  return prisma.projectFile.findUnique({
+    where: { projectId_path: { projectId, path } },
+    select: { contentHash: true },
+  });
+}

@@ -1,3 +1,4 @@
+import { Sandbox } from "e2b";
 import { prisma } from "../lib/prisma";
 import * as projectRepo from "../repositories/project.repository";
 import { getNextSequence } from "../lib/sequence";
@@ -5,7 +6,8 @@ import { enqueueJob } from "../lib/queue";
 import { deepseek } from "../lib/deepseek";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
-import { MessageRole, MessageType, JobType } from "../generated/prisma/enums";
+import { getBlobText } from "../lib/s3";
+import { MessageRole, MessageType, JobType, SandboxStatus } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
 
 const MAX_NAME_LENGTH = 80;
@@ -202,4 +204,47 @@ export async function listMessages(
   }
 
   return projectRepo.listMessages(projectId, opts);
+}
+
+export async function getProjectTree(projectId: string, userId: string) {
+  const project = await projectRepo.findProjectWithTree(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  return {
+    files: project.files.map((f) => ({ path: f.path, sizeBytes: f.sizeBytes })),
+    headSequence: project.headSequence,
+  };
+}
+
+export async function getProjectFile(
+  projectId: string,
+  userId: string,
+  filePath: string,
+) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  // Sandbox-first: return live content when sandbox is up.
+  if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      const content = await sandbox.files.read(filePath);
+      return { content };
+    } catch {
+      // Sandbox unreachable — fall through to R2 blob.
+    }
+  }
+
+  // R2 blob fallback via manifest hash.
+  const record = await projectRepo.findProjectFileRecord(projectId, filePath);
+  if (!record) throw Errors.notFound("File not found");
+
+  const content = await getBlobText(userId, projectId, record.contentHash);
+  return { content };
 }

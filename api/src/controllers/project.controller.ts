@@ -5,6 +5,7 @@ import {
   projectIdParamSchema,
   listMessagesQuerySchema,
   listProjectsQuerySchema,
+  projectFileQuerySchema,
 } from "../schemas/project.schema";
 import * as projectService from "../services/project.service";
 import { requireUserId } from "../middleware/auth.middleware";
@@ -84,6 +85,37 @@ export const addMessage = async (
     const { message } = parse(messageSchema, req.body);
     const result = await projectService.addMessage(projectId, userId, message);
     res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getProjectTree = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const result = await projectService.getProjectTree(projectId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getProjectFile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { path } = parse(projectFileQuerySchema, req.query);
+    const result = await projectService.getProjectFile(projectId, userId, path);
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }

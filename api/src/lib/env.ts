@@ -38,6 +38,20 @@ const envSchema = z.object({
     .string()
     .url()
     .default("http://localhost:3000/auth/google/callback"),
+
+  // E2B sandbox (used for sandbox-first file reads)
+  E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
+
+  // Cloudflare R2 object store
+  R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),
+  R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID is required"),
+  R2_SECRET_ACCESS_KEY: z.string().min(1, "R2_SECRET_ACCESS_KEY is required"),
+  R2_BUCKET: z.string().min(1, "R2_BUCKET is required"),
+  R2_PUBLIC_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((v) => v?.replace(/\/+$/, "")),
 });
 
 export type Env = z.infer<typeof envSchema>;

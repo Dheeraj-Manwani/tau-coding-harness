@@ -5,6 +5,7 @@ import type {
   AddMessageResponse,
   InitProjectResponse,
   ListProjectsResponse,
+  OlderMessagesResponse,
   ProjectDetail,
   ProjectFileResponse,
   ProjectTree,
@@ -69,6 +70,31 @@ export function useAddMessage(projectId: string) {
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     },
   });
+}
+
+/** `DELETE /project/:id` — permanently delete a project and all its data. */
+export function useDeleteProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.delete(`/project/${projectId}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+/** `GET /project/:id/messages?before=<sequence>` — load older messages for pagination. */
+export function fetchOlderMessages(
+  projectId: string,
+  beforeSequence: number,
+  limit = 20,
+): Promise<OlderMessagesResponse> {
+  return api
+    .get<OlderMessagesResponse>(
+      `/project/${projectId}/messages?before=${beforeSequence}&limit=${limit}`,
+    )
+    .then((r) => r.data);
 }
 
 /** `GET /project/:id/tree` — the full file manifest with headSequence. */

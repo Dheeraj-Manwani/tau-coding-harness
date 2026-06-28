@@ -27,6 +27,7 @@ export const listProjectsQuerySchema = z.object({
 
 export const listMessagesQuerySchema = z.object({
   cursor: z.uuid().optional(),
+  before: z.coerce.number().int().min(0).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 

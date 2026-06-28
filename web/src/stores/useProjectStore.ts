@@ -89,6 +89,10 @@ interface ProjectState {
   isAiTyping: boolean;
   /** The in-progress assistant bubble currently being streamed into. */
   streamingId: string | null;
+  /** Whether older messages exist beyond the current window (pagination). */
+  hasMoreMessages: boolean;
+  /** Sequence number of the oldest loaded message — used as the pagination cursor. */
+  oldestSequence: number | null;
 
   // Generated app
   files: Record<string, ProjectFile>;
@@ -108,7 +112,6 @@ interface ProjectState {
   openFiles: string[];
   activeFileId: string;
   previewDevice: PreviewDevice;
-  splitPosition: number;
   codeTreeWidth: number;
 
   // ── Actions ──
@@ -122,13 +125,19 @@ interface ProjectState {
   setFileContent: (path: string, content: string) => void;
   /** Begin streaming a job; optionally append the prompt as a user bubble. */
   startJob: (jobId: string, prompt?: string) => void;
-  /** Append a user bubble immediately (optimistic, before the job id is known). */
-  appendUserMessage: (content: string) => void;
+  /** Append a user bubble immediately (optimistic, before the job id is known).
+   *  Returns the generated message id so callers can remove it on failure. */
+  appendUserMessage: (content: string) => string;
+  /** Remove a single chat bubble by id (used to roll back a failed optimistic send). */
+  removeChatMessage: (id: string) => void;
+  /** Prepend a batch of older messages loaded by scroll-up pagination. */
+  prependMessages: (rows: ProjectMessage[], hasMore: boolean) => void;
   /** Apply one live event from the ws-gateway stream. */
   applyEvent: (event: JobEvent) => void;
   setCanceller: (fn: (() => void) | null) => void;
 
   toggleChat: () => void;
+  setChatOpen: (open: boolean) => void;
   setActiveTab: (tab: Tab) => void;
   /** Remount the preview iframe to reload the running app. */
   reloadPreview: () => void;
@@ -139,7 +148,6 @@ interface ProjectState {
   closeAllFiles: () => void;
   setActiveFile: (id: string) => void;
   setPreviewDevice: (device: PreviewDevice) => void;
-  setSplitPosition: (px: number) => void;
   setCodeTreeWidth: (px: number) => void;
 }
 
@@ -153,6 +161,8 @@ const FRESH = {
   chatMessages: [] as Message[],
   isAiTyping: false,
   streamingId: null,
+  hasMoreMessages: false,
+  oldestSequence: null as number | null,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -171,33 +181,43 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // Persisted UI defaults (kept across projects).
   isChatOpen: true,
   previewDevice: "desktop",
-  splitPosition: 400,
   codeTreeWidth: 240,
 
   initProject: (projectId) => {
-    if (get().projectId === projectId) return; // already on this project
+    // Always reset non-streaming state on (re-)entry so messages are re-seeded
+    // from the API. Skip only when an active stream is in progress for the same
+    // project — tearing that down would orphan the live job connection.
+    const s = get();
+    if (s.projectId === projectId && s.status === "streaming") return;
     set({ projectId, ...FRESH });
   },
 
   hydrate: (detail) =>
     set((s) => {
-      if (s.hydrated) return { hydrated: true };
+      // Never overwrite an active stream — the live content takes priority.
+      if (s.status === "streaming") return {};
 
-      // Only seed chat from the DB if we haven't already shown anything
-      // (e.g. an optimistic prompt from navigation) — never clobber a stream.
-      const chatMessages =
-        s.chatMessages.length === 0
-          ? detail.messages
-              .map(toChatMessage)
-              .filter((m): m is Message => m !== null)
-          : s.chatMessages;
+      const chatMessages = detail.messages
+        .map(toChatMessage)
+        .filter((m): m is Message => m !== null);
 
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
 
       const buildStarted = s.buildStarted || previewUrl != null;
 
-      return { hydrated: true, chatMessages, previewUrl, buildStarted };
+      // If we received a full page (50), there may be older messages to load.
+      const hasMoreMessages = detail.messages.length >= 50;
+      const oldestSequence = detail.messages[0]?.sequence ?? null;
+
+      return {
+        hydrated: true,
+        chatMessages,
+        previewUrl,
+        buildStarted,
+        hasMoreMessages,
+        oldestSequence,
+      };
     }),
 
   hydrateTree: (tree) =>
@@ -244,14 +264,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       };
     }),
 
-  appendUserMessage: (content) =>
-    set((s) => ({ chatMessages: [...s.chatMessages, userMessage(content)] })),
+  appendUserMessage: (content) => {
+    const msg = userMessage(content);
+    set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
+    return msg.id;
+  },
+
+  removeChatMessage: (id) =>
+    set((s) => ({
+      chatMessages: s.chatMessages.filter((m) => m.id !== id),
+    })),
+
+  prependMessages: (rows, hasMore) =>
+    set((s) => {
+      const prepended = rows
+        .map(toChatMessage)
+        .filter((m): m is Message => m !== null);
+      return {
+        chatMessages: [...prepended, ...s.chatMessages],
+        hasMoreMessages: hasMore,
+        oldestSequence: rows[0]?.sequence ?? s.oldestSequence,
+      };
+    }),
 
   applyEvent: (event) => applyEvent(set, event),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
 
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
+  setChatOpen: (isChatOpen) => set({ isChatOpen }),
   setActiveTab: (activeTab) => set({ activeTab }),
   reloadPreview: () => set((s) => ({ previewNonce: s.previewNonce + 1 })),
 
@@ -293,7 +334,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveFile: (activeFileId) => set({ activeFileId }),
   setPreviewDevice: (previewDevice) => set({ previewDevice }),
-  setSplitPosition: (splitPosition) => set({ splitPosition }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
 

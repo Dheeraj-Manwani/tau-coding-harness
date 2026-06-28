@@ -5,6 +5,7 @@ import {
   getProject,
   listMessages,
   addMessage,
+  deleteProject,
   getProjectTree,
   getProjectFile,
 } from "../controllers/project.controller";
@@ -16,6 +17,7 @@ router.get("/", listProjects);
 router.get("/:projectId", getProject);
 router.get("/:projectId/messages", listMessages);
 router.post("/:projectId/message", addMessage);
+router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
 

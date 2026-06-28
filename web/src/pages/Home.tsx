@@ -73,7 +73,7 @@ function Home() {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto pt-12">
       <SparkleParticles
         className="fixed inset-0 -z-10"
         particleColor={STAR_COLORS}

@@ -11,11 +11,14 @@ export function ResizeHandle({
   onDrag,
   onDragStart,
   onDragEnd,
+  danger = false,
   className,
 }: {
   onDrag: (clientX: number) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  /** When true, colors the handle red to signal that releasing will close the panel. */
+  danger?: boolean;
   className?: string;
 }) {
   const [active, setActive] = useState(false);
@@ -42,11 +45,15 @@ export function ResizeHandle({
 
   return (
     <div className={cn("group relative w-px shrink-0", className)}>
-      {/* Hairline divider, brightens on hover/drag. */}
+      {/* Hairline divider, brightens on hover/drag; turns red in snap-close zone. */}
       <div
         className={cn(
-          "absolute inset-0 transition-colors group-hover:bg-[var(--blue-500)]",
-          active ? "bg-[var(--blue-500)]" : "bg-[var(--silver-200)]",
+          "absolute inset-0 transition-colors",
+          danger
+            ? "bg-red-500"
+            : active
+              ? "bg-[var(--blue-500)]"
+              : "bg-[var(--silver-200)] group-hover:bg-[var(--blue-500)]",
         )}
       />
       {/* Wide, invisible grab zone centered over the line for easy dragging. */}

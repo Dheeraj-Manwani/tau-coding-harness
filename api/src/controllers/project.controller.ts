@@ -63,9 +63,10 @@ export const listMessages = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { cursor, limit } = parse(listMessagesQuerySchema, req.query);
+    const { cursor, before, limit } = parse(listMessagesQuerySchema, req.query);
     const result = await projectService.listMessages(projectId, userId, {
       cursor,
+      before,
       limit,
     });
     res.status(200).json(result);
@@ -100,6 +101,21 @@ export const getProjectTree = async (
     const { projectId } = parse(projectIdParamSchema, req.params);
     const result = await projectService.getProjectTree(projectId, userId);
     res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteProject = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    await projectService.deleteProject(projectId, userId);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

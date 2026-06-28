@@ -3,6 +3,8 @@ import {
   HeadObjectCommand,
   PutObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "./env";
@@ -95,6 +97,37 @@ export function presignPut(
   return getSignedUrl(r2, new PutObjectCommand({ Bucket: BUCKET, Key: key }), {
     expiresIn,
   });
+}
+
+/** Delete every R2 blob stored under `tau/project-files/{userId}/{projectId}/`. */
+export async function deleteProjectBlobs(
+  userId: string,
+  projectId: string,
+): Promise<void> {
+  const prefix = `${BLOB_PREFIX}/${userId}/${projectId}/`;
+  let continuationToken: string | undefined;
+
+  do {
+    const list = await r2.send(
+      new ListObjectsV2Command({
+        Bucket: BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+
+    const keys = (list.Contents ?? []).map((o) => ({ Key: o.Key! }));
+    if (keys.length > 0) {
+      await r2.send(
+        new DeleteObjectsCommand({
+          Bucket: BUCKET,
+          Delete: { Objects: keys, Quiet: true },
+        }),
+      );
+    }
+
+    continuationToken = list.IsTruncated ? list.NextContinuationToken : undefined;
+  } while (continuationToken);
 }
 
 interface MaybeAwsError {

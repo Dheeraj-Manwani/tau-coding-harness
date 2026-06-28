@@ -54,6 +54,12 @@ export interface ProjectDetail {
   activeJobId: string | null;
 }
 
+/** Response from `GET /project/:id/messages?before=<sequence>` */
+export interface OlderMessagesResponse {
+  messages: ProjectMessage[];
+  hasMore: boolean;
+}
+
 export interface InitProjectResponse {
   projectId: string;
   jobId: string;

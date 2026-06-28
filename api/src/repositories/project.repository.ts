@@ -99,6 +99,21 @@ export async function findRecentMessages(
   return rows.reverse();
 }
 
+export async function findMessagesBefore(
+  projectId: string,
+  beforeSequence: number,
+  limit: number,
+): Promise<{ messages: Message[]; hasMore: boolean }> {
+  const rows = await prisma.message.findMany({
+    where: { projectId, sequence: { lt: beforeSequence } },
+    orderBy: { sequence: "desc" },
+    take: limit + 1,
+  });
+  const hasMore = rows.length > limit;
+  const messages = (hasMore ? rows.slice(0, limit) : rows).reverse();
+  return { messages, hasMore };
+}
+
 export async function listMessages(
   projectId: string,
   opts: { cursor?: string; limit: number },
@@ -141,5 +156,13 @@ export function findProjectFileRecord(projectId: string, path: string) {
   return prisma.projectFile.findUnique({
     where: { projectId_path: { projectId, path } },
     select: { contentHash: true },
+  });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    // TokenUsage has onDelete: Restrict, so remove it before the project.
+    await tx.tokenUsage.deleteMany({ where: { projectId } });
+    await tx.project.delete({ where: { id: projectId } });
   });
 }

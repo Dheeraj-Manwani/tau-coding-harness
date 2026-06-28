@@ -6,7 +6,7 @@ import { enqueueJob } from "../lib/queue";
 import { deepseek } from "../lib/deepseek";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
-import { getBlobText } from "../lib/s3";
+import { getBlobText, deleteProjectBlobs } from "../lib/s3";
 import {
   MessageRole,
   MessageType,
@@ -200,12 +200,16 @@ export async function getProject(projectId: string, userId: string) {
 export async function listMessages(
   projectId: string,
   userId: string,
-  opts: { cursor?: string; limit: number },
+  opts: { cursor?: string; before?: number; limit: number },
 ) {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
   if (project.userId !== userId) {
     throw Errors.forbidden("You do not have access to this project");
+  }
+
+  if (opts.before !== undefined) {
+    return projectRepo.findMessagesBefore(projectId, opts.before, opts.limit);
   }
 
   return projectRepo.listMessages(projectId, opts);
@@ -222,6 +226,20 @@ export async function getProjectTree(projectId: string, userId: string) {
     files: project.files.map((f) => ({ path: f.path, sizeBytes: f.sizeBytes })),
     headSequence: project.headSequence,
   };
+}
+
+export async function deleteProject(
+  projectId: string,
+  userId: string,
+): Promise<void> {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+  // Delete R2 blobs first; if this fails we abort before touching the DB.
+  await deleteProjectBlobs(userId, projectId);
+  await projectRepo.deleteProject(projectId);
 }
 
 export async function getProjectFile(

@@ -24,30 +24,6 @@ function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
 }
 
-interface FragmentFile {
-  path: string;
-  content: string;
-  language: string;
-}
-
-const LANGUAGE_BY_EXT: Record<string, string> = {
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  json: "json",
-  html: "html",
-  css: "css",
-  scss: "scss",
-  md: "markdown",
-  svg: "xml",
-};
-
-function languageFromPath(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase() ?? "";
-  return LANGUAGE_BY_EXT[ext] ?? ext ?? "plaintext";
-}
-
 function deriveTitle(content: string | null): string {
   const text = (content ?? "").trim();
   if (!text) return "Untitled";
@@ -118,8 +94,6 @@ export async function runAgentLoop(
       { role: "system", content: SYSTEM_PROMPT },
       ...(await loadHistory(projectId)),
     ];
-
-    const createdFiles: FragmentFile[] = [];
 
     while (true) {
       const stream = deepseek.chat.completions.stream({
@@ -196,7 +170,6 @@ export async function runAgentLoop(
             job: { connect: { id: jobId } },
             sandboxUrl: url,
             title: deriveTitle(assistant.content),
-            files: createdFiles as unknown as Prisma.InputJsonValue,
           },
         });
 
@@ -249,6 +222,8 @@ export async function runAgentLoop(
             input,
             sandbox,
             jobId,
+            projectId,
+            userId,
             nextIndex,
           );
           await prisma.toolCall.update({
@@ -259,54 +234,6 @@ export async function runAgentLoop(
               completedAt: new Date(),
             },
           });
-
-          if (toolName === "create_file") {
-            const fileInput = input as { path?: unknown; content?: unknown };
-            if (
-              typeof fileInput.path === "string" &&
-              typeof fileInput.content === "string"
-            ) {
-              const existing = createdFiles.find(
-                (f) => f.path === fileInput.path,
-              );
-              if (existing) {
-                existing.content = fileInput.content;
-              } else {
-                createdFiles.push({
-                  path: fileInput.path,
-                  content: fileInput.content,
-                  language: languageFromPath(fileInput.path),
-                });
-              }
-            }
-          } else if (toolName === "edit_file") {
-            const editInput = input as {
-              path?: unknown;
-              old_string?: unknown;
-              new_string?: unknown;
-              replace_all?: unknown;
-            };
-            if (
-              typeof editInput.path === "string" &&
-              typeof editInput.old_string === "string" &&
-              typeof editInput.new_string === "string"
-            ) {
-              const existing = createdFiles.find(
-                (f) => f.path === editInput.path,
-              );
-              if (existing) {
-                existing.content =
-                  editInput.replace_all === true
-                    ? existing.content
-                        .split(editInput.old_string)
-                        .join(editInput.new_string)
-                    : existing.content.replace(
-                        editInput.old_string,
-                        editInput.new_string,
-                      );
-              }
-            }
-          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           output = { error: message };

@@ -19,9 +19,16 @@ const envSchema = z.object({
   // ── E2B sandbox ──
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
 
-  // ── AWS / S3 (snapshots) ──
-  AWS_REGION: z.string().min(1, "AWS_REGION is required"),
-  S3_BUCKET: z.string().min(1, "S3_BUCKET is required"),
+  // ── R2
+  R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),
+  R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID is required"),
+  R2_SECRET_ACCESS_KEY: z.string().min(1, "R2_SECRET_ACCESS_KEY is required"),
+  R2_BUCKET: z.string().min(1, "R2_BUCKET is required"),
+  R2_PUBLIC_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((v) => v?.replace(/\/+$/, "")),
 
   // ── Worker / queue ──
   QUEUE_NAME: z.string().default("code-generation"),

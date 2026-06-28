@@ -69,8 +69,10 @@ model Project {
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages   Message[]
   jobs       Job[]
-  snapshots  Snapshot[]
   tokenUsage TokenUsage[]
+
+  headSequence Int           @default(0)
+  files        ProjectFile[]
 
   @@index([userId])
 }
@@ -139,14 +141,10 @@ model ToolCall {
   startedAt   DateTime?
   completedAt DateTime?
 
-  snapshotId String?
-  snapshot   Snapshot? @relation(fields: [snapshotId], references: [id])
-
   createdAt DateTime @default(now())
 
   @@index([messageId])
   @@index([toolCallId])
-  @@index([snapshotId])
 }
 
 enum ToolCallStatus {
@@ -165,9 +163,6 @@ model Job {
   status JobStatus @default(QUEUED)
   type   JobType   @default(GENERATION)
   prompt String
-
-  baseSnapshotId String?
-  baseSnapshot   Snapshot? @relation("JobBaseSnapshot", fields: [baseSnapshotId], references: [id])
 
   queueJobId String? @unique
 
@@ -200,33 +195,21 @@ enum JobType {
   RECOVERY
 }
 
-model Snapshot {
+model ProjectFile {
   id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  s3Key     String
-  s3Bucket  String
-  sizeBytes Int?
-
-  upToSequence Int
-
-  trigger SnapshotTrigger @default(SCHEDULED)
+  path         String
+  contentHash  String
+  sizeBytes    Int
+  lastSequence Int
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  toolCalls ToolCall[]
-  jobs      Job[]      @relation("JobBaseSnapshot")
-
+  @@unique([projectId, path])
   @@index([projectId])
-  @@index([projectId, createdAt(sort: Desc)])
-}
-
-enum SnapshotTrigger {
-  SCHEDULED
-  PRE_DEPLOY
-  ON_COMPLETE
-  MANUAL
 }
 
 model Fragment {
@@ -238,10 +221,8 @@ model Fragment {
   title       String
   description String?
 
-  files      Json
-  filesS3Key String?
-  jobId      String?
-  job        Job?    @relation(fields: [jobId], references: [id])
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

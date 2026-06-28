@@ -1,6 +1,10 @@
+import { createHash } from "crypto";
 import { CommandExitError } from "e2b";
 import type { Sandbox } from "../lib/sandbox";
 import { publish } from "../lib/publish";
+import { prisma } from "../lib/prisma";
+import { putBlob } from "../lib/s3";
+import { allocateHeadSequence } from "../lib/headSequence";
 
 const CHUNK_SIZE = 80;
 
@@ -19,6 +23,10 @@ function asString(value: unknown, field: string): string {
   return value;
 }
 
+function sha256Hex(content: string): string {
+  return createHash("sha256").update(content, "utf-8").digest("hex");
+}
+
 function isLongRunning(command: string): boolean {
   return (
     /(^|\s)(npm|pnpm|yarn|bun)\s+(run\s+)?(dev|start|serve|preview)\b/.test(
@@ -30,10 +38,58 @@ function isLongRunning(command: string): boolean {
   );
 }
 
+async function persistFile(
+  jobId: string,
+  projectId: string,
+  userId: string,
+  path: string,
+  content: string,
+  indexer: () => number,
+): Promise<void> {
+  const hash = sha256Hex(content);
+  const sizeBytes = Buffer.byteLength(content, "utf-8");
+
+  const existing = await prisma.projectFile.findUnique({
+    where: { projectId_path: { projectId, path } },
+    select: { contentHash: true },
+  });
+
+  if (existing?.contentHash === hash) {
+    await publish(jobId, { type: "file_done", path }, indexer());
+    return;
+  }
+
+  await putBlob(userId, projectId, hash, content);
+
+  const seq = await prisma.$transaction(async (tx) => {
+    const s = await allocateHeadSequence(tx, projectId);
+    await tx.projectFile.upsert({
+      where: { projectId_path: { projectId, path } },
+      create: {
+        projectId,
+        path,
+        contentHash: hash,
+        sizeBytes,
+        lastSequence: s,
+      },
+      update: { contentHash: hash, sizeBytes, lastSequence: s },
+    });
+    return s;
+  });
+
+  await publish(
+    jobId,
+    { type: "file_done", path, headSequence: seq },
+    indexer(),
+  );
+}
+
 async function createFile(
   input: unknown,
   sandbox: Sandbox,
   jobId: string,
+  projectId: string,
+  userId: string,
   indexer: () => number,
 ) {
   const { path, content } = input as { path?: unknown; content?: unknown };
@@ -52,7 +108,7 @@ async function createFile(
     );
   }
 
-  await publish(jobId, { type: "file_done", path: p }, indexer());
+  await persistFile(jobId, projectId, userId, p, c, indexer);
   return { success: true, path: p };
 }
 
@@ -60,14 +116,11 @@ async function editFile(
   input: unknown,
   sandbox: Sandbox,
   jobId: string,
+  projectId: string,
+  userId: string,
   indexer: () => number,
 ) {
-  const {
-    path,
-    old_string,
-    new_string,
-    replace_all,
-  } = input as {
+  const { path, old_string, new_string, replace_all } = input as {
     path?: unknown;
     old_string?: unknown;
     new_string?: unknown;
@@ -106,7 +159,7 @@ async function editFile(
     );
   }
 
-  await publish(jobId, { type: "file_done", path: p }, indexer());
+  await persistFile(jobId, projectId, userId, p, updated, indexer);
   return { success: true, path: p, replacements: replaceAll ? occurrences : 1 };
 }
 
@@ -116,9 +169,36 @@ async function readFile(input: unknown, sandbox: Sandbox) {
   return { content };
 }
 
-async function deleteFile(input: unknown, sandbox: Sandbox) {
+async function deleteFile(
+  input: unknown,
+  sandbox: Sandbox,
+  jobId: string,
+  projectId: string,
+  indexer: () => number,
+) {
   const p = asString((input as { path?: unknown }).path, "path");
   await sandbox.files.remove(p);
+
+  // Invariant 3: remove manifest row + bump headSequence in one tx; blob is left untouched.
+  const existing = await prisma.projectFile.findUnique({
+    where: { projectId_path: { projectId, path: p } },
+    select: { id: true },
+  });
+
+  if (existing) {
+    const seq = await prisma.$transaction(async (tx) => {
+      await tx.projectFile.delete({
+        where: { projectId_path: { projectId, path: p } },
+      });
+      return allocateHeadSequence(tx, projectId);
+    });
+    await publish(
+      jobId,
+      { type: "file_delete", path: p, headSequence: seq },
+      indexer(),
+    );
+  }
+
   return { success: true, path: p };
 }
 
@@ -174,17 +254,19 @@ export async function executeTool(
   input: unknown,
   sandbox: Sandbox,
   jobId: string,
+  projectId: string,
+  userId: string,
   indexer: () => number,
 ): Promise<unknown> {
   switch (name) {
     case "create_file":
-      return createFile(input, sandbox, jobId, indexer);
+      return createFile(input, sandbox, jobId, projectId, userId, indexer);
     case "edit_file":
-      return editFile(input, sandbox, jobId, indexer);
+      return editFile(input, sandbox, jobId, projectId, userId, indexer);
     case "read_file":
       return readFile(input, sandbox);
     case "delete_file":
-      return deleteFile(input, sandbox);
+      return deleteFile(input, sandbox, jobId, projectId, indexer);
     case "run_command":
       return runCommand(input, sandbox, jobId, indexer);
     default:

@@ -103,4 +103,5 @@ export type JobEvent = BaseEvent &
     | { type: "cancelled" }
     | { type: "done" }
     | { type: "error"; message: string }
+    | { type: "insufficient_credits" }
   );

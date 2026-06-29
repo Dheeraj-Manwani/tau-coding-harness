@@ -61,6 +61,8 @@ const envSchema = z.object({
 
   // Admin API key
   ADMIN_API_KEY: z.string().optional(),
+  // Maximum simultaneous active jobs per user enforced at reserve time (0 = no cap).
+  CREDITS_MAX_CONCURRENT_JOBS: z.coerce.number().int().nonnegative().default(3),
 
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),

@@ -87,7 +87,9 @@ export async function initializeProject(
 
     if (env.CREDITS_ENFORCE) {
       try {
-        await reserveInTx(tx, userId, job.id);
+        await reserveInTx(tx, userId, job.id, {
+          maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
+        });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
           throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
@@ -146,7 +148,9 @@ export async function addMessage(
 
     if (env.CREDITS_ENFORCE) {
       try {
-        await reserveInTx(tx, userId, job.id);
+        await reserveInTx(tx, userId, job.id, {
+          maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
+        });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
           throw Errors.paymentRequired("INSUFFICIENT_CREDITS");

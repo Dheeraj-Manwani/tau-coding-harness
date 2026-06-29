@@ -17,4 +17,6 @@ export const env = {
   WS_URL,
   /** Web route the API redirects to after Google OAuth (see OAUTH_SUCCESS_REDIRECT). */
   OAUTH_CALLBACK_PATH: "/auth/callback",
+  /** Razorpay publishable key  */
+  RAZORPAY_KEY_ID: import.meta.env.VITE_RAZORPAY_KEY_ID ?? "",
 } as const;

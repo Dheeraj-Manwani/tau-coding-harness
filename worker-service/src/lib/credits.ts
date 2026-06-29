@@ -12,6 +12,13 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
+/** Emit a structured JSON log line for every credit mutation. */
+function creditLog(event: string, fields: Record<string, unknown>): void {
+  console.log(
+    JSON.stringify({ ts: new Date().toISOString(), event, ...fields }),
+  );
+}
+
 export class InsufficientCreditsError extends Error {
   readonly code = "INSUFFICIENT_CREDITS";
   constructor(message = "Insufficient credits") {
@@ -180,6 +187,7 @@ export async function reserveInTx(
   tx: Tx,
   userId: string,
   jobId: string,
+  opts: { maxConcurrentJobs?: number } = {},
 ): Promise<ReserveResult> {
   await ensureBillingAccount(userId, tx);
   const acc = await lockAccount(tx, userId);
@@ -192,6 +200,19 @@ export async function reserveInTx(
       reserved: existing.amount,
       available: gross(acc) - acc.reserved,
     };
+  }
+
+  // Concurrent-job cap: count how many ACTIVE holds the user already has.
+  const maxJobs = opts.maxConcurrentJobs ?? 0;
+  if (maxJobs > 0) {
+    const activeCount = await tx.creditHold.count({
+      where: { userId, status: HoldStatus.ACTIVE },
+    });
+    if (activeCount >= maxJobs) {
+      throw new InsufficientCreditsError(
+        `Concurrent job limit (${maxJobs}) reached`,
+      );
+    }
   }
 
   const available = gross(acc) - acc.reserved;
@@ -210,6 +231,13 @@ export async function reserveInTx(
   });
   const hold = await tx.creditHold.create({
     data: { userId, jobId, amount: ceiling, status: HoldStatus.ACTIVE },
+  });
+
+  creditLog("credits.reserve", {
+    userId,
+    jobId,
+    ceilingMicro: ceiling.toString(),
+    availableAfterMicro: (available - ceiling).toString(),
   });
 
   return { holdId: hold.id, reserved: ceiling, available: available - ceiling };
@@ -332,12 +360,25 @@ export async function meter(
       },
     });
 
-    return {
+    const result = {
       debited,
       consumed,
       available: newGross - acc.reserved,
       holdExhausted,
     };
+
+    creditLog("credits.meter", {
+      userId,
+      jobId,
+      model,
+      sequence,
+      costMicro: cost.toString(),
+      debitedMicro: debited.toString(),
+      enforce,
+      holdExhausted,
+    });
+
+    return result;
   });
 }
 
@@ -360,6 +401,14 @@ export async function settle(jobId: string): Promise<void> {
     await tx.creditHold.update({
       where: { jobId },
       data: { status: HoldStatus.SETTLED, settledAt: new Date() },
+    });
+
+    creditLog("credits.settle", {
+      jobId,
+      userId: hold.userId,
+      holdAmountMicro: hold.amount.toString(),
+      consumedMicro: hold.consumed.toString(),
+      releasedMicro: (hold.amount - hold.consumed).toString(),
     });
   });
 }

@@ -17,8 +17,31 @@ import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
 import { codeGenerationQueue } from "./lib/queue";
+import { sweepStuckHolds } from "./lib/credits";
 
 const app = express();
+
+async function runSweep(): Promise<void> {
+  try {
+    const { swept, errors } = await sweepStuckHolds();
+    if (swept > 0 || errors.length > 0) {
+      console.log(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "credits.sweep.scheduled",
+          swept,
+          errors,
+        }),
+      );
+    }
+  } catch (err) {
+    console.error("[credits] scheduled sweep failed:", err);
+  }
+}
+
+// Reclaim stuck holds on startup and every hour thereafter.
+void runSweep();
+setInterval(() => void runSweep(), 60 * 60 * 1000);
 const PORT = env.PORT;
 const isDev = env.NODE_ENV !== "production";
 

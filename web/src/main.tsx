@@ -12,6 +12,7 @@ import {
 } from "./features/auth/guards.tsx";
 import Home from "./pages/Home.tsx";
 import ProjectPage from "./features/project/ProjectPage.tsx";
+import BillingPage from "./pages/Billing.tsx";
 import Login from "./pages/Login.tsx";
 import SignUp from "./pages/SignUp.tsx";
 import OAuthCallback from "./pages/OAuthCallback.tsx";
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Home /> },
           { path: "project/:id", element: <ProjectPage /> },
+          { path: "billing", element: <BillingPage /> },
         ],
       },
     ],

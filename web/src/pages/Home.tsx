@@ -10,6 +10,7 @@ import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
 import { ApiError } from "@/src/lib/api-client";
+import { useBillingStore } from "@/src/features/billing/useBillingStore";
 
 const STAR_COLORS = [
   "rgba(203, 213, 225, 0.7)",
@@ -32,6 +33,7 @@ const SUGGESTIONS = [
 function Home() {
   const navigate = useNavigate();
   const initProject = useInitProject();
+  const openOutOfCredits = useBillingStore((s) => s.open);
   const [prompt, setPrompt] = useState("");
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
@@ -65,9 +67,13 @@ function Home() {
       },
       onError: (err) => {
         setInitializing(false);
-        toast.error(
-          err instanceof ApiError ? err.message : "Couldn't start your project",
-        );
+        if (err instanceof ApiError && err.status === 402) {
+          openOutOfCredits();
+        } else {
+          toast.error(
+            err instanceof ApiError ? err.message : "Couldn't start your project",
+          );
+        }
       },
     });
   };

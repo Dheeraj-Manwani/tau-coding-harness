@@ -1,6 +1,8 @@
 import { useLocation, useOutlet } from "react-router-dom";
 
 import { UserMenu } from "@/src/components/UserMenu";
+import { CreditsWidget } from "@/src/components/CreditsWidget";
+import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
 import { cn } from "@/src/lib/utils";
 
 function App() {
@@ -20,12 +22,16 @@ function App() {
               role="img"
               aria-label="tau"
             />
-            <UserMenu />
+            <div className="flex items-center gap-3">
+              <CreditsWidget />
+              <UserMenu />
+            </div>
           </div>
         </header>
       )}
 
       <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
+      <OutOfCreditsModal />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type {
   ProjectMessage,
   ProjectTree,
 } from "@/src/features/project/types";
+import { useBillingStore } from "@/src/features/billing/useBillingStore";
 
 export type ChatRole = "user" | "ai";
 
@@ -617,6 +618,19 @@ function applyEvent(set: SetState, event: JobEvent): void {
           pendingActions: [],
         };
       });
+      return;
+
+    case "insufficient_credits":
+      set((s) => ({
+        ...finalizeStreaming(s),
+        isAiTyping: false,
+        status: "error",
+        activity: null,
+        writingPath: null,
+        currentJobId: null,
+        pendingActions: [],
+      }));
+      useBillingStore.getState().open();
       return;
 
     default:

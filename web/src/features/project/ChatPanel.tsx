@@ -16,6 +16,8 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
+import { CreditsWidget } from "@/src/components/CreditsWidget";
+import { useBillingStore } from "@/src/features/billing/useBillingStore";
 
 function formatRelativeTime(ts: number): string {
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -265,6 +267,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const toggleChat = useProjectStore((s) => s.toggleChat);
 
   const addMessage = useAddMessage(projectId ?? "");
+  const openOutOfCredits = useBillingStore((s) => s.open);
   const isStreaming = status === "streaming";
 
   const [draft, setDraft] = useState("");
@@ -352,13 +355,17 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
       onSuccess: ({ jobId }) => startJob(jobId, content),
       onError: (err) => {
         removeChatMessage(msgId);
-        toast.error(
-          err instanceof ApiError && err.status === 409
-            ? "A generation is already in progress."
-            : err instanceof ApiError
-              ? err.message
-              : "Couldn't send your message",
-        );
+        if (err instanceof ApiError && err.status === 402) {
+          openOutOfCredits();
+        } else {
+          toast.error(
+            err instanceof ApiError && err.status === 409
+              ? "A generation is already in progress."
+              : err instanceof ApiError
+                ? err.message
+                : "Couldn't send your message",
+          );
+        }
       },
     });
   };
@@ -367,6 +374,8 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     <div className="flex h-full flex-col bg-[var(--space-void)]">
       <div className="flex items-center justify-between px-3 py-2.5">
         {projectId && <ProjectSwitcher projectId={projectId} />}
+        <div className="flex items-center gap-2">
+          <CreditsWidget />
         {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
         {showCollapse && (
@@ -380,6 +389,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             <PanelLeftCloseIcon className="size-4.5" />
           </motion.button>
         )}
+        </div>
       </div>
 
       <div className="relative flex-1 overflow-hidden">

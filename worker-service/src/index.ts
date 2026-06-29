@@ -5,6 +5,7 @@ import { prisma } from "./lib/prisma";
 import { publish } from "./lib/publish";
 import { provisionSandbox } from "./lib/sandbox";
 import { runAgentLoop } from "./agent/loop";
+import { settle } from "./lib/credits";
 import { JobStatus } from "./generated/prisma/enums";
 
 interface JobPayload {
@@ -35,6 +36,9 @@ const worker = new Worker<JobPayload>(
             where: { id: jobId },
             data: { status: JobStatus.CANCELLED, completedAt: new Date() },
           });
+          await settle(jobId).catch((err) =>
+            console.error(`[worker] settle failed on cancel for ${jobId}`, err),
+          );
           const index = await redis.llen(`job:${jobId}:events`);
           await publish(jobId, { type: "cancelled" }, index);
         }
@@ -62,6 +66,9 @@ const worker = new Worker<JobPayload>(
           where: { id: jobId },
           data: { status: JobStatus.COMPLETED, completedAt: new Date() },
         });
+        await settle(jobId).catch((err) =>
+          console.error(`[worker] settle failed on complete for ${jobId}`, err),
+        );
       }
     } finally {
       await sub.unsubscribe(controlChannel);
@@ -80,6 +87,12 @@ worker.on("failed", async (job, err) => {
       where: { id: job.data.jobId },
       data: { status: JobStatus.FAILED, error: err.message },
     });
+    await settle(job.data.jobId).catch((settleErr) =>
+      console.error(
+        `[worker] settle failed on job failure for ${job.data.jobId}`,
+        settleErr,
+      ),
+    );
   }
 });
 

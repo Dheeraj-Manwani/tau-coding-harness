@@ -8,8 +8,13 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
+import creditsRoutes from "./routes/credits.routes";
+import adminRoutes from "./routes/admin.routes";
+import billingRoutes from "./routes/billing.routes";
+import webhookRoutes from "./routes/webhook.routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
+import { requireAdminKey } from "./middleware/admin.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
 import { codeGenerationQueue } from "./lib/queue";
 
@@ -26,12 +31,15 @@ app.use(
   }),
 );
 
+app.use("/webhooks", webhookRoutes);
+
 app.use(express.json());
 app.use(cookieParser());
 
 app.use(passport.initialize());
 
 app.use("/auth", authRoutes);
+app.use("/admin", requireAdminKey, adminRoutes);
 
 // Dev-only BullMQ dashboard.
 if (isDev) {
@@ -47,6 +55,8 @@ if (isDev) {
 app.use(requireAuth);
 
 app.use("/project", projectRoutes);
+app.use("/credits", creditsRoutes);
+app.use("/billing", billingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

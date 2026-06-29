@@ -5,6 +5,7 @@ import * as tokens from "../lib/tokens";
 import type { IssuedTokens } from "../lib/tokens";
 import { sendVerificationEmail, verifyEmailToken } from "../lib/email";
 import { AppError, Errors } from "../lib/errors";
+import { ensureBillingAccount } from "../lib/credits";
 
 const ARGON2_OPTIONS: argon2.Options = {
   type: argon2.argon2id,
@@ -49,6 +50,9 @@ export async function register(input: {
 
   const passwordHash = await argon2.hash(input.password, ARGON2_OPTIONS);
   const user = await authRepository.createUser({ email, passwordHash });
+
+  // Every user gets a FREE billing account (daily free credits) at signup.
+  await ensureBillingAccount(user.id);
 
   sendVerificationEmail({ userId: user.id, email: user.email }).catch((err) => {
     console.error(
@@ -175,6 +179,7 @@ export async function findOrCreateGoogleUser(profile: {
     email,
     emailVerifiedAt: new Date(),
   });
+  await ensureBillingAccount(newUser.id);
   await authRepository.createOAuthAccount({
     userId: newUser.id,
     provider,

@@ -3,6 +3,7 @@ import { deepseek } from "../lib/deepseek";
 import { prisma } from "../lib/prisma";
 import { env } from "../lib/env";
 import { getNextSequence } from "../lib/sequence";
+import { meter } from "../lib/credits";
 import { publish, makeIndexer } from "../lib/publish";
 import type { Sandbox } from "../lib/sandbox";
 import { TOOL_DEFINITIONS } from "./tools";
@@ -128,37 +129,63 @@ export async function runAgentLoop(
       const inputTokens = completion.usage?.prompt_tokens ?? 0;
       const outputTokens = completion.usage?.completion_tokens ?? 0;
 
-      const assistantMessageId = await prisma.$transaction(async (tx) => {
-        const sequence = await getNextSequence(tx, projectId);
-        const created = await tx.message.create({
-          data: {
-            project: { connect: { id: projectId } },
-            job: { connect: { id: jobId } },
-            role: MessageRole.ASSISTANT,
-            type: isToolTurn ? MessageType.TOOL_REQ : MessageType.RESULT,
-            content: {
-              content: assistant.content,
-              tool_calls: assistant.tool_calls ?? null,
-            } as unknown as Prisma.InputJsonValue,
-            sequence,
-            inputTokens,
-            outputTokens,
-          },
-        });
+      const { assistantMessageId, sequence } = await prisma.$transaction(
+        async (tx) => {
+          const seq = await getNextSequence(tx, projectId);
+          const created = await tx.message.create({
+            data: {
+              project: { connect: { id: projectId } },
+              job: { connect: { id: jobId } },
+              role: MessageRole.ASSISTANT,
+              type: isToolTurn ? MessageType.TOOL_REQ : MessageType.RESULT,
+              content: {
+                content: assistant.content,
+                tool_calls: assistant.tool_calls ?? null,
+              } as unknown as Prisma.InputJsonValue,
+              sequence: seq,
+              inputTokens,
+              outputTokens,
+            },
+          });
 
-        await tx.tokenUsage.create({
-          data: {
-            userId,
-            projectId,
-            jobId,
-            model: env.DEEPSEEK_MODEL,
-            inputTokens,
-            outputTokens,
-          },
-        });
+          await tx.tokenUsage.create({
+            data: {
+              userId,
+              projectId,
+              jobId,
+              model: env.DEEPSEEK_MODEL,
+              inputTokens,
+              outputTokens,
+            },
+          });
 
-        return created.id;
-      });
+          return { assistantMessageId: created.id, sequence: seq };
+        },
+      );
+
+      let holdExhausted = false;
+      try {
+        const meterResult = await meter(
+          userId,
+          jobId,
+          env.DEEPSEEK_MODEL,
+          inputTokens,
+          outputTokens,
+          sequence,
+          { enforce: env.CREDITS_ENFORCE },
+        );
+        holdExhausted = meterResult.holdExhausted;
+      } catch (err) {
+        console.error(
+          `[worker] meter failed for job ${jobId} seq ${sequence}`,
+          err,
+        );
+      }
+
+      if (env.CREDITS_ENFORCE && holdExhausted) {
+        await publish(jobId, { type: "insufficient_credits" }, nextIndex());
+        break;
+      }
 
       if (!isToolTurn) {
         const host = sandbox.getHost(PREVIEW_PORT);

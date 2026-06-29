@@ -18,6 +18,10 @@ model User {
   refreshTokens RefreshToken[]
   projects      Project[]
   tokenUsage    TokenUsage[]
+
+  billing       BillingAccount?
+  promoRedeems  PromoRedemption[]
+  subscriptions Subscription[]
 }
 
 model OAuthAccount {
@@ -254,4 +258,170 @@ model TokenUsage {
   @@index([projectId])
   @@index([jobId])
   @@index([recordedAt])
+}
+
+// ───────────────────────────── Credits & billing ─────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+}
+
+// One row per user; the row we lock (SELECT … FOR UPDATE) to serialize spend.
+model BillingAccount {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan Plan @default(FREE)
+
+  freeBalance  BigInt @default(0) // daily-reset bucket
+  planBalance  BigInt @default(0) // monthly-reset bucket (active plan)
+  bonusBalance BigInt @default(0) // never expires (promos, top-ups, refunds)
+  reserved     BigInt @default(0) // sum of ACTIVE holds; earmark, not a ledger event
+
+  dailyAllotment BigInt    @default(0) // micro-credits granted to the free bucket per day
+  freeRefilledAt DateTime?
+
+  cycleStart DateTime? // current plan billing cycle
+  cycleEnd   DateTime?
+
+  razorpayCustomerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ledger CreditLedger[]
+  holds  CreditHold[]
+}
+
+enum LedgerType {
+  SIGNUP_GRANT
+  DAILY_FREE_GRANT
+  PLAN_GRANT
+  PROMO_REDEEM
+  PURCHASE
+  DEBIT
+  REFUND
+  EXPIRE
+  ADJUSTMENT
+}
+
+// Append-only money record. Invariant (gross balance) == Σ amount per account.
+model CreditLedger {
+  id      String         @id @default(uuid())
+  userId  String
+  account BillingAccount @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  type         LedgerType
+  amount       BigInt // signed micro-credits (+grant / −debit)
+  balanceAfter BigInt // gross (free+plan+bonus) snapshot, for audit
+
+  jobId             String?
+  holdId            String?
+  promoRedemptionId String?
+  paymentId         String?
+
+  idempotencyKey String?  @unique // dedupes retries & webhook redelivery
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([jobId])
+}
+
+enum HoldStatus {
+  ACTIVE
+  SETTLED
+  RELEASED
+}
+
+// One hold per job — the reserved ceiling a job may spend.
+model CreditHold {
+  id      String         @id @default(uuid())
+  userId  String
+  account BillingAccount @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  jobId   String         @unique
+
+  amount   BigInt // reserved ceiling
+  consumed BigInt     @default(0) // metered so far against this hold
+  status   HoldStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  settledAt DateTime?
+
+  @@index([userId])
+}
+
+model PromoCode {
+  id          String  @id @default(uuid())
+  code        String  @unique // store normalized (uppercased, trimmed)
+  credits     BigInt // micro-credits granted to bonusBalance
+  description String?
+
+  maxRedemptions Int? // null = unlimited
+  redeemedCount  Int  @default(0)
+  perUserLimit   Int  @default(1)
+
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+
+  createdAt   DateTime          @default(now())
+  redemptions PromoRedemption[]
+}
+
+model PromoRedemption {
+  id     String    @id @default(uuid())
+  codeId String
+  code   PromoCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  creditsGranted BigInt
+  createdAt      DateTime @default(now())
+
+  @@unique([codeId, userId]) // DB-enforced single redemption per user
+  @@index([userId])
+}
+
+enum SubscriptionStatus {
+  CREATED
+  AUTHENTICATED
+  ACTIVE
+  PENDING
+  HALTED
+  CANCELLED
+  COMPLETED
+  EXPIRED
+}
+
+model Subscription {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan   Plan
+  status SubscriptionStatus
+
+  razorpaySubscriptionId String  @unique
+  razorpayPlanId         String
+  razorpayCustomerId     String?
+
+  currentStart     DateTime?
+  currentEnd       DateTime?
+  cancelAtCycleEnd Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Idempotent webhook processing (Razorpay can redeliver events).
+model WebhookEvent {
+  id          String    @id // provider event id (e.g. x-razorpay-event-id)
+  provider    String
+  type        String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
 }

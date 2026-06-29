@@ -6,6 +6,7 @@ import { enqueueJob } from "../lib/queue";
 import { deepseek } from "../lib/deepseek";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
+import { reserveInTx, InsufficientCreditsError } from "../lib/credits";
 import { getBlobText, deleteProjectBlobs } from "../lib/s3";
 import {
   MessageRole,
@@ -84,6 +85,17 @@ export async function initializeProject(
       type: JobType.GENERATION,
     });
 
+    if (env.CREDITS_ENFORCE) {
+      try {
+        await reserveInTx(tx, userId, job.id);
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
+        }
+        throw err;
+      }
+    }
+
     const sequence = await getNextSequence(tx, project.id);
     await projectRepo.createMessage(tx, {
       projectId: project.id,
@@ -131,6 +143,17 @@ export async function addMessage(
       prompt: content,
       type: JobType.GENERATION,
     });
+
+    if (env.CREDITS_ENFORCE) {
+      try {
+        await reserveInTx(tx, userId, job.id);
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
+        }
+        throw err;
+      }
+    }
 
     const sequence = await getNextSequence(tx, projectId);
     await projectRepo.createMessage(tx, {

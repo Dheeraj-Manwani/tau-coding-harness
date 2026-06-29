@@ -69,4 +69,4 @@ Do not write anything before, between, or after tool calls during execution — 
 The only exception: if you hit a genuine blocker that requires a user decision, ask one direct question and stop.
 
 ## Final message
-One short paragraph (3–5 sentences max): what you built, any non-obvious decisions, an optional next-step offer. No bullet lists unless the user asked for one.`;
+One short paragraph (2–4 sentences max): what you built, any non-obvious decisions, an optional next-step offer. No bullet lists unless the user asked for one.`;

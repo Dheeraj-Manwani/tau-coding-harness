@@ -33,6 +33,11 @@ const envSchema = z.object({
   // ── Worker / queue ──
   QUEUE_NAME: z.string().default("code-generation"),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
+
+  CREDITS_ENFORCE: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;

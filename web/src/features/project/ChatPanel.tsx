@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDownIcon, ChevronDownIcon, HomeIcon, PanelLeftCloseIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, BrainIcon, ChevronDownIcon, ChevronUpIcon, FileIcon, HomeIcon, PanelLeftCloseIcon, TerminalIcon, Trash2Icon } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
 
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
-import { useProjectStore, type Message } from "@/src/stores/useProjectStore";
+import { useProjectStore, type ActionItem, type Message } from "@/src/stores/useProjectStore";
 import { fetchOlderMessages, useAddMessage, useProject } from "@/src/features/project/api";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import {
@@ -33,6 +33,53 @@ const ENTRANCE = {
   animate: { opacity: 1, y: 0 },
   transition: { type: "spring", stiffness: 500, damping: 36 },
 } as const;
+
+function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
+  if (kind === "thinking") return <BrainIcon className="size-3.5" />;
+  if (kind === "run_command") return <TerminalIcon className="size-3.5" />;
+  return <FileIcon className="size-3.5" />;
+}
+
+function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mb-3 overflow-hidden rounded-lg border border-[var(--silver-200)] bg-[var(--space-overlay)] text-xs text-[var(--silver-600)]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:text-[var(--silver-900)]"
+      >
+        {open ? (
+          <>
+            <ChevronUpIcon className="size-3.5 shrink-0" />
+            <span>Show less</span>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1 opacity-60">
+              {actions.map((a, i) => (
+                <span key={i}><ActionIcon kind={a.kind} /></span>
+              ))}
+            </div>
+            <span>{actions.length} action{actions.length !== 1 ? "s" : ""}</span>
+          </>
+        )}
+      </button>
+
+      {open && (
+        <div className="border-t border-[var(--silver-200)] py-1">
+          {actions.map((action, i) => (
+            <div key={i} className="flex items-center gap-2.5 px-3 py-1.5">
+              <span className="shrink-0 opacity-60"><ActionIcon kind={action.kind} /></span>
+              <span className="truncate">{action.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const USER_MSG_LINE_CLAMP = 4;
 
@@ -95,22 +142,22 @@ function ChatBubble({
     );
   }
 
-  if (noAnimate) {
-    return (
+  const aiBody = (
+    <div>
+      {message.actions && message.actions.length > 0 && (
+        <ActionsAccordion actions={message.actions} />
+      )}
       <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-[var(--silver-900)]">
         {message.content}
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (noAnimate) return aiBody;
 
   return (
-    <motion.div
-      initial={ENTRANCE.initial}
-      animate={ENTRANCE.animate}
-      transition={transition}
-      className="text-sm leading-relaxed whitespace-pre-wrap break-words text-[var(--silver-900)]"
-    >
-      {message.content}
+    <motion.div initial={ENTRANCE.initial} animate={ENTRANCE.animate} transition={transition}>
+      {aiBody}
     </motion.div>
   );
 }

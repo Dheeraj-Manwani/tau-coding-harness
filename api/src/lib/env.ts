@@ -52,6 +52,21 @@ const envSchema = z.object({
     .url()
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
+
+  // Credits / billing — when false, credit enforcement is off (shadow mode).
+  CREDITS_ENFORCE: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+
+  // Admin API key
+  ADMIN_API_KEY: z.string().optional(),
+
+  // Razorpay
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  RAZORPAY_PRO_PLAN_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -4,7 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -21,6 +25,8 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1075.0",
+    "@aws-sdk/s3-request-presigner": "3.1075.0",
     "@bull-board/api": "^8.0.1",
     "@bull-board/express": "^8.0.1",
     "@prisma/adapter-pg": "^7.8.0",
@@ -29,17 +35,16 @@
     "bullmq": "^5.79.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "e2b": "^2.30.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
-    "@aws-sdk/client-s3": "^3.1075.0",
-    "@aws-sdk/s3-request-presigner": "3.1075.0",
-    "e2b": "^2.30.5",
     "openai": "^6.44.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "rate-limit-redis": "^5.0.0",
+    "razorpay": "^2.9.6",
     "resend": "^6.12.4",
     "zod": "^4.4.3"
   }

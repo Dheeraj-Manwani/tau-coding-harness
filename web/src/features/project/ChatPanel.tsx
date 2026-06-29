@@ -1,14 +1,45 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDownIcon, BrainIcon, ChevronDownIcon, ChevronUpIcon, FileIcon, HomeIcon, PanelLeftCloseIcon, TerminalIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  BookOpen,
+  BrainIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CircleIcon,
+  FileIcon,
+  FilePen,
+  FilePlus,
+  FileX,
+  HomeIcon,
+  ListChecksIcon,
+  MinusIcon,
+  PanelLeftCloseIcon,
+  SquareCheckBigIcon,
+  TerminalIcon,
+  Trash2Icon,
+  XIcon,
+  ZapIcon,
+} from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
 
+import { cn } from "@/src/lib/utils";
+import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
-import { useProjectStore, type ActionItem, type Message } from "@/src/stores/useProjectStore";
-import { fetchOlderMessages, useAddMessage, useProject } from "@/src/features/project/api";
+import {
+  useProjectStore,
+  type ActionItem,
+  type Message,
+} from "@/src/stores/useProjectStore";
+import {
+  fetchOlderMessages,
+  useAddMessage,
+  useProject,
+} from "@/src/features/project/api";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import {
   Tooltip,
@@ -16,7 +47,6 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
-import { CreditsWidget } from "@/src/components/CreditsWidget";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 
 function formatRelativeTime(ts: number): string {
@@ -37,48 +67,198 @@ const ENTRANCE = {
 } as const;
 
 function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
-  if (kind === "thinking") return <BrainIcon className="size-3.5" />;
+  if (kind === "create_plan") return <BrainIcon className="size-3.5" />;
+  if (kind === "update_todo")
+    return <SquareCheckBigIcon className="size-3.5" />;
   if (kind === "run_command") return <TerminalIcon className="size-3.5" />;
+
+  if (kind === "create_file") return <FilePlus className="size-3.5" />;
+
+  if (kind === "edit_file") return <FilePen className="size-3.5" />;
+
+  if (kind === "read_file") return <BookOpen className="size-3.5" />;
+  if (kind === "delete_file") return <FileX className="size-3.5" />;
+
   return <FileIcon className="size-3.5" />;
+}
+
+const TODO_STATUS_CFG = {
+  done: { Icon: CheckIcon, label: "Done", cls: "text-green-400" },
+  skipped: {
+    Icon: MinusIcon,
+    label: "Skipped",
+    cls: "text-[var(--silver-600)]",
+  },
+  blocked: { Icon: XIcon, label: "Blocked", cls: "text-red-400" },
+  pending: {
+    Icon: CircleIcon,
+    label: "Pending",
+    cls: "text-[var(--silver-600)] opacity-50",
+  },
+} as const;
+
+function ActionDetail({ action }: { action: ActionItem }) {
+  if (action.kind === "create_plan") {
+    const meta = action.meta as
+      | { description?: string; todos?: string[] }
+      | undefined;
+    return (
+      <div className="space-y-2">
+        {meta?.description && (
+          <p className="leading-relaxed text-[var(--silver-700)]">
+            {meta.description}
+          </p>
+        )}
+        {!!meta?.todos?.length && (
+          <div className="space-y-1 pt-1">
+            <div>Todo:</div>
+            {meta.todos.map((todo, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 text-[var(--silver-700)]"
+              >
+                <CircleIcon className="mt-0.5 size-2.5 shrink-0 opacity-30" />
+                <span>{todo}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (action.kind === "update_todo") {
+    const meta = action.meta as
+      | {
+          sno?: number;
+          status?: string;
+          todos?: { sno: number; label: string; status: string }[];
+        }
+      | undefined;
+    if (!meta?.todos?.length) return null;
+    return (
+      <div className="space-y-1.5">
+        {meta.todos.map((todo) => {
+          const s = todo.status as keyof typeof TODO_STATUS_CFG;
+          const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
+          return (
+            <div
+              key={todo.sno}
+              className="flex items-center gap-2 text-[var(--silver-700)]"
+            >
+              <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
+              <span
+                className={cn(
+                  todo.status === "done" ? "line-through opacity-50" : "",
+                )}
+              >
+                {todo.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-  return (
-    <div className="mb-3 overflow-hidden rounded-lg border border-[var(--silver-200)] bg-[var(--space-overlay)] text-xs text-[var(--silver-600)]">
+  const toggle = (i: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+
+  if (!open) {
+    return (
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:text-[var(--silver-900)]"
+        onClick={() => setOpen(true)}
+        className="mt-3 flex items-center gap-2 rounded-md px-1.5 py-1 text-xs text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
       >
-        {open ? (
-          <>
-            <ChevronUpIcon className="size-3.5 shrink-0" />
-            <span>Show less</span>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-1 opacity-60">
-              {actions.map((a, i) => (
-                <span key={i}><ActionIcon kind={a.kind} /></span>
-              ))}
-            </div>
-            <span>{actions.length} action{actions.length !== 1 ? "s" : ""}</span>
-          </>
-        )}
+        <div className="flex items-center gap-1.5 opacity-60">
+          {actions.slice(0, 8).map((a, i) => (
+            <span key={i}>
+              <ActionIcon kind={a.kind} />
+            </span>
+          ))}
+          {actions.length > 8 && <span className="text-[10px]">…</span>}
+        </div>
+        <span>
+          {actions.length} action{actions.length !== 1 ? "s" : ""}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 text-xs text-[var(--silver-600)]">
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="mb-0.5 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:text-[var(--silver-900)]"
+      >
+        <ChevronUpIcon className="size-3.5 shrink-0" />
+        <span>Show less</span>
       </button>
 
-      {open && (
-        <div className="border-t border-[var(--silver-200)] py-1">
-          {actions.map((action, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-3 py-1.5">
-              <span className="shrink-0 opacity-60"><ActionIcon kind={action.kind} /></span>
-              <span className="truncate">{action.label}</span>
+      <div>
+        {actions.map((action, i) => {
+          const isExpandable =
+            action.kind === "create_plan" ||
+            (action.kind === "update_todo" &&
+              !!(action.meta as { todos?: unknown[] } | undefined)?.todos
+                ?.length);
+          const isOpen = expanded.has(i);
+          return (
+            <div key={i}>
+              <div
+                role={isExpandable ? "button" : undefined}
+                tabIndex={isExpandable ? 0 : undefined}
+                onClick={isExpandable ? () => toggle(i) : undefined}
+                onKeyDown={
+                  isExpandable
+                    ? (e) => e.key === "Enter" && toggle(i)
+                    : undefined
+                }
+                className={cn(
+                  "flex items-center gap-2.5 px-1.5 py-1.5 transition-colors",
+                  isExpandable && !isOpen
+                    ? "cursor-pointer rounded-md hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+                    : isExpandable && isOpen
+                      ? "cursor-pointer rounded-t-md bg-[var(--space-overlay)] text-[var(--silver-900)]"
+                      : "rounded-md",
+                )}
+              >
+                <span className="shrink-0 opacity-50">
+                  <ActionIcon kind={action.kind} />
+                </span>
+                <span className="flex-1 truncate">{action.label}</span>
+                {isExpandable && (
+                  <span className="shrink-0 opacity-40">
+                    {isOpen ? (
+                      <ChevronUpIcon className="size-3" />
+                    ) : (
+                      <ChevronDownIcon className="size-3" />
+                    )}
+                  </span>
+                )}
+              </div>
+              {isExpandable && isOpen && (
+                <div className="mb-1 rounded-b-md border-t border-white/5 bg-[var(--space-overlay)] px-3 py-2.5 text-[11px]">
+                  <ActionDetail action={action} />
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -115,7 +295,16 @@ function ChatBubble({
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--space-overlay)] px-3.5 py-2 text-sm leading-relaxed text-[var(--silver-900)]">
           <div
             ref={contentRef}
-            style={expanded ? undefined : { WebkitLineClamp: USER_MSG_LINE_CLAMP, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            style={
+              expanded
+                ? undefined
+                : {
+                    WebkitLineClamp: USER_MSG_LINE_CLAMP,
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }
+            }
             className="whitespace-pre-wrap break-words"
           >
             {message.content}
@@ -138,7 +327,11 @@ function ChatBubble({
 
     if (noAnimate) return bubble;
     return (
-      <motion.div initial={ENTRANCE.initial} animate={ENTRANCE.animate} transition={transition}>
+      <motion.div
+        initial={ENTRANCE.initial}
+        animate={ENTRANCE.animate}
+        transition={transition}
+      >
         {bubble}
       </motion.div>
     );
@@ -146,19 +339,25 @@ function ChatBubble({
 
   const aiBody = (
     <div>
+      {message.content && (
+        <div className="text-sm text-[var(--silver-900)]">
+          <ChatMarkdown content={message.content} />
+        </div>
+      )}
       {message.actions && message.actions.length > 0 && (
         <ActionsAccordion actions={message.actions} />
       )}
-      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-[var(--silver-900)]">
-        {message.content}
-      </div>
     </div>
   );
 
   if (noAnimate) return aiBody;
 
   return (
-    <motion.div initial={ENTRANCE.initial} animate={ENTRANCE.animate} transition={transition}>
+    <motion.div
+      initial={ENTRANCE.initial}
+      animate={ENTRANCE.animate}
+      transition={transition}
+    >
       {aiBody}
     </motion.div>
   );
@@ -174,7 +373,7 @@ function TypingBubble({ activity }: { activity: string | null }) {
       exit={{ opacity: 0 }}
       className="flex items-center"
     >
-      <ChatLoader text={activity ?? "Processing"} />
+      <ChatLoader text={activity ?? "Thinking"} />
     </motion.div>
   );
 }
@@ -193,7 +392,13 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   }, [name]);
 
   const projectAsListItem = detail
-    ? { id: projectId, name: detail.project.name, sandboxStatus: detail.project.sandboxStatus, createdAt: "", updatedAt: "" }
+    ? {
+        id: projectId,
+        name: detail.project.name,
+        sandboxStatus: detail.project.sandboxStatus,
+        createdAt: "",
+        updatedAt: "",
+      }
     : null;
 
   return (
@@ -206,7 +411,9 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
                 type="button"
                 className="group flex items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
               >
-                <span ref={nameRef} className="max-w-[220px] truncate">{name}</span>
+                <span ref={nameRef} className="max-w-[220px] truncate">
+                  {name}
+                </span>
                 <ChevronDownIcon className="size-3.5 shrink-0 text-[var(--silver-600)] transition-transform group-data-[state=open]:rotate-180" />
               </button>
             </DropdownMenu.Trigger>
@@ -312,7 +519,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     });
   }, [messages, isAiTyping]);
 
-  const loadOlderMessages = async () => {
+  const loadOlderMessages = useCallback(async () => {
     if (isLoadingOlder || !hasMoreMessages || !projectId || oldestSequence === null) return;
     setIsLoadingOlder(true);
     scrollHeightBeforePrependRef.current = scrollRef.current?.scrollHeight ?? null;
@@ -325,10 +532,22 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     } finally {
       setIsLoadingOlder(false);
     }
-  };
+  }, [isLoadingOlder, hasMoreMessages, projectId, oldestSequence, prependMessages]);
+
+  // When the loaded messages don't fill the viewport there is no scroll event
+  // to trigger the normal scroll-up pagination — auto-load until they do.
+  useEffect(() => {
+    if (isStreaming || isLoadingOlder || !hasMoreMessages) return;
+    const el = scrollRef.current;
+    if (!el || el.scrollTop >= 80) return;
+    void loadOlderMessages();
+  }, [messages, isStreaming, isLoadingOlder, hasMoreMessages, loadOlderMessages]);
 
   const scrollToBottom = () => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
   const handleScroll = () => {
@@ -375,20 +594,19 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
       <div className="flex items-center justify-between px-3 py-2.5">
         {projectId && <ProjectSwitcher projectId={projectId} />}
         <div className="flex items-center gap-2">
-          <CreditsWidget />
-        {/* Collapse only makes sense once the chat is docked beside the
+          {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
-        {showCollapse && (
-          <motion.button
-            type="button"
-            onClick={toggleChat}
-            whileHover={{ scale: 1.1 }}
-            aria-label="Collapse chat"
-            className="flex size-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-          >
-            <PanelLeftCloseIcon className="size-4.5" />
-          </motion.button>
-        )}
+          {showCollapse && (
+            <motion.button
+              type="button"
+              onClick={toggleChat}
+              whileHover={{ scale: 1.1 }}
+              aria-label="Collapse chat"
+              className="flex size-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+            >
+              <PanelLeftCloseIcon className="size-4.5" />
+            </motion.button>
+          )}
         </div>
       </div>
 
@@ -407,7 +625,13 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             <ChatBubble
               key={m.id}
               message={m}
-              delay={prependedIdsRef.current.has(m.id) ? 0 : i < initialCount ? i * 0.04 : 0}
+              delay={
+                prependedIdsRef.current.has(m.id)
+                  ? 0
+                  : i < initialCount
+                    ? i * 0.04
+                    : 0
+              }
               noAnimate={prependedIdsRef.current.has(m.id)}
             />
           ))}

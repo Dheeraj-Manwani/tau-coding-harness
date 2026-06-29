@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
-import TauLogoAnimation from "@/src/components/tauAnimation";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -46,12 +45,9 @@ function Login() {
     <div className="flex min-h-[100svh] flex-col">
     <div className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm text-left">
-        <TauLogoAnimation
-          size={88}
-          className="mx-auto mb-6"
-          accentColor="#60A5FA"
-          coreColor="#FFFFFF"
-        />
+        <div className="mb-6 flex justify-center">
+          <div className="logo-mark size-10" />
+        </div>
         <h1 className="mb-6 text-center text-2xl font-semibold text-foreground">
           Sign in
         </h1>

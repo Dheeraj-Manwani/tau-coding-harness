@@ -1,7 +1,6 @@
 import { useLocation, useOutlet } from "react-router-dom";
 
 import { UserMenu } from "@/src/components/UserMenu";
-import { CreditsWidget } from "@/src/components/CreditsWidget";
 import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { cn } from "@/src/lib/utils";
@@ -24,7 +23,6 @@ function App() {
               aria-label="tau"
             />
             <div className="flex items-center gap-3">
-              <CreditsWidget />
               <UserMenu />
             </div>
           </div>

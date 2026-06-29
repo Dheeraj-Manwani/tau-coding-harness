@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
   Group,
@@ -12,7 +13,7 @@ import { cn } from "@/src/lib/utils";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
-import { useProject, useProjectTree } from "@/src/features/project/api";
+import { useProject, useProjectTree, projectKeys } from "@/src/features/project/api";
 import { useJobStream } from "@/src/features/project/useJobStream";
 import {
   clearFreshBuild,
@@ -28,6 +29,8 @@ function useProjectBootstrap() {
   const startJob = useProjectStore((s) => s.startJob);
   const hydrate = useProjectStore((s) => s.hydrate);
   const hydrateTree = useProjectStore((s) => s.hydrateTree);
+  const status = useProjectStore((s) => s.status);
+  const qc = useQueryClient();
 
   const { data } = useProject(projectId);
   const { data: tree } = useProjectTree(projectId);
@@ -50,6 +53,13 @@ function useProjectBootstrap() {
   useEffect(() => {
     if (tree) hydrateTree(tree);
   }, [tree, hydrateTree]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    if (status === "done" || status === "cancelled" || status === "error") {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId), refetchType: "active" });
+    }
+  }, [status, projectId, qc]);
 
   useJobStream();
 }

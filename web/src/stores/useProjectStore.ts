@@ -11,16 +11,36 @@ import { useBillingStore } from "@/src/features/billing/useBillingStore";
 export type ChatRole = "user" | "ai";
 
 export type ActionKind =
-  | "thinking"
   | "create_file"
   | "edit_file"
   | "read_file"
   | "delete_file"
-  | "run_command";
+  | "run_command"
+  | "report_progress"
+  | "create_plan"
+  | "update_todo";
+
+export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
+
+export interface Todo {
+  sno: number;
+  label: string;
+  status: TodoStatus;
+}
+
+export interface Plan {
+  name: string;
+  description: string;
+  todos: Todo[];
+}
 
 export interface ActionItem {
   kind: ActionKind;
   label: string;
+  /** Used by report_plan to carry the full plan description. */
+  description?: string;
+  /** Structured detail payload for create_plan and update_todo. */
+  meta?: Record<string, unknown>;
 }
 
 export interface Message {
@@ -61,66 +81,154 @@ function truncateLabel(s: string, max = 72): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
-function deriveActionItem(toolName: string, input: Record<string, unknown>): ActionItem {
+function deriveActionItem(
+  toolName: string,
+  input: Record<string, unknown>,
+): ActionItem {
   const path = String(input.path ?? "");
   const file = basename(path);
   switch (toolName) {
-    case "create_file": return { kind: "create_file", label: `Created ${file}` };
-    case "edit_file":   return { kind: "edit_file",   label: `Edited ${file}` };
-    case "read_file":   return { kind: "read_file",   label: `Read ${file}` };
-    case "delete_file": return { kind: "delete_file", label: `Deleted ${file}` };
-    case "run_command": return { kind: "run_command", label: `Ran ${truncateLabel(String(input.command ?? ""), 50)}` };
-    default:            return { kind: "create_file", label: truncateLabel(toolName) };
-  }
-}
+    case "create_file":
+      return { kind: "create_file", label: `Created ${file}` };
+    case "edit_file":
+      return { kind: "edit_file", label: `Edited ${file}` };
+    case "read_file":
+      return { kind: "read_file", label: `Opened ${file}` };
+    case "delete_file":
+      return { kind: "delete_file", label: `Deleted ${file}` };
+    case "run_command":
+      return {
+        kind: "run_command",
+        label: `Ran ${truncateLabel(String(input.command ?? ""), 50)}`,
+      };
+    case "report_progress":
+      return { kind: "report_progress", label: String(input.message ?? "") };
 
-/** Parse tool call actions out of a persisted TOOL_REQ message. */
-function parseToolReqActions(row: ProjectMessage): ActionItem[] {
-  const stored = row.content as {
-    tool_calls?: Array<{ function: { name: string; arguments: string } }>;
-  } | null;
-  if (!stored?.tool_calls?.length) return [];
-  return stored.tool_calls.map((tc) => {
-    let input: Record<string, unknown> = {};
-    try { input = JSON.parse(tc.function.arguments); } catch { /* ignore */ }
-    return deriveActionItem(tc.function.name, input);
-  });
+    case "create_plan": {
+      const todosStr = String(input.todos ?? "");
+      const todos = todosStr.trim()
+        ? todosStr
+            .split(";")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [];
+      return {
+        kind: "create_plan",
+        label: String(input.name ?? "Plan"),
+        meta: { description: String(input.description ?? ""), todos },
+      };
+    }
+    case "update_todo":
+      return {
+        kind: "update_todo",
+        label: "Updated Todo",
+        meta: { sno: Number(input.sno), status: String(input.status ?? "") },
+      };
+    default:
+      return { kind: "create_file", label: truncateLabel(toolName) };
+  }
 }
 
 /**
  * Convert a sequence of persisted message rows into chat bubbles.
- * TOOL_REQ rows are not shown directly — their tool calls are collected
- * and attached as `actions` to the following RESULT message.
+ *
+ * Key invariants:
+ *  - Tool calls are processed IN ORDER within each TOOL_REQ row so that
+ *    actions attach to the progress message that immediately preceded them,
+ *    not to an arbitrary later one.
+ *  - Action attachment is scoped to the current conversation turn (messages
+ *    added since the last USER row) so follow-up turns never contaminate
+ *    earlier messages.
+ *  - report_progress tool calls become standalone ai messages; all other
+ *    tool calls become accordion actions on the nearest preceding ai message
+ *    within the same turn.
  */
 function toConversation(rows: ProjectMessage[]): Message[] {
   const messages: Message[] = [];
-  let pendingActions: ActionItem[] = [];
+  // First index in `messages` that belongs to the current AI turn.
+  // Reset each time a USER message is pushed so actions can't bleed
+  // back into a previous turn's bubbles.
+  let turnStart = 0;
 
   for (const row of rows) {
     const ts = Date.parse(row.createdAt) || now();
 
     if (row.role === "USER" && row.type === "USER") {
-      pendingActions = [];
       const blocks = row.content as { type?: string; text?: string }[] | string;
       const text = Array.isArray(blocks)
         ? blocks.map((b) => b?.text ?? "").join("")
         : String(blocks ?? "");
-      if (text) messages.push({ id: row.id, role: "user", content: text, timestamp: ts });
+      if (text)
+        messages.push({
+          id: row.id,
+          role: "user",
+          content: text,
+          timestamp: ts,
+        });
+      turnStart = messages.length; // ai messages from here onward are this turn's response
     } else if (row.role === "ASSISTANT" && row.type === "TOOL_REQ") {
-      pendingActions.push(...parseToolReqActions(row));
+      const stored = row.content as {
+        content?: string | null;
+        tool_calls?: Array<{ function: { name: string; arguments: string } }>;
+      } | null;
+
+      // Render any text the LLM wrote alongside its tool calls.
+      const assistantText = (stored?.content ?? "").trim();
+      if (assistantText) {
+        messages.push({
+          id: `${row.id}_text`,
+          role: "ai",
+          content: assistantText,
+          timestamp: ts,
+        });
+      }
+
+      // Process each tool call in the order the LLM produced them.
+      // This preserves the interleaving: progress message → actions that
+      // follow it → next progress message → its actions → …
+      for (let j = 0; j < (stored?.tool_calls?.length ?? 0); j++) {
+        const tc = stored!.tool_calls![j];
+        const name = tc.function.name;
+        let input: Record<string, unknown> = {};
+        try {
+          input = JSON.parse(tc.function.arguments);
+        } catch {
+          /* ignore */
+        }
+
+        if (name === "report_progress") {
+          const text = String(input.message ?? "").trim();
+          if (text)
+            messages.push({
+              id: `${row.id}_p${j}`,
+              role: "ai",
+              content: text,
+              timestamp: ts,
+            });
+        } else {
+          // Attach to the nearest ai message within this turn.
+          const action = deriveActionItem(name, input);
+          let targetIdx = -1;
+          for (let i = messages.length - 1; i >= turnStart; i--) {
+            if (messages[i].role === "ai") {
+              targetIdx = i;
+              break;
+            }
+          }
+          if (targetIdx !== -1) {
+            messages[targetIdx] = {
+              ...messages[targetIdx],
+              actions: [...(messages[targetIdx].actions ?? []), action],
+            };
+          }
+        }
+      }
     } else if (row.role === "ASSISTANT" && row.type === "RESULT") {
       const c = row.content as { content?: string } | string;
       const text = typeof c === "string" ? c : (c?.content ?? "");
       if (text.trim()) {
-        messages.push({
-          id: row.id,
-          role: "ai",
-          content: text,
-          timestamp: ts,
-          actions: pendingActions.length > 0 ? [...pendingActions] : undefined,
-        });
+        messages.push({ id: row.id, role: "ai", content: text, timestamp: ts });
       }
-      pendingActions = [];
     }
     // TOOL_RES and ERROR rows are skipped
   }
@@ -159,6 +267,9 @@ interface ProjectState {
   hasMoreMessages: boolean;
   /** Sequence number of the oldest loaded message — used as the pagination cursor. */
   oldestSequence: number | null;
+
+  // Plan tracker (active job only; reset on new job)
+  currentPlan: Plan | null;
 
   // Generated app
   files: Record<string, ProjectFile>;
@@ -230,6 +341,7 @@ const FRESH = {
   pendingActions: [] as ActionItem[],
   hasMoreMessages: false,
   oldestSequence: null as number | null,
+  currentPlan: null as Plan | null,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -263,6 +375,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       // Never overwrite an active stream — the live content takes priority.
       if (s.status === "streaming") return {};
+      // Don't replace the fully-populated store right after a stream ends.
+      // The refetch triggered by invalidateQueries is for the *next* navigation's
+      // cache — the current session already has the correct messages.
+      if (s.status === "done" && s.hydrated) return {};
 
       const chatMessages = toConversation(detail.messages);
 
@@ -322,6 +438,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         currentJobId: jobId,
         status: "streaming",
         isAiTyping: true,
+        activity: "Thinking",
+        currentPlan: null,
         chatMessages:
           prompt && !alreadyShown
             ? [...s.chatMessages, userMessage(prompt)]
@@ -428,7 +546,8 @@ function finalizeStreaming(s: ProjectState): {
   streamingId: null;
   chatMessages: Message[];
 } {
-  if (!s.streamingId) return { streamingId: null, chatMessages: s.chatMessages };
+  if (!s.streamingId)
+    return { streamingId: null, chatMessages: s.chatMessages };
   const bubble = s.chatMessages.find((m) => m.id === s.streamingId);
   const drop = !bubble || bubble.content.trim().length === 0;
   return {
@@ -439,18 +558,52 @@ function finalizeStreaming(s: ProjectState): {
   };
 }
 
+/** Index of the first message belonging to the current agent turn (after the last user message). */
+function currentTurnStart(messages: Message[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") return i + 1;
+  }
+  return 0;
+}
+
+/**
+ * Attach accumulated pendingActions to the last ai message within the current
+ * turn that isn't the streaming bubble. Scoped to the current turn so actions
+ * never bleed back into a previous exchange.
+ */
+function flushPendingActions(s: ProjectState): {
+  chatMessages: Message[];
+  pendingActions: ActionItem[];
+} {
+  if (s.pendingActions.length === 0)
+    return { chatMessages: s.chatMessages, pendingActions: [] };
+  const turnStart = currentTurnStart(s.chatMessages);
+  let targetIdx = -1;
+  for (let i = s.chatMessages.length - 1; i >= turnStart; i--) {
+    if (
+      s.chatMessages[i].role === "ai" &&
+      s.chatMessages[i].id !== s.streamingId
+    ) {
+      targetIdx = i;
+      break;
+    }
+  }
+  if (targetIdx === -1)
+    return { chatMessages: s.chatMessages, pendingActions: [] };
+  return {
+    chatMessages: s.chatMessages.map((m, i) =>
+      i === targetIdx
+        ? { ...m, actions: [...(m.actions ?? []), ...s.pendingActions] }
+        : m,
+    ),
+    pendingActions: [],
+  };
+}
+
 function applyEvent(set: SetState, event: JobEvent): void {
   switch (event.type) {
     case "thinking":
-      set((s) => ({
-        isAiTyping: true,
-        status: "streaming",
-        activity: event.message,
-        pendingActions: [
-          ...s.pendingActions,
-          { kind: "thinking" as const, label: truncateLabel(event.message) },
-        ],
-      }));
+      set({ isAiTyping: true, status: "streaming", activity: event.message });
       return;
 
     case "llm_chunk":
@@ -468,17 +621,172 @@ function applyEvent(set: SetState, event: JobEvent): void {
       });
       return;
 
-    case "tool_req":
-      set((s) => ({
-        ...finalizeStreaming(s),
-        isAiTyping: true,
-        activity: `Using ${event.toolName}`,
-        pendingActions: [
-          ...s.pendingActions,
-          deriveActionItem(event.toolName, event.input as Record<string, unknown>),
-        ],
-      }));
+    case "plan_created":
+      set({
+        currentPlan: {
+          name: event.name,
+          description: event.description,
+          todos: event.todos.map((label, i) => ({
+            sno: i + 1,
+            label,
+            status: "pending" as TodoStatus,
+          })),
+        },
+      });
       return;
+
+    case "todo_updated":
+      set((s) => {
+        if (!s.currentPlan) return {};
+        return {
+          currentPlan: {
+            ...s.currentPlan,
+            todos: s.currentPlan.todos.map((t) =>
+              t.sno === event.sno
+                ? { ...t, status: event.status as TodoStatus }
+                : t,
+            ),
+          },
+        };
+      });
+      return;
+
+    case "tool_req": {
+      const inp = event.input as Record<string, unknown>;
+
+      if (
+        event.toolName === "create_plan" ||
+        event.toolName === "update_todo"
+      ) {
+        set((s) => {
+          const fin = finalizeStreaming(s);
+
+          let action: ActionItem;
+
+          if (event.toolName === "create_plan") {
+            const todosStr = String(inp.todos ?? "");
+            const todos = todosStr.trim()
+              ? todosStr
+                  .split(";")
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : [];
+            action = {
+              kind: "create_plan",
+              label: String(inp.name ?? "Plan"),
+              meta: { description: String(inp.description ?? ""), todos },
+            };
+          } else {
+            const sno = Number(inp.sno);
+            const newStatus = String(inp.status ?? "");
+            const updatedTodos = s.currentPlan?.todos.map((t) =>
+              t.sno === sno ? { ...t, status: newStatus } : t,
+            );
+            action = {
+              kind: "update_todo",
+              label: "Updated Todo",
+              meta: {
+                sno,
+                status: newStatus,
+                ...(updatedTodos ? { todos: updatedTodos } : {}),
+              },
+            };
+          }
+
+          const msgs = fin.chatMessages;
+          const turnStart = currentTurnStart(msgs);
+          let targetIdx = -1;
+          for (let i = msgs.length - 1; i >= turnStart; i--) {
+            if (msgs[i].role === "ai") {
+              targetIdx = i;
+              break;
+            }
+          }
+          if (targetIdx !== -1) {
+            return {
+              ...fin,
+              isAiTyping: true,
+              chatMessages: msgs.map((m, i) =>
+                i === targetIdx
+                  ? { ...m, actions: [...(m.actions ?? []), action] }
+                  : m,
+              ),
+            };
+          }
+          const placeholder: Message = {
+            id: crypto.randomUUID(),
+            role: "ai",
+            content: "",
+            timestamp: now(),
+            actions: [action],
+          };
+          return {
+            ...fin,
+            isAiTyping: true,
+            chatMessages: [...msgs, placeholder],
+          };
+        });
+        return;
+      }
+
+      if (event.toolName === "report_progress") {
+        const text = String(inp.message ?? "").trim();
+        set((s) => {
+          const fin = finalizeStreaming(s);
+          const progressMsg: Message = {
+            id: crypto.randomUUID(),
+            role: "ai",
+            content: text,
+            timestamp: now(),
+          };
+          return {
+            ...fin,
+            isAiTyping: true,
+            chatMessages: [...fin.chatMessages, progressMsg],
+          };
+        });
+        return;
+      }
+
+      set((s) => {
+        const fin = finalizeStreaming(s);
+        const action = deriveActionItem(event.toolName, inp);
+        const msgs = fin.chatMessages;
+        // Only attach within the current turn — never reach back into a previous exchange.
+        const turnStart = currentTurnStart(msgs);
+        let targetIdx = -1;
+        for (let i = msgs.length - 1; i >= turnStart; i--) {
+          if (msgs[i].role === "ai") {
+            targetIdx = i;
+            break;
+          }
+        }
+        if (targetIdx !== -1) {
+          return {
+            ...fin,
+            isAiTyping: true,
+            chatMessages: msgs.map((m, i) =>
+              i === targetIdx
+                ? { ...m, actions: [...(m.actions ?? []), action] }
+                : m,
+            ),
+          };
+        }
+        const placeholder: Message = {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: "",
+          timestamp: now(),
+          actions: [action],
+        };
+        return {
+          ...fin,
+          isAiTyping: true,
+          chatMessages: [...msgs, placeholder],
+        };
+      });
+      return;
+    }
 
     case "file_start": {
       const path = normalizePath(event.path);
@@ -493,7 +801,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
         return {
           files,
           writingPath: path,
-          activity: `Writing ${basename(path)}`,
+          activity: "Working",
           buildStarted: true,
         };
       });
@@ -518,9 +826,11 @@ function applyEvent(set: SetState, event: JobEvent): void {
     }
 
     case "file_done":
-      set(event.headSequence !== undefined
-        ? { writingPath: null, headSequence: event.headSequence }
-        : { writingPath: null });
+      set(
+        event.headSequence !== undefined
+          ? { writingPath: null, headSequence: event.headSequence }
+          : { writingPath: null },
+      );
       return;
 
     case "file_delete": {
@@ -533,17 +843,25 @@ function applyEvent(set: SetState, event: JobEvent): void {
           s.activeFileId === path
             ? (openFiles[openFiles.indexOf(path)] ?? openFiles.at(-1) ?? "")
             : s.activeFileId;
-        return { files, openFiles, activeFileId, headSequence: event.headSequence };
+        return {
+          files,
+          openFiles,
+          activeFileId,
+          headSequence: event.headSequence,
+        };
       });
       return;
     }
+
+    case "tool_res":
+      // Tool results are sent back to the LLM, not rendered in the UI.
+      return;
 
     case "resync":
       // Handled in useJobStream before reaching here; nothing to do in the reducer.
       return;
 
     case "shell_output":
-      set({ activity: event.line.trim() || null });
       return;
 
     case "preview_ready":
@@ -553,20 +871,8 @@ function applyEvent(set: SetState, event: JobEvent): void {
     case "done":
       set((s) => {
         const fin = finalizeStreaming(s);
-        // Attach accumulated actions to the last ai message.
-        const actions = s.pendingActions;
-        let chatMessages = fin.chatMessages;
-        if (actions.length > 0) {
-          let lastAiIdx = -1;
-          for (let i = chatMessages.length - 1; i >= 0; i--) {
-            if (chatMessages[i].role === "ai") { lastAiIdx = i; break; }
-          }
-          if (lastAiIdx !== -1) {
-            chatMessages = chatMessages.map((m, i) =>
-              i === lastAiIdx ? { ...m, actions } : m,
-            );
-          }
-        }
+        // streamingId is now null — flushPendingActions will target the finalized bubble
+        const { chatMessages } = flushPendingActions({ ...s, ...fin });
         return {
           chatMessages,
           streamingId: null,
@@ -580,21 +886,28 @@ function applyEvent(set: SetState, event: JobEvent): void {
       });
       return;
 
-    case "cancelled":
-      set((s) => ({
-        ...finalizeStreaming(s),
-        isAiTyping: false,
-        status: "cancelled",
-        activity: null,
-        writingPath: null,
-        currentJobId: null,
-        pendingActions: [],
-      }));
+    case "cancelled": {
+      set((s) => {
+        const fin = finalizeStreaming(s);
+        const { chatMessages } = flushPendingActions({ ...s, ...fin });
+        return {
+          chatMessages,
+          streamingId: null,
+          isAiTyping: false,
+          status: "cancelled",
+          activity: null,
+          writingPath: null,
+          currentJobId: null,
+          pendingActions: [],
+        };
+      });
       return;
+    }
 
     case "error":
       set((s) => {
         const fin = finalizeStreaming(s);
+        const { chatMessages } = flushPendingActions({ ...s, ...fin });
         const message =
           typeof event.message === "string"
             ? event.message
@@ -607,7 +920,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           writingPath: null,
           currentJobId: null,
           chatMessages: [
-            ...fin.chatMessages,
+            ...chatMessages,
             {
               id: crypto.randomUUID(),
               role: "ai",

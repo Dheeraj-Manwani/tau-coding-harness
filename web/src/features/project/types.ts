@@ -99,6 +99,8 @@ export type JobEvent = BaseEvent &
     | { type: "file_delete"; path: string; headSequence: number }
     | { type: "shell_output"; stream: "stdout" | "stderr"; line: string }
     | { type: "preview_ready"; url: string }
+    | { type: "plan_created"; name: string; description: string; todos: string[] }
+    | { type: "todo_updated"; sno: number; status: string }
     | { type: "resync" }
     | { type: "cancelled" }
     | { type: "done" }

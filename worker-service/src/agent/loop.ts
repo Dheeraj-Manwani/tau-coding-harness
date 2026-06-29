@@ -275,12 +275,6 @@ export async function runAgentLoop(
           });
         }
 
-        await publish(
-          jobId,
-          { type: "tool_res", toolCallId, output },
-          nextIndex(),
-        );
-
         const content = JSON.stringify(output);
         toolResults.push({ tool_call_id: toolCallId, content });
         messages.push({ role: "tool", tool_call_id: toolCallId, content });

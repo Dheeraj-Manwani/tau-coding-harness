@@ -367,7 +367,7 @@ export default function BillingPage() {
     <div className="mx-auto max-w-xl px-4 py-8">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
         className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeftIcon className="size-3.5" />

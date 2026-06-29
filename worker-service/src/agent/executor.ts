@@ -211,24 +211,64 @@ async function deleteFile(
   return { success: true, path: p };
 }
 
-async function runCommand(
+async function createPlan(
   input: unknown,
-  sandbox: Sandbox,
   jobId: string,
   indexer: () => number,
 ) {
-  const command = asString((input as { command?: unknown }).command, "command");
+  const { name, description, todos } = input as {
+    name?: unknown;
+    description?: unknown;
+    todos?: unknown;
+  };
+  const planName = asString(name, "name");
+  const planDescription = asString(description, "description");
+  const todoList =
+    typeof todos === "string" && todos.trim()
+      ? todos
+          .split(";")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [];
 
-  const onStdout = (line: string) =>
-    publish(jobId, { type: "shell_output", stream: "stdout", line }, indexer());
-  const onStderr = (line: string) =>
-    publish(jobId, { type: "shell_output", stream: "stderr", line }, indexer());
+  await publish(
+    jobId,
+    {
+      type: "plan_created",
+      name: planName,
+      description: planDescription,
+      todos: todoList,
+    },
+    indexer(),
+  );
+  return { success: true };
+}
+
+async function updateTodo(
+  input: unknown,
+  jobId: string,
+  indexer: () => number,
+) {
+  const { sno, status } = input as { sno?: unknown; status?: unknown };
+  if (typeof sno !== "number")
+    throw new Error("Tool input 'sno' must be a number");
+  const todoStatus = asString(status, "status");
+
+  await publish(
+    jobId,
+    { type: "todo_updated", sno, status: todoStatus },
+    indexer(),
+  );
+  return { success: true };
+}
+
+async function runCommand(input: unknown, sandbox: Sandbox) {
+  const command = asString((input as { command?: unknown }).command, "command");
 
   if (isLongRunning(command)) {
     const handle = await sandbox.commands.run(command, {
-      onStdout,
-      onStderr,
       background: true,
+      cwd: WORK_DIR,
     });
     return {
       exitCode: 0,
@@ -240,7 +280,7 @@ async function runCommand(
   }
 
   try {
-    const result = await sandbox.commands.run(command, { onStdout, onStderr });
+    const result = await sandbox.commands.run(command, { cwd: WORK_DIR });
     return {
       exitCode: result.exitCode,
       stdout: result.stdout,
@@ -278,7 +318,14 @@ export async function executeTool(
     case "delete_file":
       return deleteFile(input, sandbox, jobId, projectId, indexer);
     case "run_command":
-      return runCommand(input, sandbox, jobId, indexer);
+      return runCommand(input, sandbox);
+    case "create_plan":
+      return createPlan(input, jobId, indexer);
+    case "update_todo":
+      return updateTodo(input, jobId, indexer);
+    case "report_progress":
+    case "report_plan":
+      return { success: true };
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

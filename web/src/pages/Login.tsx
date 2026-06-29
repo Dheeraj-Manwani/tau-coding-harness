@@ -5,6 +5,7 @@ import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import TauLogoAnimation from "@/src/components/tauAnimation";
+import { SiteFooter } from "@/src/components/SiteFooter";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
@@ -42,7 +43,8 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-[100svh] flex-col items-center justify-center px-6">
+    <div className="flex min-h-[100svh] flex-col">
+    <div className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm text-left">
         <TauLogoAnimation
           size={88}
@@ -114,6 +116,8 @@ function Login() {
           </Link>
         </p>
       </div>
+    </div>
+    <SiteFooter />
     </div>
   );
 }

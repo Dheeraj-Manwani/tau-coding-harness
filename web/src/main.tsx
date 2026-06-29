@@ -19,6 +19,9 @@ import OAuthCallback from "./pages/OAuthCallback.tsx";
 import VerifyEmail from "./pages/VerifyEmail.tsx";
 import VerifyPending from "./pages/VerifyPending.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import PrivacyPage from "./pages/Privacy.tsx";
+import TermsPage from "./pages/Terms.tsx";
+import PricingPage from "./pages/Pricing.tsx";
 
 const router = createBrowserRouter([
   {
@@ -48,6 +51,9 @@ const router = createBrowserRouter([
     children: [{ path: "/verify-pending", element: <VerifyPending /> }],
   },
   { path: "/verify-email", element: <VerifyEmail /> },
+  { path: "/privacy", element: <PrivacyPage /> },
+  { path: "/terms", element: <TermsPage /> },
+  { path: "/pricing", element: <PricingPage /> },
   { path: "*", element: <NotFound /> },
 ]);
 

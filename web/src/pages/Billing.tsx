@@ -397,6 +397,16 @@ export default function BillingPage() {
       <p className="mt-8 text-center text-xs text-muted-foreground">
         <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier gives 50 credits/day. PRO gives 5,000/month.
       </p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">
+        Payments processed by Razorpay. No prorated refunds for partial billing periods. See our{" "}
+        <a href="/terms" className="underline hover:text-foreground">
+          Cancellation &amp; Refund Policy
+        </a>{" "}
+        · Questions?{" "}
+        <a href="mailto:support@usetau.dev" className="underline hover:text-foreground">
+          support@usetau.dev
+        </a>
+      </p>
     </div>
   );
 }

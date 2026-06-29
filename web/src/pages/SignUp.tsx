@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
+import { SiteFooter } from "@/src/components/SiteFooter";
 import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -42,7 +43,8 @@ function SignUp() {
   };
 
   return (
-    <div className="flex min-h-[100svh] flex-col items-center justify-center px-6">
+    <div className="flex min-h-[100svh] flex-col">
+    <div className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm text-left">
         <TauLogoAnimation
           size={88}
@@ -129,7 +131,21 @@ function SignUp() {
             Sign in
           </Link>
         </p>
+
+        <p className="mt-5 text-center text-xs text-muted-foreground">
+          By creating an account you agree to our{" "}
+          <Link to="/terms" className="underline hover:text-foreground">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
+    </div>
+    <SiteFooter />
     </div>
   );
 }

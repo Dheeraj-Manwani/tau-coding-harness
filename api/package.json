@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun src/index.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "generate": "prisma generate",

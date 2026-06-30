@@ -56,10 +56,21 @@ const worker = new Worker<JobPayload>(
 
       await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
 
-      const sandbox = await provisionSandbox(projectId, userId, jobId);
-
       const startIndex = await redis.llen(`job:${jobId}:events`);
-      await runAgentLoop(jobId, projectId, userId, prompt, sandbox, startIndex);
+      const hasFiles =
+        (await prisma.projectFile.count({ where: { projectId } })) > 0;
+      const initialSandbox = hasFiles
+        ? await provisionSandbox(projectId, userId, jobId)
+        : undefined;
+
+      await runAgentLoop(
+        jobId,
+        projectId,
+        userId,
+        prompt,
+        startIndex,
+        initialSandbox,
+      );
 
       if (!cancelled) {
         await prisma.job.update({

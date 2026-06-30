@@ -7,6 +7,7 @@ export const silentTools = new Set([
   "report_plan",
   "create_plan",
   "update_todo",
+  "ask_user",
 ]);
 
 export const TOOL_DEFINITIONS: Tool[] = [
@@ -161,7 +162,7 @@ export const TOOL_DEFINITIONS: Tool[] = [
           todos: {
             type: "string",
             description:
-              "Todo points for the plan seperated by ';'. Ex: Build Hero Component;Build Navbar;Build Auth Pages",
+              "Todo points for the plan separated by commas (,). Each todo should describe a feature the user will see (e.g. 'Show product catalog', 'Add shopping cart page'). Never include technical terms like store, state, component, reducer, context, localStorage, API, or library names.",
           },
         },
         required: ["name", "description"],
@@ -190,6 +191,45 @@ export const TOOL_DEFINITIONS: Tool[] = [
           },
         },
         required: ["sno", "status"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "ask_user",
+      description:
+        "Pause and ask the user a clarifying question before proceeding. Use when a key decision requires user input (e.g. preferred framework, color scheme, feature scope). The user can pick one of the provided options or type a free-form answer.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "The question to ask the user.",
+          },
+          options: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Suggested answer options shown as clickable chips. The user may also type a custom answer.",
+          },
+        },
+        required: ["question", "options"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "provision_sandbox",
+      description:
+        "Call this to provision a sandbox with boilderplate files. Without this, you won't be able to call create_file, read_file, edit_file etc",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
         additionalProperties: false,
       },
     },

@@ -18,7 +18,9 @@ export type ActionKind =
   | "run_command"
   | "report_progress"
   | "create_plan"
-  | "update_todo";
+  | "update_todo"
+  | "provision_sandbox"
+  | "ask_user";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -84,6 +86,7 @@ function truncateLabel(s: string, max = 72): string {
 function deriveActionItem(
   toolName: string,
   input: Record<string, unknown>,
+  planSnapshot: { sno: number; label: string; status: string }[] = [],
 ): ActionItem {
   const path = String(input.path ?? "");
   const file = basename(path);
@@ -108,7 +111,7 @@ function deriveActionItem(
       const todosStr = String(input.todos ?? "");
       const todos = todosStr.trim()
         ? todosStr
-            .split(";")
+            .split(",")
             .map((t) => t.trim())
             .filter(Boolean)
         : [];
@@ -118,12 +121,23 @@ function deriveActionItem(
         meta: { description: String(input.description ?? ""), todos },
       };
     }
-    case "update_todo":
+    case "update_todo": {
+      const sno = Number(input.sno);
+      const status = String(input.status ?? "");
       return {
         kind: "update_todo",
-        label: "Updated Todo",
-        meta: { sno: Number(input.sno), status: String(input.status ?? "") },
+        label: `Item ${sno} marked ${status}`,
+        meta: { sno, status, ...(planSnapshot.length ? { todos: planSnapshot } : {}) },
       };
+    }
+    case "provision_sandbox":
+      return {
+        kind: "provision_sandbox",
+        label: "Started Sandbox",
+      };
+    case "ask_user": {
+      return { kind: "ask_user", label: "Asked Question" };
+    }
     default:
       return { kind: "create_file", label: truncateLabel(toolName) };
   }
@@ -145,10 +159,9 @@ function deriveActionItem(
  */
 function toConversation(rows: ProjectMessage[]): Message[] {
   const messages: Message[] = [];
-  // First index in `messages` that belongs to the current AI turn.
-  // Reset each time a USER message is pushed so actions can't bleed
-  // back into a previous turn's bubbles.
   let turnStart = 0;
+  // Running plan state — rebuilt as create_plan / update_todo calls are replayed.
+  let planTodos: { sno: number; label: string; status: string }[] = [];
 
   for (const row of rows) {
     const ts = Date.parse(row.createdAt) || now();
@@ -205,9 +218,36 @@ function toConversation(rows: ProjectMessage[]): Message[] {
               content: text,
               timestamp: ts,
             });
+        } else if (name === "ask_user") {
+          const text = String(input.question ?? "").trim();
+          if (text)
+            messages.push({
+              id: `${row.id}_q${j}`,
+              role: "ai",
+              content: text,
+              timestamp: ts,
+            });
         } else {
+          // Maintain running plan state so update_todo can snapshot the full list.
+          if (name === "create_plan") {
+            const todosStr = String(input.todos ?? "");
+            planTodos = todosStr.trim()
+              ? todosStr.split(",").map((t, i) => ({
+                  sno: i + 1,
+                  label: t.trim(),
+                  status: "pending",
+                }))
+              : [];
+          } else if (name === "update_todo") {
+            const sno = Number(input.sno);
+            const status = String(input.status ?? "");
+            planTodos = planTodos.map((t) =>
+              t.sno === sno ? { ...t, status } : t,
+            );
+          }
+
           // Attach to the nearest ai message within this turn.
-          const action = deriveActionItem(name, input);
+          const action = deriveActionItem(name, input, planTodos);
           let targetIdx = -1;
           for (let i = messages.length - 1; i >= turnStart; i--) {
             if (messages[i].role === "ai") {
@@ -220,6 +260,17 @@ function toConversation(rows: ProjectMessage[]): Message[] {
               ...messages[targetIdx],
               actions: [...(messages[targetIdx].actions ?? []), action],
             };
+          } else {
+            // No preceding AI bubble in this turn — create a placeholder so
+            // the action isn't silently dropped (mirrors the live streaming
+            // tool_req handler's fallback).
+            messages.push({
+              id: `${row.id}_ph${j}`,
+              role: "ai",
+              content: "",
+              timestamp: ts,
+              actions: [action],
+            });
           }
         }
       }
@@ -271,6 +322,9 @@ interface ProjectState {
   // Plan tracker (active job only; reset on new job)
   currentPlan: Plan | null;
 
+  // Pending ask_user question waiting for the user's response.
+  pendingQuestion: { question: string; options: string[] } | null;
+
   // Generated app
   files: Record<string, ProjectFile>;
   headSequence: number | null;
@@ -312,6 +366,7 @@ interface ProjectState {
   /** Apply one live event from the ws-gateway stream. */
   applyEvent: (event: JobEvent) => void;
   setCanceller: (fn: (() => void) | null) => void;
+  answerPendingQuestion: (answer: string) => void;
 
   toggleChat: () => void;
   setChatOpen: (open: boolean) => void;
@@ -342,6 +397,7 @@ const FRESH = {
   hasMoreMessages: false,
   oldestSequence: null as number | null,
   currentPlan: null as Plan | null,
+  pendingQuestion: null as { question: string; options: string[] } | null,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -471,6 +527,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   applyEvent: (event) => applyEvent(set, event),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
+  answerPendingQuestion: (answer) =>
+    set((s) => ({
+      isAiTyping: true,
+      pendingQuestion: null,
+      chatMessages: [...s.chatMessages, userMessage(answer)],
+    })),
 
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   setChatOpen: (isChatOpen) => set({ isChatOpen }),
@@ -651,6 +713,25 @@ function applyEvent(set: SetState, event: JobEvent): void {
       });
       return;
 
+    case "ask_user": {
+      set((s) => {
+        const fin = finalizeStreaming(s);
+        const questionBubble: Message = {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: event.question,
+          timestamp: now(),
+        };
+        return {
+          ...fin,
+          isAiTyping: false,
+          chatMessages: [...fin.chatMessages, questionBubble],
+          pendingQuestion: { question: event.question, options: event.options },
+        };
+      });
+      return;
+    }
+
     case "tool_req": {
       const inp = event.input as Record<string, unknown>;
 
@@ -667,7 +748,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
             const todosStr = String(inp.todos ?? "");
             const todos = todosStr.trim()
               ? todosStr
-                  .split(";")
+                  .split(",")
                   .map((t) => t.trim())
                   .filter(Boolean)
               : [];
@@ -871,7 +952,6 @@ function applyEvent(set: SetState, event: JobEvent): void {
     case "done":
       set((s) => {
         const fin = finalizeStreaming(s);
-        // streamingId is now null — flushPendingActions will target the finalized bubble
         const { chatMessages } = flushPendingActions({ ...s, ...fin });
         return {
           chatMessages,
@@ -882,6 +962,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           writingPath: null,
           currentJobId: null,
           pendingActions: [],
+          pendingQuestion: null,
         };
       });
       return;
@@ -899,6 +980,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           writingPath: null,
           currentJobId: null,
           pendingActions: [],
+          pendingQuestion: null,
         };
       });
       return;
@@ -929,6 +1011,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
             },
           ],
           pendingActions: [],
+          pendingQuestion: null,
         };
       });
       return;

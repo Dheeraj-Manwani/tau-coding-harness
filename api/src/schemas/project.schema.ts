@@ -35,6 +35,15 @@ export const projectFileQuerySchema = z.object({
   path: z.string().min(1, "path is required"),
 });
 
+export const jobIdParamSchema = z.object({
+  projectId: z.uuid("Invalid project id"),
+  jobId: z.uuid("Invalid job id"),
+});
+
+export const jobAnswerSchema = z.object({
+  answer: z.string().min(1, "Answer can't be empty").max(10_000),
+});
+
 export type MessageRole = z.infer<typeof messageRole>;
 export type MessageType = z.infer<typeof messageType>;
 export type MessageInput = z.infer<typeof messageSchema>;

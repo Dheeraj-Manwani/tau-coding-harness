@@ -110,6 +110,17 @@ export function useProjectTree(projectId: string | undefined) {
   });
 }
 
+/** `POST /project/:id/jobs/:jobId/answer` — submit a user answer to a paused ask_user tool call. */
+export function submitJobAnswer(
+  projectId: string,
+  jobId: string,
+  answer: string,
+): Promise<void> {
+  return api
+    .post(`/project/${projectId}/jobs/${jobId}/answer`, { answer })
+    .then(() => undefined);
+}
+
 /** `GET /project/:id/file?path=…` — lazy-load a single file's body.
  *  Only fetches when `path` is non-empty and `enabled` is true. */
 export function useProjectFile(

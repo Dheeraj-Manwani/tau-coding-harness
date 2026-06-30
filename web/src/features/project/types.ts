@@ -101,6 +101,7 @@ export type JobEvent = BaseEvent &
     | { type: "preview_ready"; url: string }
     | { type: "plan_created"; name: string; description: string; todos: string[] }
     | { type: "todo_updated"; sno: number; status: string }
+    | { type: "ask_user"; question: string; options: string[] }
     | { type: "resync" }
     | { type: "cancelled" }
     | { type: "done" }

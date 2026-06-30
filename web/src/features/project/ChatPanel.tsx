@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDownIcon,
+  ArrowUpIcon,
   BookOpen,
+  Box,
   BrainIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -15,13 +23,14 @@ import {
   FileX,
   HomeIcon,
   ListChecksIcon,
+  Loader2Icon,
+  MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
   SquareCheckBigIcon,
   TerminalIcon,
   Trash2Icon,
   XIcon,
-  ZapIcon,
 } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
@@ -37,6 +46,7 @@ import {
 } from "@/src/stores/useProjectStore";
 import {
   fetchOlderMessages,
+  submitJobAnswer,
   useAddMessage,
   useProject,
 } from "@/src/features/project/api";
@@ -78,7 +88,9 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
 
   if (kind === "read_file") return <BookOpen className="size-3.5" />;
   if (kind === "delete_file") return <FileX className="size-3.5" />;
-
+  if (kind === "provision_sandbox") return <Box className="size-3.5" />;
+  if (kind === "ask_user")
+    return <MessageCircleQuestionMark className="size-3.5" />;
   return <FileIcon className="size-3.5" />;
 }
 
@@ -135,30 +147,43 @@ function ActionDetail({ action }: { action: ActionItem }) {
           todos?: { sno: number; label: string; status: string }[];
         }
       | undefined;
-    if (!meta?.todos?.length) return null;
-    return (
-      <div className="space-y-1.5">
-        {meta.todos.map((todo) => {
-          const s = todo.status as keyof typeof TODO_STATUS_CFG;
-          const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
-          return (
-            <div
-              key={todo.sno}
-              className="flex items-center gap-2 text-[var(--silver-700)]"
-            >
-              <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
-              <span
-                className={cn(
-                  todo.status === "done" ? "line-through opacity-50" : "",
-                )}
+
+    // Full plan snapshot available (live streaming path).
+    if (meta?.todos?.length) {
+      return (
+        <div className="space-y-1.5">
+          {meta.todos.map((todo) => {
+            const s = todo.status as keyof typeof TODO_STATUS_CFG;
+            const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
+            return (
+              <div
+                key={todo.sno}
+                className="flex items-center gap-2 text-[var(--silver-700)]"
               >
-                {todo.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    );
+                <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
+                <span className={cn(todo.status === "done" ? "line-through opacity-50" : "")}>
+                  {todo.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Reload path — only sno + status available.
+    if (meta?.sno !== undefined) {
+      const s = (meta.status ?? "pending") as keyof typeof TODO_STATUS_CFG;
+      const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
+      return (
+        <div className="flex items-center gap-2 text-[var(--silver-700)]">
+          <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
+          <span>Item #{meta.sno} marked as {meta.status}</span>
+        </div>
+      );
+    }
+
+    return null;
   }
 
   return null;
@@ -211,10 +236,7 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
       <div>
         {actions.map((action, i) => {
           const isExpandable =
-            action.kind === "create_plan" ||
-            (action.kind === "update_todo" &&
-              !!(action.meta as { todos?: unknown[] } | undefined)?.todos
-                ?.length);
+            action.kind === "create_plan" || action.kind === "update_todo";
           const isOpen = expanded.has(i);
           return (
             <div key={i}>
@@ -458,6 +480,94 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   );
 }
 
+function AskUserPrompt({
+  projectId,
+  jobId,
+  options,
+  onAnswered,
+}: {
+  projectId: string;
+  jobId: string;
+  options: string[];
+  onAnswered: (answer: string) => void;
+}) {
+  const [custom, setCustom] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (answer: string) => {
+    if (!answer.trim() || submitting) return;
+    setSubmitting(true);
+    // Add the user bubble immediately so it appears before the AI's response,
+    // not after (the HTTP round-trip would otherwise let streaming events arrive
+    // first and push the bubble below the AI's reply).
+    onAnswered(answer.trim());
+    try {
+      await submitJobAnswer(projectId, jobId, answer.trim());
+    } catch {
+      toast.error("Failed to send your answer. Please try again.");
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-silver-400/40 bg-space-surface p-2 shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10">
+      {/* <p className="px-2 pt-1 pb-2 text-xs text-muted-foreground border-b border-white/5 mb-2">
+        {question}
+      </p> */}
+      {options.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5 px-2 pt-1">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              disabled={submitting}
+              onClick={() => void submit(opt)}
+              className="rounded-lg border border-silver-400/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-silver-600/60 hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <input
+        autoFocus
+        type="text"
+        value={custom}
+        onChange={(e) => setCustom(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void submit(custom);
+          }
+        }}
+        disabled={submitting}
+        placeholder="Or type a custom answer…"
+        className="w-full bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+      />
+
+      <div className="mt-1 flex justify-end">
+        <button
+          type="button"
+          disabled={!custom.trim() || submitting}
+          onClick={() => void submit(custom)}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-lg transition-[background-color,transform]",
+            custom.trim()
+              ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
+              : "cursor-not-allowed bg-space-overlay text-silver-600",
+          )}
+        >
+          {submitting ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <ArrowUpIcon className="size-4" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const { id: projectId } = useParams<{ id: string }>();
   const messages = useProjectStore((s) => s.chatMessages);
@@ -472,6 +582,9 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const startJob = useProjectStore((s) => s.startJob);
   const cancelStream = useProjectStore((s) => s.cancelStream);
   const toggleChat = useProjectStore((s) => s.toggleChat);
+  const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
+  const answerPendingQuestion = useProjectStore((s) => s.answerPendingQuestion);
+  const currentJobId = useProjectStore((s) => s.currentJobId);
 
   const addMessage = useAddMessage(projectId ?? "");
   const openOutOfCredits = useBillingStore((s) => s.open);
@@ -520,11 +633,21 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   }, [messages, isAiTyping]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (isLoadingOlder || !hasMoreMessages || !projectId || oldestSequence === null) return;
+    if (
+      isLoadingOlder ||
+      !hasMoreMessages ||
+      !projectId ||
+      oldestSequence === null
+    )
+      return;
     setIsLoadingOlder(true);
-    scrollHeightBeforePrependRef.current = scrollRef.current?.scrollHeight ?? null;
+    scrollHeightBeforePrependRef.current =
+      scrollRef.current?.scrollHeight ?? null;
     try {
-      const { messages: older, hasMore } = await fetchOlderMessages(projectId, oldestSequence);
+      const { messages: older, hasMore } = await fetchOlderMessages(
+        projectId,
+        oldestSequence,
+      );
       older.forEach((m) => prependedIdsRef.current.add(m.id));
       prependMessages(older, hasMore);
     } catch {
@@ -532,7 +655,13 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     } finally {
       setIsLoadingOlder(false);
     }
-  }, [isLoadingOlder, hasMoreMessages, projectId, oldestSequence, prependMessages]);
+  }, [
+    isLoadingOlder,
+    hasMoreMessages,
+    projectId,
+    oldestSequence,
+    prependMessages,
+  ]);
 
   // When the loaded messages don't fill the viewport there is no scroll event
   // to trigger the normal scroll-up pagination — auto-load until they do.
@@ -541,7 +670,13 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     const el = scrollRef.current;
     if (!el || el.scrollTop >= 80) return;
     void loadOlderMessages();
-  }, [messages, isStreaming, isLoadingOlder, hasMoreMessages, loadOlderMessages]);
+  }, [
+    messages,
+    isStreaming,
+    isLoadingOlder,
+    hasMoreMessages,
+    loadOlderMessages,
+  ]);
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -614,7 +749,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="scrollbar-thin h-full space-y-5 overflow-y-auto px-4 py-3"
+          className="h-full space-y-5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {isLoadingOlder && (
             <div className="flex justify-center py-2">
@@ -660,19 +795,29 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
       </div>
 
       <div className="border-[var(--silver-200)] p-3">
-        <PromptComposer
-          value={draft}
-          onChange={setDraft}
-          onSubmit={submit}
-          onStop={isStreaming && cancelStream ? cancelStream : undefined}
-          placeholder={
-            isStreaming ? "tau is working…" : "Ask tau to change something…"
-          }
-          minRows={1}
-          maxRows={4}
-          isSubmitting={!canSend && draft.trim().length > 0}
-          compact
-        />
+        {pendingQuestion && currentJobId && projectId ? (
+          <AskUserPrompt
+            projectId={projectId}
+            jobId={currentJobId}
+            // question={pendingQuestion.question}
+            options={pendingQuestion.options}
+            onAnswered={answerPendingQuestion}
+          />
+        ) : (
+          <PromptComposer
+            value={draft}
+            onChange={setDraft}
+            onSubmit={submit}
+            onStop={isStreaming && cancelStream ? cancelStream : undefined}
+            placeholder={
+              isStreaming ? "tau is working…" : "Ask tau to change something…"
+            }
+            minRows={1}
+            maxRows={4}
+            isSubmitting={!canSend && draft.trim().length > 0}
+            compact
+          />
+        )}
       </div>
     </div>
   );

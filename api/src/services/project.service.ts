@@ -8,6 +8,7 @@ import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
 import { reserveInTx, InsufficientCreditsError } from "../lib/credits";
 import { getBlobText, deleteProjectBlobs } from "../lib/s3";
+import { redis } from "../lib/redis";
 import {
   MessageRole,
   MessageType,
@@ -41,7 +42,7 @@ async function generateProjectName(message: string): Promise<string> {
         {
           role: "system",
           content:
-            "You generate concise names for software projects. Given the user's first request, reply with ONLY a short, descriptive title of 3-6 words in Title Case. No quotes, no trailing punctuation, no explanation.",
+            "You generate concise names for software projects. Given the user's first request, reply with ONLY a short, descriptive title of 3-6 words in Title Case. No quotes, no trailing punctuation, no explanation. If the request is unclear, empty, or doesn't make sense, default to 'New Project' as the name.",
         },
         { role: "user", content: message },
       ],
@@ -136,40 +137,43 @@ export async function addMessage(
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  const active = await projectRepo.findActiveJob(projectId);
-  if (active) throw Errors.conflict("generation in progress");
+  const jobId = await prisma.$transaction(
+    async (tx) => {
+      const active = await projectRepo.findActiveJob(projectId, tx);
+      if (active) throw Errors.conflict("generation in progress");
 
-  const jobId = await prisma.$transaction(async (tx) => {
-    const job = await projectRepo.createJob(tx, {
-      projectId,
-      prompt: content,
-      type: JobType.GENERATION,
-    });
+      const job = await projectRepo.createJob(tx, {
+        projectId,
+        prompt: content,
+        type: JobType.GENERATION,
+      });
 
-    if (env.CREDITS_ENFORCE) {
-      try {
-        await reserveInTx(tx, userId, job.id, {
-          maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
-        });
-      } catch (err) {
-        if (err instanceof InsufficientCreditsError) {
-          throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
+      if (env.CREDITS_ENFORCE) {
+        try {
+          await reserveInTx(tx, userId, job.id, {
+            maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
+          });
+        } catch (err) {
+          if (err instanceof InsufficientCreditsError) {
+            throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
+          }
+          throw err;
         }
-        throw err;
       }
-    }
 
-    const sequence = await getNextSequence(tx, projectId);
-    await projectRepo.createMessage(tx, {
-      projectId,
-      role: MessageRole.USER,
-      type: MessageType.USER,
-      content: userMessageContent(content),
-      sequence,
-    });
+      const sequence = await getNextSequence(tx, projectId);
+      await projectRepo.createMessage(tx, {
+        projectId,
+        role: MessageRole.USER,
+        type: MessageType.USER,
+        content: userMessageContent(content),
+        sequence,
+      });
 
-    return job.id;
-  });
+      return job.id;
+    },
+    { isolationLevel: "Serializable" },
+  );
 
   const queueJobId = await enqueueJob({
     jobId,
@@ -253,6 +257,26 @@ export async function getProjectTree(projectId: string, userId: string) {
     files: project.files.map((f) => ({ path: f.path, sizeBytes: f.sizeBytes })),
     headSequence: project.headSequence,
   };
+}
+
+export async function submitJobAnswer(
+  projectId: string,
+  jobId: string,
+  userId: string,
+  answer: string,
+): Promise<void> {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId)
+    throw Errors.forbidden("You do not have access to this project");
+
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  if (!job || job.projectId !== projectId)
+    throw Errors.notFound("Job not found");
+  if (job.status !== "RUNNING")
+    throw Errors.conflict("Job is not waiting for a response");
+
+  await redis.lpush(`job:${jobId}:user_response`, JSON.stringify({ answer }));
 }
 
 export async function deleteProject(

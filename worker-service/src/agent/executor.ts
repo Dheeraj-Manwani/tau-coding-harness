@@ -1,10 +1,15 @@
 import { createHash } from "crypto";
 import { CommandExitError } from "e2b";
+import { provisionSandbox } from "../lib/sandbox";
 import type { Sandbox } from "../lib/sandbox";
 import { publish } from "../lib/publish";
+import { redis } from "../lib/redis";
+import type { SandboxRef } from "./loop";
 import { prisma } from "../lib/prisma";
 import { putBlob } from "../lib/s3";
 import { allocateHeadSequence } from "../lib/headSequence";
+import { getNextSequence } from "../lib/sequence";
+import { MessageRole, MessageType } from "../generated/prisma/enums";
 
 const CHUNK_SIZE = 80;
 const WORK_DIR = "/home/user/app";
@@ -226,7 +231,7 @@ async function createPlan(
   const todoList =
     typeof todos === "string" && todos.trim()
       ? todos
-          .split(";")
+          .split(/[,，;]/)
           .map((t) => t.trim())
           .filter(Boolean)
       : [];
@@ -301,13 +306,76 @@ async function runCommand(input: unknown, sandbox: Sandbox) {
 export async function executeTool(
   name: string,
   input: unknown,
-  sandbox: Sandbox,
+  sandboxRef: SandboxRef,
   jobId: string,
   projectId: string,
   userId: string,
   indexer: () => number,
 ): Promise<unknown> {
   console.log("tool call :: ", name, input);
+
+  switch (name) {
+    case "ask_user": {
+      const { question, options } = input as {
+        question?: unknown;
+        options?: unknown;
+      };
+      const q = asString(question, "question");
+      const opts = Array.isArray(options)
+        ? (options as unknown[]).map((o) => asString(o, "options[]"))
+        : [];
+
+      await publish(jobId, { type: "ask_user", question: q, options: opts }, indexer());
+
+      const responseKey = `job:${jobId}:user_response`;
+      const conn = redis.duplicate();
+      try {
+        const result = await conn.blpop(responseKey, 600); // 10 min timeout
+        if (!result) return { answer: null, timedOut: true };
+        const { answer } = JSON.parse(result[1]) as { answer: string };
+
+        // Persist the user's reply so the conversation survives a page reload.
+        await prisma.$transaction(async (tx) => {
+          const seq = await getNextSequence(tx, projectId);
+          await tx.message.create({
+            data: {
+              projectId,
+              jobId,
+              role: MessageRole.USER,
+              type: MessageType.USER,
+              content: [{ type: "text", text: answer }],
+              sequence: seq,
+            },
+          });
+        });
+
+        return { answer };
+      } finally {
+        await conn.quit();
+      }
+    }
+    case "provision_sandbox": {
+      if (!sandboxRef.current) {
+        sandboxRef.current = await provisionSandbox(projectId, userId, jobId);
+      }
+      return { success: true };
+    }
+    case "create_plan":
+      return createPlan(input, jobId, indexer);
+    case "update_todo":
+      return updateTodo(input, jobId, indexer);
+    case "report_progress":
+    case "report_plan":
+      return { success: true };
+    default:
+      break;
+  }
+
+  const sandbox = sandboxRef.current;
+  if (!sandbox) {
+    return { error: "Sandbox not provisioned. Call provision_sandbox first." };
+  }
+
   switch (name) {
     case "create_file":
       return createFile(input, sandbox, jobId, projectId, userId, indexer);
@@ -319,13 +387,6 @@ export async function executeTool(
       return deleteFile(input, sandbox, jobId, projectId, indexer);
     case "run_command":
       return runCommand(input, sandbox);
-    case "create_plan":
-      return createPlan(input, jobId, indexer);
-    case "update_todo":
-      return updateTodo(input, jobId, indexer);
-    case "report_progress":
-    case "report_plan":
-      return { success: true };
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

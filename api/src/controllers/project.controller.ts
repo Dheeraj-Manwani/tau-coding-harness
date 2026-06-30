@@ -6,6 +6,8 @@ import {
   listMessagesQuerySchema,
   listProjectsQuerySchema,
   projectFileQuerySchema,
+  jobIdParamSchema,
+  jobAnswerSchema,
 } from "../schemas/project.schema";
 import * as projectService from "../services/project.service";
 import { requireUserId } from "../middleware/auth.middleware";
@@ -115,6 +117,22 @@ export const deleteProject = async (
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
     await projectService.deleteProject(projectId, userId);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const submitJobAnswer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId, jobId } = parse(jobIdParamSchema, req.params);
+    const { answer } = parse(jobAnswerSchema, req.body);
+    await projectService.submitJobAnswer(projectId, jobId, userId, answer);
     res.status(204).send();
   } catch (err) {
     next(err);

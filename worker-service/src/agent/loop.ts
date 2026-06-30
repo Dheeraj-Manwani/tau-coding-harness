@@ -7,6 +7,8 @@ import { meter } from "../lib/credits";
 import { publish, makeIndexer } from "../lib/publish";
 import type { Sandbox } from "../lib/sandbox";
 import { TOOL_DEFINITIONS } from "./tools";
+
+export type SandboxRef = { current: Sandbox | null };
 import { executeTool } from "./executor";
 import {
   MessageRole,
@@ -85,10 +87,11 @@ export async function runAgentLoop(
   projectId: string,
   userId: string,
   prompt: string,
-  sandbox: Sandbox,
   startIndex = 1,
+  initialSandbox?: Sandbox,
 ): Promise<void> {
   void prompt;
+  const sandboxRef: SandboxRef = { current: initialSandbox ?? null };
   const nextIndex = makeIndexer(startIndex);
 
   try {
@@ -188,18 +191,20 @@ export async function runAgentLoop(
       }
 
       if (!isToolTurn) {
-        const host = sandbox.getHost(PREVIEW_PORT);
-        const url = `https://${host}`;
-        await publish(jobId, { type: "preview_ready", url }, nextIndex());
+        if (sandboxRef.current) {
+          const host = sandboxRef.current.getHost(PREVIEW_PORT);
+          const url = `https://${host}`;
+          await publish(jobId, { type: "preview_ready", url }, nextIndex());
 
-        await prisma.fragment.create({
-          data: {
-            message: { connect: { id: assistantMessageId } },
-            job: { connect: { id: jobId } },
-            sandboxUrl: url,
-            title: deriveTitle(assistant.content),
-          },
-        });
+          await prisma.fragment.create({
+            data: {
+              message: { connect: { id: assistantMessageId } },
+              job: { connect: { id: jobId } },
+              sandboxUrl: url,
+              title: deriveTitle(assistant.content),
+            },
+          });
+        }
 
         await publish(jobId, { type: "done" }, nextIndex());
         break;
@@ -248,7 +253,7 @@ export async function runAgentLoop(
           output = await executeTool(
             toolName,
             input,
-            sandbox,
+            sandboxRef,
             jobId,
             projectId,
             userId,

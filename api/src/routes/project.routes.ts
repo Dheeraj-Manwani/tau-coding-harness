@@ -8,6 +8,7 @@ import {
   deleteProject,
   getProjectTree,
   getProjectFile,
+  submitJobAnswer,
 } from "../controllers/project.controller";
 
 const router = Router();
@@ -20,5 +21,6 @@ router.post("/:projectId/message", addMessage);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
+router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);
 
 export default router;

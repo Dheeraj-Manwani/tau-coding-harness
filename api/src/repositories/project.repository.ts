@@ -78,8 +78,11 @@ export async function listProjectsByUser(
   return { projects, nextCursor };
 }
 
-export function findActiveJob(projectId: string): Promise<Job | null> {
-  return prisma.job.findFirst({
+export function findActiveJob(
+  projectId: string,
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<Job | null> {
+  return client.job.findFirst({
     where: {
       projectId,
       status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] },

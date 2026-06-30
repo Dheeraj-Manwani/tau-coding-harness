@@ -22,7 +22,6 @@ import {
   FilePlus,
   FileX,
   HomeIcon,
-  ListChecksIcon,
   Loader2Icon,
   MessageCircleQuestionMark,
   MinusIcon,
@@ -161,7 +160,11 @@ function ActionDetail({ action }: { action: ActionItem }) {
                 className="flex items-center gap-2 text-[var(--silver-700)]"
               >
                 <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
-                <span className={cn(todo.status === "done" ? "line-through opacity-50" : "")}>
+                <span
+                  className={cn(
+                    todo.status === "done" ? "line-through opacity-50" : "",
+                  )}
+                >
                   {todo.label}
                 </span>
               </div>
@@ -178,7 +181,9 @@ function ActionDetail({ action }: { action: ActionItem }) {
       return (
         <div className="flex items-center gap-2 text-[var(--silver-700)]">
           <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
-          <span>Item #{meta.sno} marked as {meta.status}</span>
+          <span>
+            Item #{meta.sno} marked as {meta.status}
+          </span>
         </div>
       );
     }

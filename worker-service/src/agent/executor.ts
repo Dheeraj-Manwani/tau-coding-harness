@@ -8,8 +8,6 @@ import type { SandboxRef } from "./loop";
 import { prisma } from "../lib/prisma";
 import { putBlob } from "../lib/s3";
 import { allocateHeadSequence } from "../lib/headSequence";
-import { getNextSequence } from "../lib/sequence";
-import { MessageRole, MessageType } from "../generated/prisma/enums";
 
 const CHUNK_SIZE = 80;
 const WORK_DIR = "/home/user/app";
@@ -334,21 +332,9 @@ export async function executeTool(
         if (!result) return { answer: null, timedOut: true };
         const { answer } = JSON.parse(result[1]) as { answer: string };
 
-        // Persist the user's reply so the conversation survives a page reload.
-        await prisma.$transaction(async (tx) => {
-          const seq = await getNextSequence(tx, projectId);
-          await tx.message.create({
-            data: {
-              projectId,
-              jobId,
-              role: MessageRole.USER,
-              type: MessageType.USER,
-              content: [{ type: "text", text: answer }],
-              sequence: seq,
-            },
-          });
-        });
-
+        // The answer is returned as this tool call's result and persisted as
+        // part of the standard TOOL_RES row by the agent loop — no separate
+        // USER message row here, or the UI would render it twice.
         return { answer };
       } finally {
         await conn.quit();

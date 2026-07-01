@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot src/index.ts",
+    "dev:debug": "bun --inspect src/index.ts",
     "start": "bun run src/index.ts",
     "test": "bun test",
     "generate": "prisma generate",

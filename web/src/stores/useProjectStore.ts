@@ -162,6 +162,9 @@ function toConversation(rows: ProjectMessage[]): Message[] {
   let turnStart = 0;
   // Running plan state — rebuilt as create_plan / update_todo calls are replayed.
   let planTodos: { sno: number; label: string; status: string }[] = [];
+  // tool_call_id -> true for ask_user calls, so a later TOOL_RES row can be
+  // rendered as the user's reply instead of being skipped.
+  const askUserToolCallIds = new Set<string>();
 
   for (const row of rows) {
     const ts = Date.parse(row.createdAt) || now();
@@ -182,7 +185,10 @@ function toConversation(rows: ProjectMessage[]): Message[] {
     } else if (row.role === "ASSISTANT" && row.type === "TOOL_REQ") {
       const stored = row.content as {
         content?: string | null;
-        tool_calls?: Array<{ function: { name: string; arguments: string } }>;
+        tool_calls?: Array<{
+          id: string;
+          function: { name: string; arguments: string };
+        }>;
       } | null;
 
       // Render any text the LLM wrote alongside its tool calls.
@@ -219,6 +225,7 @@ function toConversation(rows: ProjectMessage[]): Message[] {
               timestamp: ts,
             });
         } else if (name === "ask_user") {
+          askUserToolCallIds.add(tc.id);
           const text = String(input.question ?? "").trim();
           if (text)
             messages.push({
@@ -280,8 +287,31 @@ function toConversation(rows: ProjectMessage[]): Message[] {
       if (text.trim()) {
         messages.push({ id: row.id, role: "ai", content: text, timestamp: ts });
       }
+    } else if (row.type === "TOOL_RES") {
+      // Not rendered as a tool result — but if one of these results answers
+      // a pending ask_user call, surface it as the user's reply bubble.
+      const results = row.content as { tool_call_id: string; content: string }[];
+      for (const r of results ?? []) {
+        if (!askUserToolCallIds.has(r.tool_call_id)) continue;
+        let answer = "";
+        try {
+          const parsed = JSON.parse(r.content) as { answer?: string | null };
+          answer = (parsed.answer ?? "").trim();
+        } catch {
+          /* ignore */
+        }
+        if (answer) {
+          messages.push({
+            id: `${row.id}_${r.tool_call_id}`,
+            role: "user",
+            content: answer,
+            timestamp: ts,
+          });
+          turnStart = messages.length; // ai messages from here onward are this turn's response
+        }
+      }
     }
-    // TOOL_RES and ERROR rows are skipped
+    // ERROR rows are skipped
   }
 
   return messages;

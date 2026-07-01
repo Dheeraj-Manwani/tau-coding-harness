@@ -120,7 +120,7 @@ async function rehydrateSandbox(
   // Fetch blobs from R2 and write to the sandbox in bounded concurrent batches.
   const BATCH = 10;
   for (let i = 0; i < files.length; i += BATCH) {
-    await Promise.all(
+    const settled = await Promise.allSettled(
       files.slice(i, i + BATCH).map(async ({ path, contentHash }) => {
         const content = await getBlobText(userId, projectId, contentHash);
         // Support both legacy absolute paths (/home/user/app/…) and relative paths.
@@ -128,6 +128,15 @@ async function rehydrateSandbox(
         await sandbox.files.write(absPath, content);
       }),
     );
+
+    for (const result of settled) {
+      if (result.status === "rejected") {
+        console.warn(
+          "[sandbox] skipped file during rehydration:",
+          result.reason,
+        );
+      }
+    }
   }
 
   // Restore node_modules for any deps added or changed beyond the template baseline.

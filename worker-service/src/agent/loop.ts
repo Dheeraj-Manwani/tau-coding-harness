@@ -99,6 +99,8 @@ export async function runAgentLoop(
       { role: "system", content: SYSTEM_PROMPT },
       ...(await loadHistory(projectId)),
     ];
+    debugger;
+    console.log("messages ::: ");
 
     while (true) {
       const stream = deepseek.chat.completions.stream({
@@ -301,6 +303,7 @@ export async function runAgentLoop(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error(`[worker] agent loop failed for job ${jobId}`, err);
     await publish(jobId, { type: "error", message }, nextIndex());
     throw err;
   }

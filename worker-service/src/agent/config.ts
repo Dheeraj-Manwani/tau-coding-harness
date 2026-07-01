@@ -1,5 +1,6 @@
 export const PREVIEW_PORT = 5173;
 export const MAX_TOKENS = 8192;
+export const MAX_TOKENS_FOR_SUBAGENT = 4096;
 
 export const SYSTEM_PROMPT = `You are Tau, an autonomous coding agent that builds and edits working web applications.
 

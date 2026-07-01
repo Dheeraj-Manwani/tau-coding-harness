@@ -13,6 +13,7 @@ import {
   BookOpen,
   Box,
   BrainIcon,
+  BugIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -26,7 +27,9 @@ import {
   MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
+  ShieldCheckIcon,
   SquareCheckBigIcon,
+  TelescopeIcon,
   TerminalIcon,
   Trash2Icon,
   XIcon,
@@ -90,6 +93,11 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "provision_sandbox") return <Box className="size-3.5" />;
   if (kind === "ask_user")
     return <MessageCircleQuestionMark className="size-3.5" />;
+  if (kind === "dispatch_explorer")
+    return <TelescopeIcon className="size-3.5" />;
+  if (kind === "dispatch_debugger") return <BugIcon className="size-3.5" />;
+  if (kind === "dispatch_verifier")
+    return <ShieldCheckIcon className="size-3.5" />;
   return <FileIcon className="size-3.5" />;
 }
 
@@ -191,6 +199,45 @@ function ActionDetail({ action }: { action: ActionItem }) {
     return null;
   }
 
+  if (
+    action.kind === "dispatch_explorer" ||
+    action.kind === "dispatch_debugger" ||
+    action.kind === "dispatch_verifier"
+  ) {
+    const meta = action.meta as
+      | { prompt?: string; result?: string }
+      | undefined;
+    return (
+      <div className="space-y-2.5">
+        {meta?.prompt && (
+          <div>
+            <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
+              Task
+            </div>
+            <p className="whitespace-pre-wrap leading-relaxed text-[var(--silver-700)]">
+              {meta.prompt}
+            </p>
+          </div>
+        )}
+        <div>
+          <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
+            Result
+          </div>
+          {meta?.result ? (
+            <div className="text-[var(--silver-700)]">
+              <ChatMarkdown content={meta.result} />
+            </div>
+          ) : (
+            <p className="flex items-center gap-1.5 text-[var(--silver-600)] italic">
+              <Loader2Icon className="size-3 animate-spin" />
+              Working…
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -241,7 +288,11 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
       <div>
         {actions.map((action, i) => {
           const isExpandable =
-            action.kind === "create_plan" || action.kind === "update_todo";
+            action.kind === "create_plan" ||
+            action.kind === "update_todo" ||
+            action.kind === "dispatch_explorer" ||
+            action.kind === "dispatch_debugger" ||
+            action.kind === "dispatch_verifier";
           const isOpen = expanded.has(i);
           return (
             <div key={i}>

@@ -20,7 +20,10 @@ export type ActionKind =
   | "create_plan"
   | "update_todo"
   | "provision_sandbox"
-  | "ask_user";
+  | "ask_user"
+  | "dispatch_explorer"
+  | "dispatch_debugger"
+  | "dispatch_verifier";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -43,6 +46,8 @@ export interface ActionItem {
   description?: string;
   /** Structured detail payload for create_plan and update_todo. */
   meta?: Record<string, unknown>;
+  /** Tool call id — lets a later tool_res attach its output to this action (dispatch_* only). */
+  toolCallId?: string;
 }
 
 export interface Message {
@@ -87,10 +92,50 @@ function deriveActionItem(
   toolName: string,
   input: Record<string, unknown>,
   planSnapshot: { sno: number; label: string; status: string }[] = [],
+  toolCallId?: string,
 ): ActionItem {
   const path = String(input.path ?? "");
   const file = basename(path);
   switch (toolName) {
+    case "dispatch_explorer": {
+      const task = String(input.task ?? "");
+      return {
+        kind: "dispatch_explorer",
+        label: `Explored: ${truncateLabel(task, 60)}`,
+        meta: { prompt: task },
+        toolCallId,
+      };
+    }
+    case "dispatch_debugger": {
+      const problem = String(input.problem ?? "");
+      const knownContext = String(input.known_context ?? "").trim();
+      return {
+        kind: "dispatch_debugger",
+        label: `Debugging: ${truncateLabel(problem, 60)}`,
+        meta: {
+          prompt: knownContext
+            ? `${problem}\n\nKnown context: ${knownContext}`
+            : problem,
+        },
+        toolCallId,
+      };
+    }
+    case "dispatch_verifier": {
+      const scope = String(input.scope ?? "");
+      const checks = Array.isArray(input.checks)
+        ? (input.checks as unknown[]).map(String)
+        : [];
+      return {
+        kind: "dispatch_verifier",
+        label: `Verifying: ${truncateLabel(scope, 60)}`,
+        meta: {
+          prompt: checks.length
+            ? `${scope}\n\nChecks:\n${checks.map((c) => `- ${c}`).join("\n")}`
+            : scope,
+        },
+        toolCallId,
+      };
+    }
     case "create_file":
       return { kind: "create_file", label: `Created ${file}` };
     case "edit_file":
@@ -127,7 +172,11 @@ function deriveActionItem(
       return {
         kind: "update_todo",
         label: `Item ${sno} marked ${status}`,
-        meta: { sno, status, ...(planSnapshot.length ? { todos: planSnapshot } : {}) },
+        meta: {
+          sno,
+          status,
+          ...(planSnapshot.length ? { todos: planSnapshot } : {}),
+        },
       };
     }
     case "provision_sandbox":
@@ -141,6 +190,33 @@ function deriveActionItem(
     default:
       return { kind: "create_file", label: truncateLabel(toolName) };
   }
+}
+
+/** Pull the sub-agent's written summary out of a dispatch_* tool's raw output. */
+function extractDispatchResult(output: unknown): string {
+  if (output && typeof output === "object") {
+    const o = output as { summary?: unknown; error?: unknown };
+    if (typeof o.summary === "string") return o.summary;
+    if (typeof o.error === "string") return `Error: ${o.error}`;
+  }
+  return typeof output === "string" ? output : JSON.stringify(output);
+}
+
+/** Attach a sub-agent's result to the action with this toolCallId, wherever it lives. */
+function attachDispatchResult(
+  messages: Message[],
+  toolCallId: string,
+  result: string,
+): Message[] {
+  return messages.map((m) => {
+    if (!m.actions?.some((a) => a.toolCallId === toolCallId)) return m;
+    return {
+      ...m,
+      actions: m.actions.map((a) =>
+        a.toolCallId === toolCallId ? { ...a, meta: { ...a.meta, result } } : a,
+      ),
+    };
+  });
 }
 
 /**
@@ -254,7 +330,7 @@ function toConversation(rows: ProjectMessage[]): Message[] {
           }
 
           // Attach to the nearest ai message within this turn.
-          const action = deriveActionItem(name, input, planTodos);
+          const action = deriveActionItem(name, input, planTodos, tc.id);
           let targetIdx = -1;
           for (let i = messages.length - 1; i >= turnStart; i--) {
             if (messages[i].role === "ai") {
@@ -289,26 +365,45 @@ function toConversation(rows: ProjectMessage[]): Message[] {
       }
     } else if (row.type === "TOOL_RES") {
       // Not rendered as a tool result — but if one of these results answers
-      // a pending ask_user call, surface it as the user's reply bubble.
-      const results = row.content as { tool_call_id: string; content: string }[];
+      // a pending ask_user call, surface it as the user's reply bubble. Otherwise,
+      // if it belongs to a dispatch_* action, attach its summary to that action.
+      const results = row.content as {
+        tool_call_id: string;
+        content: string;
+      }[];
       for (const r of results ?? []) {
-        if (!askUserToolCallIds.has(r.tool_call_id)) continue;
-        let answer = "";
+        if (askUserToolCallIds.has(r.tool_call_id)) {
+          let answer = "";
+          try {
+            const parsed = JSON.parse(r.content) as { answer?: string | null };
+            answer = (parsed.answer ?? "").trim();
+          } catch {
+            /* ignore */
+          }
+          if (answer) {
+            messages.push({
+              id: `${row.id}_${r.tool_call_id}`,
+              role: "user",
+              content: answer,
+              timestamp: ts,
+            });
+            turnStart = messages.length; // ai messages from here onward are this turn's response
+          }
+          continue;
+        }
+
+        let output: unknown;
         try {
-          const parsed = JSON.parse(r.content) as { answer?: string | null };
-          answer = (parsed.answer ?? "").trim();
+          output = JSON.parse(r.content);
         } catch {
-          /* ignore */
+          output = r.content;
         }
-        if (answer) {
-          messages.push({
-            id: `${row.id}_${r.tool_call_id}`,
-            role: "user",
-            content: answer,
-            timestamp: ts,
-          });
-          turnStart = messages.length; // ai messages from here onward are this turn's response
-        }
+        const updated = attachDispatchResult(
+          messages,
+          r.tool_call_id,
+          extractDispatchResult(output),
+        );
+        messages.splice(0, messages.length, ...updated);
       }
     }
     // ERROR rows are skipped
@@ -861,7 +956,12 @@ function applyEvent(set: SetState, event: JobEvent): void {
 
       set((s) => {
         const fin = finalizeStreaming(s);
-        const action = deriveActionItem(event.toolName, inp);
+        const action = deriveActionItem(
+          event.toolName,
+          inp,
+          undefined,
+          event.toolCallId,
+        );
         const msgs = fin.chatMessages;
         // Only attach within the current turn — never reach back into a previous exchange.
         const turnStart = currentTurnStart(msgs);
@@ -965,7 +1065,15 @@ function applyEvent(set: SetState, event: JobEvent): void {
     }
 
     case "tool_res":
-      // Tool results are sent back to the LLM, not rendered in the UI.
+      // Only dispatch_* actions carry a toolCallId, so this is a no-op for
+      // every other tool's result.
+      set((s) => ({
+        chatMessages: attachDispatchResult(
+          s.chatMessages,
+          event.toolCallId,
+          extractDispatchResult(event.output),
+        ),
+      }));
       return;
 
     case "resync":

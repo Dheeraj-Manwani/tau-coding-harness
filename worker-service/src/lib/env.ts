@@ -40,7 +40,7 @@ const envSchema = z.object({
     .transform((v) => v === "true"),
 
   // Max depth of sub agents
-  MAX_AGENT_DEPTH: z.number(),
+  MAX_AGENT_DEPTH: z.string().transform((val) => Number(val)),
 });
 
 export type Env = z.infer<typeof envSchema>;

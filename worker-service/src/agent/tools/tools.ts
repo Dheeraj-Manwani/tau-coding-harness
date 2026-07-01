@@ -15,7 +15,6 @@ export const subAgentTools = new Set<Tool>([
   "dispatch_explorer",
   "dispatch_debugger",
   "dispatch_verifier",
-  "dispatch_implementer",
 ]);
 
 export const TOOL_DEFINITIONS = [
@@ -309,37 +308,6 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["scope"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "dispatch_implementer",
-      description:
-        "Dispatch a sub-agent to implement a single, narrowly-scoped piece of the app — typically a set of API routes or a self-contained UI section — given an explicit contract you define upfront. The sub-agent writes files and runs commands autonomously, then returns a summary of what it built. Only call this after you have fully resolved the contract (route paths, request/response shapes, shared types) yourself — never delegate contract decisions to this agent. Do not use for anything that touches shared files like App.tsx, CONTEXT.md, or global type definitions; handle those yourself before or after dispatching.",
-      parameters: {
-        type: "object",
-        properties: {
-          task: {
-            type: "string",
-            description:
-              "A precise, self-contained description of what to build, e.g. 'Add POST /api/cart/checkout and GET /api/cart/:id routes to server/index.ts using the existing Hono app and Drizzle setup.'",
-          },
-          contract: {
-            type: "string",
-            description:
-              "The full agreed contract this agent must implement against — route paths, HTTP methods, request body fields and types, response payload fields and types, and any error cases. Must be resolved by the main agent before dispatching. Example: 'POST /api/cart/checkout — body: { cartId: string, couponCode?: string } — 201: { orderId: string, total: number } — 400: { error: string }'",
-          },
-          relevant_files: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "File paths the sub-agent should read before starting, e.g. ['server/index.ts', 'server/db/schema.ts']. Keep this list tight — only files actually needed to complete the task.",
-          },
-        },
-        required: ["task", "contract"],
         additionalProperties: false,
       },
     },

@@ -11,7 +11,9 @@ import { editFile } from "./functions/edit";
 import { readFile } from "./functions/read";
 import { deleteFile } from "./functions/delete";
 import { runCommand } from "./functions/run-command";
-import { dispatchExplorer } from "./functions/dispatch-explorer";
+import { dispatchExplorer } from "./sub-agents/dispatch-explorer";
+import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
+import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
 
 export async function executeTool(
   name: Tool,
@@ -89,7 +91,32 @@ export async function executeTool(
     case "run_command":
       return runCommand(input, sandbox);
     case "dispatch_explorer":
-      return dispatchExplorer(input, sandbox);
+      return dispatchExplorer(
+        input,
+        sandbox,
+        jobId,
+        projectId,
+        userId,
+        indexer,
+      );
+    case "dispatch_debugger":
+      return dispatchDebugger(
+        input,
+        sandbox,
+        jobId,
+        projectId,
+        userId,
+        indexer,
+      );
+    case "dispatch_verifier":
+      return dispatchVerifier(
+        input,
+        sandbox,
+        jobId,
+        projectId,
+        userId,
+        indexer,
+      );
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

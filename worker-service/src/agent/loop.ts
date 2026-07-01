@@ -6,10 +6,10 @@ import { getNextSequence } from "../lib/sequence";
 import { meter } from "../lib/credits";
 import { publish, makeIndexer } from "../lib/publish";
 import type { Sandbox } from "../lib/sandbox";
-import { TOOL_DEFINITIONS } from "./tools";
+import { TOOL_DEFINITIONS } from "./tools/tools";
 
 export type SandboxRef = { current: Sandbox | null };
-import { executeTool } from "./executor";
+import { executeTool } from "./tools/executor";
 import {
   MessageRole,
   MessageType,
@@ -17,6 +17,7 @@ import {
 } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
 import { MAX_TOKENS, PREVIEW_PORT, SYSTEM_PROMPT } from "./config";
+import type { Tool } from "./tools/tools";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
@@ -106,7 +107,8 @@ export async function runAgentLoop(
       const stream = deepseek.chat.completions.stream({
         model: env.DEEPSEEK_MODEL,
         max_tokens: MAX_TOKENS,
-        tools: TOOL_DEFINITIONS,
+        tools:
+          TOOL_DEFINITIONS as unknown as OpenAI.Chat.Completions.ChatCompletionTool[],
         messages,
       });
 
@@ -253,7 +255,7 @@ export async function runAgentLoop(
         let output: unknown;
         try {
           output = await executeTool(
-            toolName,
+            toolName as Tool,
             input,
             sandboxRef,
             jobId,

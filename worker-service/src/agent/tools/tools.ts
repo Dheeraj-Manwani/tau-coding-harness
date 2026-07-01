@@ -1,16 +1,24 @@
 import type OpenAI from "openai";
 
-type Tool = OpenAI.Chat.Completions.ChatCompletionTool;
+type ChatCompletionToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
-export const silentTools = new Set([
+export type Tool = (typeof TOOL_DEFINITIONS)[number]["function"]["name"];
+
+export const silentTools = new Set<Tool>([
   "report_progress",
-  "report_plan",
   "create_plan",
   "update_todo",
   "ask_user",
 ]);
 
-export const TOOL_DEFINITIONS: Tool[] = [
+export const subAgentTools = new Set<Tool>([
+  "dispatch_explorer",
+  "dispatch_debugger",
+  "dispatch_verifier",
+  "dispatch_implementer",
+]);
+
+export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
@@ -234,4 +242,106 @@ export const TOOL_DEFINITIONS: Tool[] = [
       },
     },
   },
-];
+  {
+    type: "function",
+    function: {
+      name: "dispatch_explorer",
+      description:
+        "Dispatch a read-only sub-agent in an isolated context to investigate and explain how part of the existing app currently works (e.g. 'how is auth wired up', 'where is the cart total computed', 'what does the current schema look like'). It reads files and searches the codebase, then returns a short written summary — it never edits anything. Use this instead of manually opening many files yourself when orienting in an unfamiliar area of a larger app.",
+      parameters: {
+        type: "object",
+        properties: {
+          task: {
+            type: "string",
+            description:
+              "A specific, scoped question about the current app to investigate, e.g. 'Explain how the checkout flow calculates totals and where that logic lives.'",
+          },
+        },
+        required: ["task"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_debugger",
+      description:
+        "Dispatch a sub-agent in an isolated context to investigate a bug, error, or unexpected behavior. It reproduces the issue, reads logs/files, and runs commands to find the root cause, then returns a written explanation of what's wrong and a recommended fix. It does not edit any files — apply the fix yourself once you have its findings.",
+      parameters: {
+        type: "object",
+        properties: {
+          problem: {
+            type: "string",
+            description:
+              "A clear description of the bug or error, including any error message or symptom observed, e.g. 'POST /api/orders returns 500 after adding the discount field.'",
+          },
+          known_context: {
+            type: "string",
+            description:
+              "Optional: anything already known that might help, such as relevant file paths, recent changes, or when the issue started.",
+          },
+        },
+        required: ["problem"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_verifier",
+      description:
+        "Dispatch a sub-agent in an isolated context to verify a scope of recent changes. It checks that the frontend compiles, runs relevant curl checks against changed API routes, and spot-checks the described behavior, then returns a pass/fail report with specifics on anything broken. It does not edit any files. Use this as your verification pass on larger or multi-file changes instead of manually re-deriving every check.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            description:
+              "What to verify, in plain terms, e.g. 'the new checkout flow' or 'every API route touched this turn'.",
+          },
+          checks: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Optional list of specific things to check, e.g. ['POST /api/orders returns 201 with a valid id', 'cart total updates after removing an item'].",
+          },
+        },
+        required: ["scope"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_implementer",
+      description:
+        "Dispatch a sub-agent to implement a single, narrowly-scoped piece of the app — typically a set of API routes or a self-contained UI section — given an explicit contract you define upfront. The sub-agent writes files and runs commands autonomously, then returns a summary of what it built. Only call this after you have fully resolved the contract (route paths, request/response shapes, shared types) yourself — never delegate contract decisions to this agent. Do not use for anything that touches shared files like App.tsx, CONTEXT.md, or global type definitions; handle those yourself before or after dispatching.",
+      parameters: {
+        type: "object",
+        properties: {
+          task: {
+            type: "string",
+            description:
+              "A precise, self-contained description of what to build, e.g. 'Add POST /api/cart/checkout and GET /api/cart/:id routes to server/index.ts using the existing Hono app and Drizzle setup.'",
+          },
+          contract: {
+            type: "string",
+            description:
+              "The full agreed contract this agent must implement against — route paths, HTTP methods, request body fields and types, response payload fields and types, and any error cases. Must be resolved by the main agent before dispatching. Example: 'POST /api/cart/checkout — body: { cartId: string, couponCode?: string } — 201: { orderId: string, total: number } — 400: { error: string }'",
+          },
+          relevant_files: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "File paths the sub-agent should read before starting, e.g. ['server/index.ts', 'server/db/schema.ts']. Keep this list tight — only files actually needed to complete the task.",
+          },
+        },
+        required: ["task", "contract"],
+        additionalProperties: false,
+      },
+    },
+  },
+] as const satisfies readonly ChatCompletionToolDef[];

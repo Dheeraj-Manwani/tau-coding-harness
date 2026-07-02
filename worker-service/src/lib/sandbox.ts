@@ -13,14 +13,22 @@ export type { Sandbox } from "e2b";
 const TEMPLATE = "vite-hono-app";
 export const WORK_DIR = "/home/user/app";
 
+export const SANDBOX_IDLE_TIMEOUT_MS = 10 * 60_000;
+
+const PROVISION_GRACE_WINDOW_MS = 30_000;
+
 function sha256Hex(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
 export function getSandbox(sandboxId: string): Promise<Sandbox> {
   return Sandbox.connect(sandboxId, {
-    timeoutMs: 10 * 60_000,
+    timeoutMs: SANDBOX_IDLE_TIMEOUT_MS,
   });
+}
+
+async function verifySandboxAlive(sandbox: Sandbox): Promise<void> {
+  await sandbox.commands.run("true", { timeoutMs: PROVISION_GRACE_WINDOW_MS });
 }
 
 async function seedTemplateFiles(
@@ -154,6 +162,40 @@ async function rehydrateSandbox(
   }
 }
 
+async function createFreshSandbox(
+  projectId: string,
+  userId: string,
+  jobId: string,
+  allowRetry = true,
+): Promise<Sandbox> {
+  const sandbox = await Sandbox.create(TEMPLATE, {
+    timeoutMs: SANDBOX_IDLE_TIMEOUT_MS,
+  });
+  console.log("[sandbox] created new sandbox", sandbox.sandboxId);
+
+  try {
+    await rehydrateSandbox(sandbox, projectId, userId, jobId);
+  } catch (err) {
+    if (!allowRetry) throw err;
+
+    console.warn(
+      "[sandbox] rehydration failed on freshly created sandbox; retrying once",
+      err,
+    );
+    return createFreshSandbox(projectId, userId, jobId, false);
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      sandboxId: sandbox.sandboxId,
+      sandboxStatus: SandboxStatus.READY,
+    },
+  });
+
+  return sandbox;
+}
+
 export async function provisionSandbox(
   projectId: string,
   userId: string,
@@ -170,7 +212,9 @@ export async function provisionSandbox(
         "[sandbox] reconnecting to existing sandbox",
         project.sandboxId,
       );
-      return await getSandbox(project.sandboxId);
+      const sandbox = await getSandbox(project.sandboxId);
+      await verifySandboxAlive(sandbox);
+      return sandbox;
     } catch (err) {
       console.warn(
         `[sandbox] reconnect to ${project.sandboxId} failed; provisioning a new sandbox`,
@@ -179,20 +223,5 @@ export async function provisionSandbox(
     }
   }
 
-  const sandbox = await Sandbox.create(TEMPLATE, {
-    timeoutMs: 10 * 60_000,
-  });
-  console.log("[sandbox] created new sandbox", sandbox.sandboxId);
-
-  await rehydrateSandbox(sandbox, projectId, userId, jobId);
-
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      sandboxId: sandbox.sandboxId,
-      sandboxStatus: SandboxStatus.READY,
-    },
-  });
-
-  return sandbox;
+  return createFreshSandbox(projectId, userId, jobId);
 }

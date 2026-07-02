@@ -10,9 +10,20 @@ import { executeSubAgentTool } from "./tool-executor";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
+/** Collapse whitespace and cap length so terminal logs stay one-line-ish. */
+function preview(value: unknown, max = 200): string {
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value ?? "");
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
+}
+
 /**
  * Runs an isolated tool-calling loop for a sub-agent (its own message history,
  * never touching the main conversation) and returns its final text summary.
+ *
+ * `label` (e.g. "explorer") only tags the terminal logs so you can follow what
+ * each dispatched sub-agent is doing without it leaking into the model context.
  */
 export const executeSubAgentLoop = async (
   prompts: string[],
@@ -22,11 +33,18 @@ export const executeSubAgentLoop = async (
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  label = "sub-agent",
 ): Promise<string> => {
   const messages: MessageParam[] = prompts.map((prompt) => ({
     role: "user",
     content: prompt,
   }));
+
+  // The last prompt is the actual task (personas are seeded before it).
+  const task = prompts[prompts.length - 1] ?? "";
+  const tag = `[sub-agent:${label}]`;
+  console.log(`\n${tag} ▶ start — ${preview(task)}`);
+  let turn = 0;
 
   while (true) {
     const stream = deepseek.chat.completions.stream({
@@ -46,6 +64,11 @@ export const executeSubAgentLoop = async (
     );
     const isToolTurn =
       choice.finish_reason === "tool_calls" && toolCalls.length > 0;
+
+    turn++;
+    if (assistant.content?.trim()) {
+      console.log(`${tag} turn ${turn} 💭 ${preview(assistant.content)}`);
+    }
 
     const inputTokens = completion.usage?.prompt_tokens ?? 0;
     const outputTokens = completion.usage?.completion_tokens ?? 0;
@@ -82,11 +105,13 @@ export const executeSubAgentLoop = async (
     }
 
     if (env.CREDITS_ENFORCE && holdExhausted) {
+      console.log(`${tag} ⏹ stopped early — out of credits (turn ${turn})`);
       await publish(jobId, { type: "insufficient_credits" }, nextIndex());
       return assistant.content ?? "Stopped early: ran out of credits.";
     }
 
     if (!isToolTurn) {
+      console.log(`${tag} ✓ done — ${preview(assistant.content)}\n`);
       return assistant.content ?? "";
     }
 
@@ -106,6 +131,8 @@ export const executeSubAgentLoop = async (
         input = { _raw: tc.function.arguments };
       }
 
+      console.log(`${tag}   ⚙ ${tc.function.name} ${preview(input, 160)}`);
+
       let output: unknown;
       try {
         output = await executeSubAgentTool(
@@ -120,6 +147,8 @@ export const executeSubAgentLoop = async (
       } catch (err) {
         output = { error: err instanceof Error ? err.message : String(err) };
       }
+
+      console.log(`${tag}   ↳ ${preview(output, 160)}`);
 
       messages.push({
         role: "tool",

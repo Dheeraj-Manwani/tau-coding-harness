@@ -8,6 +8,7 @@ export const silentTools = new Set<Tool>([
   "report_progress",
   "create_plan",
   "update_todo",
+  "add_todos",
   "ask_user",
 ]);
 
@@ -15,6 +16,7 @@ export const subAgentTools = new Set<Tool>([
   "dispatch_explorer",
   "dispatch_debugger",
   "dispatch_verifier",
+  "dispatch_implementer",
 ]);
 
 export const TOOL_DEFINITIONS = [
@@ -55,6 +57,31 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["path"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_dir",
+      description:
+        "List files and directories in the sandbox at the given path, without spending a run_command round-trip on `ls`.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description:
+              "Directory path relative to the project root. Defaults to the project root itself.",
+          },
+          depth: {
+            type: "number",
+            description:
+              "How many directory levels deep to list. Defaults to 1 (immediate children only).",
+          },
+        },
+        required: [],
         additionalProperties: false,
       },
     },
@@ -113,7 +140,8 @@ export const TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "run_command",
-      description: "Run a shell command inside the sandbox.",
+      description:
+        "Run a shell command inside the sandbox. Long-running or slow-starting commands (dev servers, background workers) are detected automatically and run in the background, but you can also set `background` explicitly instead of relying on that detection.",
       parameters: {
         type: "object",
         properties: {
@@ -121,8 +149,65 @@ export const TOOL_DEFINITIONS = [
             type: "string",
             description: "The shell command to execute.",
           },
+          timeoutMs: {
+            type: "number",
+            description:
+              "Max time to wait for a foreground command to finish, in milliseconds. Defaults to 60000. Ignored for background commands.",
+          },
+          background: {
+            type: "boolean",
+            description:
+              "Run the command in the background instead of waiting for it to finish. Its stdout/stderr are captured to a log file whose path is returned so you can read it later (e.g. with tail_command_output). If omitted, this is inferred from the command text.",
+          },
         },
         required: ["command"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tail_command_output",
+      description:
+        "Read the trailing lines of a background command's captured output log — the `logPath` returned by run_command when it started something in the background.",
+      parameters: {
+        type: "object",
+        properties: {
+          logPath: {
+            type: "string",
+            description: "The logPath returned by a prior background run_command call.",
+          },
+          lines: {
+            type: "number",
+            description: "Number of trailing lines to return. Defaults to 200.",
+          },
+        },
+        required: ["logPath"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "wait_for_port",
+      description:
+        "Poll a localhost port inside the sandbox until it responds or a timeout elapses. Use this after starting a server or background process instead of hand-rolling a sleep + curl loop.",
+      parameters: {
+        type: "object",
+        properties: {
+          port: {
+            type: "number",
+            description: "The localhost port to poll.",
+          },
+          timeoutMs: {
+            type: "number",
+            description:
+              "Max total time to keep polling, in milliseconds. Defaults to 30000.",
+          },
+        },
+        required: ["port"],
         additionalProperties: false,
       },
     },
@@ -167,12 +252,34 @@ export const TOOL_DEFINITIONS = [
               "Description about the plan, what are you going to do for it, and any other relevant info",
           },
           todos: {
-            type: "string",
+            type: "array",
+            items: { type: "string" },
             description:
-              "Todo points for the plan separated by commas (,). Each todo should describe a feature the user will see (e.g. 'Show product catalog', 'Add shopping cart page'). Never include technical terms like store, state, component, reducer, context, localStorage, API, or library names.",
+              "Todo items for the plan. Each todo should describe a feature the user will see (e.g. 'Show product catalog', 'Add shopping cart page'). Never include technical terms like store, state, component, reducer, context, localStorage, API, or library names.",
           },
         },
         required: ["name", "description"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_todos",
+      description:
+        "Append new todo items to the current plan without replacing existing ones or their statuses. Use this when you discover more work mid-task instead of re-running create_plan, which would reset every todo back to pending.",
+      parameters: {
+        type: "object",
+        properties: {
+          todos: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "New todo items to add, in the same style as create_plan's todos.",
+          },
+        },
+        required: ["todos"],
         additionalProperties: false,
       },
     },
@@ -244,6 +351,20 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "check_sandbox",
+      description:
+        "Cheap liveness check for the current sandbox — returns { alive: true|false }. Call this before trusting a sandbox with a batch of writes, e.g. right after reconnecting to an existing one or after a long idle gap.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "dispatch_explorer",
       description:
         "Dispatch a read-only sub-agent in an isolated context to investigate and explain how part of the existing app currently works (e.g. 'how is auth wired up', 'where is the cart total computed', 'what does the current schema look like'). It reads files and searches the codebase, then returns a short written summary — it never edits anything. Use this instead of manually opening many files yourself when orienting in an unfamiliar area of a larger app.",
@@ -266,7 +387,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "dispatch_debugger",
       description:
-        "Dispatch a sub-agent in an isolated context to investigate a bug, error, or unexpected behavior. It reproduces the issue, reads logs/files, and runs commands to find the root cause, then returns a written explanation of what's wrong and a recommended fix. It does not edit any files — apply the fix yourself once you have its findings.",
+        "Dispatch a sub-agent in an isolated context to investigate a bug, error, or unexpected behavior. Use this the moment you're stuck on a repeated failure, not just after reading an error message — don't trial-and-error manually first. It reproduces the issue, reads logs/files, and runs commands to find the root cause, then returns a written explanation of what's wrong and a recommended fix. It does not edit any files — apply the fix yourself once you have its findings.",
       parameters: {
         type: "object",
         properties: {
@@ -308,6 +429,32 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["scope"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_implementer",
+      description:
+        "Dispatch a sub-agent in an isolated context to implement a self-contained goal. Unlike the other sub-agents, it edits files: it has read tools to find existing conventions in the codebase itself (route paths, response shapes, naming) as well as write tools, so you don't have to pre-resolve every field and type before dispatching it. Use it to offload a well-scoped chunk of implementation instead of writing every line yourself; don't use it for anything touching shared files (App.tsx, src/main.tsx, .tau/CONTEXT.md) or spanning the whole app.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description:
+              "What to build, in plain terms, e.g. 'Add a POST /api/orders route that creates an order and returns its id' or 'Build a settings page with a dark mode toggle that persists to localStorage.'",
+          },
+          relevant_files: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Optional: file paths already known to be relevant (e.g. a schema file, a similar existing route). Not required — the sub-agent can find what it needs itself.",
+          },
+        },
+        required: ["goal"],
         additionalProperties: false,
       },
     },

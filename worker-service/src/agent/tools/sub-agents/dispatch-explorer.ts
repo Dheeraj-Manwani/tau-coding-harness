@@ -22,6 +22,7 @@ export async function dispatchExplorer(
     projectId,
     userId,
     nextIndex,
+    "explorer",
   );
 
   return { summary };

@@ -1,7 +1,13 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export function ChatMarkdown({ content }: { content: string }) {
+export function ChatMarkdown({
+  content,
+  compact = false,
+}: {
+  content: string;
+  compact?: boolean;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -48,6 +54,25 @@ export function ChatMarkdown({ content }: { content: string }) {
         ),
         hr: () => <hr className="my-2 border-[var(--silver-200)]" />,
         code: ({ className, children }) => {
+          if (compact) {
+            return (
+              <code
+                className="font-semibold"
+                style={{
+                  display: "inline",
+                  fontFamily: "inherit",
+                  fontSize: "inherit",
+                  lineHeight: "inherit",
+                  color: "inherit",
+                  background: "none",
+                  padding: 0,
+                  borderRadius: 0,
+                }}
+              >
+                {children}
+              </code>
+            );
+          }
           const isBlock = /language-/.test(className ?? "");
           if (isBlock) {
             return (

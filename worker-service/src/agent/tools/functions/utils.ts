@@ -7,6 +7,9 @@ import { createHash } from "crypto";
 export const CHUNK_SIZE = 80;
 export const WORK_DIR = "/home/user/app";
 
+/** Where background run_command output is captured, relative to WORK_DIR. */
+export const LOG_DIR = ".tau/logs";
+
 /** Strip the sandbox WORK_DIR prefix so all stored/published paths are relative. */
 export function toRelativePath(p: string): string {
   return p.startsWith(`${WORK_DIR}/`) ? p.slice(WORK_DIR.length + 1) : p;
@@ -25,6 +28,17 @@ export function asString(value: unknown, field: string): string {
     throw new Error(`Tool input '${field}' must be a string`);
   }
   return value;
+}
+
+/** Validates an array-of-strings tool param and trims/drops blank entries. */
+export function asStringArray(value: unknown, field: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Tool input '${field}' must be an array of strings`);
+  }
+  return value
+    .map((v, i) => asString(v, `${field}[${i}]`))
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function sha256Hex(content: string): string {

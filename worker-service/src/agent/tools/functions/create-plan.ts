@@ -1,5 +1,6 @@
 import { publish } from "@/lib/publish";
-import { asString } from "./utils";
+import { asString, asStringArray } from "./utils";
+import { markPlanCreated } from "./plan-state";
 
 export async function createPlan(
   input: unknown,
@@ -13,13 +14,9 @@ export async function createPlan(
   };
   const planName = asString(name, "name");
   const planDescription = asString(description, "description");
-  const todoList =
-    typeof todos === "string" && todos.trim()
-      ? todos
-          .split(/[,，;]/)
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [];
+  const todoList = todos === undefined ? [] : asStringArray(todos, "todos");
+
+  await markPlanCreated(jobId);
 
   await publish(
     jobId,

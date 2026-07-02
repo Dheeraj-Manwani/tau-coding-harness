@@ -30,6 +30,7 @@ export async function dispatchDebugger(
     projectId,
     userId,
     nextIndex,
+    "debugger",
   );
 
   return { summary };

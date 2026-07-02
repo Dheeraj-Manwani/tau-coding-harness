@@ -14,16 +14,22 @@ export type ActionKind =
   | "create_file"
   | "edit_file"
   | "read_file"
+  | "list_dir"
   | "delete_file"
   | "run_command"
+  | "tail_command_output"
+  | "wait_for_port"
+  | "check_sandbox"
   | "report_progress"
   | "create_plan"
   | "update_todo"
+  | "add_todos"
   | "provision_sandbox"
   | "ask_user"
   | "dispatch_explorer"
   | "dispatch_debugger"
-  | "dispatch_verifier";
+  | "dispatch_verifier"
+  | "dispatch_implementer";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -88,13 +94,32 @@ function truncateLabel(s: string, max = 72): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
+function parseTodos(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((t) => String(t).trim())
+      .filter(Boolean);
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(/[,，;]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function nextSno(todos: { sno: number }[]): number {
+  return todos.length > 0 ? Math.max(...todos.map((t) => t.sno)) + 1 : 1;
+}
+
 function deriveActionItem(
   toolName: string,
   input: Record<string, unknown>,
   planSnapshot: { sno: number; label: string; status: string }[] = [],
   toolCallId?: string,
 ): ActionItem {
-  const path = String(input.path ?? "");
+  const path = normalizePath(String(input.path ?? ""));
   const file = basename(path);
   switch (toolName) {
     case "dispatch_explorer": {
@@ -136,34 +161,66 @@ function deriveActionItem(
         toolCallId,
       };
     }
+    case "dispatch_implementer": {
+      const goal = String(input.goal ?? "");
+      const files = Array.isArray(input.relevant_files)
+        ? (input.relevant_files as unknown[]).map(String)
+        : [];
+      return {
+        kind: "dispatch_implementer",
+        label: `Implementing: ${truncateLabel(goal, 60)}`,
+        meta: {
+          prompt: files.length
+            ? `${goal}\n\nRelevant files:\n${files.map((f) => `- ${f}`).join("\n")}`
+            : goal,
+        },
+        toolCallId,
+      };
+    }
     case "create_file":
-      return { kind: "create_file", label: `Created ${file}` };
+      return { kind: "create_file", label: `Created ${file}`, meta: { path } };
     case "edit_file":
-      return { kind: "edit_file", label: `Edited ${file}` };
+      return { kind: "edit_file", label: `Edited ${file}`, meta: { path } };
     case "read_file":
-      return { kind: "read_file", label: `Opened ${file}` };
+      return { kind: "read_file", label: `Opened ${file}`, meta: { path } };
+    case "list_dir":
+      return {
+        kind: "list_dir",
+        label: `Listed ${input.path ? String(input.path) : "project root"}`,
+      };
     case "delete_file":
-      return { kind: "delete_file", label: `Deleted ${file}` };
+      return { kind: "delete_file", label: `Deleted ${file}`, meta: { path } };
     case "run_command":
       return {
         kind: "run_command",
         label: `Ran ${truncateLabel(String(input.command ?? ""), 50)}`,
       };
+    case "tail_command_output":
+      return { kind: "tail_command_output", label: "Checked command output" };
+    case "wait_for_port":
+      return {
+        kind: "wait_for_port",
+        label: `Waited for port ${input.port ?? ""}`,
+      };
+    case "check_sandbox":
+      return { kind: "check_sandbox", label: "Checked sandbox health" };
     case "report_progress":
       return { kind: "report_progress", label: String(input.message ?? "") };
 
     case "create_plan": {
-      const todosStr = String(input.todos ?? "");
-      const todos = todosStr.trim()
-        ? todosStr
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [];
+      const todos = parseTodos(input.todos);
       return {
         kind: "create_plan",
         label: String(input.name ?? "Plan"),
         meta: { description: String(input.description ?? ""), todos },
+      };
+    }
+    case "add_todos": {
+      const todos = parseTodos(input.todos);
+      return {
+        kind: "add_todos",
+        label: `Added ${todos.length} todo${todos.length === 1 ? "" : "s"}`,
+        meta: { todos },
       };
     }
     case "update_todo": {
@@ -313,14 +370,21 @@ function toConversation(rows: ProjectMessage[]): Message[] {
         } else {
           // Maintain running plan state so update_todo can snapshot the full list.
           if (name === "create_plan") {
-            const todosStr = String(input.todos ?? "");
-            planTodos = todosStr.trim()
-              ? todosStr.split(",").map((t, i) => ({
-                  sno: i + 1,
-                  label: t.trim(),
-                  status: "pending",
-                }))
-              : [];
+            planTodos = parseTodos(input.todos).map((label, i) => ({
+              sno: i + 1,
+              label,
+              status: "pending",
+            }));
+          } else if (name === "add_todos") {
+            const start = nextSno(planTodos);
+            planTodos = [
+              ...planTodos,
+              ...parseTodos(input.todos).map((label, i) => ({
+                sno: start + i,
+                label,
+                status: "pending",
+              })),
+            ];
           } else if (name === "update_todo") {
             const sno = Number(input.sno);
             const status = String(input.status ?? "");
@@ -824,7 +888,16 @@ function applyEvent(set: SetState, event: JobEvent): void {
 
     case "todo_updated":
       set((s) => {
-        if (!s.currentPlan) return {};
+        if (!s.currentPlan) {
+          // Should no longer happen — the backend now refuses update_todo
+          // without a prior create_plan — but warn loudly rather than
+          // silently dropping the update if it ever does.
+          console.warn(
+            "[project] todo_updated received with no active plan; dropping",
+            event,
+          );
+          return {};
+        }
         return {
           currentPlan: {
             ...s.currentPlan,
@@ -833,6 +906,30 @@ function applyEvent(set: SetState, event: JobEvent): void {
                 ? { ...t, status: event.status as TodoStatus }
                 : t,
             ),
+          },
+        };
+      });
+      return;
+
+    case "todos_added":
+      set((s) => {
+        if (!s.currentPlan) {
+          console.warn(
+            "[project] todos_added received with no active plan; dropping",
+            event,
+          );
+          return {};
+        }
+        const start = nextSno(s.currentPlan.todos);
+        const added: Todo[] = event.todos.map((label, i) => ({
+          sno: start + i,
+          label,
+          status: "pending" as TodoStatus,
+        }));
+        return {
+          currentPlan: {
+            ...s.currentPlan,
+            todos: [...s.currentPlan.todos, ...added],
           },
         };
       });
@@ -862,6 +959,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
 
       if (
         event.toolName === "create_plan" ||
+        event.toolName === "add_todos" ||
         event.toolName === "update_todo"
       ) {
         set((s) => {
@@ -870,17 +968,18 @@ function applyEvent(set: SetState, event: JobEvent): void {
           let action: ActionItem;
 
           if (event.toolName === "create_plan") {
-            const todosStr = String(inp.todos ?? "");
-            const todos = todosStr.trim()
-              ? todosStr
-                  .split(",")
-                  .map((t) => t.trim())
-                  .filter(Boolean)
-              : [];
+            const todos = parseTodos(inp.todos);
             action = {
               kind: "create_plan",
               label: String(inp.name ?? "Plan"),
               meta: { description: String(inp.description ?? ""), todos },
+            };
+          } else if (event.toolName === "add_todos") {
+            const todos = parseTodos(inp.todos);
+            action = {
+              kind: "add_todos",
+              label: `Added ${todos.length} todo${todos.length === 1 ? "" : "s"}`,
+              meta: { todos },
             };
           } else {
             const sno = Number(inp.sno);

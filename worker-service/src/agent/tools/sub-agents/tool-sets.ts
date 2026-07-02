@@ -10,11 +10,24 @@ function pick(...names: string[]): ChatCompletionToolDef[] {
 }
 
 /** explorer / debugger / verifier all read-only — never edit, create, or delete. */
-export const EXPLORATION_TOOLS = pick("read_file", "run_command");
+export const EXPLORATION_TOOLS = pick(
+  "read_file",
+  "list_dir",
+  "run_command",
+  "tail_command_output",
+  "wait_for_port",
+  "check_sandbox",
+);
 
+/** implementer gets read tools too, so it can infer conventions instead of
+ *  requiring every detail to be pre-resolved by the dispatching agent. */
 export const IMPLEMENTER_TOOLS = pick(
   "read_file",
+  "list_dir",
   "run_command",
+  "tail_command_output",
+  "wait_for_port",
+  "check_sandbox",
   "create_file",
   "edit_file",
   "delete_file",

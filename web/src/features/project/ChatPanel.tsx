@@ -22,15 +22,21 @@ import {
   FilePen,
   FilePlus,
   FileX,
+  FolderOpenIcon,
+  HammerIcon,
+  HeartPulseIcon,
   HomeIcon,
+  ListPlusIcon,
   Loader2Icon,
   MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
+  ScrollTextIcon,
   ShieldCheckIcon,
   SquareCheckBigIcon,
   TelescopeIcon,
   TerminalIcon,
+  TimerIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -82,6 +88,7 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "create_plan") return <BrainIcon className="size-3.5" />;
   if (kind === "update_todo")
     return <SquareCheckBigIcon className="size-3.5" />;
+  if (kind === "add_todos") return <ListPlusIcon className="size-3.5" />;
   if (kind === "run_command") return <TerminalIcon className="size-3.5" />;
 
   if (kind === "create_file") return <FilePlus className="size-3.5" />;
@@ -89,7 +96,12 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "edit_file") return <FilePen className="size-3.5" />;
 
   if (kind === "read_file") return <BookOpen className="size-3.5" />;
+  if (kind === "list_dir") return <FolderOpenIcon className="size-3.5" />;
   if (kind === "delete_file") return <FileX className="size-3.5" />;
+  if (kind === "tail_command_output")
+    return <ScrollTextIcon className="size-3.5" />;
+  if (kind === "wait_for_port") return <TimerIcon className="size-3.5" />;
+  if (kind === "check_sandbox") return <HeartPulseIcon className="size-3.5" />;
   if (kind === "provision_sandbox") return <Box className="size-3.5" />;
   if (kind === "ask_user")
     return <MessageCircleQuestionMark className="size-3.5" />;
@@ -98,6 +110,8 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "dispatch_debugger") return <BugIcon className="size-3.5" />;
   if (kind === "dispatch_verifier")
     return <ShieldCheckIcon className="size-3.5" />;
+  if (kind === "dispatch_implementer")
+    return <HammerIcon className="size-3.5" />;
   return <FileIcon className="size-3.5" />;
 }
 
@@ -142,6 +156,24 @@ function ActionDetail({ action }: { action: ActionItem }) {
             ))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (action.kind === "add_todos") {
+    const meta = action.meta as { todos?: string[] } | undefined;
+    if (!meta?.todos?.length) return null;
+    return (
+      <div className="space-y-1">
+        {meta.todos.map((todo, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-2 text-[var(--silver-700)]"
+          >
+            <CircleIcon className="mt-0.5 size-2.5 shrink-0 opacity-30" />
+            <span>{todo}</span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -202,7 +234,8 @@ function ActionDetail({ action }: { action: ActionItem }) {
   if (
     action.kind === "dispatch_explorer" ||
     action.kind === "dispatch_debugger" ||
-    action.kind === "dispatch_verifier"
+    action.kind === "dispatch_verifier" ||
+    action.kind === "dispatch_implementer"
   ) {
     const meta = action.meta as
       | { prompt?: string; result?: string }
@@ -225,7 +258,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
           </div>
           {meta?.result ? (
             <div className="text-[var(--silver-700)]">
-              <ChatMarkdown content={meta.result} />
+              <ChatMarkdown content={meta.result} compact />
             </div>
           ) : (
             <p className="flex items-center gap-1.5 text-[var(--silver-600)] italic">
@@ -241,9 +274,22 @@ function ActionDetail({ action }: { action: ActionItem }) {
   return null;
 }
 
+const FILE_LINK_KINDS = new Set<ActionItem["kind"]>([
+  "create_file",
+  "edit_file",
+  "read_file",
+]);
+
 function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const openFile = useProjectStore((s) => s.openFile);
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
+
+  const openInCodePanel = (path: string) => {
+    openFile(path);
+    setActiveTab("code");
+  };
 
   const toggle = (i: number) =>
     setExpanded((prev) => {
@@ -289,20 +335,32 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
         {actions.map((action, i) => {
           const isExpandable =
             action.kind === "create_plan" ||
+            action.kind === "add_todos" ||
             action.kind === "update_todo" ||
             action.kind === "dispatch_explorer" ||
             action.kind === "dispatch_debugger" ||
-            action.kind === "dispatch_verifier";
+            action.kind === "dispatch_verifier" ||
+            action.kind === "dispatch_implementer";
           const isOpen = expanded.has(i);
+          const isFileLink = FILE_LINK_KINDS.has(action.kind);
+          const filePath = isFileLink
+            ? ((action.meta as { path?: string } | undefined)?.path ?? "")
+            : "";
+          const isInteractive = isExpandable || (isFileLink && !!filePath);
+          const handleActivate = isExpandable
+            ? () => toggle(i)
+            : isFileLink && filePath
+              ? () => openInCodePanel(filePath)
+              : undefined;
           return (
             <div key={i}>
               <div
-                role={isExpandable ? "button" : undefined}
-                tabIndex={isExpandable ? 0 : undefined}
-                onClick={isExpandable ? () => toggle(i) : undefined}
+                role={isInteractive ? "button" : undefined}
+                tabIndex={isInteractive ? 0 : undefined}
+                onClick={handleActivate}
                 onKeyDown={
-                  isExpandable
-                    ? (e) => e.key === "Enter" && toggle(i)
+                  handleActivate
+                    ? (e) => e.key === "Enter" && handleActivate()
                     : undefined
                 }
                 className={cn(
@@ -311,7 +369,9 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
                     ? "cursor-pointer rounded-md hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
                     : isExpandable && isOpen
                       ? "cursor-pointer rounded-t-md bg-[var(--space-overlay)] text-[var(--silver-900)]"
-                      : "rounded-md",
+                      : isFileLink && filePath
+                        ? "cursor-pointer rounded-md hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+                        : "rounded-md",
                 )}
               >
                 <span className="shrink-0 opacity-50">

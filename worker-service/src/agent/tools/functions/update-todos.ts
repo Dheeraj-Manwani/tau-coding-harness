@@ -1,5 +1,6 @@
 import { publish } from "@/lib/publish";
 import { asString } from "./utils";
+import { requirePlanCreated } from "./plan-state";
 
 export async function updateTodo(
   input: unknown,
@@ -10,6 +11,9 @@ export async function updateTodo(
   if (typeof sno !== "number")
     throw new Error("Tool input 'sno' must be a number");
   const todoStatus = asString(status, "status");
+
+  const planError = await requirePlanCreated(jobId);
+  if (planError) return { error: planError };
 
   await publish(
     jobId,

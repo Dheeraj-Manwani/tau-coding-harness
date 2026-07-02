@@ -1,6 +1,10 @@
 import type Sandbox from "e2b";
 import { readFile } from "../functions/read";
+import { listDir } from "../functions/list-dir";
 import { runCommand } from "../functions/run-command";
+import { tailCommandOutput } from "../functions/tail-command-output";
+import { waitForPort } from "../functions/wait-for-port";
+import { checkSandbox } from "../functions/check-sandbox";
 import { createFile } from "../functions/create";
 import { editFile } from "../functions/edit";
 import { deleteFile } from "../functions/delete";
@@ -18,8 +22,16 @@ export async function executeSubAgentTool(
   switch (name) {
     case "read_file":
       return readFile(input, sandbox);
+    case "list_dir":
+      return listDir(input, sandbox);
     case "run_command":
       return runCommand(input, sandbox);
+    case "tail_command_output":
+      return tailCommandOutput(input, sandbox);
+    case "wait_for_port":
+      return waitForPort(input, sandbox);
+    case "check_sandbox":
+      return checkSandbox(input, sandbox);
     case "create_file":
       return createFile(input, sandbox, jobId, projectId, userId, indexer);
     case "edit_file":

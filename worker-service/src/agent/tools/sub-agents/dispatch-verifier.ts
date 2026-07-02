@@ -32,6 +32,7 @@ export async function dispatchVerifier(
     projectId,
     userId,
     nextIndex,
+    "verifier",
   );
 
   return { summary };

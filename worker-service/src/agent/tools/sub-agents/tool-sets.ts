@@ -17,6 +17,7 @@ export const EXPLORATION_TOOLS = pick(
   "tail_command_output",
   "wait_for_port",
   "check_sandbox",
+  "web_search",
 );
 
 /** implementer gets read tools too, so it can infer conventions instead of

@@ -17,6 +17,7 @@ import { runCommand } from "./functions/run-command";
 import { tailCommandOutput } from "./functions/tail-command-output";
 import { waitForPort } from "./functions/wait-for-port";
 import { checkSandbox } from "./functions/check-sandbox";
+import { webSearch } from "./functions/web-search";
 import { dispatchExplorer } from "./sub-agents/dispatch-explorer";
 import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
 import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
@@ -99,6 +100,8 @@ export async function executeTool(
       return addTodos(input, jobId, indexer);
     case "report_progress":
       return { success: true };
+    case "web_search":
+      return webSearch(input);
     default:
       break;
   }

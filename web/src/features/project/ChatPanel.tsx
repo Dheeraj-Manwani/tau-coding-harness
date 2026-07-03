@@ -23,6 +23,7 @@ import {
   FilePlus,
   FileX,
   FolderOpenIcon,
+  GlobeIcon,
   HammerIcon,
   HeartPulseIcon,
   HomeIcon,
@@ -112,6 +113,7 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
     return <ShieldCheckIcon className="size-3.5" />;
   if (kind === "dispatch_implementer")
     return <HammerIcon className="size-3.5" />;
+  if (kind === "web_search") return <GlobeIcon className="size-3.5" />;
   return <FileIcon className="size-3.5" />;
 }
 
@@ -235,17 +237,22 @@ function ActionDetail({ action }: { action: ActionItem }) {
     action.kind === "dispatch_explorer" ||
     action.kind === "dispatch_debugger" ||
     action.kind === "dispatch_verifier" ||
-    action.kind === "dispatch_implementer"
+    action.kind === "dispatch_implementer" ||
+    action.kind === "web_search"
   ) {
     const meta = action.meta as
       | { prompt?: string; result?: string }
       | undefined;
+    const taskLabel = action.kind === "web_search" ? "Query" : "Task";
+    const resultLabel = action.kind === "web_search" ? "Results" : "Result";
+    const loadingLabel =
+      action.kind === "web_search" ? "Searching…" : "Working…";
     return (
       <div className="space-y-2.5">
         {meta?.prompt && (
           <div>
             <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
-              Task
+              {taskLabel}
             </div>
             <p className="whitespace-pre-wrap leading-relaxed text-[var(--silver-700)]">
               {meta.prompt}
@@ -254,7 +261,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
         )}
         <div>
           <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
-            Result
+            {resultLabel}
           </div>
           {meta?.result ? (
             <div className="text-[var(--silver-700)]">
@@ -263,7 +270,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
           ) : (
             <p className="flex items-center gap-1.5 text-[var(--silver-600)] italic">
               <Loader2Icon className="size-3 animate-spin" />
-              Working…
+              {loadingLabel}
             </p>
           )}
         </div>
@@ -340,7 +347,8 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
             action.kind === "dispatch_explorer" ||
             action.kind === "dispatch_debugger" ||
             action.kind === "dispatch_verifier" ||
-            action.kind === "dispatch_implementer";
+            action.kind === "dispatch_implementer" ||
+            action.kind === "web_search";
           const isOpen = expanded.has(i);
           const isFileLink = FILE_LINK_KINDS.has(action.kind);
           const filePath = isFileLink

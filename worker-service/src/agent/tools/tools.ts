@@ -352,6 +352,29 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "web_search",
+      description:
+        "Search the web for up-to-date information — library docs, API references, error messages, current best practices, or anything outside your training data. Does not require a sandbox.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query.",
+          },
+          max_results: {
+            type: "number",
+            description: "Max number of results to return. Defaults to 5.",
+          },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "check_sandbox",
       description:
         "Cheap liveness check for the current sandbox — returns { alive: true|false }. Call this before trusting a sandbox with a batch of writes, e.g. right after reconnecting to an existing one or after a long idle gap.",

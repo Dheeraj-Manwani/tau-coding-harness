@@ -29,7 +29,8 @@ export type ActionKind =
   | "dispatch_explorer"
   | "dispatch_debugger"
   | "dispatch_verifier"
-  | "dispatch_implementer";
+  | "dispatch_implementer"
+  | "web_search";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -177,6 +178,15 @@ function deriveActionItem(
         toolCallId,
       };
     }
+    case "web_search": {
+      const query = String(input.query ?? "");
+      return {
+        kind: "web_search",
+        label: `Searched: ${truncateLabel(query, 60)}`,
+        meta: { prompt: query },
+        toolCallId,
+      };
+    }
     case "create_file":
       return { kind: "create_file", label: `Created ${file}`, meta: { path } };
     case "edit_file":
@@ -249,12 +259,45 @@ function deriveActionItem(
   }
 }
 
+/** Render a web_search tool's { answer, results } output as markdown. */
+function formatWebSearchResult(
+  answer: unknown,
+  results: unknown[],
+): string {
+  const parts: string[] = [];
+  if (typeof answer === "string" && answer.trim()) parts.push(answer.trim());
+  for (const r of results) {
+    if (!r || typeof r !== "object") continue;
+    const { title, url, content } = r as {
+      title?: unknown;
+      url?: unknown;
+      content?: unknown;
+    };
+    const t = typeof title === "string" && title ? title : String(url ?? "");
+    const u = typeof url === "string" ? url : "";
+    const snippet =
+      typeof content === "string" ? truncateLabel(content, 200) : "";
+    parts.push(
+      u ? `- [${t}](${u})${snippet ? `\n  ${snippet}` : ""}` : `- ${t}`,
+    );
+  }
+  return parts.join("\n\n");
+}
+
 /** Pull the sub-agent's written summary out of a dispatch_* tool's raw output. */
 function extractDispatchResult(output: unknown): string {
   if (output && typeof output === "object") {
-    const o = output as { summary?: unknown; error?: unknown };
+    const o = output as {
+      summary?: unknown;
+      error?: unknown;
+      results?: unknown;
+      answer?: unknown;
+    };
     if (typeof o.summary === "string") return o.summary;
     if (typeof o.error === "string") return `Error: ${o.error}`;
+    if (Array.isArray(o.results)) {
+      return formatWebSearchResult(o.answer, o.results);
+    }
   }
   return typeof output === "string" ? output : JSON.stringify(output);
 }
@@ -1164,8 +1207,8 @@ function applyEvent(set: SetState, event: JobEvent): void {
     }
 
     case "tool_res":
-      // Only dispatch_* actions carry a toolCallId, so this is a no-op for
-      // every other tool's result.
+      // Only dispatch_* and web_search actions carry a toolCallId, so this is
+      // a no-op for every other tool's result.
       set((s) => ({
         chatMessages: attachDispatchResult(
           s.chatMessages,

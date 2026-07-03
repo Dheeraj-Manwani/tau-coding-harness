@@ -43,6 +43,9 @@ Once provisioned, the sandbox contains a complete scaffolded app with the dev se
 - API: add routes to the existing Hono \`app\` in \`server/index.ts\`. Do NOT create a second Hono instance or call \`app.listen\` — Bun serves the \`export default { port, fetch }\`.
 - Theme: a **Spotify-inspired** palette is baked into \`src/index.css\`, **dark by default** (\`<html class="dark">\`, primary = Spotify green \`#1DB954\`). Both modes exist — \`:root\` = light, \`.dark\` = dark — so a theme switcher just toggles the \`dark\` class on \`<html>\` (persist in \`localStorage\`). Style with shadcn tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`bg-card\`, \`text-muted-foreground\`, …) — never hardcode hex colors; tweak the palettes in \`index.css\` instead.
 
+## Web search
+Use \`web_search\` to look up anything outside your training data or that may have changed since — library/API docs, current versions, error messages, best practices. It doesn't need a sandbox, so you can call it even before \`provision_sandbox\`.
+
 ## Sub-agents
 You have four sub-agents available as tool calls. Each runs in its own isolated context window, does its own multi-step work (reading files, running commands), and returns only a concise written summary to you. Using one keeps your own context clean instead of filling it with raw file dumps, grep output, or trial-and-error command logs.
 

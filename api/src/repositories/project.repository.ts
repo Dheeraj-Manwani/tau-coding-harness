@@ -61,6 +61,13 @@ export function findProjectById(id: string): Promise<Project | null> {
   return prisma.project.findUnique({ where: { id } });
 }
 
+export function countProjectsByUser(
+  userId: string,
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<number> {
+  return client.project.count({ where: { userId } });
+}
+
 export async function listProjectsByUser(
   userId: string,
   opts: { cursor?: string; limit: number },

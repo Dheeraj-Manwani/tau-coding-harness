@@ -16,7 +16,7 @@ export const subAgentTools = new Set<Tool>([
   "dispatch_explorer",
   "dispatch_debugger",
   "dispatch_verifier",
-  "dispatch_implementer",
+  // "dispatch_implementer",
 ]);
 
 export const TOOL_DEFINITIONS = [
@@ -176,7 +176,8 @@ export const TOOL_DEFINITIONS = [
         properties: {
           logPath: {
             type: "string",
-            description: "The logPath returned by a prior background run_command call.",
+            description:
+              "The logPath returned by a prior background run_command call.",
           },
           lines: {
             type: "number",
@@ -433,30 +434,30 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "dispatch_implementer",
-      description:
-        "Dispatch a sub-agent in an isolated context to implement a self-contained goal. Unlike the other sub-agents, it edits files: it has read tools to find existing conventions in the codebase itself (route paths, response shapes, naming) as well as write tools, so you don't have to pre-resolve every field and type before dispatching it. Use it to offload a well-scoped chunk of implementation instead of writing every line yourself; don't use it for anything touching shared files (App.tsx, src/main.tsx, .tau/CONTEXT.md) or spanning the whole app.",
-      parameters: {
-        type: "object",
-        properties: {
-          goal: {
-            type: "string",
-            description:
-              "What to build, in plain terms, e.g. 'Add a POST /api/orders route that creates an order and returns its id' or 'Build a settings page with a dark mode toggle that persists to localStorage.'",
-          },
-          relevant_files: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "Optional: file paths already known to be relevant (e.g. a schema file, a similar existing route). Not required — the sub-agent can find what it needs itself.",
-          },
-        },
-        required: ["goal"],
-        additionalProperties: false,
-      },
-    },
-  },
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "dispatch_implementer",
+  //     description:
+  //       "Dispatch a sub-agent in an isolated context to implement a self-contained goal. Unlike the other sub-agents, it edits files: it has read tools to find existing conventions in the codebase itself (route paths, response shapes, naming) as well as write tools, so you don't have to pre-resolve every field and type before dispatching it. Use it to offload a well-scoped chunk of implementation instead of writing every line yourself; don't use it for anything touching shared files (App.tsx, src/main.tsx, .tau/CONTEXT.md) or spanning the whole app.",
+  //     parameters: {
+  //       type: "object",
+  //       properties: {
+  //         goal: {
+  //           type: "string",
+  //           description:
+  //             "What to build, in plain terms, e.g. 'Add a POST /api/orders route that creates an order and returns its id' or 'Build a settings page with a dark mode toggle that persists to localStorage.'",
+  //         },
+  //         relevant_files: {
+  //           type: "array",
+  //           items: { type: "string" },
+  //           description:
+  //             "Optional: file paths already known to be relevant (e.g. a schema file, a similar existing route). Not required — the sub-agent can find what it needs itself.",
+  //         },
+  //       },
+  //       required: ["goal"],
+  //       additionalProperties: false,
+  //     },
+  //   },
+  // },
 ] as const satisfies readonly ChatCompletionToolDef[];

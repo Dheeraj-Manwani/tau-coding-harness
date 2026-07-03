@@ -29,7 +29,7 @@ const envSchema = z.object({
   // Deepseek
   DEEPSEEK_API_KEY: z.string(),
   DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
-  DEEPSEEK_MODEL: z.string().default("deepseek-chat"),
+  DEEPSEEK_MODEL: z.string().default("deepseek-v4-pro"),
 
   // Google OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),

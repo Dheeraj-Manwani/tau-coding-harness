@@ -41,6 +41,7 @@ const envSchema = z.object({
 
   // Max depth of sub agents
   MAX_AGENT_DEPTH: z.string().transform((val) => Number(val)),
+  TAVILY_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

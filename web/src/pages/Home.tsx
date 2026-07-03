@@ -69,6 +69,13 @@ function Home() {
         setInitializing(false);
         if (err instanceof ApiError && err.status === 402) {
           openOutOfCredits();
+        } else if (
+          err instanceof ApiError &&
+          err.message === "PROJECT_LIMIT_REACHED"
+        ) {
+          toast.error(
+            "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
+          );
         } else {
           toast.error(
             err instanceof ApiError ? err.message : "Couldn't start your project",

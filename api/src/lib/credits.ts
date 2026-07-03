@@ -99,7 +99,7 @@ function view(a: AccountRow): BalanceView {
 }
 
 /** Lock the account row for update, then read it via the typed client. */
-async function lockAccount(tx: Tx, userId: string): Promise<AccountRow> {
+export async function lockAccount(tx: Tx, userId: string): Promise<AccountRow> {
   await tx.$executeRaw`SELECT 1 FROM "BillingAccount" WHERE "userId" = ${userId} FOR UPDATE`;
   const acc = await tx.billingAccount.findUnique({ where: { userId } });
   if (!acc) throw new Error(`BillingAccount missing for user ${userId}`);

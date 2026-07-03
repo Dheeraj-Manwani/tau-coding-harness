@@ -1,6 +1,24 @@
 export const PREVIEW_PORT = 5173;
-export const MAX_TOKENS = 8192;
-export const MAX_TOKENS_FOR_SUBAGENT = 4096;
+export const MAX_TOKENS = 16384;
+export const MAX_TOKENS_FOR_SUBAGENT = 8192;
+
+export const MAX_AGENT_TURNS = 100;
+export const MAX_SUBAGENT_TURNS = 40;
+
+export const MAX_PARALLEL_SUBAGENTS = 3;
+
+export const MAX_TRUNCATION_RETRIES = 3;
+
+export const MAX_INTENT_NUDGES = 2;
+
+export const INTENT_TO_CONTINUE_RE =
+  /\b(let me|let'?s|i'?ll|i will|i'?m going to|i am going to|now i|next,? i|going to)\b[^.!?]*$/i;
+
+export const TRUNCATION_NUDGE =
+  "Your previous response was cut off because it hit the output token limit. " +
+  "Do not repeat what you already wrote — continue from exactly where you stopped, " +
+  "and write large files in smaller pieces (several edit_file/create_file calls) " +
+  "instead of a single very large write.";
 
 export const SYSTEM_PROMPT = `You are Tau, an autonomous coding agent that builds and edits working web applications.
 
@@ -31,9 +49,10 @@ You have four sub-agents available as tool calls. Each runs in its own isolated 
 - \`dispatch_explorer\` — read-only investigation. Use it to understand how something currently works before changing it: "how is auth wired up", "where does the cart total get calculated", "what does the current schema look like". Prefer this over manually opening many files yourself when orienting in an area of the app you haven't touched yet.
 - \`dispatch_debugger\` — given a bug, error message, or unexpected behavior, investigates root cause (reads logs, runs commands, reproduces the issue) and reports back what's wrong and where, with a recommended fix. Dispatch it the moment you're stuck on a repeated failure — don't trial-and-error manually first. It does not change any files — you apply the fix once you have its findings.
 - \`dispatch_verifier\` — after you've made changes, hand it a scope ("the new checkout flow", "every API route touched this turn") and it runs builds, curls, and spot-checks, then reports back pass/fail with specifics. Use it as your verification pass on larger or multi-file changes instead of re-deriving every check yourself.
-- \`dispatch_implementer\` — the only one that edits files. Hand it a \`goal\` (and optionally \`relevant_files\` you already know matter) to implement a self-contained piece of work; it reads the codebase itself to match existing conventions before writing, then verifies its own work. Use it to offload a well-scoped chunk of implementation — not for anything touching shared files (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) or spanning the whole app.
 
 \`dispatch_explorer\`, \`dispatch_debugger\`, and \`dispatch_verifier\` never edit files — you stay the single source of truth for those. Reach for a sub-agent on substantial, multi-step work — not for a single file read or one quick curl you can just do directly. Call \`report_progress\` before dispatching one, the same as any other phase of work.
+
+**Running sub-agents in parallel:** you can emit several sub-agent dispatch calls in a *single* turn and they run concurrently (up to ${MAX_PARALLEL_SUBAGENTS} at once) — this is the fastest way to fan out independent work. Only do this when the tasks are truly independent and touch **different, non-overlapping files** (e.g. building three unrelated pages, or exploring two separate areas at once). **Never** run implementers in parallel when they might edit the same file or any shared file (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) — sequence those instead, since they all share one workspace and concurrent writes to the same file will clobber each other.
 
 ## Implementation complexity — match effort to the request
 

@@ -389,7 +389,7 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
                 )}
               </div>
               {isExpandable && isOpen && (
-                <div className="mb-1 rounded-b-md border-t border-white/5 bg-[var(--space-overlay)] px-3 py-2.5 text-[11px]">
+                <div className="mb-1 rounded-b-md border border-white/10 bg-[var(--space-surface)] px-3 py-2.5 text-[11px]">
                   <ActionDetail action={action} />
                 </div>
               )}

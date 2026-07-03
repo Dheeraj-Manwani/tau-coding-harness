@@ -173,15 +173,15 @@ export async function executeTool(
           userId,
           indexer,
         );
-      case "dispatch_implementer":
-        return await dispatchImplementer(
-          input,
-          sandbox,
-          jobId,
-          projectId,
-          userId,
-          indexer,
-        );
+      // case "dispatch_implementer":
+      //   return await dispatchImplementer(
+      //     input,
+      //     sandbox,
+      //     jobId,
+      //     projectId,
+      //     userId,
+      //     indexer,
+      //   );
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

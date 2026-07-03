@@ -16,7 +16,17 @@ import {
   ToolCallStatus,
 } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
-import { MAX_TOKENS, PREVIEW_PORT, SYSTEM_PROMPT } from "./config";
+import {
+  MAX_TOKENS,
+  MAX_AGENT_TURNS,
+  MAX_TRUNCATION_RETRIES,
+  MAX_INTENT_NUDGES,
+  MAX_PARALLEL_SUBAGENTS,
+  INTENT_TO_CONTINUE_RE,
+  TRUNCATION_NUDGE,
+  PREVIEW_PORT,
+  SYSTEM_PROMPT,
+} from "./config";
 import type { Tool } from "./tools/tools";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -26,6 +36,32 @@ type FunctionToolCall =
 
 function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
+}
+
+const SUBAGENT_TOOLS = new Set<string>([
+  "dispatch_explorer",
+  "dispatch_debugger",
+  "dispatch_verifier",
+  // "dispatch_implementer",
+]);
+
+async function runPool<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) break;
+      results[i] = await fn(items[i]!, i);
+    }
+  };
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
 }
 
 function deriveTitle(content: string | null): string {
@@ -100,10 +136,17 @@ export async function runAgentLoop(
       { role: "system", content: SYSTEM_PROMPT },
       ...(await loadHistory(projectId)),
     ];
-    debugger;
-    console.log("messages ::: ");
+    let turn = 0;
+    let truncationRetries = 0;
+    let intentNudges = 0;
 
     while (true) {
+      if (turn++ >= MAX_AGENT_TURNS) {
+        const message = `Agent exceeded ${MAX_AGENT_TURNS} turns without finishing`;
+        await publish(jobId, { type: "error", message }, nextIndex());
+        throw new Error(`${message} for job ${jobId}`);
+      }
+
       const stream = deepseek.chat.completions.stream({
         model: env.DEEPSEEK_MODEL,
         max_tokens: MAX_TOKENS,
@@ -132,6 +175,9 @@ export async function runAgentLoop(
       const toolCalls = (assistant.tool_calls ?? []).filter(isFunctionToolCall);
       const isToolTurn =
         choice.finish_reason === "tool_calls" && toolCalls.length > 0;
+      // The model hit MAX_TOKENS mid-response — the turn is incomplete and any
+      // tool call it started has truncated (invalid-JSON) arguments.
+      const isTruncated = choice.finish_reason === "length";
 
       const inputTokens = completion.usage?.prompt_tokens ?? 0;
       const outputTokens = completion.usage?.completion_tokens ?? 0;
@@ -147,7 +193,10 @@ export async function runAgentLoop(
               type: isToolTurn ? MessageType.TOOL_REQ : MessageType.RESULT,
               content: {
                 content: assistant.content,
-                tool_calls: assistant.tool_calls ?? null,
+                // Never persist a truncated/partial tool call — on a recovery
+                // reload it would be an assistant tool_call with no tool result,
+                // which the completions API rejects.
+                tool_calls: isToolTurn ? (assistant.tool_calls ?? null) : null,
               } as unknown as Prisma.InputJsonValue,
               sequence: seq,
               inputTokens,
@@ -194,6 +243,44 @@ export async function runAgentLoop(
         break;
       }
 
+      // Truncated turn: the response was cut off at MAX_TOKENS. Don't treat it
+      // as "done" — feed the partial text back and nudge the model to continue
+      // in smaller pieces. Give up after a few consecutive truncations.
+      if (isTruncated) {
+        if (++truncationRetries > MAX_TRUNCATION_RETRIES) {
+          const message = `Response truncated at the token limit ${MAX_TRUNCATION_RETRIES} times in a row`;
+          await publish(jobId, { type: "error", message }, nextIndex());
+          throw new Error(`${message} for job ${jobId}`);
+        }
+        if (assistant.content?.trim()) {
+          messages.push({ role: "assistant", content: assistant.content });
+        }
+        messages.push({ role: "user", content: TRUNCATION_NUDGE });
+        continue;
+      }
+      truncationRetries = 0;
+
+      // Non-tool turn that merely narrates intent ("Let me write the page…")
+      // without acting — nudge it to actually use its tools, up to a cap.
+      if (
+        !isToolTurn &&
+        intentNudges < MAX_INTENT_NUDGES &&
+        INTENT_TO_CONTINUE_RE.test((assistant.content ?? "").trim())
+      ) {
+        intentNudges++;
+        if (assistant.content?.trim()) {
+          messages.push({ role: "assistant", content: assistant.content });
+        }
+        messages.push({
+          role: "user",
+          content:
+            "Continue and actually perform the work using your tools — don't " +
+            "just describe what you're about to do. If the task is genuinely " +
+            "complete, reply with your brief final summary.",
+        });
+        continue;
+      }
+
       if (!isToolTurn) {
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
@@ -220,9 +307,11 @@ export async function runAgentLoop(
         tool_calls: assistant.tool_calls,
       });
 
-      const toolResults: StoredToolResult[] = [];
-
-      for (const tc of toolCalls) {
+      // Execute one tool call end to end (persist row, publish req/res, run it)
+      // and return its stored result. Safe to call concurrently.
+      const runOne = async (
+        tc: FunctionToolCall,
+      ): Promise<StoredToolResult> => {
         const toolName = tc.function.name;
         const toolCallId = tc.id;
 
@@ -284,11 +373,46 @@ export async function runAgentLoop(
           });
         }
 
-        await publish(jobId, { type: "tool_res", toolCallId, output }, nextIndex());
+        await publish(
+          jobId,
+          { type: "tool_res", toolCallId, output },
+          nextIndex(),
+        );
+        return { tool_call_id: toolCallId, content: JSON.stringify(output) };
+      };
 
-        const content = JSON.stringify(output);
-        toolResults.push({ tool_call_id: toolCallId, content });
-        messages.push({ role: "tool", tool_call_id: toolCallId, content });
+      const toolResults: StoredToolResult[] = new Array(toolCalls.length);
+      let i = 0;
+      while (i < toolCalls.length) {
+        if (SUBAGENT_TOOLS.has(toolCalls[i]!.function.name)) {
+          const start = i;
+          while (
+            i < toolCalls.length &&
+            SUBAGENT_TOOLS.has(toolCalls[i]!.function.name)
+          ) {
+            i++;
+          }
+          const batch = toolCalls.slice(start, i);
+          const batchResults = await runPool(
+            batch,
+            MAX_PARALLEL_SUBAGENTS,
+            (tc) => runOne(tc),
+          );
+          for (let k = 0; k < batchResults.length; k++) {
+            toolResults[start + k] = batchResults[k]!;
+          }
+        } else {
+          toolResults[i] = await runOne(toolCalls[i]!);
+          i++;
+        }
+      }
+
+      for (const r of toolResults) {
+        messages.push({
+          role: "tool",
+          tool_call_id: r.tool_call_id,
+          content: r.content,
+        });
       }
 
       await prisma.$transaction(async (tx) => {

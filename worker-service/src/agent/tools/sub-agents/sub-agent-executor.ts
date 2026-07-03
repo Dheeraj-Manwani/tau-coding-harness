@@ -5,7 +5,14 @@ import { publish } from "@/lib/publish";
 import { meter } from "@/lib/credits";
 import type Sandbox from "e2b";
 import type OpenAI from "openai";
-import { MAX_TOKENS_FOR_SUBAGENT } from "../../config";
+import {
+  MAX_TOKENS_FOR_SUBAGENT,
+  MAX_SUBAGENT_TURNS,
+  MAX_TRUNCATION_RETRIES,
+  MAX_INTENT_NUDGES,
+  INTENT_TO_CONTINUE_RE,
+  TRUNCATION_NUDGE,
+} from "../../config";
 import { executeSubAgentTool } from "./tool-executor";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -45,8 +52,16 @@ export const executeSubAgentLoop = async (
   const tag = `[sub-agent:${label}]`;
   console.log(`\n${tag} ▶ start — ${preview(task)}`);
   let turn = 0;
+  let truncationRetries = 0;
+  let intentNudges = 0;
+  let lastContent = "";
 
   while (true) {
+    if (turn >= MAX_SUBAGENT_TURNS) {
+      console.log(`${tag} ⏹ stopped — exceeded ${MAX_SUBAGENT_TURNS} turns\n`);
+      return lastContent || `Stopped: exceeded ${MAX_SUBAGENT_TURNS} turns.`;
+    }
+
     const stream = deepseek.chat.completions.stream({
       model: env.DEEPSEEK_MODEL,
       max_tokens: MAX_TOKENS_FOR_SUBAGENT,
@@ -64,9 +79,13 @@ export const executeSubAgentLoop = async (
     );
     const isToolTurn =
       choice.finish_reason === "tool_calls" && toolCalls.length > 0;
+    // Cut off at MAX_TOKENS_FOR_SUBAGENT — the turn (and any tool call it began)
+    // is incomplete.
+    const isTruncated = choice.finish_reason === "length";
 
     turn++;
     if (assistant.content?.trim()) {
+      lastContent = assistant.content;
       console.log(`${tag} turn ${turn} 💭 ${preview(assistant.content)}`);
     }
 
@@ -108,6 +127,42 @@ export const executeSubAgentLoop = async (
       console.log(`${tag} ⏹ stopped early — out of credits (turn ${turn})`);
       await publish(jobId, { type: "insufficient_credits" }, nextIndex());
       return assistant.content ?? "Stopped early: ran out of credits.";
+    }
+
+    // Truncated turn: don't accept it as the final summary — nudge to continue
+    // in smaller pieces, giving up after a few consecutive truncations.
+    if (isTruncated) {
+      if (++truncationRetries > MAX_TRUNCATION_RETRIES) {
+        console.log(`${tag} ⏹ stopped — truncated ${MAX_TRUNCATION_RETRIES}x\n`);
+        return lastContent || "Stopped: response repeatedly hit the token limit.";
+      }
+      if (assistant.content?.trim()) {
+        messages.push({ role: "assistant", content: assistant.content });
+      }
+      messages.push({ role: "user", content: TRUNCATION_NUDGE });
+      continue;
+    }
+    truncationRetries = 0;
+
+    // Guard against the "Let me write the file…" preamble that ends the turn
+    // with no tool call — nudge it to actually act before accepting text as done.
+    if (
+      !isToolTurn &&
+      intentNudges < MAX_INTENT_NUDGES &&
+      INTENT_TO_CONTINUE_RE.test((assistant.content ?? "").trim())
+    ) {
+      intentNudges++;
+      if (assistant.content?.trim()) {
+        messages.push({ role: "assistant", content: assistant.content });
+      }
+      messages.push({
+        role: "user",
+        content:
+          "Continue and actually perform the work using your tools — don't just " +
+          "describe what you're about to do. If the task is genuinely complete, " +
+          "reply with your brief final summary.",
+      });
+      continue;
     }
 
     if (!isToolTurn) {

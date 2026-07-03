@@ -30,6 +30,9 @@ export const PRO_MONTHLY_ALLOTMENT_MICRO = 5_000n * MICRO; // granted each PRO c
 export const JOB_RESERVE_CEILING_MICRO = 50n * MICRO; // max a single job may spend
 export const MIN_SPEND_TO_START_MICRO = 1n * MICRO; // refuse a job below this available
 
+// Max concurrent projects a FREE-plan user may own (PRO is unlimited).
+export const FREE_PLAN_MAX_PROJECTS = 3;
+
 // ── Bucket spend ───────────────────────────────────────────────────────────────
 export interface Buckets {
   free: bigint;

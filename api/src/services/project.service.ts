@@ -6,7 +6,13 @@ import { enqueueJob } from "../lib/queue";
 import { deepseek } from "../lib/deepseek";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
-import { reserveInTx, InsufficientCreditsError } from "../lib/credits";
+import {
+  reserveInTx,
+  ensureBillingAccount,
+  lockAccount,
+  InsufficientCreditsError,
+} from "../lib/credits";
+import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
 import { getBlobText, deleteProjectBlobs } from "../lib/s3";
 import { redis } from "../lib/redis";
 import {
@@ -14,6 +20,7 @@ import {
   MessageType,
   JobType,
   SandboxStatus,
+  Plan,
 } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
 
@@ -42,7 +49,7 @@ async function generateProjectName(message: string): Promise<string> {
         {
           role: "system",
           content:
-            "You generate concise names for software projects. Given the user's first request, reply with ONLY a short, descriptive title of 3-6 words in Title Case. No quotes, no trailing punctuation, no explanation. If the request is unclear, empty, or doesn't make sense, default to 'New Project' as the name.",
+            "You generate concise names for software projects. Given the user's first request, reply with ONLY a short, descriptive title of 2-4 words in Title Case. No quotes, no trailing punctuation, no explanation. If the request is unclear, empty, or doesn't make sense, default to 'New Project' as the name.",
         },
         { role: "user", content: message },
       ],
@@ -75,6 +82,15 @@ export async function initializeProject(
   const name = await generateProjectName(message);
 
   const { projectId, jobId } = await prisma.$transaction(async (tx) => {
+    const account = await ensureBillingAccount(userId, tx);
+    if (account.plan === Plan.FREE) {
+      await lockAccount(tx, userId);
+      const projectCount = await projectRepo.countProjectsByUser(userId, tx);
+      if (projectCount >= FREE_PLAN_MAX_PROJECTS) {
+        throw Errors.forbidden("PROJECT_LIMIT_REACHED");
+      }
+    }
+
     const project = await projectRepo.createProject(tx, {
       name,
       userId,

@@ -59,6 +59,9 @@ async function main(): Promise<void> {
   // the definition) and resolves once the image is published.
   const info: BuildInfo = await Template.build(template, name, {
     skipCache,
+    // Increased memeory for e2e apps
+    cpuCount: 2,
+    memoryMB: 2048,
     onBuildLogs: defaultBuildLogger(),
   });
 

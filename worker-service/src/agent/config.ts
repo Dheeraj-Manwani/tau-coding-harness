@@ -2,7 +2,7 @@ export const PREVIEW_PORT = 5173;
 export const MAX_TOKENS = 16384;
 export const MAX_TOKENS_FOR_SUBAGENT = 8192;
 
-export const MAX_AGENT_TURNS = 100;
+export const MAX_AGENT_TURNS = 200;
 export const MAX_SUBAGENT_TURNS = 40;
 
 export const MAX_PARALLEL_SUBAGENTS = 3;

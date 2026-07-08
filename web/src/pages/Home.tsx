@@ -7,10 +7,15 @@ import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { MyProjects } from "@/src/features/project/MyProjects";
-import { useInitProject } from "@/src/features/project/api";
+import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
+import { useBalance } from "@/src/features/billing/api";
+
+// Free plan may own at most this many concurrent projects (mirrors
+// FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
+const FREE_PLAN_MAX_PROJECTS = 3;
 
 const STAR_COLORS = [
   "rgba(203, 213, 225, 0.7)",
@@ -34,11 +39,20 @@ function Home() {
   const navigate = useNavigate();
   const initProject = useInitProject();
   const openOutOfCredits = useBillingStore((s) => s.open);
+  const { data: projects } = useProjects();
+  const { data: balance } = useBalance();
   const [prompt, setPrompt] = useState("");
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
   const isSubmitting = initProject.isPending;
   const showPlaceholder = prompt.length === 0;
+
+  // Proactively surface the free-plan project cap instead of only failing on
+  // submit with a 403. PRO users are unlimited, so only gate FREE.
+  const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
+  const projectCount = projects?.length ?? 0;
+  const atProjectLimit =
+    isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
 
   // Cycle through suggestions while the input is empty.
   useEffect(() => {
@@ -53,6 +67,12 @@ function Home() {
   const submit = () => {
     const message = prompt.trim();
     if (message.length === 0 || isSubmitting) return;
+    if (atProjectLimit) {
+      toast.error(
+        "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
+      );
+      return;
+    }
     setInitializing(true);
     // Create the project + enqueue the first job, then hand off to the project
     // route. The prompt + jobId ride along in router state so the workspace can
@@ -69,6 +89,10 @@ function Home() {
         setInitializing(false);
         if (err instanceof ApiError && err.status === 402) {
           openOutOfCredits();
+        } else if (err instanceof ApiError && err.status === 429) {
+          toast.error(
+            "You already have the maximum number of generations running. Wait for one to finish and try again.",
+          );
         } else if (
           err instanceof ApiError &&
           err.message === "PROJECT_LIMIT_REACHED"
@@ -112,6 +136,7 @@ function Home() {
               onChange={setPrompt}
               onSubmit={submit}
               isSubmitting={isSubmitting}
+              disabled={atProjectLimit}
               minRows={3}
               maxRows={12}
               overlay={
@@ -130,6 +155,19 @@ function Home() {
                 ) : null
               }
             />
+            {isFreePlan && (
+              <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
+                <span>
+                  {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
+                  {FREE_PLAN_MAX_PROJECTS} projects
+                </span>
+                {atProjectLimit && (
+                  <span className="text-amber-400">
+                    Free plan limit reached — delete one or upgrade to Pro.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

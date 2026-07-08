@@ -839,9 +839,11 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
           toast.error(
             err instanceof ApiError && err.status === 409
               ? "A generation is already in progress."
-              : err instanceof ApiError
-                ? err.message
-                : "Couldn't send your message",
+              : err instanceof ApiError && err.status === 429
+                ? "You already have the maximum number of generations running. Wait for one to finish and try again."
+                : err instanceof ApiError
+                  ? err.message
+                  : "Couldn't send your message",
           );
         }
       },

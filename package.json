@@ -1,0 +1,7 @@
+{
+  "name": "tau",
+  "private": true,
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File ./dev.ps1"
+  }
+}

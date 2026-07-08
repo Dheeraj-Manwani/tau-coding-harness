@@ -7,6 +7,13 @@ import type {
   ProjectTree,
 } from "@/src/features/project/types";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
+import { billingKeys, type BalanceSummary } from "@/src/features/billing/api";
+import { queryClient } from "@/src/lib/query-client";
+
+/** Pull the credit balance back from the server after a job settles. */
+function invalidateBalance(): void {
+  void queryClient.invalidateQueries({ queryKey: billingKeys.balance });
+}
 
 export type ChatRole = "user" | "ai";
 
@@ -1218,6 +1225,23 @@ function applyEvent(set: SetState, event: JobEvent): void {
       }));
       return;
 
+    case "credits_update":
+      // Live spend tick from the worker after each metered turn. Write the new
+      // available balance straight into the react-query cache so the
+      // CreditsWidget ticks down turn by turn instead of waiting for its poll.
+      // The full bucket breakdown is reconciled by invalidateBalance() when the
+      // job reaches a terminal frame.
+      queryClient.setQueryData<BalanceSummary>(billingKeys.balance, (old) =>
+        old
+          ? {
+              ...old,
+              credits: { ...old.credits, available: event.available },
+              micro: { ...old.micro, available: event.availableMicro },
+            }
+          : old,
+      );
+      return;
+
     case "resync":
       // Handled in useJobStream before reaching here; nothing to do in the reducer.
       return;
@@ -1230,6 +1254,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "done":
+      invalidateBalance();
       set((s) => {
         const fin = finalizeStreaming(s);
         const { chatMessages } = flushPendingActions({ ...s, ...fin });
@@ -1248,6 +1273,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "cancelled": {
+      invalidateBalance();
       set((s) => {
         const fin = finalizeStreaming(s);
         const { chatMessages } = flushPendingActions({ ...s, ...fin });
@@ -1267,6 +1293,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
     }
 
     case "error":
+      invalidateBalance();
       set((s) => {
         const fin = finalizeStreaming(s);
         const { chatMessages } = flushPendingActions({ ...s, ...fin });
@@ -1297,6 +1324,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "insufficient_credits":
+      invalidateBalance();
       set((s) => ({
         ...finalizeStreaming(s),
         isAiTyping: false,

@@ -16,13 +16,16 @@ function App() {
     <div className="flex h-[100svh] flex-col">
       {!isProject && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
-          <div className="pointer-events-auto mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             <span
-              className={cn("logo-mark size-6", isHome && "logo-mark--white")}
+              className={cn(
+                "logo-mark pointer-events-auto size-6",
+                isHome && "logo-mark--white",
+              )}
               role="img"
               aria-label="tau"
             />
-            <div className="flex items-center gap-3">
+            <div className="pointer-events-auto flex items-center gap-3">
               <UserMenu />
             </div>
           </div>

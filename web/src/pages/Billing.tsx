@@ -52,7 +52,12 @@ const LEDGER_LABELS: Record<string, string> = {
   ADJUSTMENT: "Adjustment",
 };
 
-const ACTIVE_STATUSES = new Set(["CREATED", "AUTHENTICATED", "ACTIVE", "PENDING"]);
+const ACTIVE_STATUSES = new Set([
+  "CREATED",
+  "AUTHENTICATED",
+  "ACTIVE",
+  "PENDING",
+]);
 
 // ── Razorpay checkout ────────────────────────────────────────────────────────
 
@@ -84,7 +89,8 @@ function openRazorpayCheckout(
 
 function BalanceCard() {
   const { data: balance } = useBalance();
-  if (!balance) return <div className="h-28 animate-pulse rounded-xl bg-muted" />;
+  if (!balance)
+    return <div className="h-28 animate-pulse rounded-xl bg-muted" />;
 
   const { credits, plan, cycleEnd } = balance;
 
@@ -144,17 +150,17 @@ function PlanSection() {
   const handleUpgrade = () => {
     subscribePro.mutate(undefined, {
       onSuccess: (data) => {
-        openRazorpayCheckout(
-          data.subscriptionId,
-          user?.email ?? "",
-          () => {
-            void refetchSub();
-            void refetchBalance();
-          },
-        );
+        openRazorpayCheckout(data.subscriptionId, user?.email ?? "", () => {
+          void refetchSub();
+          void refetchBalance();
+        });
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Could not start subscription");
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not start subscription",
+        );
       },
     });
   };
@@ -162,11 +168,17 @@ function PlanSection() {
   const handleCancel = () => {
     cancelSub.mutate(undefined, {
       onSuccess: () => {
-        toast.success("Subscription will cancel at the end of this billing cycle.");
+        toast.success(
+          "Subscription will cancel at the end of this billing cycle.",
+        );
         setConfirmCancel(false);
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Could not cancel subscription");
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not cancel subscription",
+        );
       },
     });
   };
@@ -175,7 +187,11 @@ function PlanSection() {
     <div className="rounded-xl border bg-card p-5">
       <h2 className="text-sm font-medium">PRO plan — ₹999/month</h2>
       <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-        {["5,000 credits per month", "Priority generation queue", "Credits reset monthly"].map((f) => (
+        {[
+          "5,000 credits per month",
+          "Priority generation queue",
+          "Credits reset monthly",
+        ].map((f) => (
           <li key={f} className="flex items-center gap-2">
             <CheckCircleIcon className="size-3.5 shrink-0 text-indigo-400" />
             {f}
@@ -192,11 +208,14 @@ function PlanSection() {
           <>
             {sub?.cancelAtCycleEnd ? (
               <p className="text-sm text-muted-foreground">
-                Cancels {sub.currentEnd ? fmtDate(sub.currentEnd) : "at cycle end"}
+                Cancels{" "}
+                {sub.currentEnd ? fmtDate(sub.currentEnd) : "at cycle end"}
               </p>
             ) : confirmCancel ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Cancel at cycle end?</span>
+                <span className="text-sm text-muted-foreground">
+                  Cancel at cycle end?
+                </span>
                 <Button
                   size="sm"
                   variant="destructive"
@@ -205,7 +224,11 @@ function PlanSection() {
                 >
                   Confirm
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(false)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmCancel(false)}
+                >
                   Keep plan
                 </Button>
               </div>
@@ -253,7 +276,9 @@ function RedeemSection() {
         setCode("");
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Invalid promo code");
+        toast.error(
+          err instanceof ApiError ? err.message : "Invalid promo code",
+        );
       },
     });
   };
@@ -289,9 +314,13 @@ function LedgerRow({ entry }: { entry: LedgerEntry }) {
       <div className="min-w-0">
         <p className="truncate font-medium">{label}</p>
         {entry.reason && entry.reason !== label.toLowerCase() && (
-          <p className="truncate text-xs text-muted-foreground">{entry.reason}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {entry.reason}
+          </p>
         )}
-        <p className="text-xs text-muted-foreground">{fmtDate(entry.createdAt)}</p>
+        <p className="text-xs text-muted-foreground">
+          {fmtDate(entry.createdAt)}
+        </p>
       </div>
       <span
         className={cn(
@@ -329,7 +358,9 @@ function HistorySection() {
       </div>
 
       {allEntries.length === 0 && !isFetching && (
-        <p className="py-6 text-center text-sm text-muted-foreground">No transactions yet.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          No transactions yet.
+        </p>
       )}
 
       <div className="divide-y">
@@ -367,8 +398,8 @@ export default function BillingPage() {
     <div className="mx-auto max-w-xl px-4 py-8">
       <button
         type="button"
-        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
-        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => navigate("/")}
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ArrowLeftIcon className="size-3.5" />
         Back
@@ -395,15 +426,20 @@ export default function BillingPage() {
       </div>
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
-        <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier gives 50 credits/day. PRO gives 5,000/month.
+        <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier
+        gives 50 credits/day. PRO gives 5,000/month.
       </p>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Payments processed by Razorpay. No prorated refunds for partial billing periods. See our{" "}
+        Payments processed by Razorpay. No prorated refunds for partial billing
+        periods. See our{" "}
         <a href="/terms" className="underline hover:text-foreground">
           Cancellation &amp; Refund Policy
         </a>{" "}
         · Questions?{" "}
-        <a href="mailto:support@usetau.dev" className="underline hover:text-foreground">
+        <a
+          href="mailto:support@usetau.dev"
+          className="underline hover:text-foreground"
+        >
           support@usetau.dev
         </a>
       </p>

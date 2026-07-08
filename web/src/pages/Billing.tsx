@@ -40,6 +40,25 @@ function fmtDate(iso: string): string {
   });
 }
 
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Day header label for grouping: "Today" / "Yesterday" / "Jul 6, 2026". */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const startOf = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOf(today) - startOf(d)) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return fmtDate(iso);
+}
+
 const LEDGER_LABELS: Record<string, string> = {
   SIGNUP_GRANT: "Signup bonus",
   DAILY_FREE_GRANT: "Daily free credits",
@@ -308,18 +327,34 @@ function RedeemSection() {
 
 function LedgerRow({ entry }: { entry: LedgerEntry }) {
   const isDebit = entry.credits < 0;
-  const label = LEDGER_LABELS[entry.type] ?? entry.type;
+  const isGeneration = entry.type === "DEBIT";
+
+  // Generations get a richer title: "Generation · <project>" (or just
+  // "Generation" if the project was since deleted). Everything else uses its
+  // label.
+  const baseLabel = LEDGER_LABELS[entry.type] ?? entry.type;
+  const title =
+    isGeneration && entry.projectName
+      ? `${baseLabel} · ${entry.projectName}`
+      : baseLabel;
+
+  // Secondary line: turn count for multi-turn generations, else the raw reason
+  // when it adds something beyond the label.
+  const detail =
+    isGeneration && entry.turnCount > 1
+      ? `${entry.turnCount} turns`
+      : entry.reason && entry.reason !== baseLabel.toLowerCase()
+        ? entry.reason
+        : null;
+
   return (
     <div className="flex items-center justify-between py-2.5 text-sm">
       <div className="min-w-0">
-        <p className="truncate font-medium">{label}</p>
-        {entry.reason && entry.reason !== label.toLowerCase() && (
-          <p className="truncate text-xs text-muted-foreground">
-            {entry.reason}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {fmtDate(entry.createdAt)}
+        <p className="truncate font-medium">{title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {fmtTime(entry.createdAt)}
+          {detail ? ` · ${detail}` : ""}
+          {` · balance ${fmt(entry.balanceAfter)}`}
         </p>
       </div>
       <span
@@ -363,10 +398,24 @@ function HistorySection() {
         </p>
       )}
 
-      <div className="divide-y">
-        {allEntries.map((e) => (
-          <LedgerRow key={e.id} entry={e} />
-        ))}
+      <div>
+        {allEntries.map((e, i) => {
+          const prev = allEntries[i - 1];
+          const showHeader =
+            !prev || dayLabel(prev.createdAt) !== dayLabel(e.createdAt);
+          return (
+            <div key={e.id}>
+              {showHeader && (
+                <p className="mt-3 pb-1 text-xs font-medium text-muted-foreground first:mt-1">
+                  {dayLabel(e.createdAt)}
+                </p>
+              )}
+              <div className="border-t border-border/50">
+                <LedgerRow entry={e} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {isFetching && (
@@ -398,7 +447,7 @@ export default function BillingPage() {
     <div className="mx-auto max-w-xl px-4 py-8">
       <button
         type="button"
-        onClick={() => navigate("/")}
+        onClick={() => navigate(-1)}
         className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ArrowLeftIcon className="size-3.5" />
@@ -427,7 +476,7 @@ export default function BillingPage() {
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
         <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier
-        gives 50 credits/day. PRO gives 5,000/month.
+        gives 50 credits once. PRO gives 5,000/month.
       </p>
       <p className="mt-2 text-center text-xs text-muted-foreground">
         Payments processed by Razorpay. No prorated refunds for partial billing

@@ -3,7 +3,7 @@ import {
   costMicro,
   spendBuckets,
   MICRO,
-  FREE_DAILY_ALLOTMENT_MICRO,
+  FREE_SIGNUP_GRANT_MICRO,
   JOB_RESERVE_CEILING_MICRO,
 } from "../src/lib/pricing.ts";
 
@@ -72,7 +72,7 @@ describe("spendBuckets — free → plan → bonus order", () => {
 describe("constants", () => {
   test("micro unit and allotments are the agreed values", () => {
     expect(MICRO).toBe(1_000_000n);
-    expect(FREE_DAILY_ALLOTMENT_MICRO).toBe(50_000_000n);
+    expect(FREE_SIGNUP_GRANT_MICRO).toBe(50_000_000n);
     expect(JOB_RESERVE_CEILING_MICRO).toBe(50_000_000n);
   });
 });

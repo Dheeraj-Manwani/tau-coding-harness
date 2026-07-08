@@ -15,7 +15,7 @@ import type { CreatePromoCodeInput } from "../repositories/credits.repository";
 // (lossy, for display) and the exact `*Micro` string.
 
 export async function getBalanceSummary(userId: string) {
-  // getBalance applies any pending daily free refill, then returns the buckets.
+  // getBalance ensures the account (and its one-time signup grant) exists.
   const view = await getBalance(userId);
   const account = await creditsRepo.findAccount(userId);
 
@@ -76,18 +76,20 @@ export async function getHistory(
   userId: string,
   opts: { cursor?: string; limit: number },
 ) {
-  const { entries, nextCursor } = await creditsRepo.listLedger(userId, opts);
+  const { entries, nextCursor } = await creditsRepo.listActivity(userId, opts);
 
   return {
     entries: entries.map((e) => ({
       id: e.id,
       type: e.type,
-      credits: toCredits(e.amount),
-      amountMicro: e.amount.toString(),
-      balanceAfter: toCredits(e.balanceAfter),
-      balanceAfterMicro: e.balanceAfter.toString(),
+      credits: toCredits(e.amountMicro),
+      amountMicro: e.amountMicro.toString(),
+      balanceAfter: toCredits(e.balanceAfterMicro),
+      balanceAfterMicro: e.balanceAfterMicro.toString(),
       reason: e.reason,
       jobId: e.jobId,
+      projectName: e.projectName,
+      turnCount: e.turnCount,
       createdAt: e.createdAt,
     })),
     nextCursor,

@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 import type { Prisma } from "../generated/prisma/client";
 import { HoldStatus, LedgerType } from "../generated/prisma/enums";
 import {
-  FREE_DAILY_ALLOTMENT_MICRO,
+  FREE_SIGNUP_GRANT_MICRO,
   PRO_MONTHLY_ALLOTMENT_MICRO,
   JOB_RESERVE_CEILING_MICRO,
   MIN_SPEND_TO_START_MICRO,
@@ -70,8 +70,6 @@ interface AccountRow {
   planBalance: bigint;
   bonusBalance: bigint;
   reserved: bigint;
-  dailyAllotment: bigint;
-  freeRefilledAt: Date | null;
 }
 
 export interface BalanceView {
@@ -83,12 +81,6 @@ export interface BalanceView {
   gross: bigint;
   /** available = gross − reserved */
   available: bigint;
-}
-
-function utcDayStart(d: Date): Date {
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
-  );
 }
 
 function gross(a: {
@@ -120,15 +112,17 @@ async function lockAccount(tx: Tx, userId: string): Promise<AccountRow> {
 }
 
 /**
- * Idempotent: ensure a FREE account exists with the daily bucket pre-filled,
- * and that the initial seed is recorded as a SIGNUP_GRANT ledger row. Called at
- * signup and lazily before the first spend.
+ * Idempotent: ensure a FREE account exists, seeded once with the signup free
+ * grant, recorded as a SIGNUP_GRANT ledger row. Called at signup and lazily
+ * before the first spend.
  *
- * The signup grant is written on a separate, idempotency-keyed ledger row
- * (`signup:{userId}`) rather than being inferred from account creation. This
- * keeps it self-healing: accounts created before this row existed get the grant
- * backfilled on their next balance read/reserve, so `reconcileAccount()` — which
- * requires Σ ledger.amount === stored gross — goes green without a manual pass.
+ * There is NO daily refill — each account is granted the free credits exactly
+ * once and it is use-it-or-keep-it (never topped up). The grant is written on a
+ * separate, idempotency-keyed ledger row (`signup:{userId}`) rather than being
+ * inferred from account creation. This keeps it self-healing: accounts created
+ * before this row existed get the grant backfilled on their next balance
+ * read/reserve, so `reconcileAccount()` — which requires
+ * Σ ledger.amount === stored gross — goes green without a manual pass.
  */
 export async function ensureBillingAccount(
   userId: string,
@@ -139,9 +133,7 @@ export async function ensureBillingAccount(
     update: {},
     create: {
       userId,
-      dailyAllotment: FREE_DAILY_ALLOTMENT_MICRO,
-      freeBalance: FREE_DAILY_ALLOTMENT_MICRO,
-      freeRefilledAt: new Date(),
+      freeBalance: FREE_SIGNUP_GRANT_MICRO,
     },
   });
 
@@ -155,8 +147,8 @@ export async function ensureBillingAccount(
         data: {
           userId,
           type: LedgerType.SIGNUP_GRANT,
-          amount: FREE_DAILY_ALLOTMENT_MICRO,
-          balanceAfter: FREE_DAILY_ALLOTMENT_MICRO,
+          amount: FREE_SIGNUP_GRANT_MICRO,
+          balanceAfter: FREE_SIGNUP_GRANT_MICRO,
           idempotencyKey,
           reason: "signup free grant",
         },
@@ -170,48 +162,11 @@ export async function ensureBillingAccount(
   return account;
 }
 
-/**
- * If the free bucket hasn't been refilled today (UTC), reset it to the daily
- * allotment (use-it-or-lose-it). Mutates `acc` in place and writes the account +
- * a DAILY_FREE_GRANT ledger row for the net delta. No-op otherwise.
- */
-async function applyDailyRefill(
-  tx: Tx,
-  acc: AccountRow,
-  now: Date,
-): Promise<void> {
-  const last = acc.freeRefilledAt ? utcDayStart(acc.freeRefilledAt) : null;
-  if (last && last.getTime() >= utcDayStart(now).getTime()) return;
-
-  const delta = acc.dailyAllotment - acc.freeBalance; // >= 0 (free maxes at allotment)
-  acc.freeBalance = acc.dailyAllotment;
-  acc.freeRefilledAt = now;
-
-  await tx.billingAccount.update({
-    where: { userId: acc.userId },
-    data: { freeBalance: acc.freeBalance, freeRefilledAt: acc.freeRefilledAt },
-  });
-
-  if (delta !== 0n) {
-    await tx.creditLedger.create({
-      data: {
-        userId: acc.userId,
-        type: LedgerType.DAILY_FREE_GRANT,
-        amount: delta,
-        balanceAfter: gross(acc),
-        idempotencyKey: `free:${acc.userId}:${utcDayStart(now).toISOString()}`,
-        reason: "daily free refill",
-      },
-    });
-  }
-}
-
-/** Read the live balance, applying any pending daily refill. */
+/** Read the live balance. */
 export async function getBalance(userId: string): Promise<BalanceView> {
   await ensureBillingAccount(userId);
   return prisma.$transaction(async (tx) => {
     const acc = await lockAccount(tx, userId);
-    await applyDailyRefill(tx, acc, new Date());
     return view(acc);
   });
 }
@@ -235,7 +190,6 @@ export async function reserveInTx(
 ): Promise<ReserveResult> {
   await ensureBillingAccount(userId, tx);
   const acc = await lockAccount(tx, userId);
-  await applyDailyRefill(tx, acc, new Date());
 
   const existing = await tx.creditHold.findUnique({ where: { jobId } });
   if (existing && existing.status === HoldStatus.ACTIVE) {

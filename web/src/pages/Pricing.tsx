@@ -4,8 +4,8 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
 
 const FREE_FEATURES = [
-  "50 credits per day (resets at midnight UTC)",
-  "Unlimited projects",
+  "50 free credits (one-time, on signup)",
+  "Up to 3 projects",
   "AI-powered code generation",
   "Live preview in secure sandbox",
   "Download your code anytime",
@@ -133,8 +133,8 @@ export default function PricingPage() {
                 body: "Each AI generation consumes credits based on the amount of code produced. Generating a simple landing page costs roughly 5–15 credits.",
               },
               {
-                title: "Free daily refill",
-                body: "Free-tier users receive 50 credits at midnight UTC every day. Unused free credits expire — they don't roll over.",
+                title: "One-time free credits",
+                body: "Free-tier users receive 50 credits once, when they sign up. There is no daily refill — when they run out, they can redeem a promo code or upgrade to PRO.",
               },
               {
                 title: "PRO monthly grant",

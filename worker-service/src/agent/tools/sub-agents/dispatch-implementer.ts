@@ -11,6 +11,7 @@ export async function dispatchImplementer(
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  model: string,
 ) {
   const { goal, relevant_files } = input as {
     goal?: unknown;
@@ -36,6 +37,7 @@ export async function dispatchImplementer(
     projectId,
     userId,
     nextIndex,
+    model,
     "implementer",
   );
 

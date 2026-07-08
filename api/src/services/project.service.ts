@@ -24,6 +24,7 @@ import {
   Plan,
 } from "../generated/prisma/enums";
 import type { Prisma } from "../generated/prisma/client";
+import type { Effort } from "../generated/prisma/enums";
 
 const MAX_NAME_LENGTH = 80;
 
@@ -79,6 +80,7 @@ export interface InitializeProjectResult {
 export async function initializeProject(
   userId: string,
   message: string,
+  effort: Effort,
 ): Promise<InitializeProjectResult> {
   const name = await generateProjectName(message);
 
@@ -89,6 +91,9 @@ export async function initializeProject(
       const projectCount = await projectRepo.countProjectsByUser(userId, tx);
       if (projectCount >= FREE_PLAN_MAX_PROJECTS) {
         throw Errors.forbidden("PROJECT_LIMIT_REACHED");
+      }
+      if (effort !== "LOW") {
+        throw Errors.forbidden("EFFORT_REQUIRES_PRO");
       }
     }
 
@@ -101,6 +106,7 @@ export async function initializeProject(
       projectId: project.id,
       prompt: message,
       type: JobType.GENERATION,
+      effort,
     });
 
     if (env.CREDITS_ENFORCE) {
@@ -136,6 +142,7 @@ export async function initializeProject(
     projectId,
     userId,
     prompt: message,
+    effort,
   });
   await projectRepo.setJobQueueId(jobId, queueJobId);
 
@@ -150,6 +157,7 @@ export async function addMessage(
   projectId: string,
   userId: string,
   content: string,
+  effort: Effort,
 ): Promise<AddMessageResult> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -162,10 +170,18 @@ export async function addMessage(
       const active = await projectRepo.findActiveJob(projectId, tx);
       if (active) throw Errors.conflict("generation in progress");
 
+      if (effort !== "LOW") {
+        const account = await ensureBillingAccount(userId, tx);
+        if (account.plan === Plan.FREE) {
+          throw Errors.forbidden("EFFORT_REQUIRES_PRO");
+        }
+      }
+
       const job = await projectRepo.createJob(tx, {
         projectId,
         prompt: content,
         type: JobType.GENERATION,
+        effort,
       });
 
       if (env.CREDITS_ENFORCE) {
@@ -203,6 +219,7 @@ export async function addMessage(
     projectId,
     userId,
     prompt: content,
+    effort,
   });
   await projectRepo.setJobQueueId(jobId, queueJobId);
 

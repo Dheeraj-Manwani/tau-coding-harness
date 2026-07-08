@@ -11,9 +11,11 @@ const messageContent = z
 
 export const messageRole = z.enum(["USER", "ASSISTANT"]);
 export const messageType = z.enum(["RESULT", "ERROR"]);
+export const effortSchema = z.enum(["LOW", "HIGH", "MAX"]).default("LOW");
 
 export const messageSchema = z.object({
   message: messageContent,
+  effort: effortSchema,
 });
 
 export const projectIdParamSchema = z.object({
@@ -46,6 +48,7 @@ export const jobAnswerSchema = z.object({
 
 export type MessageRole = z.infer<typeof messageRole>;
 export type MessageType = z.infer<typeof messageType>;
+export type Effort = z.infer<typeof effortSchema>;
 export type MessageInput = z.infer<typeof messageSchema>;
 export type ProjectIdParam = z.infer<typeof projectIdParamSchema>;
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;

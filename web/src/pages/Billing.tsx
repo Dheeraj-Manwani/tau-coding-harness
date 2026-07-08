@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ReceiptTextIcon,
+  Wallet,
   ZapIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ import {
 } from "@/src/features/billing/api";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -220,9 +222,12 @@ function PlanSection() {
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {!isActive ? (
-          <Button onClick={handleUpgrade} disabled={subscribePro.isPending}>
+          <UpgradeProButton
+            onClick={handleUpgrade}
+            disabled={subscribePro.isPending}
+          >
             {subscribePro.isPending ? "Preparing checkout…" : "Upgrade to PRO"}
-          </Button>
+          </UpgradeProButton>
         ) : (
           <>
             {sub?.cancelAtCycleEnd ? (
@@ -455,7 +460,8 @@ export default function BillingPage() {
       </button>
 
       <div className="mb-6 flex items-center gap-2">
-        <ZapIcon className="size-5 text-indigo-400" />
+        <Wallet />
+        {/* <ZapIcon className="size-5 text-indigo-400" /> */}
         <h1 className="text-xl font-semibold">Credits &amp; Billing</h1>
       </div>
 

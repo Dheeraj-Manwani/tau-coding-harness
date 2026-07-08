@@ -27,9 +27,11 @@ import {
   TRUNCATION_NUDGE,
   PREVIEW_PORT,
   buildSystemPrompt,
+  modelForEffort,
 } from "./config";
 import { toTemplateKey } from "../templates/registry";
 import type { Tool } from "./tools/tools";
+import type { Effort } from "../generated/prisma/enums";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
@@ -143,12 +145,14 @@ export async function runAgentLoop(
   projectId: string,
   userId: string,
   prompt: string,
+  effort: Effort,
   startIndex = 1,
   initialSandbox?: Sandbox,
 ): Promise<void> {
   void prompt;
   const sandboxRef: SandboxRef = { current: initialSandbox ?? null };
   const nextIndex = makeIndexer(startIndex);
+  const model = modelForEffort(effort);
 
   try {
     // Determine which template the agent is (or will be) working in. A template
@@ -184,7 +188,7 @@ export async function runAgentLoop(
       }
 
       const stream = deepseek.chat.completions.stream({
-        model: env.DEEPSEEK_MODEL,
+        model,
         max_tokens: MAX_TOKENS,
         tools:
           TOOL_DEFINITIONS as unknown as OpenAI.Chat.Completions.ChatCompletionTool[],
@@ -245,7 +249,7 @@ export async function runAgentLoop(
               userId,
               projectId,
               jobId,
-              model: env.DEEPSEEK_MODEL,
+              model,
               inputTokens,
               outputTokens,
             },
@@ -260,7 +264,7 @@ export async function runAgentLoop(
         const meterResult = await meterWithRetry(
           userId,
           jobId,
-          env.DEEPSEEK_MODEL,
+          model,
           inputTokens,
           outputTokens,
           sequence,
@@ -408,6 +412,7 @@ export async function runAgentLoop(
             projectId,
             userId,
             nextIndex,
+            model,
           );
           await prisma.toolCall.update({
             where: { id: toolCallRow.id },

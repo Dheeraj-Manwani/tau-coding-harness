@@ -169,6 +169,7 @@ model Job {
   status JobStatus @default(QUEUED)
   type   JobType   @default(GENERATION)
   prompt String
+  effort Effort    @default(LOW)
 
   queueJobId String? @unique
 
@@ -199,6 +200,12 @@ enum JobStatus {
 enum JobType {
   GENERATION
   RECOVERY
+}
+
+enum Effort {
+  LOW
+  HIGH
+  MAX
 }
 
 model ProjectFile {

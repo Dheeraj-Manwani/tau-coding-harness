@@ -21,6 +21,8 @@ interface PromptComposerProps {
   compact?: boolean;
   /** When provided, replaces the send button with a red stop button. */
   onStop?: () => void;
+  /** Extra control rendered in the bottom row, just left of the send/stop button. */
+  rightSlot?: ReactNode;
 }
 
 export function PromptComposer({
@@ -36,6 +38,7 @@ export function PromptComposer({
   autoFocus = false,
   compact = false,
   onStop,
+  rightSlot,
 }: PromptComposerProps) {
   const hasText = value.trim().length > 0;
   const canSubmit = hasText && !isSubmitting && !disabled;
@@ -83,39 +86,43 @@ export function PromptComposer({
           <PaperclipIcon className="size-4" />
         </button>
 
-        {onStop ? (
-          <button
-            type="button"
-            onClick={onStop}
-            aria-label="Stop generating"
-            className={cn(
-              "flex items-center justify-center rounded-lg bg-[var(--space-overlay)] text-[var(--silver-900)] ring-1 ring-[var(--silver-400)] transition-[background-color,transform] hover:bg-[var(--space-surface)] active:scale-95",
-              compact ? "size-7" : "size-9",
-            )}
-          >
-            <SquareIcon className="size-3.5 fill-current" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            aria-label="Send prompt"
-            className={cn(
-              "flex items-center justify-center rounded-lg transition-[background-color,transform]",
-              compact ? "size-7" : "size-9",
-              hasText
-                ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
-                : "cursor-not-allowed bg-space-overlay text-silver-600",
-            )}
-          >
-            {isSubmitting ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <ArrowUpIcon className="size-4" />
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {rightSlot}
+
+          {onStop ? (
+            <button
+              type="button"
+              onClick={onStop}
+              aria-label="Stop generating"
+              className={cn(
+                "flex items-center justify-center rounded-lg bg-[var(--space-overlay)] text-[var(--silver-900)] ring-1 ring-[var(--silver-400)] transition-[background-color,transform] hover:bg-[var(--space-surface)] active:scale-95",
+                compact ? "size-7" : "size-9",
+              )}
+            >
+              <SquareIcon className="size-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={!canSubmit}
+              aria-label="Send prompt"
+              className={cn(
+                "flex items-center justify-center rounded-lg transition-[background-color,transform]",
+                compact ? "size-7" : "size-9",
+                hasText
+                  ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
+                  : "cursor-not-allowed bg-space-overlay text-silver-600",
+              )}
+            >
+              {isSubmitting ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-4" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

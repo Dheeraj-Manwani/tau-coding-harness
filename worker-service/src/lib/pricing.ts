@@ -7,6 +7,8 @@ export const PRICING: Record<
   { inputPerM: bigint; outputPerM: bigint }
 > = {
   "deepseek-chat": { inputPerM: 2_000_000n, outputPerM: 8_000_000n },
+  "deepseek-v4-pro": { inputPerM: 2_000_000n, outputPerM: 8_000_000n },
+  "deepseek-v4-flash": { inputPerM: 2_000_000n, outputPerM: 8_000_000n },
 };
 
 const DEFAULT_PRICE = { inputPerM: 2_000_000n, outputPerM: 8_000_000n };

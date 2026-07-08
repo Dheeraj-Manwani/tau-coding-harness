@@ -48,6 +48,7 @@ import { cn } from "@/src/lib/utils";
 import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import {
   useProjectStore,
   type ActionItem,
@@ -59,6 +60,7 @@ import {
   useAddMessage,
   useProject,
 } from "@/src/features/project/api";
+import type { Effort } from "@/src/features/project/types";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import {
   Tooltip,
@@ -67,6 +69,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
+import { useBalance } from "@/src/features/billing/api";
 
 function formatRelativeTime(ts: number): string {
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -712,7 +715,17 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
 
   const addMessage = useAddMessage(projectId ?? "");
   const openOutOfCredits = useBillingStore((s) => s.open);
+  const { data: balance } = useBalance();
+  const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
   const isStreaming = status === "streaming";
+
+  const [effort, setEffort] = useState<Effort>("LOW");
+  const effortDefaultedRef = useRef(false);
+  useEffect(() => {
+    if (effortDefaultedRef.current || balance === undefined) return;
+    effortDefaultedRef.current = true;
+    if (!isFreePlan) setEffort("HIGH");
+  }, [balance, isFreePlan]);
 
   const [draft, setDraft] = useState("");
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -829,25 +842,33 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
 
     const msgId = appendUserMessage(content);
     setDraft("");
-    addMessage.mutate(content, {
-      onSuccess: ({ jobId }) => startJob(jobId, content),
-      onError: (err) => {
-        removeChatMessage(msgId);
-        if (err instanceof ApiError && err.status === 402) {
-          openOutOfCredits();
-        } else {
-          toast.error(
-            err instanceof ApiError && err.status === 409
-              ? "A generation is already in progress."
-              : err instanceof ApiError && err.status === 429
-                ? "You already have the maximum number of generations running. Wait for one to finish and try again."
-                : err instanceof ApiError
-                  ? err.message
-                  : "Couldn't send your message",
-          );
-        }
+    addMessage.mutate(
+      { message: content, effort },
+      {
+        onSuccess: ({ jobId }) => startJob(jobId, content),
+        onError: (err) => {
+          removeChatMessage(msgId);
+          if (err instanceof ApiError && err.status === 402) {
+            openOutOfCredits();
+          } else if (
+            err instanceof ApiError &&
+            err.message === "EFFORT_REQUIRES_PRO"
+          ) {
+            toast.error("High and Max effort require a PRO plan.");
+          } else {
+            toast.error(
+              err instanceof ApiError && err.status === 409
+                ? "A generation is already in progress."
+                : err instanceof ApiError && err.status === 429
+                  ? "You already have the maximum number of generations running. Wait for one to finish and try again."
+                  : err instanceof ApiError
+                    ? err.message
+                    : "Couldn't send your message",
+            );
+          }
+        },
       },
-    });
+    );
   };
 
   return (
@@ -942,6 +963,13 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             maxRows={4}
             isSubmitting={!canSend && draft.trim().length > 0}
             compact
+            rightSlot={
+              <EffortDropdown
+                effort={effort}
+                onChange={setEffort}
+                isPro={!isFreePlan}
+              />
+            }
           />
         )}
       </div>

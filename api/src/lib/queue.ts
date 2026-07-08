@@ -1,5 +1,6 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { redis } from "./redis";
+import type { Effort } from "../generated/prisma/enums";
 
 const connection = redis as ConnectionOptions;
 
@@ -10,6 +11,7 @@ export interface JobPayload {
   projectId: string;
   userId: string;
   prompt: string;
+  effort: Effort;
 }
 
 export const codeGenerationQueue = new Queue<JobPayload>(

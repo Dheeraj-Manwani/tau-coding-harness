@@ -108,4 +108,5 @@ export type JobEvent = BaseEvent &
     | { type: "done" }
     | { type: "error"; message: string }
     | { type: "insufficient_credits" }
+    | { type: "credits_update"; available: number; availableMicro: string }
   );

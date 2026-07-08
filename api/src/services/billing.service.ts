@@ -4,7 +4,11 @@ import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
 import { getRazorpay } from "../lib/razorpay";
 import { grantPlanCycle, ensureBillingAccount } from "../lib/credits";
-import { PRO_MONTHLY_ALLOTMENT_MICRO, toCredits } from "../lib/pricing";
+import {
+  PRO_MONTHLY_ALLOTMENT_MICRO,
+  FREE_SIGNUP_GRANT_MICRO,
+  toCredits,
+} from "../lib/pricing";
 import type { Prisma } from "../generated/prisma/client";
 import { Plan, SubscriptionStatus } from "../generated/prisma/enums";
 
@@ -16,8 +20,8 @@ export function getPlans() {
       {
         id: "FREE" as const,
         name: "Free",
-        credits: toCredits(50n * 1_000_000n),
-        resetPeriod: "daily",
+        credits: toCredits(FREE_SIGNUP_GRANT_MICRO),
+        resetPeriod: "one-time",
         price: null,
       },
       {

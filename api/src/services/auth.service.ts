@@ -51,7 +51,7 @@ export async function register(input: {
   const passwordHash = await argon2.hash(input.password, ARGON2_OPTIONS);
   const user = await authRepository.createUser({ email, passwordHash });
 
-  // Every user gets a FREE billing account (daily free credits) at signup.
+  // Every user gets a FREE billing account with a one-time free grant at signup.
   await ensureBillingAccount(user.id);
 
   sendVerificationEmail({ userId: user.id, email: user.email }).catch((err) => {

@@ -40,6 +40,25 @@ function fmtDate(iso: string): string {
   });
 }
 
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Day header label for grouping: "Today" / "Yesterday" / "Jul 6, 2026". */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const startOf = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOf(today) - startOf(d)) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return fmtDate(iso);
+}
+
 const LEDGER_LABELS: Record<string, string> = {
   SIGNUP_GRANT: "Signup bonus",
   DAILY_FREE_GRANT: "Daily free credits",
@@ -52,7 +71,12 @@ const LEDGER_LABELS: Record<string, string> = {
   ADJUSTMENT: "Adjustment",
 };
 
-const ACTIVE_STATUSES = new Set(["CREATED", "AUTHENTICATED", "ACTIVE", "PENDING"]);
+const ACTIVE_STATUSES = new Set([
+  "CREATED",
+  "AUTHENTICATED",
+  "ACTIVE",
+  "PENDING",
+]);
 
 // ── Razorpay checkout ────────────────────────────────────────────────────────
 
@@ -84,7 +108,8 @@ function openRazorpayCheckout(
 
 function BalanceCard() {
   const { data: balance } = useBalance();
-  if (!balance) return <div className="h-28 animate-pulse rounded-xl bg-muted" />;
+  if (!balance)
+    return <div className="h-28 animate-pulse rounded-xl bg-muted" />;
 
   const { credits, plan, cycleEnd } = balance;
 
@@ -144,17 +169,17 @@ function PlanSection() {
   const handleUpgrade = () => {
     subscribePro.mutate(undefined, {
       onSuccess: (data) => {
-        openRazorpayCheckout(
-          data.subscriptionId,
-          user?.email ?? "",
-          () => {
-            void refetchSub();
-            void refetchBalance();
-          },
-        );
+        openRazorpayCheckout(data.subscriptionId, user?.email ?? "", () => {
+          void refetchSub();
+          void refetchBalance();
+        });
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Could not start subscription");
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not start subscription",
+        );
       },
     });
   };
@@ -162,11 +187,17 @@ function PlanSection() {
   const handleCancel = () => {
     cancelSub.mutate(undefined, {
       onSuccess: () => {
-        toast.success("Subscription will cancel at the end of this billing cycle.");
+        toast.success(
+          "Subscription will cancel at the end of this billing cycle.",
+        );
         setConfirmCancel(false);
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Could not cancel subscription");
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not cancel subscription",
+        );
       },
     });
   };
@@ -175,7 +206,11 @@ function PlanSection() {
     <div className="rounded-xl border bg-card p-5">
       <h2 className="text-sm font-medium">PRO plan — ₹999/month</h2>
       <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-        {["5,000 credits per month", "Priority generation queue", "Credits reset monthly"].map((f) => (
+        {[
+          "5,000 credits per month",
+          "Priority generation queue",
+          "Credits reset monthly",
+        ].map((f) => (
           <li key={f} className="flex items-center gap-2">
             <CheckCircleIcon className="size-3.5 shrink-0 text-indigo-400" />
             {f}
@@ -192,11 +227,14 @@ function PlanSection() {
           <>
             {sub?.cancelAtCycleEnd ? (
               <p className="text-sm text-muted-foreground">
-                Cancels {sub.currentEnd ? fmtDate(sub.currentEnd) : "at cycle end"}
+                Cancels{" "}
+                {sub.currentEnd ? fmtDate(sub.currentEnd) : "at cycle end"}
               </p>
             ) : confirmCancel ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Cancel at cycle end?</span>
+                <span className="text-sm text-muted-foreground">
+                  Cancel at cycle end?
+                </span>
                 <Button
                   size="sm"
                   variant="destructive"
@@ -205,7 +243,11 @@ function PlanSection() {
                 >
                   Confirm
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(false)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmCancel(false)}
+                >
                   Keep plan
                 </Button>
               </div>
@@ -253,7 +295,9 @@ function RedeemSection() {
         setCode("");
       },
       onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Invalid promo code");
+        toast.error(
+          err instanceof ApiError ? err.message : "Invalid promo code",
+        );
       },
     });
   };
@@ -283,15 +327,35 @@ function RedeemSection() {
 
 function LedgerRow({ entry }: { entry: LedgerEntry }) {
   const isDebit = entry.credits < 0;
-  const label = LEDGER_LABELS[entry.type] ?? entry.type;
+  const isGeneration = entry.type === "DEBIT";
+
+  // Generations get a richer title: "Generation · <project>" (or just
+  // "Generation" if the project was since deleted). Everything else uses its
+  // label.
+  const baseLabel = LEDGER_LABELS[entry.type] ?? entry.type;
+  const title =
+    isGeneration && entry.projectName
+      ? `${baseLabel} · ${entry.projectName}`
+      : baseLabel;
+
+  // Secondary line: turn count for multi-turn generations, else the raw reason
+  // when it adds something beyond the label.
+  const detail =
+    isGeneration && entry.turnCount > 1
+      ? `${entry.turnCount} turns`
+      : entry.reason && entry.reason !== baseLabel.toLowerCase()
+        ? entry.reason
+        : null;
+
   return (
     <div className="flex items-center justify-between py-2.5 text-sm">
       <div className="min-w-0">
-        <p className="truncate font-medium">{label}</p>
-        {entry.reason && entry.reason !== label.toLowerCase() && (
-          <p className="truncate text-xs text-muted-foreground">{entry.reason}</p>
-        )}
-        <p className="text-xs text-muted-foreground">{fmtDate(entry.createdAt)}</p>
+        <p className="truncate font-medium">{title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {fmtTime(entry.createdAt)}
+          {detail ? ` · ${detail}` : ""}
+          {` · balance ${fmt(entry.balanceAfter)}`}
+        </p>
       </div>
       <span
         className={cn(
@@ -329,13 +393,29 @@ function HistorySection() {
       </div>
 
       {allEntries.length === 0 && !isFetching && (
-        <p className="py-6 text-center text-sm text-muted-foreground">No transactions yet.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          No transactions yet.
+        </p>
       )}
 
-      <div className="divide-y">
-        {allEntries.map((e) => (
-          <LedgerRow key={e.id} entry={e} />
-        ))}
+      <div>
+        {allEntries.map((e, i) => {
+          const prev = allEntries[i - 1];
+          const showHeader =
+            !prev || dayLabel(prev.createdAt) !== dayLabel(e.createdAt);
+          return (
+            <div key={e.id}>
+              {showHeader && (
+                <p className="mt-3 pb-1 text-xs font-medium text-muted-foreground first:mt-1">
+                  {dayLabel(e.createdAt)}
+                </p>
+              )}
+              <div className="border-t border-border/50">
+                <LedgerRow entry={e} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {isFetching && (
@@ -367,8 +447,8 @@ export default function BillingPage() {
     <div className="mx-auto max-w-xl px-4 py-8">
       <button
         type="button"
-        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
-        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => navigate(-1)}
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         <ArrowLeftIcon className="size-3.5" />
         Back
@@ -395,15 +475,20 @@ export default function BillingPage() {
       </div>
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
-        <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier gives 50 credits/day. PRO gives 5,000/month.
+        <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier
+        gives 50 credits once. PRO gives 5,000/month.
       </p>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Payments processed by Razorpay. No prorated refunds for partial billing periods. See our{" "}
+        Payments processed by Razorpay. No prorated refunds for partial billing
+        periods. See our{" "}
         <a href="/terms" className="underline hover:text-foreground">
           Cancellation &amp; Refund Policy
         </a>{" "}
         · Questions?{" "}
-        <a href="mailto:support@usetau.dev" className="underline hover:text-foreground">
+        <a
+          href="mailto:support@usetau.dev"
+          className="underline hover:text-foreground"
+        >
           support@usetau.dev
         </a>
       </p>

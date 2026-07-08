@@ -3,7 +3,8 @@ import { deepseek } from "../lib/deepseek";
 import { prisma } from "../lib/prisma";
 import { env } from "../lib/env";
 import { getNextSequence } from "../lib/sequence";
-import { meter } from "../lib/credits";
+import { meter, type MeterResult } from "../lib/credits";
+import { toCredits } from "../lib/pricing";
 import { publish, makeIndexer } from "../lib/publish";
 import type { Sandbox } from "../lib/sandbox";
 import { TOOL_DEFINITIONS } from "./tools/tools";
@@ -37,6 +38,23 @@ type FunctionToolCall =
 
 function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
+}
+
+// Fail-closed threshold: after this many consecutive metering failures while
+// enforcing, stop the job as if the hold were exhausted so a persistent DB
+// problem can't hand out unlimited free generation.
+const MAX_CONSECUTIVE_METER_FAILURES = 3;
+
+/** meter() with one immediate retry; idempotent per (jobId, sequence), so a
+ *  retried turn is never double-charged. */
+async function meterWithRetry(
+  ...args: Parameters<typeof meter>
+): Promise<MeterResult> {
+  try {
+    return await meter(...args);
+  } catch {
+    return await meter(...args);
+  }
 }
 
 const SUBAGENT_TOOLS = new Set<string>([
@@ -156,6 +174,7 @@ export async function runAgentLoop(
     let turn = 0;
     let truncationRetries = 0;
     let intentNudges = 0;
+    let meterFailures = 0;
 
     while (true) {
       if (turn++ >= MAX_AGENT_TURNS) {
@@ -238,7 +257,7 @@ export async function runAgentLoop(
 
       let holdExhausted = false;
       try {
-        const meterResult = await meter(
+        const meterResult = await meterWithRetry(
           userId,
           jobId,
           env.DEEPSEEK_MODEL,
@@ -248,11 +267,32 @@ export async function runAgentLoop(
           { enforce: env.CREDITS_ENFORCE },
         );
         holdExhausted = meterResult.holdExhausted;
+        meterFailures = 0;
+        // Live balance tick: let the UI's CreditsWidget count down turn by turn
+        // instead of waiting for its 60s poll.
+        if (env.CREDITS_ENFORCE) {
+          await publish(
+            jobId,
+            {
+              type: "credits_update",
+              available: toCredits(meterResult.available),
+              availableMicro: meterResult.available.toString(),
+            },
+            nextIndex(),
+          );
+        }
       } catch (err) {
         console.error(
           `[worker] meter failed for job ${jobId} seq ${sequence}`,
           err,
         );
+        // Fail-closed once metering has failed repeatedly (see constant).
+        if (
+          env.CREDITS_ENFORCE &&
+          ++meterFailures >= MAX_CONSECUTIVE_METER_FAILURES
+        ) {
+          holdExhausted = true;
+        }
       }
 
       if (env.CREDITS_ENFORCE && holdExhausted) {

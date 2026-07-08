@@ -12,6 +12,8 @@ interface PromptComposerProps {
   /** Custom node rendered over the textarea (e.g. animated suggestions). */
   overlay?: ReactNode;
   isSubmitting?: boolean;
+  /** Hard-disable input and submit (e.g. at the free-plan project cap). */
+  disabled?: boolean;
   minRows?: number;
   maxRows?: number;
   autoFocus?: boolean;
@@ -28,6 +30,7 @@ export function PromptComposer({
   placeholder,
   overlay,
   isSubmitting = false,
+  disabled = false,
   minRows = 1,
   maxRows = 4,
   autoFocus = false,
@@ -35,7 +38,7 @@ export function PromptComposer({
   onStop,
 }: PromptComposerProps) {
   const hasText = value.trim().length > 0;
-  const canSubmit = hasText && !isSubmitting;
+  const canSubmit = hasText && !isSubmitting && !disabled;
 
   return (
     <div
@@ -58,9 +61,11 @@ export function PromptComposer({
           minRows={minRows}
           maxRows={maxRows}
           autoFocus={autoFocus}
+          disabled={disabled}
           className={cn(
             "scrollbar-thin w-full resize-none bg-transparent px-2 py-1 text-left text-foreground placeholder:text-muted-foreground focus:outline-none",
             compact ? "text-sm" : "text-base",
+            disabled && "cursor-not-allowed opacity-60",
           )}
         />
         {overlay}

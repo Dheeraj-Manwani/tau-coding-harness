@@ -11,6 +11,7 @@ import {
   ensureBillingAccount,
   lockAccount,
   InsufficientCreditsError,
+  ConcurrentJobLimitError,
 } from "../lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
 import { getBlobText, deleteProjectBlobs } from "../lib/s3";
@@ -108,6 +109,9 @@ export async function initializeProject(
           maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
         });
       } catch (err) {
+        if (err instanceof ConcurrentJobLimitError) {
+          throw Errors.tooMany("CONCURRENT_JOB_LIMIT");
+        }
         if (err instanceof InsufficientCreditsError) {
           throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
         }
@@ -170,6 +174,9 @@ export async function addMessage(
             maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
           });
         } catch (err) {
+          if (err instanceof ConcurrentJobLimitError) {
+            throw Errors.tooMany("CONCURRENT_JOB_LIMIT");
+          }
           if (err instanceof InsufficientCreditsError) {
             throw Errors.paymentRequired("INSUFFICIENT_CREDITS");
           }

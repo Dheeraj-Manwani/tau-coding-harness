@@ -276,12 +276,14 @@ model BillingAccount {
 
   plan Plan @default(FREE)
 
-  freeBalance  BigInt @default(0) // daily-reset bucket
+  freeBalance  BigInt @default(0) // one-time signup free grant (never refilled)
   planBalance  BigInt @default(0) // monthly-reset bucket (active plan)
   bonusBalance BigInt @default(0) // never expires (promos, top-ups, refunds)
   reserved     BigInt @default(0) // sum of ACTIVE holds; earmark, not a ledger event
 
-  dailyAllotment BigInt    @default(0) // micro-credits granted to the free bucket per day
+  // Legacy — retained for backward compatibility only. Free credits are no
+  // longer refilled daily, so these are unused by current code.
+  dailyAllotment BigInt    @default(0)
   freeRefilledAt DateTime?
 
   cycleStart DateTime? // current plan billing cycle

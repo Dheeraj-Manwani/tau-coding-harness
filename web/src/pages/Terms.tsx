@@ -56,9 +56,10 @@ export default function TermsPage() {
       <Section title="4. Credits &amp; billing">
         <p className="font-medium">Free tier</p>
         <p>
-          Every registered user receives 50 free credits per day (UTC), reset
-          automatically. Free credits are use-it-or-lose-it; unused credits
-          expire at midnight UTC.
+          Every registered user receives a one-time grant of 50 free credits
+          when they sign up. There is no daily or recurring refill of free
+          credits; additional credits can be obtained via a promo code or the
+          PRO plan.
         </p>
 
         <p className="mt-4 font-medium">PRO plan</p>

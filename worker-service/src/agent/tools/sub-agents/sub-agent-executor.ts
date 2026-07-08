@@ -2,7 +2,8 @@ import { deepseek } from "@/lib/deepseek";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { publish } from "@/lib/publish";
-import { meter } from "@/lib/credits";
+import { meter, type MeterResult } from "@/lib/credits";
+import { toCredits } from "@/lib/pricing";
 import type Sandbox from "e2b";
 import type OpenAI from "openai";
 import {
@@ -16,6 +17,23 @@ import {
 import { executeSubAgentTool } from "./tool-executor";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+// Fail-closed threshold: after this many consecutive metering failures while
+// enforcing, stop the sub-agent as if the hold were exhausted so a persistent
+// DB problem can't hand out unlimited free generation.
+const MAX_CONSECUTIVE_METER_FAILURES = 3;
+
+/** meter() with one immediate retry; idempotent per (jobId, sequence), so a
+ *  retried turn is never double-charged. */
+async function meterWithRetry(
+  ...args: Parameters<typeof meter>
+): Promise<MeterResult> {
+  try {
+    return await meter(...args);
+  } catch {
+    return await meter(...args);
+  }
+}
 
 /** Collapse whitespace and cap length so terminal logs stay one-line-ish. */
 function preview(value: unknown, max = 200): string {
@@ -55,6 +73,7 @@ export const executeSubAgentLoop = async (
   let truncationRetries = 0;
   let intentNudges = 0;
   let lastContent = "";
+  let meterFailures = 0;
 
   while (true) {
     if (turn >= MAX_SUBAGENT_TURNS) {
@@ -109,7 +128,7 @@ export const executeSubAgentLoop = async (
       // Message.sequence (always >= 0 via getNextSequence), so a negative,
       // per-job-monotonic value here can never collide with it while still
       // being unique across every turn of every sub-agent dispatched in this job.
-      const meterResult = await meter(
+      const meterResult = await meterWithRetry(
         userId,
         jobId,
         env.DEEPSEEK_MODEL,
@@ -119,8 +138,28 @@ export const executeSubAgentLoop = async (
         { enforce: env.CREDITS_ENFORCE },
       );
       holdExhausted = meterResult.holdExhausted;
+      meterFailures = 0;
+      // Live balance tick (see main loop) — sub-agent turns spend too.
+      if (env.CREDITS_ENFORCE) {
+        await publish(
+          jobId,
+          {
+            type: "credits_update",
+            available: toCredits(meterResult.available),
+            availableMicro: meterResult.available.toString(),
+          },
+          nextIndex(),
+        );
+      }
     } catch (err) {
       console.error(`[worker] sub-agent meter failed for job ${jobId}`, err);
+      // Fail-closed once metering has failed repeatedly (see constant).
+      if (
+        env.CREDITS_ENFORCE &&
+        ++meterFailures >= MAX_CONSECUTIVE_METER_FAILURES
+      ) {
+        holdExhausted = true;
+      }
     }
 
     if (env.CREDITS_ENFORCE && holdExhausted) {

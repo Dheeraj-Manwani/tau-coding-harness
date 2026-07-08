@@ -25,6 +25,10 @@ export interface LedgerEntry {
   balanceAfterMicro: string;
   reason: string | null;
   jobId: string | null;
+  /** Name of the project a generation debit paid for; null if since deleted. */
+  projectName: string | null;
+  /** Metered turns folded into this row (>1 only for collapsed generations). */
+  turnCount: number;
   createdAt: string;
 }
 

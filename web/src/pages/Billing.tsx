@@ -8,7 +8,6 @@ import {
   ChevronDownIcon,
   ReceiptTextIcon,
   Wallet,
-  ZapIcon,
 } from "lucide-react";
 
 import { env } from "@/src/lib/env";

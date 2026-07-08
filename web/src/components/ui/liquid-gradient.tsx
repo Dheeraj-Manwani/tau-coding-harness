@@ -236,11 +236,7 @@ type LiquidProps = {
   buttonType?: boolean;
 };
 
-export const Liquid: React.FC<LiquidProps> = ({
-  isHovered,
-  colors,
-  buttonType,
-}) => {
+export const Liquid: React.FC<LiquidProps> = ({ isHovered, colors }) => {
   return (
     <>
       {Array.from({ length: 7 }).map((_, index) => (

@@ -6,13 +6,14 @@ import { publish } from "./lib/publish";
 import { provisionSandbox } from "./lib/sandbox";
 import { runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
-import { JobStatus } from "./generated/prisma/enums";
+import { JobStatus, type Effort } from "./generated/prisma/enums";
 
 interface JobPayload {
   jobId: string;
   projectId: string;
   userId: string;
   prompt: string;
+  effort: Effort;
 }
 
 const connection = redis as unknown as ConnectionOptions;
@@ -20,7 +21,7 @@ const connection = redis as unknown as ConnectionOptions;
 const worker = new Worker<JobPayload>(
   env.QUEUE_NAME,
   async (job) => {
-    const { jobId, projectId, userId, prompt } = job.data;
+    const { jobId, projectId, userId, prompt, effort } = job.data;
 
     const controlChannel = `job:${jobId}:control`;
     const sub = redis.duplicate();
@@ -68,6 +69,7 @@ const worker = new Worker<JobPayload>(
         projectId,
         userId,
         prompt,
+        effort,
         startIndex,
         initialSandbox,
       );

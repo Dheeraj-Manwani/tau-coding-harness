@@ -2,6 +2,7 @@ import { useLocation, useOutlet } from "react-router-dom";
 
 import { UserMenu } from "@/src/components/UserMenu";
 import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
+import { UpgradeModal } from "@/src/features/billing/UpgradeModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { cn } from "@/src/lib/utils";
 
@@ -35,6 +36,7 @@ function App() {
       <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
       {!isProject && <SiteFooter />}
       <OutOfCreditsModal />
+      <UpgradeModal />
     </div>
   );
 }

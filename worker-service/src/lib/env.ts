@@ -15,6 +15,7 @@ const envSchema = z.object({
   // reach Deepseek; sensible defaults match the api service.
   DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   DEEPSEEK_MODEL: z.string().default("deepseek-v4-pro"),
+  DEEPSEEK_MODEL_FLASH: z.string().default("deepseek-v4-flash"),
 
   // ── E2B sandbox ──
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),

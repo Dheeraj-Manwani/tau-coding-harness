@@ -11,6 +11,7 @@ export async function dispatchDebugger(
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  model: string,
 ) {
   const { problem, known_context } = input as {
     problem?: unknown;
@@ -30,6 +31,7 @@ export async function dispatchDebugger(
     projectId,
     userId,
     nextIndex,
+    model,
     "debugger",
   );
 

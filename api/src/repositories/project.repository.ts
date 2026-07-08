@@ -42,6 +42,7 @@ export function createJob(
     projectId: string;
     prompt: string;
     type: Prisma.JobCreateInput["type"];
+    effort?: Prisma.JobCreateInput["effort"];
   },
 ): Promise<Job> {
   const { projectId, ...rest } = data;

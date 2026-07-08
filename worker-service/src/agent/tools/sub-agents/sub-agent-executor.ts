@@ -58,6 +58,7 @@ export const executeSubAgentLoop = async (
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  model: string,
   label = "sub-agent",
 ): Promise<string> => {
   const messages: MessageParam[] = prompts.map((prompt) => ({
@@ -82,7 +83,7 @@ export const executeSubAgentLoop = async (
     }
 
     const stream = deepseek.chat.completions.stream({
-      model: env.DEEPSEEK_MODEL,
+      model,
       max_tokens: MAX_TOKENS_FOR_SUBAGENT,
       tools,
       messages,
@@ -116,7 +117,7 @@ export const executeSubAgentLoop = async (
         userId,
         projectId,
         jobId,
-        model: env.DEEPSEEK_MODEL,
+        model,
         inputTokens,
         outputTokens,
       },
@@ -131,7 +132,7 @@ export const executeSubAgentLoop = async (
       const meterResult = await meterWithRetry(
         userId,
         jobId,
-        env.DEEPSEEK_MODEL,
+        model,
         inputTokens,
         outputTokens,
         -nextIndex(),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
@@ -6,9 +6,11 @@ import toast from "react-hot-toast";
 import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
+import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
@@ -51,8 +53,15 @@ function Home() {
   // submit with a 403. PRO users are unlimited, so only gate FREE.
   const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
   const projectCount = projects?.length ?? 0;
-  const atProjectLimit =
-    isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
+  const atProjectLimit = isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
+
+  const [effort, setEffort] = useState<Effort>("LOW");
+  const effortDefaultedRef = useRef(false);
+  useEffect(() => {
+    if (effortDefaultedRef.current || balance === undefined) return;
+    effortDefaultedRef.current = true;
+    if (!isFreePlan) setEffort("HIGH");
+  }, [balance, isFreePlan]);
 
   // Cycle through suggestions while the input is empty.
   useEffect(() => {
@@ -77,36 +86,46 @@ function Home() {
     // Create the project + enqueue the first job, then hand off to the project
     // route. The prompt + jobId ride along in router state so the workspace can
     // show the message and subscribe to the live stream immediately.
-    initProject.mutate(message, {
-      onSuccess: ({ projectId, jobId }) => {
-        // Flag this project so its page plays the centered → split reveal once.
-        markFreshBuild(projectId);
-        navigate(`/project/${projectId}`, {
-          state: { jobId, prompt: message },
-        });
+    initProject.mutate(
+      { message, effort },
+      {
+        onSuccess: ({ projectId, jobId }) => {
+          // Flag this project so its page plays the centered → split reveal once.
+          markFreshBuild(projectId);
+          navigate(`/project/${projectId}`, {
+            state: { jobId, prompt: message },
+          });
+        },
+        onError: (err) => {
+          setInitializing(false);
+          if (err instanceof ApiError && err.status === 402) {
+            openOutOfCredits();
+          } else if (err instanceof ApiError && err.status === 429) {
+            toast.error(
+              "You already have the maximum number of generations running. Wait for one to finish and try again.",
+            );
+          } else if (
+            err instanceof ApiError &&
+            err.message === "PROJECT_LIMIT_REACHED"
+          ) {
+            toast.error(
+              "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
+            );
+          } else if (
+            err instanceof ApiError &&
+            err.message === "EFFORT_REQUIRES_PRO"
+          ) {
+            toast.error("High and Max effort require a PRO plan.");
+          } else {
+            toast.error(
+              err instanceof ApiError
+                ? err.message
+                : "Couldn't start your project",
+            );
+          }
+        },
       },
-      onError: (err) => {
-        setInitializing(false);
-        if (err instanceof ApiError && err.status === 402) {
-          openOutOfCredits();
-        } else if (err instanceof ApiError && err.status === 429) {
-          toast.error(
-            "You already have the maximum number of generations running. Wait for one to finish and try again.",
-          );
-        } else if (
-          err instanceof ApiError &&
-          err.message === "PROJECT_LIMIT_REACHED"
-        ) {
-          toast.error(
-            "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
-          );
-        } else {
-          toast.error(
-            err instanceof ApiError ? err.message : "Couldn't start your project",
-          );
-        }
-      },
-    });
+    );
   };
 
   return (
@@ -139,6 +158,13 @@ function Home() {
               disabled={atProjectLimit}
               minRows={3}
               maxRows={12}
+              rightSlot={
+                <EffortDropdown
+                  effort={effort}
+                  onChange={setEffort}
+                  isPro={!isFreePlan}
+                />
+              }
               overlay={
                 showPlaceholder ? (
                   <TextAnimate

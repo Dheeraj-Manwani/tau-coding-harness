@@ -11,6 +11,7 @@ export async function dispatchExplorer(
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  model: string,
 ) {
   const task = asString((input as { task?: unknown }).task, "task");
 
@@ -22,6 +23,7 @@ export async function dispatchExplorer(
     projectId,
     userId,
     nextIndex,
+    model,
     "explorer",
   );
 

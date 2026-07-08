@@ -25,6 +25,12 @@ import {
   TEMPLATES,
   type TemplateKey,
 } from "../templates/registry";
+import { env } from "../lib/env";
+import type { Effort } from "../generated/prisma/enums";
+
+export function modelForEffort(effort: Effort): string {
+  return effort === "LOW" ? env.DEEPSEEK_MODEL_FLASH : env.DEEPSEEK_MODEL;
+}
 
 /**
  * Describe the stack the agent picks between before it has provisioned a

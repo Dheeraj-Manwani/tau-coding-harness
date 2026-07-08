@@ -11,6 +11,7 @@ export async function dispatchVerifier(
   projectId: string,
   userId: string,
   nextIndex: () => number,
+  model: string,
 ) {
   const { scope, checks } = input as { scope?: unknown; checks?: unknown };
   const scopeDescription = asString(scope, "scope");
@@ -32,6 +33,7 @@ export async function dispatchVerifier(
     projectId,
     userId,
     nextIndex,
+    model,
     "verifier",
   );
 

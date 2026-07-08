@@ -5,6 +5,8 @@
 
 // ── REST (api) ──────────────────────────────────────────────────────────────
 
+export type Effort = "LOW" | "HIGH" | "MAX";
+
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
  *  store — we keep it `unknown` here rather than over-specifying. */
@@ -99,7 +101,12 @@ export type JobEvent = BaseEvent &
     | { type: "file_delete"; path: string; headSequence: number }
     | { type: "shell_output"; stream: "stdout" | "stderr"; line: string }
     | { type: "preview_ready"; url: string }
-    | { type: "plan_created"; name: string; description: string; todos: string[] }
+    | {
+        type: "plan_created";
+        name: string;
+        description: string;
+        todos: string[];
+      }
     | { type: "todo_updated"; sno: number; status: string }
     | { type: "todos_added"; todos: string[] }
     | { type: "ask_user"; question: string; options: string[] }

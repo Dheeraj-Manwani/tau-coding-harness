@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/src/lib/api-client";
 import type {
   AddMessageResponse,
+  Effort,
   InitProjectResponse,
   ListProjectsResponse,
   OlderMessagesResponse,
@@ -46,9 +47,9 @@ export function useProject(projectId: string | undefined) {
 /** `POST /project` — create a project from the first prompt and enqueue a job. */
 export function useInitProject() {
   return useMutation({
-    mutationFn: (message: string) =>
+    mutationFn: (vars: { message: string; effort: Effort }) =>
       api
-        .post<InitProjectResponse>("/project", { message })
+        .post<InitProjectResponse>("/project", vars)
         .then((r) => r.data),
   });
 }
@@ -61,9 +62,9 @@ export function useInitProject() {
 export function useAddMessage(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (message: string) =>
+    mutationFn: (vars: { message: string; effort: Effort }) =>
       api
-        .post<AddMessageResponse>(`/project/${projectId}/message`, { message })
+        .post<AddMessageResponse>(`/project/${projectId}/message`, vars)
         .then((r) => r.data),
     onSettled: () => {
       // The new job will write messages/fragments; let the next entry refetch.

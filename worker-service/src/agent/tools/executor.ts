@@ -52,6 +52,7 @@ export async function executeTool(
   projectId: string,
   userId: string,
   indexer: () => number,
+  model: string,
 ): Promise<unknown> {
   console.log("tool call :: ", name, input);
 
@@ -167,6 +168,7 @@ export async function executeTool(
           projectId,
           userId,
           indexer,
+          model,
         );
       case "dispatch_debugger":
         return await dispatchDebugger(
@@ -176,6 +178,7 @@ export async function executeTool(
           projectId,
           userId,
           indexer,
+          model,
         );
       case "dispatch_verifier":
         return await dispatchVerifier(
@@ -185,6 +188,7 @@ export async function executeTool(
           projectId,
           userId,
           indexer,
+          model,
         );
       // case "dispatch_implementer":
       //   return await dispatchImplementer(

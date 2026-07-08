@@ -25,8 +25,9 @@ import {
   INTENT_TO_CONTINUE_RE,
   TRUNCATION_NUDGE,
   PREVIEW_PORT,
-  SYSTEM_PROMPT,
+  buildSystemPrompt,
 } from "./config";
+import { toTemplateKey } from "../templates/registry";
 import type { Tool } from "./tools/tools";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -132,8 +133,24 @@ export async function runAgentLoop(
   const nextIndex = makeIndexer(startIndex);
 
   try {
+    // Determine which template the agent is (or will be) working in. A template
+    // is "selected" once files have been scaffolded against it — before that the
+    // agent still gets to pick it via provision_sandbox, so it sees the chooser.
+    const [project, fileCount] = await Promise.all([
+      prisma.project.findUnique({
+        where: { id: projectId },
+        select: { templateKey: true },
+      }),
+      prisma.projectFile.count({ where: { projectId } }),
+    ]);
+    const selected = fileCount > 0;
+    const systemPrompt = buildSystemPrompt({
+      templateKey: toTemplateKey(project?.templateKey),
+      selected,
+    });
+
     const messages: MessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...(await loadHistory(projectId)),
     ];
     let turn = 0;

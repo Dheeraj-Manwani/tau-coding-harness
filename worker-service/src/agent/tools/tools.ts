@@ -340,10 +340,17 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "provision_sandbox",
       description:
-        "Call this to provision a sandbox with boilderplate files. Without this, you won't be able to call create_file, read_file, edit_file etc",
+        "Call this to provision a sandbox with boilerplate files. Without this, you won't be able to call create_file, read_file, edit_file etc. Pass `template` to pick the stack that fits the request — this choice is locked in for the project once files are scaffolded, so choose deliberately on this first call. For an existing project (files already scaffolded) `template` is ignored and the project's original stack is reused.",
       parameters: {
         type: "object",
-        properties: {},
+        properties: {
+          template: {
+            type: "string",
+            enum: ["frontend", "fullstack", "fullstack-db"],
+            description:
+              "Which sandbox stack to boot. 'frontend' = Vite + React + shadcn only, no server or database (static/client-side apps: landing pages, calculators, tools, anything satisfiable with React state + localStorage). 'fullstack' = frontend + a Hono API but NO database baked in (needs custom server logic / endpoints but not persistent multi-user data). 'fullstack-db' = frontend + Hono API + a pre-wired PGlite/Drizzle database (multi-user data, auth, or any 'real'/server-side persistence). Default to 'frontend' for simple UIs; only escalate to 'fullstack'/'fullstack-db' when the request genuinely needs a backend. Defaults to 'fullstack' if omitted.",
+          },
+        },
         required: [],
         additionalProperties: false,
       },

@@ -70,6 +70,8 @@ model Project {
   sandboxStatus    SandboxStatus @default(NONE)
   sandboxExpiresAt DateTime?
 
+  templateKey String @default("fullstack")
+
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages   Message[]
   jobs       Job[]

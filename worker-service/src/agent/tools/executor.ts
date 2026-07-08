@@ -1,5 +1,6 @@
 import { SandboxNotFoundError } from "e2b";
 import { provisionSandbox, SANDBOX_IDLE_TIMEOUT_MS } from "@/lib/sandbox";
+import { isTemplateKey } from "@/templates/registry";
 import { publish } from "@/lib/publish";
 import { redis } from "@/lib/redis";
 import type { SandboxRef } from "../loop";
@@ -88,7 +89,16 @@ export async function executeTool(
     }
     case "provision_sandbox": {
       if (!sandboxRef.current) {
-        sandboxRef.current = await provisionSandbox(projectId, userId, jobId);
+        const { template } = (input ?? {}) as { template?: unknown };
+        const requestedTemplateKey = isTemplateKey(template)
+          ? template
+          : undefined;
+        sandboxRef.current = await provisionSandbox(
+          projectId,
+          userId,
+          jobId,
+          requestedTemplateKey,
+        );
       }
       return { success: true };
     }

@@ -7,10 +7,14 @@ import { getBlobText, putBlob } from "./s3";
 import { publish } from "./publish";
 import { allocateHeadSequence } from "./headSequence";
 import { SandboxStatus } from "../generated/prisma/enums";
+import {
+  e2bNameFor,
+  toTemplateKey,
+  type TemplateKey,
+} from "../templates/registry";
 
 export type { Sandbox } from "e2b";
 
-const TEMPLATE = "vite-hono-app";
 export const WORK_DIR = "/home/user/app";
 
 export const SANDBOX_IDLE_TIMEOUT_MS = 10 * 60_000;
@@ -166,12 +170,16 @@ async function createFreshSandbox(
   projectId: string,
   userId: string,
   jobId: string,
+  templateKey: TemplateKey,
   allowRetry = true,
 ): Promise<Sandbox> {
-  const sandbox = await Sandbox.create(TEMPLATE, {
+  const e2bName = e2bNameFor(templateKey);
+  const sandbox = await Sandbox.create(e2bName, {
     timeoutMs: SANDBOX_IDLE_TIMEOUT_MS,
   });
-  console.log("[sandbox] created new sandbox", sandbox.sandboxId);
+  console.log(
+    `[sandbox] created new sandbox ${sandbox.sandboxId} from "${e2bName}" (${templateKey})`,
+  );
 
   try {
     await rehydrateSandbox(sandbox, projectId, userId, jobId);
@@ -182,7 +190,7 @@ async function createFreshSandbox(
       "[sandbox] rehydration failed on freshly created sandbox; retrying once",
       err,
     );
-    return createFreshSandbox(projectId, userId, jobId, false);
+    return createFreshSandbox(projectId, userId, jobId, templateKey, false);
   }
 
   await prisma.project.update({
@@ -190,6 +198,9 @@ async function createFreshSandbox(
     data: {
       sandboxId: sandbox.sandboxId,
       sandboxStatus: SandboxStatus.READY,
+      // Lock in the template this project booted from so every later reconnect
+      // and rehydration uses the same image the files were seeded against.
+      templateKey,
     },
   });
 
@@ -200,6 +211,7 @@ export async function provisionSandbox(
   projectId: string,
   userId: string,
   jobId: string,
+  requestedTemplateKey?: TemplateKey,
 ): Promise<Sandbox> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -223,5 +235,16 @@ export async function provisionSandbox(
     }
   }
 
-  return createFreshSandbox(projectId, userId, jobId);
+  // The template is locked once template files have been seeded — after that
+  // the agent's requested key is ignored so we never switch out from under an
+  // app whose files were scaffolded against a different image. Before then
+  // (a truly fresh project) the agent's choice wins and gets persisted.
+  const fileCount = await prisma.projectFile.count({ where: { projectId } });
+  const templateLocked = fileCount > 0;
+  const templateKey =
+    !templateLocked && requestedTemplateKey
+      ? requestedTemplateKey
+      : toTemplateKey(project.templateKey);
+
+  return createFreshSandbox(projectId, userId, jobId, templateKey);
 }

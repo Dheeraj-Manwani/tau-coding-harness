@@ -189,7 +189,7 @@ function Home() {
                 </span>
                 {atProjectLimit && (
                   <span className="text-amber-400">
-                    Free plan limit reached — delete one or upgrade to Pro.
+                    Free plan limit reached.
                   </span>
                 )}
               </div>

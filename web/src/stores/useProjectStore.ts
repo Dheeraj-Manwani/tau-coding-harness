@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type {
   JobEvent,
+  ProjectCheckpoint,
   ProjectDetail,
   ProjectMessage,
   ProjectTree,
@@ -15,7 +16,13 @@ function invalidateBalance(): void {
   void queryClient.invalidateQueries({ queryKey: billingKeys.balance });
 }
 
-export type ChatRole = "user" | "ai";
+export type ChatRole = "user" | "ai" | "divider";
+
+export interface DividerMeta {
+  summary: string;
+  tokensBefore: number;
+  tokensAfter: number;
+}
 
 export type ActionKind =
   | "create_file"
@@ -71,6 +78,7 @@ export interface Message {
   timestamp: number;
   /** Tool calls + thinking steps that produced this ai message. */
   actions?: ActionItem[];
+  divider?: DividerMeta;
 }
 
 export type Tab = "preview" | "code";
@@ -104,9 +112,7 @@ function truncateLabel(s: string, max = 72): string {
 
 function parseTodos(raw: unknown): string[] {
   if (Array.isArray(raw)) {
-    return raw
-      .map((t) => String(t).trim())
-      .filter(Boolean);
+    return raw.map((t) => String(t).trim()).filter(Boolean);
   }
   if (typeof raw === "string" && raw.trim()) {
     return raw
@@ -267,10 +273,7 @@ function deriveActionItem(
 }
 
 /** Render a web_search tool's { answer, results } output as markdown. */
-function formatWebSearchResult(
-  answer: unknown,
-  results: unknown[],
-): string {
+function formatWebSearchResult(answer: unknown, results: unknown[]): string {
   const parts: string[] = [];
   if (typeof answer === "string" && answer.trim()) parts.push(answer.trim());
   for (const r of results) {
@@ -340,8 +343,31 @@ function attachDispatchResult(
  *    tool calls become accordion actions on the nearest preceding ai message
  *    within the same turn.
  */
-function toConversation(rows: ProjectMessage[]): Message[] {
+/** A context-summarization divider derived from a persisted checkpoint. */
+function dividerMessage(cp: ProjectCheckpoint): Message {
+  return {
+    id: `divider_${cp.id}`,
+    role: "divider",
+    content: "",
+    timestamp: Date.parse(cp.createdAt) || now(),
+    divider: {
+      summary: cp.summary,
+      tokensBefore: cp.tokensBefore,
+      tokensAfter: cp.tokensAfter,
+    },
+  };
+}
+
+function toConversation(
+  rows: ProjectMessage[],
+  checkpoints: ProjectCheckpoint[] = [],
+): Message[] {
   const messages: Message[] = [];
+  // Sorted ascending; a divider is emitted once we pass its boundary sequence.
+  const pendingCps = [...checkpoints].sort(
+    (a, b) => a.upToSequence - b.upToSequence,
+  );
+  let cpIdx = 0;
   let turnStart = 0;
   // Running plan state — rebuilt as create_plan / update_todo calls are replayed.
   let planTodos: { sno: number; label: string; status: string }[] = [];
@@ -521,6 +547,14 @@ function toConversation(rows: ProjectMessage[]): Message[] {
       }
     }
     // ERROR rows are skipped
+
+    // Emit any summarization dividers whose boundary this row reached/passed.
+    while (
+      cpIdx < pendingCps.length &&
+      pendingCps[cpIdx].upToSequence <= row.sequence
+    ) {
+      messages.push(dividerMessage(pendingCps[cpIdx++]));
+    }
   }
 
   return messages;
@@ -601,7 +635,11 @@ interface ProjectState {
   /** Remove a single chat bubble by id (used to roll back a failed optimistic send). */
   removeChatMessage: (id: string) => void;
   /** Prepend a batch of older messages loaded by scroll-up pagination. */
-  prependMessages: (rows: ProjectMessage[], hasMore: boolean) => void;
+  prependMessages: (
+    rows: ProjectMessage[],
+    hasMore: boolean,
+    checkpoints?: ProjectCheckpoint[],
+  ) => void;
   /** Apply one live event from the ws-gateway stream. */
   applyEvent: (event: JobEvent) => void;
   setCanceller: (fn: (() => void) | null) => void;
@@ -675,7 +713,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // cache — the current session already has the correct messages.
       if (s.status === "done" && s.hydrated) return {};
 
-      const chatMessages = toConversation(detail.messages);
+      const chatMessages = toConversation(detail.messages, detail.checkpoints);
 
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
@@ -753,9 +791,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       chatMessages: s.chatMessages.filter((m) => m.id !== id),
     })),
 
-  prependMessages: (rows, hasMore) =>
+  prependMessages: (rows, hasMore, checkpoints) =>
     set((s) => {
-      const prepended = toConversation(rows);
+      const prepended = toConversation(rows, checkpoints);
       return {
         chatMessages: [...prepended, ...s.chatMessages],
         hasMoreMessages: hasMore,
@@ -1240,6 +1278,29 @@ function applyEvent(set: SetState, event: JobEvent): void {
             }
           : old,
       );
+      return;
+
+    case "context_compacted":
+      return;
+
+    case "context_summarized":
+      // The model condensed the older turns. Drop a quiet divider into the
+      // transcript. The full summary text isn't in the live event — it's fetched
+      // with the checkpoint on the next reload, which upgrades this to expandable.
+      set((s) => {
+        const divider: Message = {
+          id: crypto.randomUUID(),
+          role: "divider",
+          content: "",
+          timestamp: now(),
+          divider: {
+            summary: "",
+            tokensBefore: event.tokensBefore,
+            tokensAfter: event.tokensAfter,
+          },
+        };
+        return { chatMessages: [...s.chatMessages, divider] };
+      });
       return;
 
     case "resync":

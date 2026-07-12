@@ -23,17 +23,27 @@ import {
   MAX_TRUNCATION_RETRIES,
   MAX_INTENT_NUDGES,
   MAX_PARALLEL_SUBAGENTS,
+  CONTEXT_BUDGET,
   INTENT_TO_CONTINUE_RE,
   TRUNCATION_NUDGE,
   PREVIEW_PORT,
   buildSystemPrompt,
   modelForEffort,
 } from "./config";
+import { manageContext } from "./context/manager";
+import { SUMMARY_HEADER } from "./context/summarize";
+import {
+  createCalibration,
+  estimateStringTokens,
+  estimateTokens,
+  estimateTokensCalibrated,
+  recalibrate,
+} from "./context/tokens";
+import type { Entry } from "./context/types";
 import { toTemplateKey } from "../templates/registry";
 import type { Tool } from "./tools/tools";
 import type { Effort } from "../generated/prisma/enums";
 
-type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
 type FunctionToolCall =
   OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
@@ -65,6 +75,10 @@ const SUBAGENT_TOOLS = new Set<string>([
   "dispatch_verifier",
   // "dispatch_implementer",
 ]);
+
+const TOOL_SCHEMA_TOKENS = estimateStringTokens(
+  JSON.stringify(TOOL_DEFINITIONS),
+);
 
 async function runPool<T, R>(
   items: T[],
@@ -103,41 +117,70 @@ interface StoredToolResult {
   content: string;
 }
 
-async function loadHistory(projectId: string): Promise<MessageParam[]> {
-  const rows = await prisma.message.findMany({
+async function loadHistory(projectId: string): Promise<Entry[]> {
+  const checkpoint = await prisma.contextCheckpoint.findFirst({
     where: { projectId },
+    orderBy: { upToSequence: "desc" },
+  });
+
+  const rows = await prisma.message.findMany({
+    where: {
+      projectId,
+      ...(checkpoint ? { sequence: { gt: checkpoint.upToSequence } } : {}),
+    },
     orderBy: { sequence: "asc" },
   });
 
-  const messages: MessageParam[] = [];
+  const entries: Entry[] = [];
+
+  if (checkpoint) {
+    entries.push({
+      param: {
+        role: "system",
+        content: `${SUMMARY_HEADER}${checkpoint.summary}`,
+      },
+      seq: null,
+    });
+  }
 
   for (const row of rows) {
     if (row.type === MessageType.TOOL_RES) {
       const results = row.content as unknown as StoredToolResult[];
       for (const r of results) {
-        messages.push({
-          role: "tool",
-          tool_call_id: r.tool_call_id,
-          content: r.content,
+        entries.push({
+          param: {
+            role: "tool",
+            tool_call_id: r.tool_call_id,
+            content: r.content,
+          },
+          seq: row.sequence,
         });
       }
     } else if (row.role === MessageRole.ASSISTANT) {
       const stored = row.content as unknown as StoredAssistant;
-      messages.push({
-        role: "assistant",
-        content: stored.content,
-        ...(stored.tool_calls?.length ? { tool_calls: stored.tool_calls } : {}),
+      entries.push({
+        param: {
+          role: "assistant",
+          content: stored.content,
+          ...(stored.tool_calls?.length
+            ? { tool_calls: stored.tool_calls }
+            : {}),
+        },
+        seq: row.sequence,
       });
     } else if (row.role === MessageRole.USER && row.type === MessageType.USER) {
-      messages.push({
-        role: "user",
-        content:
-          row.content as unknown as OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"],
+      entries.push({
+        param: {
+          role: "user",
+          content:
+            row.content as unknown as OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"],
+        },
+        seq: row.sequence,
       });
     }
   }
 
-  return messages;
+  return entries;
 }
 
 export async function runAgentLoop(
@@ -171,14 +214,16 @@ export async function runAgentLoop(
       selected,
     });
 
-    const messages: MessageParam[] = [
-      { role: "system", content: systemPrompt },
+    let entries: Entry[] = [
+      { param: { role: "system", content: systemPrompt }, seq: null },
       ...(await loadHistory(projectId)),
     ];
     let turn = 0;
     let truncationRetries = 0;
     let intentNudges = 0;
     let meterFailures = 0;
+    let summarizations = 0;
+    const calibration = createCalibration();
 
     while (true) {
       if (turn++ >= MAX_AGENT_TURNS) {
@@ -187,12 +232,105 @@ export async function runAgentLoop(
         throw new Error(`${message} for job ${jobId}`);
       }
 
+      const mgmt = await manageContext(entries, { model, calibration });
+      entries = mgmt.entries;
+
+      if (mgmt.summarized) {
+        summarizations++;
+        const s = mgmt.summarized;
+        try {
+          await prisma.contextCheckpoint.create({
+            data: {
+              projectId,
+              jobId,
+              upToSequence: s.upToSequence,
+              summary: s.summary,
+              tokensBefore: s.tokensBefore,
+              tokensAfter: s.tokensAfter,
+            },
+          });
+        } catch (err) {
+          console.error(
+            `[worker] failed to persist context checkpoint for job ${jobId}`,
+            err,
+          );
+        }
+
+        try {
+          const summarySeq = -summarizations;
+          await prisma.tokenUsage.create({
+            data: {
+              userId,
+              projectId,
+              jobId,
+              model,
+              inputTokens: s.usage.inputTokens,
+              outputTokens: s.usage.outputTokens,
+            },
+          });
+          const mr = await meterWithRetry(
+            userId,
+            jobId,
+            model,
+            s.usage.inputTokens,
+            s.usage.outputTokens,
+            summarySeq,
+            { enforce: env.CREDITS_ENFORCE },
+          );
+          if (env.CREDITS_ENFORCE) {
+            await publish(
+              jobId,
+              {
+                type: "credits_update",
+                available: toCredits(mr.available),
+                availableMicro: mr.available.toString(),
+              },
+              nextIndex(),
+            );
+          }
+        } catch (err) {
+          console.error(
+            `[worker] failed to meter summarization for job ${jobId}`,
+            err,
+          );
+        }
+        await publish(
+          jobId,
+          {
+            type: "context_summarized",
+            upToSequence: s.upToSequence,
+            tokensBefore: s.tokensBefore,
+            tokensAfter: s.tokensAfter,
+          },
+          nextIndex(),
+        );
+      }
+
+      if (mgmt.compacted) {
+        await publish(
+          jobId,
+          {
+            type: "context_compacted",
+            tokensBefore: mgmt.compacted.tokensBefore,
+            tokensAfter: mgmt.compacted.tokensAfter,
+          },
+          nextIndex(),
+        );
+      }
+
+      const contextTokens =
+        estimateTokensCalibrated(mgmt.ctx, calibration) + TOOL_SCHEMA_TOKENS;
+      console.log(
+        `[worker] job ${jobId} turn ${turn} context ≈${contextTokens} tokens ` +
+          `(budget ${CONTEXT_BUDGET}, ${((contextTokens / CONTEXT_BUDGET) * 100).toFixed(1)}%)`,
+      );
+
       const stream = deepseek.chat.completions.stream({
         model,
         max_tokens: MAX_TOKENS,
         tools:
           TOOL_DEFINITIONS as unknown as OpenAI.Chat.Completions.ChatCompletionTool[],
-        messages,
+        messages: mgmt.ctx,
       });
 
       for await (const chunk of stream) {
@@ -221,6 +359,16 @@ export async function runAgentLoop(
 
       const inputTokens = completion.usage?.prompt_tokens ?? 0;
       const outputTokens = completion.usage?.completion_tokens ?? 0;
+
+      // Ground-truth correction: compare what we guessed for this exact payload
+      // (messages + tool schema) against what the model actually reports.
+      if (inputTokens > 0) {
+        recalibrate(
+          calibration,
+          estimateTokens(mgmt.ctx) + TOOL_SCHEMA_TOKENS,
+          inputTokens,
+        );
+      }
 
       const { assistantMessageId, sequence } = await prisma.$transaction(
         async (tx) => {
@@ -314,9 +462,15 @@ export async function runAgentLoop(
           throw new Error(`${message} for job ${jobId}`);
         }
         if (assistant.content?.trim()) {
-          messages.push({ role: "assistant", content: assistant.content });
+          entries.push({
+            param: { role: "assistant", content: assistant.content },
+            seq: null,
+          });
         }
-        messages.push({ role: "user", content: TRUNCATION_NUDGE });
+        entries.push({
+          param: { role: "user", content: TRUNCATION_NUDGE },
+          seq: null,
+        });
         continue;
       }
       truncationRetries = 0;
@@ -330,14 +484,20 @@ export async function runAgentLoop(
       ) {
         intentNudges++;
         if (assistant.content?.trim()) {
-          messages.push({ role: "assistant", content: assistant.content });
+          entries.push({
+            param: { role: "assistant", content: assistant.content },
+            seq: null,
+          });
         }
-        messages.push({
-          role: "user",
-          content:
-            "Continue and actually perform the work using your tools — don't " +
-            "just describe what you're about to do. If the task is genuinely " +
-            "complete, reply with your brief final summary.",
+        entries.push({
+          param: {
+            role: "user",
+            content:
+              "Continue and actually perform the work using your tools — don't " +
+              "just describe what you're about to do. If the task is genuinely " +
+              "complete, reply with your brief final summary.",
+          },
+          seq: null,
         });
         continue;
       }
@@ -362,10 +522,13 @@ export async function runAgentLoop(
         break;
       }
 
-      messages.push({
-        role: "assistant",
-        content: assistant.content,
-        tool_calls: assistant.tool_calls,
+      entries.push({
+        param: {
+          role: "assistant",
+          content: assistant.content,
+          tool_calls: assistant.tool_calls,
+        },
+        seq: sequence,
       });
 
       // Execute one tool call end to end (persist row, publish req/res, run it)
@@ -469,15 +632,7 @@ export async function runAgentLoop(
         }
       }
 
-      for (const r of toolResults) {
-        messages.push({
-          role: "tool",
-          tool_call_id: r.tool_call_id,
-          content: r.content,
-        });
-      }
-
-      await prisma.$transaction(async (tx) => {
+      const toolResSequence = await prisma.$transaction(async (tx) => {
         const sequence = await getNextSequence(tx, projectId);
         await tx.message.create({
           data: {
@@ -489,7 +644,19 @@ export async function runAgentLoop(
             sequence,
           },
         });
+        return sequence;
       });
+
+      for (const r of toolResults) {
+        entries.push({
+          param: {
+            role: "tool",
+            tool_call_id: r.tool_call_id,
+            content: r.content,
+          },
+          seq: toolResSequence,
+        });
+      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

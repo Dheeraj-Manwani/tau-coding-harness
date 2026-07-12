@@ -11,6 +11,14 @@ export const MAX_TRUNCATION_RETRIES = 3;
 
 export const MAX_INTENT_NUDGES = 2;
 
+export const CONTEXT_WINDOW = env.MODEL_CONTEXT_WINDOW;
+export const CONTEXT_BUDGET = Math.max(CONTEXT_WINDOW * 0.6, 8_000);
+export const CONTEXT_COMPACT_RATIO = 0.6;
+export const CONTEXT_SUMMARIZE_RATIO = 0.75;
+export const CONTEXT_KEEP_TAIL_TOKENS = 24_000;
+export const MAX_TOOL_RESULT_TOKENS = 2_000;
+export const SUMMARY_MAX_TOKENS = 2_000;
+
 export const INTENT_TO_CONTINUE_RE =
   /\b(let me|let'?s|i'?ll|i will|i'?m going to|i am going to|now i|next,? i|going to)\b[^.!?]*$/i;
 

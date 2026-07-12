@@ -52,6 +52,7 @@ import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import {
   useProjectStore,
   type ActionItem,
+  type DividerMeta,
   type Message,
 } from "@/src/stores/useProjectStore";
 import {
@@ -527,6 +528,52 @@ function TypingBubble({ activity }: { activity: string | null }) {
   );
 }
 
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  return String(n);
+}
+
+function ContextDivider({ meta }: { meta: DividerMeta }) {
+  const [open, setOpen] = useState(false);
+  const hasSummary = meta.summary.trim().length > 0;
+  const hasStat = meta.tokensBefore > 0;
+
+  return (
+    <div className="my-1">
+      <div className="flex items-center gap-2">
+        <div className="h-px flex-1 bg-[var(--silver-200)]" />
+        <button
+          type="button"
+          disabled={!hasSummary}
+          onClick={() => hasSummary && setOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] px-2.5 py-1 text-[11px] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-default disabled:hover:text-[var(--silver-600)]"
+        >
+          <ScrollTextIcon className="size-3 shrink-0 opacity-60" />
+          <span>Earlier conversation summarized</span>
+          {hasStat && (
+            <span className="opacity-50">
+              ≈{formatTokens(meta.tokensBefore)} →{" "}
+              {formatTokens(meta.tokensAfter)} tokens
+            </span>
+          )}
+          {hasSummary &&
+            (open ? (
+              <ChevronUpIcon className="size-3 shrink-0" />
+            ) : (
+              <ChevronDownIcon className="size-3 shrink-0" />
+            ))}
+        </button>
+        <div className="h-px flex-1 bg-[var(--silver-200)]" />
+      </div>
+      {open && hasSummary && (
+        <div className="mt-2 rounded-md border border-white/10 bg-[var(--space-surface)] px-3 py-2.5 text-[11px] text-[var(--silver-700)]">
+          <ChatMarkdown content={meta.summary} compact />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProjectSwitcher({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const { data: detail } = useProject(projectId);
@@ -781,12 +828,13 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
     scrollHeightBeforePrependRef.current =
       scrollRef.current?.scrollHeight ?? null;
     try {
-      const { messages: older, hasMore } = await fetchOlderMessages(
-        projectId,
-        oldestSequence,
-      );
+      const {
+        messages: older,
+        hasMore,
+        checkpoints,
+      } = await fetchOlderMessages(projectId, oldestSequence);
       older.forEach((m) => prependedIdsRef.current.add(m.id));
-      prependMessages(older, hasMore);
+      prependMessages(older, hasMore, checkpoints);
     } catch {
       scrollHeightBeforePrependRef.current = null;
     } finally {
@@ -903,20 +951,24 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
               <div className="size-4 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
             </div>
           )}
-          {messages.map((m, i) => (
-            <ChatBubble
-              key={m.id}
-              message={m}
-              delay={
-                prependedIdsRef.current.has(m.id)
-                  ? 0
-                  : i < initialCount
-                    ? i * 0.04
-                    : 0
-              }
-              noAnimate={prependedIdsRef.current.has(m.id)}
-            />
-          ))}
+          {messages.map((m, i) =>
+            m.role === "divider" && m.divider ? (
+              <ContextDivider key={m.id} meta={m.divider} />
+            ) : (
+              <ChatBubble
+                key={m.id}
+                message={m}
+                delay={
+                  prependedIdsRef.current.has(m.id)
+                    ? 0
+                    : i < initialCount
+                      ? i * 0.04
+                      : 0
+                }
+                noAnimate={prependedIdsRef.current.has(m.id)}
+              />
+            ),
+          )}
           <AnimatePresence>
             {isAiTyping && <TypingBubble activity={activity} />}
           </AnimatePresence>

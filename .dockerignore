@@ -1,0 +1,11 @@
+# Keep the build context small and force fresh, lockfile-pinned installs.
+node_modules
+**/node_modules
+.git
+doc
+web
+cli
+**/.env
+**/dist
+_*.log
+_*.ts

@@ -3,9 +3,6 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "passport";
-import { createBullBoard } from "@bull-board/api";
-import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
-import { ExpressAdapter } from "@bull-board/express";
 import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
 import creditsRoutes from "./routes/credits.routes";
@@ -16,10 +13,7 @@ import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
-import { codeGenerationQueue } from "./lib/queue";
 import { sweepStuckHolds } from "./lib/credits";
-
-const app = express();
 
 async function runSweep(): Promise<void> {
   try {
@@ -39,49 +33,67 @@ async function runSweep(): Promise<void> {
   }
 }
 
-// Reclaim stuck holds on startup and every hour thereafter.
-void runSweep();
-setInterval(() => void runSweep(), 60 * 60 * 1000);
-const PORT = env.PORT;
-const isDev = env.NODE_ENV !== "production";
-
-app.use(requestLogger);
-
-app.use(
-  cors({
-    origin: [env.APP_URL],
-    credentials: true,
-  }),
-);
-
-app.use("/webhooks", webhookRoutes);
-
-app.use(express.json());
-app.use(cookieParser());
-
-app.use(passport.initialize());
-
-app.use("/auth", authRoutes);
-app.use("/admin", requireAdminKey, adminRoutes);
-
-// Dev-only BullMQ dashboard.
-if (isDev) {
-  const bullBoardAdapter = new ExpressAdapter();
-  bullBoardAdapter.setBasePath("/admin/queues");
-  createBullBoard({
-    queues: [new BullMQAdapter(codeGenerationQueue)],
-    serverAdapter: bullBoardAdapter,
-  });
-  app.use("/admin/queues", bullBoardAdapter.getRouter());
+/**
+ * Reclaim stuck credit holds on startup and every hour thereafter. Extracted
+ * from top-level so combined (economy) mode can start it explicitly after
+ * building the app.
+ */
+export function startApiBackground(): void {
+  void runSweep();
+  setInterval(() => void runSweep(), 60 * 60 * 1000);
 }
 
-app.use(requireAuth);
+/**
+ * Build the fully-configured Express app (all middleware + routes) without
+ * binding a port, so it can be served standalone (below) or mounted onto a
+ * shared http.Server in combined mode.
+ */
+export function buildApp(
+  mountExtra?: (app: express.Express) => void,
+): express.Express {
+  const app = express();
 
-app.use("/project", projectRoutes);
-app.use("/credits", creditsRoutes);
-app.use("/billing", billingRoutes);
+  app.use(requestLogger);
 
-app.use(notFoundHandler);
-app.use(errorHandler);
+  app.use(
+    cors({
+      origin: [env.APP_URL],
+      credentials: true,
+    }),
+  );
 
-app.listen(PORT, () => console.log(`Server started on ${PORT}`));
+  app.use("/webhooks", webhookRoutes);
+
+  app.use(express.json());
+  app.use(cookieParser());
+
+  app.use(passport.initialize());
+
+  app.use("/auth", authRoutes);
+  app.use("/admin", requireAdminKey, adminRoutes);
+
+  // Note: the dev-only BullMQ dashboard is removed in the economy build —
+  // there is no BullMQ queue (jobs run through the in-process runner).
+
+  // Economy: mount extra self-authenticating routes (the SSE event stream +
+  // job cancel) BEFORE the global requireAuth so they can do their own token
+  // check (EventSource can't send an Authorization header). No-op on master.
+  mountExtra?.(app);
+
+  app.use(requireAuth);
+
+  app.use("/project", projectRoutes);
+  app.use("/credits", creditsRoutes);
+  app.use("/billing", billingRoutes);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  return app;
+}
+
+if (import.meta.main) {
+  const app = buildApp();
+  startApiBackground();
+  app.listen(env.PORT, () => console.log(`Server started on ${env.PORT}`));
+}

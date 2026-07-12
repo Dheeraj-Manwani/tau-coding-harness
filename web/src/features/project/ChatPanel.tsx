@@ -546,7 +546,7 @@ function ContextDivider({ meta }: { meta: DividerMeta }) {
           type="button"
           disabled={!hasSummary}
           onClick={() => hasSummary && setOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] px-2.5 py-1 text-[11px] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-default disabled:hover:text-[var(--silver-600)]"
+          className="flex items-center gap-1.5 rounded-full bg-[var(--space-surface)] px-2.5 py-1 text-[11px] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-default disabled:hover:text-[var(--silver-600)]"
         >
           <ScrollTextIcon className="size-3 shrink-0 opacity-60" />
           <span>Earlier conversation summarized</span>

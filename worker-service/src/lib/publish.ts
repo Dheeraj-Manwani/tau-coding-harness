@@ -1,12 +1,7 @@
-import { redis } from "./redis";
+import { bus, type JobEvent } from "./bus";
 
 export async function publish(jobId: string, event: object, index: number) {
-  const payload = JSON.stringify({ ...event, index });
-  await Promise.all([
-    redis.rpush(`job:${jobId}:events`, payload),
-    redis.publish(`job:${jobId}`, payload),
-  ]);
-  await redis.expire(`job:${jobId}:events`, 3600);
+  bus.emit(jobId, { ...(event as Record<string, unknown>), index } as JobEvent);
 }
 
 export function makeIndexer(start = 0): () => number {

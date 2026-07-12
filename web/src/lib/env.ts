@@ -6,15 +6,11 @@ const API_URL = (
   import.meta.env.VITE_API_URL ?? "http://localhost:3000"
 ).replace(/\/$/, "");
 
-/** ws-gateway origin used for live job streaming (defaults to its dev port). */
-const WS_URL = (import.meta.env.VITE_WS_URL ?? "ws://localhost:3001").replace(
-  /\/$/,
-  "",
-);
+// Live job streaming now rides the api origin over SSE (GET /jobs/:id/stream),
+// so there is no separate ws-gateway URL anymore.
 
 export const env = {
   API_URL,
-  WS_URL,
   /** Web route the API redirects to after Google OAuth (see OAUTH_SUCCESS_REDIRECT). */
   OAUTH_CALLBACK_PATH: "/auth/callback",
   /** Razorpay publishable key  */

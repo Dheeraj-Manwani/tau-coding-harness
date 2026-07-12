@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { Sandbox } from "e2b";
 import { prisma } from "./prisma";
-import { redis } from "./redis";
+import { bus } from "./bus";
 import { env } from "./env";
 import { getBlobText, putBlob } from "./s3";
 import { publish } from "./publish";
@@ -104,7 +104,7 @@ async function seedTemplateFiles(
   );
 
   // Tell the frontend to refetch the tree
-  const idx = await redis.llen(`job:${jobId}:events`);
+  const idx = bus.length(jobId);
   await publish(jobId, { type: "resync" }, idx);
 }
 

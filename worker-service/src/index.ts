@@ -1,6 +1,5 @@
-import { Worker, type ConnectionOptions } from "bullmq";
 import { env } from "./lib/env";
-import { redis } from "./lib/redis";
+import { bus, type DispatchPayload } from "./lib/bus";
 import { prisma } from "./lib/prisma";
 import { publish } from "./lib/publish";
 import { provisionSandbox } from "./lib/sandbox";
@@ -8,124 +7,147 @@ import { runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
 import { JobStatus, type Effort } from "./generated/prisma/enums";
 
-interface JobPayload {
-  jobId: string;
-  projectId: string;
-  userId: string;
-  prompt: string;
-  effort: Effort;
-}
+/**
+ * Process a single code-generation job: run the agent loop, handle in-flight
+ * cancellation, and settle credits on terminal status. Economy (Redis-free):
+ * cancellation and event indexing go through the in-process bus.
+ */
+export async function processJob(payload: DispatchPayload): Promise<void> {
+  const { jobId, projectId, userId, prompt, effort } = payload;
+  let cancelled = false;
 
-const connection = redis as unknown as ConnectionOptions;
-
-const worker = new Worker<JobPayload>(
-  env.QUEUE_NAME,
-  async (job) => {
-    const { jobId, projectId, userId, prompt, effort } = job.data;
-
-    const controlChannel = `job:${jobId}:control`;
-    const sub = redis.duplicate();
-    let cancelled = false;
-
-    sub.on("message", async (_channel, message) => {
+  const offCancel = bus.onCancel(jobId, () => {
+    void (async () => {
+      cancelled = true;
       try {
-        const msg = JSON.parse(message) as { type?: string };
-        if (msg.type === "cancel") {
-          cancelled = true;
-          await worker.pause();
-          await prisma.job.update({
-            where: { id: jobId },
-            data: { status: JobStatus.CANCELLED, completedAt: new Date() },
-          });
-          await settle(jobId).catch((err) =>
-            console.error(`[worker] settle failed on cancel for ${jobId}`, err),
-          );
-          const index = await redis.llen(`job:${jobId}:events`);
-          await publish(jobId, { type: "cancelled" }, index);
-        }
-      } catch (err) {
-        console.error(`[worker] bad control message on ${controlChannel}`, err);
-      }
-    });
-    await sub.subscribe(controlChannel);
-
-    try {
-      await prisma.job.update({
-        where: { id: jobId },
-        data: { status: JobStatus.RUNNING, startedAt: new Date() },
-      });
-
-      await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
-
-      const startIndex = await redis.llen(`job:${jobId}:events`);
-      const hasFiles =
-        (await prisma.projectFile.count({ where: { projectId } })) > 0;
-      const initialSandbox = hasFiles
-        ? await provisionSandbox(projectId, userId, jobId)
-        : undefined;
-
-      await runAgentLoop(
-        jobId,
-        projectId,
-        userId,
-        prompt,
-        effort,
-        startIndex,
-        initialSandbox,
-      );
-
-      if (!cancelled) {
         await prisma.job.update({
           where: { id: jobId },
-          data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+          data: { status: JobStatus.CANCELLED, completedAt: new Date() },
         });
-        await settle(jobId).catch((err) =>
-          console.error(`[worker] settle failed on complete for ${jobId}`, err),
-        );
+        await settle(jobId);
+        await publish(jobId, { type: "cancelled" }, bus.length(jobId));
+      } catch (err) {
+        console.error(`[runner] cancel handling failed for ${jobId}`, err);
       }
-    } finally {
-      await sub.unsubscribe(controlChannel);
-      await sub.quit();
-    }
-  },
-  {
-    connection,
-    concurrency: env.WORKER_CONCURRENCY,
-  },
-);
+    })();
+  });
 
-worker.on("failed", async (job, err) => {
-  if (job) {
+  try {
     await prisma.job.update({
-      where: { id: job.data.jobId },
-      data: { status: JobStatus.FAILED, error: err.message },
+      where: { id: jobId },
+      data: { status: JobStatus.RUNNING, startedAt: new Date() },
     });
-    await settle(job.data.jobId).catch((settleErr) =>
-      console.error(
-        `[worker] settle failed on job failure for ${job.data.jobId}`,
-        settleErr,
-      ),
+
+    await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
+
+    const startIndex = bus.length(jobId);
+    const hasFiles =
+      (await prisma.projectFile.count({ where: { projectId } })) > 0;
+    const initialSandbox = hasFiles
+      ? await provisionSandbox(projectId, userId, jobId)
+      : undefined;
+
+    await runAgentLoop(
+      jobId,
+      projectId,
+      userId,
+      prompt,
+      effort as Effort,
+      startIndex,
+      initialSandbox,
     );
+
+    if (!cancelled) {
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+      });
+      await settle(jobId).catch((err) =>
+        console.error(`[runner] settle failed on complete for ${jobId}`, err),
+      );
+    }
+  } finally {
+    offCancel();
   }
-});
+}
 
-worker.on("ready", () => {
-  console.log(
-    `[worker] ready — queue="${env.QUEUE_NAME}" concurrency=${env.WORKER_CONCURRENCY}`,
+async function markFailed(jobId: string, err: unknown): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err);
+  await prisma.job
+    .update({
+      where: { id: jobId },
+      data: { status: JobStatus.FAILED, error: message },
+    })
+    .catch((e) =>
+      console.error(`[runner] failed-status update error for ${jobId}`, e),
+    );
+  await settle(jobId).catch((e) =>
+    console.error(`[runner] settle failed on job failure for ${jobId}`, e),
   );
-});
+}
 
-worker.on("error", (err) => {
-  console.error("[worker] error", err);
-});
+/**
+ * Start the in-process job runner (economy): consume dispatched jobs with a
+ * concurrency limit and one retry, replacing the BullMQ worker. No Redis, no
+ * durability — a process restart drops queued/in-flight jobs (accepted
+ * tradeoff, see doc/economy-deployment.md).
+ */
+export function startRunner(): void {
+  const MAX_ATTEMPTS = 2; // mirror BullMQ attempts: 2 (initial + 1 retry)
+  const queue: DispatchPayload[] = [];
+  const attempts = new Map<string, number>();
+  let active = 0;
 
-async function shutdown(signal: string) {
-  console.log(`[worker] received ${signal}, shutting down…`);
-  await worker.close();
-  await redis.quit();
+  const pump = (): void => {
+    while (active < env.WORKER_CONCURRENCY && queue.length > 0) {
+      const payload = queue.shift();
+      if (!payload) break;
+      active += 1;
+      void runOne(payload).finally(() => {
+        active -= 1;
+        pump();
+      });
+    }
+  };
+
+  const runOne = async (payload: DispatchPayload): Promise<void> => {
+    try {
+      await processJob(payload);
+      attempts.delete(payload.jobId);
+    } catch (err) {
+      const n = (attempts.get(payload.jobId) ?? 0) + 1;
+      if (n < MAX_ATTEMPTS) {
+        attempts.set(payload.jobId, n);
+        console.error(
+          `[runner] job ${payload.jobId} failed (attempt ${n}/${MAX_ATTEMPTS}), retrying`,
+          err,
+        );
+        queue.push(payload);
+      } else {
+        attempts.delete(payload.jobId);
+        console.error(`[runner] job ${payload.jobId} failed permanently`, err);
+        await markFailed(payload.jobId, err);
+      }
+    }
+  };
+
+  bus.onDispatch((payload) => {
+    queue.push(payload);
+    pump();
+  });
+
+  console.log(
+    `[runner] ready — in-process, concurrency=${env.WORKER_CONCURRENCY} (no redis)`,
+  );
+}
+
+async function shutdown(signal: string): Promise<void> {
+  console.log(`[runner] received ${signal}, shutting down…`);
   await prisma.$disconnect();
   process.exit(0);
 }
 
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
+
+if (import.meta.main) startRunner();

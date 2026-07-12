@@ -1,16 +1,11 @@
 import rateLimit from "express-rate-limit";
-import { RedisStore } from "rate-limit-redis";
-import { redis } from "../lib/redis";
 
+// Economy (Redis-free): express-rate-limit's built-in in-memory store. Correct
+// for a single-process deployment; would need a shared store if ever scaled out.
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later" },
-  store: new RedisStore({
-    sendCommand: (...args: string[]) =>
-      redis.call(args[0]!, ...args.slice(1)) as Promise<any>,
-    prefix: "rl:auth:",
-  }),
 });

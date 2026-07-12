@@ -15,7 +15,7 @@ import {
 } from "../lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
 import { getBlobText, deleteProjectBlobs } from "../lib/s3";
-import { redis } from "../lib/redis";
+import { bus } from "../lib/bus";
 import {
   MessageRole,
   MessageType,
@@ -337,7 +337,7 @@ export async function submitJobAnswer(
   if (job.status !== "RUNNING")
     throw Errors.conflict("Job is not waiting for a response");
 
-  await redis.lpush(`job:${jobId}:user_response`, JSON.stringify({ answer }));
+  bus.pushUserResponse(jobId, answer);
 }
 
 export async function deleteProject(

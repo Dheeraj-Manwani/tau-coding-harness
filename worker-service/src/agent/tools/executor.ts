@@ -2,7 +2,7 @@ import { SandboxNotFoundError } from "e2b";
 import { provisionSandbox, SANDBOX_IDLE_TIMEOUT_MS } from "@/lib/sandbox";
 import { isTemplateKey } from "@/templates/registry";
 import { publish } from "@/lib/publish";
-import { redis } from "@/lib/redis";
+import { bus } from "@/lib/bus";
 import type { SandboxRef } from "../loop";
 import type { Tool } from "./tools";
 import { asString } from "./functions/utils";
@@ -73,20 +73,15 @@ export async function executeTool(
         indexer(),
       );
 
-      const responseKey = `job:${jobId}:user_response`;
-      const conn = redis.duplicate();
-      try {
-        const result = await conn.blpop(responseKey, 600); // 10 min timeout
-        if (!result) return { answer: null, timedOut: true };
-        const { answer } = JSON.parse(result[1]) as { answer: string };
+      // Block for the user's answer (10 min), delivered in-process by the api
+      // via bus.pushUserResponse (replaces the Redis lpush ↔ blpop rendezvous).
+      const answer = await bus.waitForUserResponse(jobId, 600_000);
+      if (answer === null) return { answer: null, timedOut: true };
 
-        // The answer is returned as this tool call's result and persisted as
-        // part of the standard TOOL_RES row by the agent loop — no separate
-        // USER message row here, or the UI would render it twice.
-        return { answer };
-      } finally {
-        await conn.quit();
-      }
+      // The answer is returned as this tool call's result and persisted as
+      // part of the standard TOOL_RES row by the agent loop — no separate
+      // USER message row here, or the UI would render it twice.
+      return { answer };
     }
     case "provision_sandbox": {
       if (!sandboxRef.current) {

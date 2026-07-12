@@ -8,30 +8,41 @@ import type { AppSocket, SocketData } from "./lib/types";
 
 type AuthedRequest = IncomingMessage & { socketData?: SocketData };
 
-const manager = new SocketManager({ redisPub, redisSub });
+/**
+ * Start the standalone WebSocket gateway on env.PORT. Guarded by
+ * import.meta.main below so the module stays importable without binding a port.
+ * (The economy build does not import this file — SSE replaces it.)
+ */
+export function attachWsGateway(): WebSocketServer {
+  const manager = new SocketManager({ redisPub, redisSub });
 
-const wss = new WebSocketServer({
-  port: env.PORT,
-  verifyClient: ({ req }, done) => {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
-    const token = url.searchParams.get("token");
-    const payload = token ? verifyConnectionToken(token) : null;
-    if (!payload) {
-      done(false, 401, "Unauthorized");
-      return;
-    }
-    (req as AuthedRequest).socketData = { userId: payload.sub };
-    done(true);
-  },
-});
+  const wss = new WebSocketServer({
+    port: env.PORT,
+    verifyClient: ({ req }, done) => {
+      const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+      const token = url.searchParams.get("token");
+      const payload = token ? verifyConnectionToken(token) : null;
+      if (!payload) {
+        done(false, 401, "Unauthorized");
+        return;
+      }
+      (req as AuthedRequest).socketData = { userId: payload.sub };
+      done(true);
+    },
+  });
 
-wss.on("connection", (socket: AppSocket, req: AuthedRequest) => {
-  socket.data = req.socketData ?? { userId: "" };
-  manager.register(socket);
-});
+  wss.on("connection", (socket: AppSocket, req: AuthedRequest) => {
+    socket.data = req.socketData ?? { userId: "" };
+    manager.register(socket);
+  });
 
-wss.on("close", () => manager.close());
+  wss.on("close", () => manager.close());
 
-wss.on("listening", () => {
-  console.log(`ws-gateway listening on ws://localhost:${env.PORT}`);
-});
+  wss.on("listening", () => {
+    console.log(`ws-gateway listening on ws://localhost:${env.PORT}`);
+  });
+
+  return wss;
+}
+
+if (import.meta.main) attachWsGateway();

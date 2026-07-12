@@ -2,6 +2,8 @@
   "name": "tau",
   "private": true,
   "scripts": {
-    "dev": "powershell -ExecutionPolicy Bypass -File ./dev.ps1"
+    "dev": "powershell -ExecutionPolicy Bypass -File ./dev.ps1",
+    "start:economy": "bun run deploy/combined.ts",
+    "dev:economy": "bun run --hot deploy/combined.ts"
   }
 }

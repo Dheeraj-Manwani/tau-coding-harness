@@ -17,15 +17,17 @@ const watermarks = new Map<string, number>();
 
 /**
  * Subscribes to the live event stream for the project's currently-active job
- * (`currentJobId` in the store) over the ws-gateway WebSocket, dispatching each
- * event into the store. Handles:
- *   - resume-on-reconnect via the highest `index` seen (the gateway replays
- *     only events newer than `lastEventIndex`, so no duplicates),
- *   - access-token expiry (refresh + reconnect),
+ * (`currentJobId` in the store) over Server-Sent Events, dispatching each event
+ * into the store. Handles:
+ *   - resume-on-reconnect: the `lastEventIndex` query param makes the server
+ *     replay only events newer than the highest `index` seen (no duplicates),
+ *   - access-token expiry (refresh + reconnect) — we drive reconnection
+ *     ourselves instead of relying on EventSource auto-retry, which would keep
+ *     reusing an expired token,
  *   - exponential backoff on transient drops.
  *
  * When the job reaches a terminal event the reducer clears `currentJobId`,
- * which tears this effect down and closes the socket.
+ * which tears this effect down and closes the stream.
  */
 export function useJobStream(): void {
   const jobId = useProjectStore((s) => s.currentJobId);
@@ -37,7 +39,7 @@ export function useJobStream(): void {
   useEffect(() => {
     if (!jobId) return;
 
-    let socket: WebSocket | null = null;
+    let source: EventSource | null = null;
     let attempt = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
@@ -58,21 +60,20 @@ export function useJobStream(): void {
         return;
       }
 
-      const url = `${env.WS_URL}/?token=${encodeURIComponent(token)}`;
-      socket = new WebSocket(url);
+      // Resume from the last index we applied so the server replays only newer
+      // events (no duplicates) after a reconnect.
+      const lastEventIndex = watermarks.get(jobId) ?? -1;
+      const url =
+        `${env.API_URL}/jobs/${encodeURIComponent(jobId)}/stream` +
+        `?token=${encodeURIComponent(token)}&lastEventIndex=${lastEventIndex}`;
+      source = new EventSource(url);
 
-      socket.onopen = () => {
+      source.onopen = () => {
         everOpened = true;
         attempt = 0;
-        // Resume from the last index we applied so the gateway replays only
-        // newer events (no duplicates) after a reconnect.
-        const lastEventIndex = watermarks.get(jobId) ?? -1;
-        socket?.send(
-          JSON.stringify({ type: "subscribe", jobId, lastEventIndex }),
-        );
       };
 
-      socket.onmessage = (e) => {
+      source.onmessage = (e) => {
         let event: JobEvent;
         try {
           event = JSON.parse(e.data as string) as JobEvent;
@@ -97,15 +98,16 @@ export function useJobStream(): void {
         applyEvent(event);
       };
 
-      socket.onclose = () => {
+      source.onerror = () => {
+        // EventSource would auto-retry with the same (possibly expired) token;
+        // take control so we can refresh and resume from the latest watermark.
+        source?.close();
         if (disposed) return;
         // Terminal events clear currentJobId → the effect re-runs with no job
         // and disposes; if we're still here, the drop was unexpected — retry.
         if (useProjectStore.getState().currentJobId !== jobId) return;
         scheduleReconnect();
       };
-
-      socket.onerror = () => socket?.close();
     };
 
     const scheduleReconnect = () => {
@@ -115,9 +117,9 @@ export function useJobStream(): void {
       reconnectTimer = setTimeout(() => void connect(), delay);
     };
 
-    // Let the chat panel send a cancel over the live socket.
+    // Let the chat panel cancel the job over the regular authed HTTP API.
     setCanceller(() => {
-      socket?.send(JSON.stringify({ type: "cancel", jobId }));
+      void api.post(`/jobs/${encodeURIComponent(jobId)}/cancel`);
     });
 
     void connect();
@@ -126,9 +128,9 @@ export function useJobStream(): void {
       disposed = true;
       clearTimeout(reconnectTimer);
       setCanceller(null);
-      if (socket) {
-        socket.onclose = null; // avoid the reconnect path on intentional close
-        socket.close();
+      if (source) {
+        source.onerror = null; // avoid the reconnect path on intentional close
+        source.close();
       }
     };
   }, [jobId, projectId, applyEvent, hydrateTree, setCanceller]);

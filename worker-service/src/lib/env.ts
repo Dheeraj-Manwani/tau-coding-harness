@@ -44,6 +44,13 @@ const envSchema = z.object({
   // Max depth of sub agents
   MAX_AGENT_DEPTH: z.string().transform((val) => Number(val)),
   TAVILY_API_KEY: z.string(),
+
+  // ── Preview thumbnails (auto-screenshot on build done) ──
+  SCREENSHOT_ENABLED: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
+  SCREENSHOT_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

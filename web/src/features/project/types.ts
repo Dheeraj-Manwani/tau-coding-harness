@@ -48,6 +48,7 @@ export interface ProjectListItem {
   sandboxStatus: string;
   createdAt: string;
   updatedAt: string;
+  previewImageUrl: string | null;
 }
 
 /** Shape of `GET /project`. */

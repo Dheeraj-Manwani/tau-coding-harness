@@ -18,6 +18,18 @@ function formatUpdated(iso: string): string {
   });
 }
 
+function ThumbnailPlaceholder() {
+  // Covers all three thumbnail-less states uniformly: never built, build in
+  // progress, or a failed/absent capture.
+  return (
+    <div className="flex size-full items-center justify-center bg-gradient-to-br from-space-overlay to-space-surface">
+      <span className="text-2xl font-semibold text-silver-600/40 select-none">
+        τ
+      </span>
+    </div>
+  );
+}
+
 function ProjectCard({
   project,
   onDeleteClick,
@@ -29,14 +41,28 @@ function ProjectCard({
     <div className="group relative">
       <Link
         to={`/project/${project.id}`}
-        className="flex flex-col gap-2 rounded-lg border border-silver-400/30 bg-space-surface p-4 text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
+        className="flex flex-col overflow-hidden rounded-lg border border-silver-400/30 bg-space-surface text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
       >
-        <span className="truncate pr-8 text-sm font-medium text-silver-900 group-hover:text-foreground">
-          {project.name}
-        </span>
-        <span className="text-xs text-silver-600">
-          Updated {formatUpdated(project.updatedAt)}
-        </span>
+        <div className="aspect-video w-full overflow-hidden bg-space-overlay">
+          {project.previewImageUrl ? (
+            <img
+              src={project.previewImageUrl}
+              alt={project.name}
+              loading="lazy"
+              className="size-full object-cover object-top"
+            />
+          ) : (
+            <ThumbnailPlaceholder />
+          )}
+        </div>
+        <div className="flex flex-col gap-1 p-4">
+          <span className="truncate pr-8 text-sm font-medium text-silver-900 group-hover:text-foreground">
+            {project.name}
+          </span>
+          <span className="text-xs text-silver-600">
+            Updated {formatUpdated(project.updatedAt)}
+          </span>
+        </div>
       </Link>
 
       <DropdownMenu.Root>

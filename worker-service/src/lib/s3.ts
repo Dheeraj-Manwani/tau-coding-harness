@@ -50,6 +50,28 @@ export function blobKey(
   return `${BLOB_PREFIX}/${userId}/${projectId}/${hash}`;
 }
 
+export function screenshotKey(userId: string, projectId: string): string {
+  return `${BLOB_PREFIX}/${userId}/${projectId}/screenshots/latest.jpg`;
+}
+
+/** Upload (overwrite) the latest preview thumbnail; returns its key. */
+export async function putScreenshot(
+  userId: string,
+  projectId: string,
+  body: Buffer,
+): Promise<string> {
+  const key = screenshotKey(userId, projectId);
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: "image/jpeg",
+    }),
+  );
+  return key;
+}
+
 /** True if an object exists at `key`. */
 export async function objectExists(key: string): Promise<boolean> {
   try {

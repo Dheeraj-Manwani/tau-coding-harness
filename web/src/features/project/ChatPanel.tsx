@@ -594,6 +594,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
         sandboxStatus: detail.project.sandboxStatus,
         createdAt: "",
         updatedAt: "",
+        previewImageUrl: null,
       }
     : null;
 
@@ -621,11 +622,11 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
           <DropdownMenu.Content
             align="start"
             sideOffset={6}
-            className="z-50 w-52 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1.5 shadow-2xl"
+            className="z-50 w-44 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
           >
             <DropdownMenu.Item
               onSelect={() => navigate("/")}
-              className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
             >
               <HomeIcon className="size-3.5 shrink-0" />
               Home
@@ -635,7 +636,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
 
             <DropdownMenu.Item
               onSelect={() => setDeleteOpen(true)}
-              className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
             >
               <Trash2Icon className="size-3.5 shrink-0" />
               Delete project

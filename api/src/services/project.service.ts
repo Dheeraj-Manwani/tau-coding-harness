@@ -14,7 +14,7 @@ import {
   ConcurrentJobLimitError,
 } from "../lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
-import { getBlobText, deleteProjectBlobs } from "../lib/s3";
+import { getBlobText, deleteProjectBlobs, presignGet } from "../lib/s3";
 import { bus } from "../lib/bus";
 import {
   MessageRole,
@@ -236,13 +236,18 @@ export async function listProjects(
   );
 
   return {
-    projects: projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      sandboxStatus: p.sandboxStatus,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-    })),
+    projects: await Promise.all(
+      projects.map(async (p) => ({
+        id: p.id,
+        name: p.name,
+        sandboxStatus: p.sandboxStatus,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        previewImageUrl: p.previewImageKey
+          ? await presignGet(p.previewImageKey)
+          : null,
+      })),
+    ),
     nextCursor,
   };
 }

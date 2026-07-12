@@ -6,6 +6,8 @@ import { getNextSequence } from "../lib/sequence";
 import { meter, type MeterResult } from "../lib/credits";
 import { toCredits } from "../lib/pricing";
 import { publish, makeIndexer } from "../lib/publish";
+import { captureAppScreenshot } from "../lib/screenshot";
+import { putScreenshot } from "../lib/s3";
 import type { Sandbox } from "../lib/sandbox";
 import { TOOL_DEFINITIONS } from "./tools/tools";
 
@@ -76,6 +78,13 @@ const SUBAGENT_TOOLS = new Set<string>([
   // "dispatch_implementer",
 ]);
 
+const FILE_MUTATING_TOOLS = new Set<string>([
+  "create_file",
+  "edit_file",
+  "delete_file",
+  "dispatch_implementer",
+]);
+
 const TOOL_SCHEMA_TOKENS = estimateStringTokens(
   JSON.stringify(TOOL_DEFINITIONS),
 );
@@ -97,6 +106,33 @@ async function runPool<T, R>(
   const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
   await Promise.all(workers);
   return results;
+}
+
+const SCREENSHOT_BUDGET_MS = 25_000;
+
+async function captureAndStore(
+  projectId: string,
+  userId: string,
+  url: string,
+): Promise<void> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error("screenshot budget exceeded")),
+      SCREENSHOT_BUDGET_MS,
+    ),
+  );
+
+  await Promise.race([
+    (async () => {
+      const jpeg = await captureAppScreenshot(url);
+      const key = await putScreenshot(userId, projectId, jpeg);
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { previewImageKey: key, previewImageUpdatedAt: new Date() },
+      });
+    })(),
+    timeout,
+  ]);
 }
 
 function deriveTitle(content: string | null): string {
@@ -223,6 +259,8 @@ export async function runAgentLoop(
     let intentNudges = 0;
     let meterFailures = 0;
     let summarizations = 0;
+
+    let filesChanged = false;
     const calibration = createCalibration();
 
     while (true) {
@@ -503,22 +541,36 @@ export async function runAgentLoop(
       }
 
       if (!isToolTurn) {
+        let previewUrl: string | null = null;
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
-          const url = `https://${host}`;
-          await publish(jobId, { type: "preview_ready", url }, nextIndex());
+          previewUrl = `https://${host}`;
+          await publish(
+            jobId,
+            { type: "preview_ready", url: previewUrl },
+            nextIndex(),
+          );
 
           await prisma.fragment.create({
             data: {
               message: { connect: { id: assistantMessageId } },
               job: { connect: { id: jobId } },
-              sandboxUrl: url,
+              sandboxUrl: previewUrl,
               title: deriveTitle(assistant.content),
             },
           });
         }
 
         await publish(jobId, { type: "done" }, nextIndex());
+
+        if (previewUrl && filesChanged && env.SCREENSHOT_ENABLED) {
+          await captureAndStore(projectId, userId, previewUrl).catch((err) =>
+            console.error(
+              `[worker] screenshot failed for project ${projectId}`,
+              err,
+            ),
+          );
+        }
         break;
       }
 
@@ -538,6 +590,8 @@ export async function runAgentLoop(
       ): Promise<StoredToolResult> => {
         const toolName = tc.function.name;
         const toolCallId = tc.id;
+
+        if (FILE_MUTATING_TOOLS.has(toolName)) filesChanged = true;
 
         let input: unknown;
         try {

@@ -72,6 +72,9 @@ model Project {
 
   templateKey String @default("fullstack")
 
+  previewImageKey       String?
+  previewImageUpdatedAt DateTime?
+
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages   Message[]
   jobs       Job[]

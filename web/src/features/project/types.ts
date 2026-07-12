@@ -26,6 +26,15 @@ export interface Fragment {
   createdAt: string;
 }
 
+export interface ProjectCheckpoint {
+  id: string;
+  upToSequence: number;
+  summary: string;
+  tokensBefore: number;
+  tokensAfter: number;
+  createdAt: string;
+}
+
 export interface ProjectSummary {
   id: string;
   name: string;
@@ -54,12 +63,14 @@ export interface ProjectDetail {
   latestFragment: Fragment | null;
   /** Id of a still-running job, if any — used to resume the stream on reload. */
   activeJobId: string | null;
+  checkpoints: ProjectCheckpoint[];
 }
 
 /** Response from `GET /project/:id/messages?before=<sequence>` */
 export interface OlderMessagesResponse {
   messages: ProjectMessage[];
   hasMore: boolean;
+  checkpoints: ProjectCheckpoint[];
 }
 
 export interface InitProjectResponse {
@@ -116,4 +127,11 @@ export type JobEvent = BaseEvent &
     | { type: "error"; message: string }
     | { type: "insufficient_credits" }
     | { type: "credits_update"; available: number; availableMicro: string }
+    | { type: "context_compacted"; tokensBefore: number; tokensAfter: number }
+    | {
+        type: "context_summarized";
+        upToSequence: number;
+        tokensBefore: number;
+        tokensAfter: number;
+      }
   );

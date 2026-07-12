@@ -260,11 +260,20 @@ export async function getProject(projectId: string, userId: string) {
     projectRepo.findActiveJob(projectId),
   ]);
 
+  const checkpoints = messages.length
+    ? await projectRepo.findCheckpointsInRange(
+        projectId,
+        messages[0]!.sequence,
+        messages[messages.length - 1]!.sequence,
+      )
+    : [];
+
   return {
     project,
     messages,
     latestFragment,
     activeJobId: activeJob?.id ?? null,
+    checkpoints,
   };
 }
 
@@ -280,7 +289,19 @@ export async function listMessages(
   }
 
   if (opts.before !== undefined) {
-    return projectRepo.findMessagesBefore(projectId, opts.before, opts.limit);
+    const result = await projectRepo.findMessagesBefore(
+      projectId,
+      opts.before,
+      opts.limit,
+    );
+    const checkpoints = result.messages.length
+      ? await projectRepo.findCheckpointsInRange(
+          projectId,
+          result.messages[0]!.sequence,
+          result.messages[result.messages.length - 1]!.sequence,
+        )
+      : [];
+    return { ...result, checkpoints };
   }
 
   return projectRepo.listMessages(projectId, opts);

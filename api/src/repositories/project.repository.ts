@@ -142,6 +142,25 @@ export async function listMessages(
   return { messages, nextCursor };
 }
 
+export function findCheckpointsInRange(
+  projectId: string,
+  gteSeq: number,
+  lteSeq: number,
+) {
+  return prisma.contextCheckpoint.findMany({
+    where: { projectId, upToSequence: { gte: gteSeq, lte: lteSeq } },
+    orderBy: { upToSequence: "asc" },
+    select: {
+      id: true,
+      upToSequence: true,
+      summary: true,
+      tokensBefore: true,
+      tokensAfter: true,
+      createdAt: true,
+    },
+  });
+}
+
 export function findLatestFragment(
   projectId: string,
 ): Promise<Fragment | null> {

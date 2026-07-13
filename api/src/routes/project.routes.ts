@@ -8,6 +8,8 @@ import {
   deleteProject,
   getProjectTree,
   getProjectFile,
+  getPreviewStatus,
+  restartPreview,
   submitJobAnswer,
 } from "../controllers/project.controller";
 
@@ -21,6 +23,8 @@ router.post("/:projectId/message", addMessage);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
+router.get("/:projectId/preview/status", getPreviewStatus);
+router.post("/:projectId/preview/restart", restartPreview);
 router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);
 
 export default router;

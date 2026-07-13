@@ -163,3 +163,33 @@ export const getProjectFile = async (
     next(err);
   }
 };
+
+export const getPreviewStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const result = await projectService.getPreviewStatus(projectId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const restartPreview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const result = await projectService.restartPreview(projectId, userId);
+    res.status(202).json(result);
+  } catch (err) {
+    next(err);
+  }
+};

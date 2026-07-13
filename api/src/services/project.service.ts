@@ -226,6 +226,92 @@ export async function addMessage(
   return { jobId };
 }
 
+const PREVIEW_LIVENESS_TIMEOUT_MS = 8_000;
+
+export async function getPreviewStatus(
+  projectId: string,
+  userId: string,
+): Promise<{ alive: boolean }> {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  if (!project.sandboxId || project.sandboxStatus !== SandboxStatus.READY) {
+    return { alive: false };
+  }
+
+  try {
+    const sandbox = await Sandbox.connect(project.sandboxId);
+    await sandbox.commands.run("true", {
+      timeoutMs: PREVIEW_LIVENESS_TIMEOUT_MS,
+    });
+    return { alive: true };
+  } catch {
+    // Sandbox is gone. Clear the stale status so future reads short-circuit.
+    await prisma.project
+      .update({
+        where: { id: projectId },
+        data: { sandboxStatus: SandboxStatus.DEAD },
+      })
+      .catch(() => {});
+    return { alive: false };
+  }
+}
+
+export interface RestartPreviewResult {
+  jobId: string;
+}
+
+/** Queue a provision-only PREVIEW job that reboots the sandbox from persisted
+ *  files and streams the fresh URL back over the normal job event stream. */
+export async function restartPreview(
+  projectId: string,
+  userId: string,
+): Promise<RestartPreviewResult> {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const jobId = await prisma.$transaction(
+    async (tx) => {
+      const active = await projectRepo.findActiveJob(projectId, tx);
+      if (active) throw Errors.conflict("generation in progress");
+
+      // Nothing to rehydrate a sandbox from — the project has never been built.
+      const fileCount = await tx.projectFile.count({ where: { projectId } });
+      if (fileCount === 0) {
+        throw Errors.badRequest("Nothing to preview yet");
+      }
+
+      const job = await projectRepo.createJob(tx, {
+        projectId,
+        prompt: "",
+        type: JobType.PREVIEW,
+      });
+
+      return job.id;
+    },
+    { isolationLevel: "Serializable" },
+  );
+
+  // No credit reserve: preview restarts are free (no LLM calls, no metering).
+  const queueJobId = await enqueueJob({
+    jobId,
+    projectId,
+    userId,
+    prompt: "",
+    effort: "LOW",
+    type: JobType.PREVIEW,
+  });
+  await projectRepo.setJobQueueId(jobId, queueJobId);
+
+  return { jobId };
+}
+
 export async function listProjects(
   userId: string,
   opts: { cursor?: string; limit: number },

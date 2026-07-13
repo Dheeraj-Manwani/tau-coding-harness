@@ -94,25 +94,54 @@ function DeviceSwitcher() {
   const setPreviewDevice = useProjectStore((s) => s.setPreviewDevice);
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1">
       {DEVICES.map(({ id, icon: Icon, label }) => (
         <motion.button
           key={id}
           type="button"
-          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.92 }}
           onClick={() => setPreviewDevice(id)}
           aria-label={label}
           className={cn(
-            "flex size-7 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            "flex size-6 items-center justify-center rounded-[var(--radius-md)] transition-colors",
             previewDevice === id
               ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
           )}
         >
-          <Icon className="size-4" />
+          <Icon className="size-3.5" />
         </motion.button>
       ))}
     </div>
+  );
+}
+
+// lucide-react 1.x dropped brand marks, so the GitHub logo is inlined here.
+function GithubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
+
+function GithubButton() {
+  // Placeholder for the upcoming "Connect to GitHub" flow.
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label="Connect GitHub"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] text-[var(--silver-900)] transition-colors hover:border-[var(--silver-400)] hover:bg-[var(--space-overlay)]"
+        >
+          <GithubMark className="size-4.5" />
+        </motion.button>
+      </TooltipTrigger>
+      <TooltipContent>Connect GitHub</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -181,14 +210,15 @@ export function RightPanel() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
-      <div className="flex shrink-0 items-center gap-3 border-b border-[var(--silver-200)] px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--silver-200)] bg-[var(--space-void)]/70 px-3 py-2 backdrop-blur-md">
         {!isChatOpen && (
           <motion.button
             type="button"
             onClick={toggleChat}
             whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.92 }}
             aria-label="Open chat"
-            className="flex size-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
           >
             <PanelLeftOpenIcon className="size-4.5" />
           </motion.button>
@@ -203,6 +233,9 @@ export function RightPanel() {
         {activeTab !== "preview" && <div className="flex-1" />}
         {activeTab === "preview" && <DeviceSwitcher />}
 
+        <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />
+
+        <GithubButton />
         <UserMenu />
       </div>
 

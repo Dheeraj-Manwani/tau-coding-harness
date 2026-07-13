@@ -663,6 +663,7 @@ interface ProjectState {
 /** State reset whenever we enter a project (UI prefs below are preserved). */
 const FRESH = {
   currentJobId: null,
+  isPreviewJob: false,
   status: "idle" as JobStatus,
   activity: null,
   hydrated: false,
@@ -1311,7 +1312,14 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
 
     case "preview_ready":
-      set({ previewUrl: event.url, buildStarted: true });
+      // Bump the nonce so the iframe remounts even if the URL string is
+      // unchanged — a restarted sandbox may serve at the same host, and the old
+      // (dead) frame must be torn down and reloaded.
+      set((s) => ({
+        previewUrl: event.url,
+        previewNonce: s.previewNonce + 1,
+        buildStarted: true,
+      }));
       return;
 
     case "done":
@@ -1327,6 +1335,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           activity: null,
           writingPath: null,
           currentJobId: null,
+          isPreviewJob: false,
           pendingActions: [],
           pendingQuestion: null,
         };
@@ -1346,6 +1355,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
           activity: null,
           writingPath: null,
           currentJobId: null,
+          isPreviewJob: false,
           pendingActions: [],
           pendingQuestion: null,
         };
@@ -1393,6 +1403,7 @@ function applyEvent(set: SetState, event: JobEvent): void {
         activity: null,
         writingPath: null,
         currentJobId: null,
+        isPreviewJob: false,
         pendingActions: [],
       }));
       useBillingStore.getState().open();

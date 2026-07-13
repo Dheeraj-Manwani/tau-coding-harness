@@ -7,9 +7,11 @@ import type {
   InitProjectResponse,
   ListProjectsResponse,
   OlderMessagesResponse,
+  PreviewStatusResponse,
   ProjectDetail,
   ProjectFileResponse,
   ProjectTree,
+  RestartPreviewResponse,
 } from "./types";
 
 export const projectKeys = {
@@ -18,6 +20,7 @@ export const projectKeys = {
   detail: (id: string) => ["project", id] as const,
   tree: (id: string) => ["project", id, "tree"] as const,
   file: (id: string, path: string) => ["project", id, "file", path] as const,
+  previewStatus: (id: string) => ["project", id, "preview-status"] as const,
 };
 
 /** `GET /project` — the signed-in user's projects, newest first. */
@@ -35,9 +38,7 @@ export function useProject(projectId: string | undefined) {
   return useQuery({
     queryKey: projectKeys.detail(projectId ?? ""),
     queryFn: () =>
-      api
-        .get<ProjectDetail>(`/project/${projectId}`)
-        .then((r) => r.data),
+      api.get<ProjectDetail>(`/project/${projectId}`).then((r) => r.data),
     enabled: Boolean(projectId),
     retry: false,
     staleTime: 30_000,
@@ -48,9 +49,7 @@ export function useProject(projectId: string | undefined) {
 export function useInitProject() {
   return useMutation({
     mutationFn: (vars: { message: string; effort: Effort }) =>
-      api
-        .post<InitProjectResponse>("/project", vars)
-        .then((r) => r.data),
+      api.post<InitProjectResponse>("/project", vars).then((r) => r.data),
   });
 }
 
@@ -103,11 +102,36 @@ export function useProjectTree(projectId: string | undefined) {
   return useQuery({
     queryKey: projectKeys.tree(projectId ?? ""),
     queryFn: () =>
-      api
-        .get<ProjectTree>(`/project/${projectId}/tree`)
-        .then((r) => r.data),
+      api.get<ProjectTree>(`/project/${projectId}/tree`).then((r) => r.data),
     enabled: Boolean(projectId),
     staleTime: 30_000,
+  });
+}
+
+export function usePreviewStatus(
+  projectId: string | undefined,
+  options: { enabled: boolean },
+) {
+  return useQuery({
+    queryKey: projectKeys.previewStatus(projectId ?? ""),
+    queryFn: () =>
+      api
+        .get<PreviewStatusResponse>(`/project/${projectId}/preview/status`)
+        .then((r) => r.data),
+    enabled: Boolean(projectId) && options.enabled,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useRestartPreview(projectId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post<RestartPreviewResponse>(`/project/${projectId}/preview/restart`)
+        .then((r) => r.data),
   });
 }
 

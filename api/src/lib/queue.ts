@@ -1,5 +1,5 @@
 import { bus } from "./bus";
-import type { Effort } from "../generated/prisma/enums";
+import type { Effort, JobType } from "../generated/prisma/enums";
 
 export const CODE_GENERATION_QUEUE = "code-generation";
 
@@ -9,6 +9,7 @@ export interface JobPayload {
   userId: string;
   prompt: string;
   effort: Effort;
+  type?: JobType;
 }
 
 /**

@@ -1,7 +1,14 @@
+import { useState } from "react";
 import { motion } from "motion/react";
+import { PlayIcon, PowerOffIcon } from "lucide-react";
+import toast from "react-hot-toast";
 
 import BorderGlow from "@/src/components/ui/glow-loader";
 import { useProjectStore } from "@/src/stores/useProjectStore";
+import {
+  usePreviewStatus,
+  useRestartPreview,
+} from "@/src/features/project/api";
 
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
@@ -9,7 +16,7 @@ const DEVICE_WIDTH: Record<string, number> = {
   desktop: 9999,
 };
 
-function PreviewPlaceholder() {
+function PreviewPlaceholder({ label }: { label?: string }) {
   return (
     <div className="flex h-full items-center justify-center p-0">
       <BorderGlow
@@ -30,7 +37,7 @@ function PreviewPlaceholder() {
 
           <div className="flex flex-col items-center  text-center">
             <span className="text-sm font-semibold text-(--silver-900)">
-              tau is building your app…
+              {label ?? "tau is building your app…"}
             </span>
           </div>
         </div>
@@ -39,9 +46,83 @@ function PreviewPlaceholder() {
   );
 }
 
+/** Shown when the live sandbox has gone down — lets the user reboot it from the
+ *  persisted project files without spending a chat turn. While the restart is
+ *  in flight the button itself shows the progress (no full-pane shimmer). */
+function PreviewStopped({
+  starting,
+  onStart,
+}: {
+  starting: boolean;
+  onStart: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3">
+      <span className="flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
+        <PowerOffIcon className="size-4.5" />
+      </span>
+      <span className="text-xs text-[var(--silver-600)]">Preview stopped</span>
+      <button
+        type="button"
+        disabled={starting}
+        onClick={onStart}
+        className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-default disabled:hover:bg-brand"
+      >
+        {starting ? (
+          <>
+            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            Starting…
+          </>
+        ) : (
+          <>
+            <PlayIcon className="size-3.5" />
+            Start preview
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export function PreviewPane({ device }: { device: string }) {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewNonce = useProjectStore((s) => s.previewNonce);
+  const projectId = useProjectStore((s) => s.projectId);
+  const status = useProjectStore((s) => s.status);
+  const currentJobId = useProjectStore((s) => s.currentJobId);
+  const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
+
+  const isStreaming = status === "streaming";
+  const restart = useRestartPreview(projectId ?? "");
+  // Id of the restart job we launched; used to keep the "Starting…" state up
+  // for the whole life of that job (it clears itself when currentJobId resets
+  // to null on the terminal frame), without a setState-in-effect.
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+
+  // Covers the click→dispatch gap and the whole streamed restart job.
+  const starting =
+    restart.isPending ||
+    (previewJobId !== null && currentJobId === previewJobId);
+
+  // Only probe liveness while a preview exists and nothing is actively
+  // streaming (a running job means the sandbox is being managed already).
+  const liveness = usePreviewStatus(projectId ?? undefined, {
+    enabled: Boolean(previewUrl) && !isStreaming && !starting,
+  });
+
+  const isDown =
+    Boolean(previewUrl) && !isStreaming && liveness.data?.alive === false;
+
+  const handleStart = () => {
+    if (!projectId || starting) return;
+    restart.mutate(undefined, {
+      onSuccess: ({ jobId }) => {
+        setPreviewJobId(jobId);
+        startPreviewJob(jobId);
+      },
+      onError: () => toast.error("Couldn't start the preview. Please try again."),
+    });
+  };
 
   return (
     <div className="flex h-full items-center justify-center overflow-auto p-6">
@@ -51,7 +132,9 @@ export function PreviewPane({ device }: { device: string }) {
         className="relative h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)]"
         style={{ backgroundColor: "var(--space-void)" }}
       >
-        {previewUrl ? (
+        {starting || isDown ? (
+          <PreviewStopped starting={starting} onStart={handleStart} />
+        ) : previewUrl ? (
           <iframe
             key={`${previewUrl}-${previewNonce}`}
             src={previewUrl}

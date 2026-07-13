@@ -83,6 +83,16 @@ export interface AddMessageResponse {
   jobId: string;
 }
 
+/** `GET /project/:id/preview/status` — is the live E2B sandbox reachable? */
+export interface PreviewStatusResponse {
+  alive: boolean;
+}
+
+/** `POST /project/:id/preview/restart` — the queued provision-only job. */
+export interface RestartPreviewResponse {
+  jobId: string;
+}
+
 /** `GET /project/:id/tree` response. */
 export interface ProjectTree {
   files: { path: string; sizeBytes: number }[];

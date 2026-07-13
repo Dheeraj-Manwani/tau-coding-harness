@@ -5,15 +5,96 @@ import { publish } from "./lib/publish";
 import { provisionSandbox } from "./lib/sandbox";
 import { runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
-import { JobStatus, type Effort } from "./generated/prisma/enums";
+import { getNextSequence } from "./lib/sequence";
+import { PREVIEW_PORT } from "./agent/config";
+import {
+  JobStatus,
+  JobType,
+  MessageRole,
+  MessageType,
+  type Effort,
+} from "./generated/prisma/enums";
+import type { Prisma } from "./generated/prisma/client";
+
+async function runPreviewJob(payload: DispatchPayload): Promise<void> {
+  const { jobId, projectId, userId } = payload;
+
+  await prisma.job.update({
+    where: { id: jobId },
+    data: { status: JobStatus.RUNNING, startedAt: new Date() },
+  });
+  await publish(jobId, { type: "thinking", message: "Starting preview" }, 0);
+
+  // Reconnect-or-rebuild + rehydrate from R2. The template's start command
+  // auto-runs Vite on PREVIEW_PORT, so the returned sandbox is serving the app.
+  const sandbox = await provisionSandbox(projectId, userId, jobId);
+  const previewUrl = `https://${sandbox.getHost(PREVIEW_PORT)}`;
+
+  await publish(
+    jobId,
+    { type: "preview_ready", url: previewUrl },
+    bus.length(jobId),
+  );
+
+  // Persist the new URL as the project's latest fragment so a page reload
+  // hydrates the live sandbox, not the stale one. Fragment requires a message,
+  // so anchor it to an empty assistant row — empty RESULT rows don't render in
+  // the transcript, keeping the chat clean.
+  const messageId = await prisma.$transaction(async (tx) => {
+    const seq = await getNextSequence(tx, projectId);
+    const message = await tx.message.create({
+      data: {
+        project: { connect: { id: projectId } },
+        job: { connect: { id: jobId } },
+        role: MessageRole.ASSISTANT,
+        type: MessageType.RESULT,
+        content: { content: null } as unknown as Prisma.InputJsonValue,
+        sequence: seq,
+      },
+    });
+    return message.id;
+  });
+
+  await prisma.fragment.create({
+    data: {
+      message: { connect: { id: messageId } },
+      job: { connect: { id: jobId } },
+      sandboxUrl: previewUrl,
+      title: "Preview",
+    },
+  });
+
+  await publish(jobId, { type: "done" }, bus.length(jobId));
+}
 
 /**
  * Process a single code-generation job: run the agent loop, handle in-flight
  * cancellation, and settle credits on terminal status. Economy (Redis-free):
- * cancellation and event indexing go through the in-process bus.
+ * cancellation and event indexing go through the in-process bus. A PREVIEW-type
+ * job short-circuits to {@link runPreviewJob} instead of the agent loop.
  */
 export async function processJob(payload: DispatchPayload): Promise<void> {
   const { jobId, projectId, userId, prompt, effort } = payload;
+
+  if (payload.type === JobType.PREVIEW) {
+    try {
+      await runPreviewJob(payload);
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+      });
+    } catch (err) {
+      console.error(`[runner] preview job ${jobId} failed`, err);
+      await publish(
+        jobId,
+        { type: "error", message: "Couldn't start the preview" },
+        bus.length(jobId),
+      );
+      await markFailed(jobId, err);
+    }
+    return;
+  }
+
   let cancelled = false;
 
   const offCancel = bus.onCancel(jobId, () => {

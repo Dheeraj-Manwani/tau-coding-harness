@@ -29,6 +29,7 @@ export interface DispatchPayload {
   userId: string;
   prompt: string;
   effort: string;
+  type?: string;
 }
 
 interface JobBuffer {
@@ -146,7 +147,10 @@ class InProcessBus {
   }
 
   /** Consumer side (worker): block for an answer up to timeoutMs (null on timeout). */
-  waitForUserResponse(jobId: string, timeoutMs: number): Promise<string | null> {
+  waitForUserResponse(
+    jobId: string,
+    timeoutMs: number,
+  ): Promise<string | null> {
     const pending = this.pendingAnswers.get(jobId);
     if (pending && pending.length > 0) {
       return Promise.resolve(pending.shift() ?? null);

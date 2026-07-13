@@ -1,4 +1,5 @@
 import type Sandbox from "e2b";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString, asStringArray } from "../functions/utils";
 import { IMPLEMENTER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
@@ -12,6 +13,7 @@ export async function dispatchImplementer(
   userId: string,
   nextIndex: () => number,
   model: string,
+  effort: Effort,
 ) {
   const { goal, relevant_files } = input as {
     goal?: unknown;
@@ -38,6 +40,7 @@ export async function dispatchImplementer(
     userId,
     nextIndex,
     model,
+    effort,
     "implementer",
   );
 

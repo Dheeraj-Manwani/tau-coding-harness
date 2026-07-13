@@ -1,11 +1,13 @@
 import { prisma } from "./prisma";
 import type { Prisma } from "../generated/prisma/client";
 import { HoldStatus, LedgerType } from "../generated/prisma/enums";
+import type { Effort } from "../generated/prisma/enums";
 import {
   FREE_SIGNUP_GRANT_MICRO,
   PRO_MONTHLY_ALLOTMENT_MICRO,
   JOB_RESERVE_CEILING_MICRO,
   MIN_SPEND_TO_START_MICRO,
+  reserveCeilingForEffort,
   costMicro,
   spendBuckets,
 } from "./pricing";
@@ -186,7 +188,7 @@ export async function reserveInTx(
   tx: Tx,
   userId: string,
   jobId: string,
-  opts: { maxConcurrentJobs?: number } = {},
+  opts: { maxConcurrentJobs?: number; effort?: Effort } = {},
 ): Promise<ReserveResult> {
   await ensureBillingAccount(userId, tx);
   const acc = await lockAccount(tx, userId);
@@ -218,10 +220,10 @@ export async function reserveInTx(
     throw new InsufficientCreditsError();
   }
 
-  const ceiling =
-    available < JOB_RESERVE_CEILING_MICRO
-      ? available
-      : JOB_RESERVE_CEILING_MICRO;
+  const ceilingBase = opts.effort
+    ? reserveCeilingForEffort(opts.effort)
+    : JOB_RESERVE_CEILING_MICRO;
+  const ceiling = available < ceilingBase ? available : ceilingBase;
 
   await tx.billingAccount.update({
     where: { userId },

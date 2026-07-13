@@ -899,11 +899,6 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
           removeChatMessage(msgId);
           if (err instanceof ApiError && err.status === 402) {
             openOutOfCredits();
-          } else if (
-            err instanceof ApiError &&
-            err.message === "EFFORT_REQUIRES_PRO"
-          ) {
-            toast.error("High and Max effort require a PRO plan.");
           } else {
             toast.error(
               err instanceof ApiError && err.status === 409
@@ -1020,7 +1015,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
               <EffortDropdown
                 effort={effort}
                 onChange={setEffort}
-                isPro={!isFreePlan}
+                ceilings={balance?.effortCeilings}
               />
             }
           />

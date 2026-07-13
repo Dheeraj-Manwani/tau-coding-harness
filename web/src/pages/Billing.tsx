@@ -17,10 +17,13 @@ import { useMe } from "@/src/features/auth/queries";
 import {
   useBalance,
   useCancelSubscription,
+  useCreateCreditOrder,
+  useCreditPacks,
   useHistory,
   useRedeemCode,
   useSubscribePro,
   useSubscription,
+  useVerifyCreditPayment,
   type LedgerEntry,
 } from "@/src/features/billing/api";
 import { Button } from "@/src/components/ui/button";
@@ -31,6 +34,13 @@ import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 
 function fmt(n: number): string {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1);
+}
+
+/** Format a minor-unit price (e.g. INR paise) for display. */
+function formatPrice(price: { amount: number; currency: string }): string {
+  const major = price.amount / 100;
+  if (price.currency === "INR") return `₹${major.toFixed(0)}`;
+  return `${major.toFixed(2)} ${price.currency}`;
 }
 
 function fmtDate(iso: string): string {
@@ -329,6 +339,99 @@ function RedeemSection() {
   );
 }
 
+function TopUpSection() {
+  const { data: user } = useMe();
+  const { data: packs } = useCreditPacks();
+  const createOrder = useCreateCreditOrder();
+  const verifyPayment = useVerifyCreditPayment();
+  const [pendingPack, setPendingPack] = useState<string | null>(null);
+
+  const handleBuy = (packId: string) => {
+    setPendingPack(packId);
+    createOrder.mutate(packId, {
+      onSuccess: (order) => {
+        if (!window.Razorpay) {
+          toast.error(
+            "Payment library not loaded. Please refresh and try again.",
+          );
+          setPendingPack(null);
+          return;
+        }
+        const rzp = new window.Razorpay({
+          key: order.keyId ?? env.RAZORPAY_KEY_ID,
+          order_id: order.orderId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Tau",
+          description: `${order.credits} credits`,
+          prefill: { email: user?.email ?? "" },
+          theme: { color: "#6366f1" },
+          handler: (resp) => {
+            verifyPayment.mutate(
+              {
+                orderId: resp.razorpay_order_id ?? order.orderId,
+                paymentId: resp.razorpay_payment_id,
+                signature: resp.razorpay_signature,
+              },
+              {
+                onSuccess: (data) =>
+                  toast.success(`+${fmt(data.creditsGranted)} credits added!`),
+                // The webhook backstop will still land the credits — don't alarm.
+                onError: () =>
+                  toast.success("Payment received — credits will appear shortly."),
+                onSettled: () => setPendingPack(null),
+              },
+            );
+          },
+          modal: { ondismiss: () => setPendingPack(null) },
+        });
+        rzp.open();
+      },
+      onError: (err) => {
+        toast.error(
+          err instanceof ApiError ? err.message : "Could not start checkout",
+        );
+        setPendingPack(null);
+      },
+    });
+  };
+
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <h2 className="text-sm font-medium">Buy credits</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        One-time top-ups — credits never expire. Available on any plan.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {packs
+          ? packs.map((pack) => (
+              <button
+                key={pack.id}
+                type="button"
+                disabled={pendingPack !== null}
+                onClick={() => handleBuy(pack.id)}
+                className="flex flex-col items-center rounded-lg border bg-background p-3 text-center transition-colors hover:border-indigo-400 disabled:opacity-50"
+              >
+                <span className="text-lg font-semibold">{pack.credits}</span>
+                <span className="text-xs text-muted-foreground">credits</span>
+                <span className="mt-1 text-sm font-medium">
+                  {formatPrice(pack.price)}
+                </span>
+                {pendingPack === pack.id && (
+                  <span className="mt-1 text-[10px] text-muted-foreground">
+                    Opening…
+                  </span>
+                )}
+              </button>
+            ))
+          : Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
+            ))}
+      </div>
+    </div>
+  );
+}
+
 function LedgerRow({ entry }: { entry: LedgerEntry }) {
   const isDebit = entry.credits < 0;
   const isGeneration = entry.type === "DEBIT";
@@ -470,6 +573,9 @@ export default function BillingPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <PlanSection />
+          </div>
+          <div className="sm:col-span-2">
+            <TopUpSection />
           </div>
           <div className="sm:col-span-2">
             <RedeemSection />

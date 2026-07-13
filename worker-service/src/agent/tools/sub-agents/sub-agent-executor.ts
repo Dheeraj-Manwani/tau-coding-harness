@@ -8,13 +8,14 @@ import type Sandbox from "e2b";
 import type OpenAI from "openai";
 import {
   MAX_TOKENS_FOR_SUBAGENT,
-  MAX_SUBAGENT_TURNS,
   MAX_TRUNCATION_RETRIES,
   MAX_INTENT_NUDGES,
   INTENT_TO_CONTINUE_RE,
   TRUNCATION_NUDGE,
+  budgetForEffort,
 } from "../../config";
 import { executeSubAgentTool } from "./tool-executor";
+import type { Effort } from "@/generated/prisma/enums";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -59,8 +60,10 @@ export const executeSubAgentLoop = async (
   userId: string,
   nextIndex: () => number,
   model: string,
+  effort: Effort,
   label = "sub-agent",
 ): Promise<string> => {
+  const maxSubagentTurns = budgetForEffort(effort).maxSubagentTurns;
   const messages: MessageParam[] = prompts.map((prompt) => ({
     role: "user",
     content: prompt,
@@ -77,9 +80,9 @@ export const executeSubAgentLoop = async (
   let meterFailures = 0;
 
   while (true) {
-    if (turn >= MAX_SUBAGENT_TURNS) {
-      console.log(`${tag} ⏹ stopped — exceeded ${MAX_SUBAGENT_TURNS} turns\n`);
-      return lastContent || `Stopped: exceeded ${MAX_SUBAGENT_TURNS} turns.`;
+    if (turn >= maxSubagentTurns) {
+      console.log(`${tag} ⏹ stopped — exceeded ${maxSubagentTurns} turns\n`);
+      return lastContent || `Stopped: exceeded ${maxSubagentTurns} turns.`;
     }
 
     const stream = deepseek.chat.completions.stream({

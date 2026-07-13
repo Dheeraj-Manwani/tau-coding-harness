@@ -1,3 +1,5 @@
+import type { Effort } from "../generated/prisma/enums";
+
 // 1 credit = 1_000_000 micro-credits.
 export const MICRO = 1_000_000n;
 
@@ -31,6 +33,19 @@ export const FREE_SIGNUP_GRANT_MICRO = 50n * MICRO; // one-time free grant at si
 export const PRO_MONTHLY_ALLOTMENT_MICRO = 5_000n * MICRO; // granted each PRO cycle
 export const JOB_RESERVE_CEILING_MICRO = 50n * MICRO; // max a single job may spend
 export const MIN_SPEND_TO_START_MICRO = 1n * MICRO; // refuse a job below this available
+
+// Max concurrent projects a FREE-plan user may own (PRO is unlimited).
+export const FREE_PLAN_MAX_PROJECTS = 3;
+
+export const RESERVE_CEILING_BY_EFFORT: Record<Effort, bigint> = {
+  LOW: 15n * MICRO,
+  HIGH: 50n * MICRO,
+  MAX: 100n * MICRO,
+};
+
+export function reserveCeilingForEffort(effort: Effort): bigint {
+  return RESERVE_CEILING_BY_EFFORT[effort];
+}
 
 // ── Bucket spend ───────────────────────────────────────────────────────────────
 export interface Buckets {

@@ -1,4 +1,5 @@
 import type Sandbox from "e2b";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "../functions/utils";
 import { DEBUGGER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
@@ -12,6 +13,7 @@ export async function dispatchDebugger(
   userId: string,
   nextIndex: () => number,
   model: string,
+  effort: Effort,
 ) {
   const { problem, known_context } = input as {
     problem?: unknown;
@@ -32,6 +34,7 @@ export async function dispatchDebugger(
     userId,
     nextIndex,
     model,
+    effort,
     "debugger",
   );
 

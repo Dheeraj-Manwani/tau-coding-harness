@@ -2,11 +2,6 @@ export const PREVIEW_PORT = 5173;
 export const MAX_TOKENS = 16384;
 export const MAX_TOKENS_FOR_SUBAGENT = 8192;
 
-export const MAX_AGENT_TURNS = 200;
-export const MAX_SUBAGENT_TURNS = 40;
-
-export const MAX_PARALLEL_SUBAGENTS = 3;
-
 export const MAX_TRUNCATION_RETRIES = 3;
 
 export const MAX_INTENT_NUDGES = 2;
@@ -38,6 +33,48 @@ import type { Effort } from "../generated/prisma/enums";
 
 export function modelForEffort(effort: Effort): string {
   return effort === "LOW" ? env.DEEPSEEK_MODEL_FLASH : env.DEEPSEEK_MODEL;
+}
+
+/**
+ * Per-effort execution budgets. Higher effort buys more room to work: more
+ * agent turns, deeper sub-agent loops, and wider parallel fan-out. Resolved
+ * once at the top of `runAgentLoop` / `executeSubAgentLoop` and passed down —
+ * the call sites read `budget.*` instead of a flat module constant.
+ */
+export interface EffortBudget {
+  maxAgentTurns: number;
+  maxSubagentTurns: number;
+  maxParallelSubagents: number;
+}
+
+const EFFORT_BUDGETS: Record<Effort, EffortBudget> = {
+  LOW: { maxAgentTurns: 80, maxSubagentTurns: 20, maxParallelSubagents: 1 },
+  HIGH: { maxAgentTurns: 200, maxSubagentTurns: 40, maxParallelSubagents: 3 },
+  MAX: { maxAgentTurns: 300, maxSubagentTurns: 60, maxParallelSubagents: 5 },
+};
+
+export function budgetForEffort(effort: Effort): EffortBudget {
+  return EFFORT_BUDGETS[effort];
+}
+
+/**
+ * Short per-effort directive block appended near the top of the system prompt.
+ * Colors every downstream decision (how hard to plan, when to dispatch
+ * sub-agents, how rigorously to verify) rather than being a footnote.
+ */
+function effortDirective(effort: Effort): string {
+  switch (effort) {
+    case "LOW":
+      return `## Effort: LOW — fast and lean
+You are running at LOW effort. Bias hard toward speed and the smallest change that fully satisfies the request. Default to the simplest complexity tier and stay there. Do NOT dispatch sub-agents unless you are genuinely stuck on a repeated failure — each dispatch spends turns you don't have at this tier. Skip optional verification passes: a clean compile is enough unless something visibly breaks. Don't plan elaborately — just build.`;
+    case "MAX":
+      return `## Effort: MAX — spend the budget to get it right
+You are running at MAX effort. Prioritize correctness, thoroughness, and polish over speed. Plan granularly before you start. Prefer dispatching sub-agents in parallel for genuinely independent work. Always run \`dispatch_verifier\` over your changes before your final message on anything beyond a trivial single-file edit. Hold yourself to a high bar on edge cases, error states, and visual polish before declaring done.`;
+    case "HIGH":
+    default:
+      return `## Effort: HIGH — thorough by default
+You are running at HIGH effort. Work like a competent engineer who gets it right the first time — thorough but not maximal. For any multi-file change, dispatch \`dispatch_verifier\` over the changed scope rather than re-deriving every check by hand.`;
+  }
 }
 
 /**
@@ -145,10 +182,12 @@ NOTE: DO NOT OUTPUT ANYTHING ABOUT SELECTING TIER AND REASONING AROUND IT - USER
  * manifest for the locked-in template.
  */
 export function buildSystemPrompt(
-  opts: { templateKey?: TemplateKey; selected?: boolean } = {},
+  opts: { templateKey?: TemplateKey; selected?: boolean; effort?: Effort } = {},
 ): string {
   const selected = opts.selected ?? false;
   const key = opts.templateKey ?? DEFAULT_TEMPLATE_KEY;
+  const effort = opts.effort ?? "HIGH";
+  const maxParallelSubagents = budgetForEffort(effort).maxParallelSubagents;
 
   const stackSection = selected ? provisionedStack(key) : STACK_CHOOSER;
   const portsRule =
@@ -164,6 +203,8 @@ export function buildSystemPrompt(
 Examples that do NOT need a sandbox: "how are you", "what can you build?", "explain X", "can we do Y?" — just answer.
 Examples that DO need a sandbox: "build me a todo app", "add a dark mode toggle", "fix the login bug".
 
+${effortDirective(effort)}
+
 ${stackSection}
 
 ## Web search
@@ -178,7 +219,7 @@ You have four sub-agents available as tool calls. Each runs in its own isolated 
 
 \`dispatch_explorer\`, \`dispatch_debugger\`, and \`dispatch_verifier\` never edit files — you stay the single source of truth for those. Reach for a sub-agent on substantial, multi-step work — not for a single file read or one quick curl you can just do directly. Call \`report_progress\` before dispatching one, the same as any other phase of work.
 
-**Running sub-agents in parallel:** you can emit several sub-agent dispatch calls in a *single* turn and they run concurrently (up to ${MAX_PARALLEL_SUBAGENTS} at once) — this is the fastest way to fan out independent work. Only do this when the tasks are truly independent and touch **different, non-overlapping files** (e.g. building three unrelated pages, or exploring two separate areas at once). **Never** run implementers in parallel when they might edit the same file or any shared file (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) — sequence those instead, since they all share one workspace and concurrent writes to the same file will clobber each other.
+**Running sub-agents in parallel:** you can emit several sub-agent dispatch calls in a *single* turn and they run concurrently (up to ${maxParallelSubagents} at once) — this is the fastest way to fan out independent work. Only do this when the tasks are truly independent and touch **different, non-overlapping files** (e.g. building three unrelated pages, or exploring two separate areas at once). **Never** run implementers in parallel when they might edit the same file or any shared file (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) — sequence those instead, since they all share one workspace and concurrent writes to the same file will clobber each other.
 
 ${complexityLadder(selected, key)}
 

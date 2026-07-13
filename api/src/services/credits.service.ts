@@ -5,14 +5,21 @@ import {
   PromoCodeExpiredError,
   PromoCodeAlreadyRedeemedError,
 } from "../lib/credits";
-import { toCredits } from "../lib/pricing";
+import { toCredits, reserveCeilingForEffort } from "../lib/pricing";
 import { Errors } from "../lib/errors";
+import type { Effort } from "../generated/prisma/enums";
 import * as creditsRepo from "../repositories/credits.repository";
 import type { CreatePromoCodeInput } from "../repositories/credits.repository";
 
 // Credit amounts are stored as integer micro-credits (BigInt). Express can't
 // JSON-serialize BigInt, so every response exposes both a human `credits` number
 // (lossy, for display) and the exact `*Micro` string.
+
+const EFFORT_CEILINGS: Record<Effort, number> = {
+  LOW: toCredits(reserveCeilingForEffort("LOW")),
+  HIGH: toCredits(reserveCeilingForEffort("HIGH")),
+  MAX: toCredits(reserveCeilingForEffort("MAX")),
+};
 
 export async function getBalanceSummary(userId: string) {
   // getBalance ensures the account (and its one-time signup grant) exists.
@@ -22,6 +29,7 @@ export async function getBalanceSummary(userId: string) {
   return {
     plan: account?.plan ?? "FREE",
     cycleEnd: account?.cycleEnd ?? null,
+    effortCeilings: EFFORT_CEILINGS,
     credits: {
       available: toCredits(view.available),
       free: toCredits(view.freeBalance),
@@ -44,9 +52,11 @@ export async function redeemCode(userId: string, rawCode: string) {
   try {
     result = await redeem(userId, rawCode);
   } catch (err) {
-    if (err instanceof PromoCodeInvalidError) throw Errors.badRequest(err.message);
+    if (err instanceof PromoCodeInvalidError)
+      throw Errors.badRequest(err.message);
     if (err instanceof PromoCodeExpiredError) throw Errors.gone(err.message);
-    if (err instanceof PromoCodeAlreadyRedeemedError) throw Errors.conflict(err.message);
+    if (err instanceof PromoCodeAlreadyRedeemedError)
+      throw Errors.conflict(err.message);
     throw err;
   }
   return {

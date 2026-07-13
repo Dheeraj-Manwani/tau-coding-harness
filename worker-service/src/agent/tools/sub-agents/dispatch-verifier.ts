@@ -1,4 +1,5 @@
 import type Sandbox from "e2b";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "../functions/utils";
 import { VERIFIER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
@@ -12,6 +13,7 @@ export async function dispatchVerifier(
   userId: string,
   nextIndex: () => number,
   model: string,
+  effort: Effort,
 ) {
   const { scope, checks } = input as { scope?: unknown; checks?: unknown };
   const scopeDescription = asString(scope, "scope");
@@ -34,6 +36,7 @@ export async function dispatchVerifier(
     userId,
     nextIndex,
     model,
+    effort,
     "verifier",
   );
 

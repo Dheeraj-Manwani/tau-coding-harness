@@ -1,11 +1,13 @@
 import { prisma } from "./prisma";
 import type { Prisma } from "../generated/prisma/client";
 import { HoldStatus, LedgerType } from "../generated/prisma/enums";
+import type { Effort } from "../generated/prisma/enums";
 import {
   FREE_SIGNUP_GRANT_MICRO,
   PRO_MONTHLY_ALLOTMENT_MICRO,
   JOB_RESERVE_CEILING_MICRO,
   MIN_SPEND_TO_START_MICRO,
+  reserveCeilingForEffort,
   costMicro,
   spendBuckets,
 } from "./pricing";
@@ -186,7 +188,7 @@ export async function reserveInTx(
   tx: Tx,
   userId: string,
   jobId: string,
-  opts: { maxConcurrentJobs?: number } = {},
+  opts: { maxConcurrentJobs?: number; effort?: Effort } = {},
 ): Promise<ReserveResult> {
   await ensureBillingAccount(userId, tx);
   const acc = await lockAccount(tx, userId);
@@ -218,10 +220,10 @@ export async function reserveInTx(
     throw new InsufficientCreditsError();
   }
 
-  const ceiling =
-    available < JOB_RESERVE_CEILING_MICRO
-      ? available
-      : JOB_RESERVE_CEILING_MICRO;
+  const ceilingBase = opts.effort
+    ? reserveCeilingForEffort(opts.effort)
+    : JOB_RESERVE_CEILING_MICRO;
+  const ceiling = available < ceilingBase ? available : ceilingBase;
 
   await tx.billingAccount.update({
     where: { userId },
@@ -497,6 +499,86 @@ export async function redeem(
   });
 }
 
+export interface GrantResult {
+  granted: bigint;
+  bonusBalance: bigint;
+  available: bigint;
+}
+
+export async function grantBonusCredits(
+  userId: string,
+  amountMicro: bigint,
+  opts: {
+    idempotencyKey: string;
+    paymentId?: string;
+    reason?: string;
+    type?: LedgerType;
+  },
+): Promise<GrantResult> {
+  if (amountMicro <= 0n) {
+    throw new Error("grantBonusCredits: amount must be positive");
+  }
+  return prisma.$transaction(async (tx) => {
+    await ensureBillingAccount(userId, tx);
+    const acc = await lockAccount(tx, userId);
+
+    const dup = await tx.creditLedger.findUnique({
+      where: { idempotencyKey: opts.idempotencyKey },
+    });
+    if (dup) {
+      return {
+        granted: 0n,
+        bonusBalance: acc.bonusBalance,
+        available: gross(acc) - acc.reserved,
+      };
+    }
+
+    const newBonusBalance = acc.bonusBalance + amountMicro;
+    await tx.billingAccount.update({
+      where: { userId },
+      data: { bonusBalance: newBonusBalance },
+    });
+
+    const newGross = acc.freeBalance + acc.planBalance + newBonusBalance;
+    try {
+      await tx.creditLedger.create({
+        data: {
+          userId,
+          type: opts.type ?? LedgerType.PURCHASE,
+          amount: amountMicro,
+          balanceAfter: newGross,
+          paymentId: opts.paymentId ?? null,
+          idempotencyKey: opts.idempotencyKey,
+          reason: opts.reason ?? "credit top-up",
+        },
+      });
+    } catch (err) {
+      // Lost an idempotency race — another grant with this key already applied.
+      if (isPrismaUniqueConstraintError(err)) {
+        return {
+          granted: 0n,
+          bonusBalance: acc.bonusBalance,
+          available: gross(acc) - acc.reserved,
+        };
+      }
+      throw err;
+    }
+
+    creditLog("credits.purchase", {
+      userId,
+      amountMicro: amountMicro.toString(),
+      paymentId: opts.paymentId ?? null,
+      idempotencyKey: opts.idempotencyKey,
+    });
+
+    return {
+      granted: amountMicro,
+      bonusBalance: newBonusBalance,
+      available: newGross - acc.reserved,
+    };
+  });
+}
+
 /**
  * Grant a PRO monthly plan cycle: expire any leftover planBalance from the prior
  * cycle, reset planBalance to the monthly allotment, record cycle dates, and write
@@ -580,7 +662,10 @@ export async function reconcileAccount(
 ): Promise<ReconcileAccountResult> {
   const [account, ledgerAgg, holdAgg] = await Promise.all([
     prisma.billingAccount.findUnique({ where: { userId } }),
-    prisma.creditLedger.aggregate({ where: { userId }, _sum: { amount: true } }),
+    prisma.creditLedger.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    }),
     prisma.creditHold.aggregate({
       where: { userId, status: HoldStatus.ACTIVE },
       _sum: { amount: true },
@@ -638,9 +723,7 @@ export interface ReconcileJobResult {
 }
 
 /** Cross-check: actual ledger debits for a job vs. recomputed TokenUsage cost. */
-export async function reconcileJob(
-  jobId: string,
-): Promise<ReconcileJobResult> {
+export async function reconcileJob(jobId: string): Promise<ReconcileJobResult> {
   const [debitAgg, tokenRows] = await Promise.all([
     prisma.creditLedger.aggregate({
       where: { jobId, type: LedgerType.DEBIT },

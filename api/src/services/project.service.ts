@@ -92,9 +92,6 @@ export async function initializeProject(
       if (projectCount >= FREE_PLAN_MAX_PROJECTS) {
         throw Errors.forbidden("PROJECT_LIMIT_REACHED");
       }
-      if (effort !== "LOW") {
-        throw Errors.forbidden("EFFORT_REQUIRES_PRO");
-      }
     }
 
     const project = await projectRepo.createProject(tx, {
@@ -113,6 +110,7 @@ export async function initializeProject(
       try {
         await reserveInTx(tx, userId, job.id, {
           maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
+          effort,
         });
       } catch (err) {
         if (err instanceof ConcurrentJobLimitError) {
@@ -170,13 +168,6 @@ export async function addMessage(
       const active = await projectRepo.findActiveJob(projectId, tx);
       if (active) throw Errors.conflict("generation in progress");
 
-      if (effort !== "LOW") {
-        const account = await ensureBillingAccount(userId, tx);
-        if (account.plan === Plan.FREE) {
-          throw Errors.forbidden("EFFORT_REQUIRES_PRO");
-        }
-      }
-
       const job = await projectRepo.createJob(tx, {
         projectId,
         prompt: content,
@@ -188,6 +179,7 @@ export async function addMessage(
         try {
           await reserveInTx(tx, userId, job.id, {
             maxConcurrentJobs: env.CREDITS_MAX_CONCURRENT_JOBS,
+            effort,
           });
         } catch (err) {
           if (err instanceof ConcurrentJobLimitError) {

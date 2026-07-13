@@ -21,16 +21,15 @@ import {
 import type { Prisma } from "../generated/prisma/client";
 import {
   MAX_TOKENS,
-  MAX_AGENT_TURNS,
   MAX_TRUNCATION_RETRIES,
   MAX_INTENT_NUDGES,
-  MAX_PARALLEL_SUBAGENTS,
   CONTEXT_BUDGET,
   INTENT_TO_CONTINUE_RE,
   TRUNCATION_NUDGE,
   PREVIEW_PORT,
   buildSystemPrompt,
   modelForEffort,
+  budgetForEffort,
 } from "./config";
 import { manageContext } from "./context/manager";
 import { SUMMARY_HEADER } from "./context/summarize";
@@ -77,6 +76,25 @@ const SUBAGENT_TOOLS = new Set<string>([
   "dispatch_verifier",
   // "dispatch_implementer",
 ]);
+
+// Planning/todo-tracking tools are dropped for LOW: the calls themselves cost
+// turns on a tight budget, and the multi-phase discipline they encourage is
+// aimed at longer work LOW isn't meant to take on. HIGH/MAX keep all three.
+const LOW_EXCLUDED_TOOLS = new Set<string>([
+  "create_plan",
+  "add_todos",
+  "update_todo",
+]);
+
+function toolsForEffort(
+  effort: Effort,
+): OpenAI.Chat.Completions.ChatCompletionTool[] {
+  const defs =
+    effort === "LOW"
+      ? TOOL_DEFINITIONS.filter((t) => !LOW_EXCLUDED_TOOLS.has(t.function.name))
+      : TOOL_DEFINITIONS;
+  return defs as unknown as OpenAI.Chat.Completions.ChatCompletionTool[];
+}
 
 const FILE_MUTATING_TOOLS = new Set<string>([
   "create_file",
@@ -232,6 +250,8 @@ export async function runAgentLoop(
   const sandboxRef: SandboxRef = { current: initialSandbox ?? null };
   const nextIndex = makeIndexer(startIndex);
   const model = modelForEffort(effort);
+  const budget = budgetForEffort(effort);
+  const tools = toolsForEffort(effort);
 
   try {
     // Determine which template the agent is (or will be) working in. A template
@@ -248,6 +268,7 @@ export async function runAgentLoop(
     const systemPrompt = buildSystemPrompt({
       templateKey: toTemplateKey(project?.templateKey),
       selected,
+      effort,
     });
 
     let entries: Entry[] = [
@@ -261,11 +282,13 @@ export async function runAgentLoop(
     let summarizations = 0;
 
     let filesChanged = false;
+    let verifierRan = false;
+    let maxVerifyForced = false;
     const calibration = createCalibration();
 
     while (true) {
-      if (turn++ >= MAX_AGENT_TURNS) {
-        const message = `Agent exceeded ${MAX_AGENT_TURNS} turns without finishing`;
+      if (turn++ >= budget.maxAgentTurns) {
+        const message = `Agent exceeded ${budget.maxAgentTurns} turns without finishing`;
         await publish(jobId, { type: "error", message }, nextIndex());
         throw new Error(`${message} for job ${jobId}`);
       }
@@ -366,8 +389,7 @@ export async function runAgentLoop(
       const stream = deepseek.chat.completions.stream({
         model,
         max_tokens: MAX_TOKENS,
-        tools:
-          TOOL_DEFINITIONS as unknown as OpenAI.Chat.Completions.ChatCompletionTool[],
+        tools,
         messages: mgmt.ctx,
       });
 
@@ -540,6 +562,34 @@ export async function runAgentLoop(
         continue;
       }
 
+      if (
+        !isToolTurn &&
+        effort === "MAX" &&
+        filesChanged &&
+        !verifierRan &&
+        !maxVerifyForced
+      ) {
+        maxVerifyForced = true;
+        if (assistant.content?.trim()) {
+          entries.push({
+            param: { role: "assistant", content: assistant.content },
+            seq: null,
+          });
+        }
+        entries.push({
+          param: {
+            role: "user",
+            content:
+              "Before you finish: you're on MAX effort and changed files this " +
+              "run but haven't verified them. Dispatch `dispatch_verifier` over " +
+              "everything you changed (build + spot-check the affected flows), " +
+              "fix anything it reports, then give your brief final summary.",
+          },
+          seq: null,
+        });
+        continue;
+      }
+
       if (!isToolTurn) {
         let previewUrl: string | null = null;
         if (sandboxRef.current) {
@@ -592,6 +642,7 @@ export async function runAgentLoop(
         const toolCallId = tc.id;
 
         if (FILE_MUTATING_TOOLS.has(toolName)) filesChanged = true;
+        if (toolName === "dispatch_verifier") verifierRan = true;
 
         let input: unknown;
         try {
@@ -630,6 +681,7 @@ export async function runAgentLoop(
             userId,
             nextIndex,
             model,
+            effort,
           );
           await prisma.toolCall.update({
             where: { id: toolCallRow.id },
@@ -674,7 +726,7 @@ export async function runAgentLoop(
           const batch = toolCalls.slice(start, i);
           const batchResults = await runPool(
             batch,
-            MAX_PARALLEL_SUBAGENTS,
+            budget.maxParallelSubagents,
             (tc) => runOne(tc),
           );
           for (let k = 0; k < batchResults.length; k++) {

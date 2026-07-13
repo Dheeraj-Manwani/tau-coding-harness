@@ -5,6 +5,7 @@ export const billingKeys = {
   balance: ["billing", "balance"] as const,
   history: (cursor?: string) => ["billing", "history", cursor ?? ""] as const,
   subscription: ["billing", "subscription"] as const,
+  creditPacks: ["billing", "credit-packs"] as const,
 };
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -12,8 +13,21 @@ export const billingKeys = {
 export interface BalanceSummary {
   plan: "FREE" | "PRO";
   cycleEnd: string | null;
-  credits: { available: number; free: number; plan: number; bonus: number; reserved: number };
-  micro: { available: string; free: string; plan: string; bonus: string; reserved: string };
+  effortCeilings?: { LOW: number; HIGH: number; MAX: number };
+  credits: {
+    available: number;
+    free: number;
+    plan: number;
+    bonus: number;
+    reserved: number;
+  };
+  micro: {
+    available: string;
+    free: string;
+    plan: string;
+    bonus: string;
+    reserved: string;
+  };
 }
 
 export interface LedgerEntry {
@@ -32,6 +46,21 @@ export interface LedgerEntry {
   createdAt: string;
 }
 
+export interface CreditPack {
+  id: string;
+  credits: number;
+  price: { amount: number; currency: string };
+}
+
+export interface CreditOrder {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId?: string;
+  packId: string;
+  credits: number;
+}
+
 export interface SubscriptionInfo {
   id: string;
   plan: string;
@@ -48,7 +77,8 @@ export interface SubscriptionInfo {
 export function useBalance() {
   return useQuery({
     queryKey: billingKeys.balance,
-    queryFn: () => api.get<BalanceSummary>("/credits/balance").then((r) => r.data),
+    queryFn: () =>
+      api.get<BalanceSummary>("/credits/balance").then((r) => r.data),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -61,12 +91,24 @@ export function useHistory(cursor?: string) {
       const params = new URLSearchParams({ limit: "20" });
       if (cursor) params.set("cursor", cursor);
       return api
-        .get<{ entries: LedgerEntry[]; nextCursor: string | null }>(
-          `/credits/history?${params}`,
-        )
+        .get<{
+          entries: LedgerEntry[];
+          nextCursor: string | null;
+        }>(`/credits/history?${params}`)
         .then((r) => r.data);
     },
     staleTime: 30_000,
+  });
+}
+
+export function useCreditPacks() {
+  return useQuery({
+    queryKey: billingKeys.creditPacks,
+    queryFn: () =>
+      api
+        .get<{ packs: CreditPack[] }>("/billing/credits/packs")
+        .then((r) => r.data.packs),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -88,7 +130,10 @@ export function useRedeemCode() {
   return useMutation({
     mutationFn: (code: string) =>
       api
-        .post<{ creditsGranted: number; available: number }>("/credits/redeem", { code })
+        .post<{
+          creditsGranted: number;
+          available: number;
+        }>("/credits/redeem", { code })
         .then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: billingKeys.balance });
@@ -102,10 +147,43 @@ export function useSubscribePro() {
   return useMutation({
     mutationFn: () =>
       api
-        .post<{ subscriptionId: string; shortUrl: string }>("/billing/subscribe")
+        .post<{
+          subscriptionId: string;
+          shortUrl: string;
+        }>("/billing/subscribe")
         .then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: billingKeys.subscription });
+    },
+  });
+}
+
+export function useCreateCreditOrder() {
+  return useMutation({
+    mutationFn: (packId: string) =>
+      api
+        .post<CreditOrder>("/billing/credits/order", { packId })
+        .then((r) => r.data),
+  });
+}
+
+export function useVerifyCreditPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      orderId: string;
+      paymentId: string;
+      signature: string;
+    }) =>
+      api
+        .post<{
+          creditsGranted: number;
+          available: number;
+        }>("/billing/credits/verify", input)
+        .then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: billingKeys.balance });
+      void qc.invalidateQueries({ queryKey: ["billing", "history"] });
     },
   });
 }

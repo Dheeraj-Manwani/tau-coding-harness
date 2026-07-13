@@ -5,6 +5,7 @@ import { publish } from "@/lib/publish";
 import { bus } from "@/lib/bus";
 import type { SandboxRef } from "../loop";
 import type { Tool } from "./tools";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "./functions/utils";
 import { createPlan } from "./functions/create-plan";
 import { updateTodo } from "./functions/update-todos";
@@ -53,6 +54,7 @@ export async function executeTool(
   userId: string,
   indexer: () => number,
   model: string,
+  effort: Effort,
 ): Promise<unknown> {
   console.log("tool call :: ", name, input);
 
@@ -164,6 +166,7 @@ export async function executeTool(
           userId,
           indexer,
           model,
+          effort,
         );
       case "dispatch_debugger":
         return await dispatchDebugger(
@@ -174,6 +177,7 @@ export async function executeTool(
           userId,
           indexer,
           model,
+          effort,
         );
       case "dispatch_verifier":
         return await dispatchVerifier(
@@ -184,6 +188,7 @@ export async function executeTool(
           userId,
           indexer,
           model,
+          effort,
         );
       // case "dispatch_implementer":
       //   return await dispatchImplementer(

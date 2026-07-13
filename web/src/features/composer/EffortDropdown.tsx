@@ -1,9 +1,7 @@
 import { DropdownMenu } from "radix-ui";
-import { CheckIcon, ChevronDownIcon, LockIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 
-import { cn } from "@/src/lib/utils";
 import type { Effort } from "@/src/features/project/types";
-import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 
 const EFFORT_OPTIONS: { value: Effort; label: string }[] = [
@@ -15,12 +13,15 @@ const EFFORT_OPTIONS: { value: Effort; label: string }[] = [
 interface EffortDropdownProps {
   effort: Effort;
   onChange: (effort: Effort) => void;
-  /** PRO accounts can select High/Max; FREE accounts see them locked. */
-  isPro: boolean;
+  /** Max spend per message (display credits) per tier — shown as a cost hint. */
+  ceilings?: Partial<Record<Effort, number>>;
 }
 
-export function EffortDropdown({ effort, onChange, isPro }: EffortDropdownProps) {
-  const openUpgradeModal = useUpgradeModalStore((s) => s.openModal);
+export function EffortDropdown({
+  effort,
+  onChange,
+  ceilings,
+}: EffortDropdownProps) {
   const current =
     EFFORT_OPTIONS.find((o) => o.value === effort) ?? EFFORT_OPTIONS[0];
 
@@ -49,22 +50,13 @@ export function EffortDropdown({ effort, onChange, isPro }: EffortDropdownProps)
           className="z-50 w-32 rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
         >
           {EFFORT_OPTIONS.map((opt) => {
-            const locked = opt.value !== "LOW" && !isPro;
             const selected = opt.value === effort;
+            const ceiling = ceilings?.[opt.value];
             return (
               <DropdownMenu.Item
                 key={opt.value}
-                onSelect={() =>
-                  locked
-                    ? openUpgradeModal("To use high/max mode, please upgrade")
-                    : onChange(opt.value)
-                }
-                className={cn(
-                  "flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)]",
-                  locked
-                    ? "text-[var(--silver-600)]"
-                    : "text-[var(--silver-900)]",
-                )}
+                onSelect={() => onChange(opt.value)}
+                className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs text-[var(--silver-900)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)]"
               >
                 <span className="flex items-center gap-1.5">
                   {opt.value === "MAX" ? (
@@ -72,15 +64,13 @@ export function EffortDropdown({ effort, onChange, isPro }: EffortDropdownProps)
                   ) : (
                     opt.label
                   )}
-                  {locked && (
-                    <span className="rounded-full bg-[var(--space-overlay)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--silver-600)]">
-                      Pro
+                  {ceiling != null && (
+                    <span className="text-[10px] text-[var(--silver-600)]">
+                      up to {ceiling} cr
                     </span>
                   )}
                 </span>
-                {locked ? (
-                  <LockIcon className="size-3 shrink-0 text-[var(--silver-600)]" />
-                ) : selected ? (
+                {selected ? (
                   <CheckIcon className="size-3 shrink-0 text-[var(--silver-900)]" />
                 ) : null}
               </DropdownMenu.Item>

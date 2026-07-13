@@ -111,11 +111,6 @@ function Home() {
             toast.error(
               "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
             );
-          } else if (
-            err instanceof ApiError &&
-            err.message === "EFFORT_REQUIRES_PRO"
-          ) {
-            toast.error("High and Max effort require a PRO plan.");
           } else {
             toast.error(
               err instanceof ApiError
@@ -162,7 +157,7 @@ function Home() {
                 <EffortDropdown
                   effort={effort}
                   onChange={setEffort}
-                  isPro={!isFreePlan}
+                  ceilings={balance?.effortCeilings}
                 />
               }
               overlay={

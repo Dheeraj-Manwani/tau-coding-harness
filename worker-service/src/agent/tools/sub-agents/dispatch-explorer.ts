@@ -1,4 +1,5 @@
 import type Sandbox from "e2b";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "../functions/utils";
 import { EXPLORER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
@@ -12,6 +13,7 @@ export async function dispatchExplorer(
   userId: string,
   nextIndex: () => number,
   model: string,
+  effort: Effort,
 ) {
   const task = asString((input as { task?: unknown }).task, "task");
 
@@ -24,6 +26,7 @@ export async function dispatchExplorer(
     userId,
     nextIndex,
     model,
+    effort,
     "explorer",
   );
 

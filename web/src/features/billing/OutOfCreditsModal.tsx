@@ -52,8 +52,8 @@ export function OutOfCreditsModal() {
             Out of credits
           </DialogTitle>
           <DialogDescription>
-            You've used your credit allowance for this session. Redeem a promo
-            code or upgrade to PRO for 5,000 credits per month.
+            You've used your credit allowance. Redeem a promo code, buy a
+            one-time credit pack, or upgrade to PRO for 5,000 credits per month.
           </DialogDescription>
         </DialogHeader>
 
@@ -85,7 +85,7 @@ export function OutOfCreditsModal() {
           </div>
 
           <Button className="w-full" onClick={handleUpgrade}>
-            Upgrade to PRO — ₹999/month
+            Buy credits or upgrade
           </Button>
         </div>
       </DialogContent>

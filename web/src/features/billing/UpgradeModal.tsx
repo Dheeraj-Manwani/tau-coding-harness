@@ -13,7 +13,7 @@ import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 
 const PRO_FEATURES = [
   "5,000 credits per month",
-  "Unlock High & Max effort modes",
+  "Credits reset monthly",
   "Priority support",
 ];
 

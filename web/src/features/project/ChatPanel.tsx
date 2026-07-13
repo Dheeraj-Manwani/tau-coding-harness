@@ -71,6 +71,7 @@ import {
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
+import { useSettingsStore } from "@/src/stores/useSettingsStore";
 
 function formatRelativeTime(ts: number): string {
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -515,7 +516,13 @@ function ChatBubble({
 
 // While tau works, surface its live activity as a flat icon + shimmer-label row
 // (no bubble) — matching the inline "step" rows in the conversation flow.
-function TypingBubble({ activity }: { activity: string | null }) {
+function TypingBubble({
+  activity,
+  max = false,
+}: {
+  activity: string | null;
+  max?: boolean;
+}) {
   return (
     <motion.div
       initial={ENTRANCE.initial}
@@ -523,7 +530,7 @@ function TypingBubble({ activity }: { activity: string | null }) {
       exit={{ opacity: 0 }}
       className="flex items-center"
     >
-      <ChatLoader text={activity ?? "Thinking"} />
+      <ChatLoader text={activity ?? "Thinking"} max={max} />
     </motion.div>
   );
 }
@@ -767,13 +774,24 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
   const isStreaming = status === "streaming";
 
-  const [effort, setEffort] = useState<Effort>("LOW");
-  const effortDefaultedRef = useRef(false);
+  // Restore the last effort the user explicitly picked (persisted in
+  // localStorage, shared with the Home composer) so a MAX choice made on Home
+  // carries into the project chat instead of resetting to LOW.
+  const lastEffort = useSettingsStore((s) => s.lastEffort);
+  const setLastEffort = useSettingsStore((s) => s.setLastEffort);
+  const [effort, setEffort] = useState<Effort>(lastEffort ?? "LOW");
+  // If we restored a saved choice, don't let the plan-based default override it.
+  const effortDefaultedRef = useRef(lastEffort != null);
   useEffect(() => {
     if (effortDefaultedRef.current || balance === undefined) return;
     effortDefaultedRef.current = true;
     if (!isFreePlan) setEffort("HIGH");
   }, [balance, isFreePlan]);
+
+  const handleEffortChange = (next: Effort) => {
+    setEffort(next);
+    setLastEffort(next);
+  };
 
   const [draft, setDraft] = useState("");
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -966,7 +984,9 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             ),
           )}
           <AnimatePresence>
-            {isAiTyping && <TypingBubble activity={activity} />}
+            {isAiTyping && (
+              <TypingBubble activity={activity} max={effort === "MAX"} />
+            )}
           </AnimatePresence>
         </div>
 
@@ -1014,7 +1034,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             rightSlot={
               <EffortDropdown
                 effort={effort}
-                onChange={setEffort}
+                onChange={handleEffortChange}
                 ceilings={balance?.effortCeilings}
               />
             }

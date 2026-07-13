@@ -6,7 +6,9 @@ import toast from "react-hot-toast";
 import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { MaxStarField } from "@/src/features/home/MaxStarField";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
@@ -14,6 +16,8 @@ import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
+import { useSettingsStore } from "@/src/stores/useSettingsStore";
+import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 
 // Free plan may own at most this many concurrent projects (mirrors
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
@@ -48,6 +52,7 @@ function Home() {
   const [initializing, setInitializing] = useState(false);
   const isSubmitting = initProject.isPending;
   const showPlaceholder = prompt.length === 0;
+  const reduceMotion = useReduceMotion();
 
   // Proactively surface the free-plan project cap instead of only failing on
   // submit with a 403. PRO users are unlimited, so only gate FREE.
@@ -55,13 +60,24 @@ function Home() {
   const projectCount = projects?.length ?? 0;
   const atProjectLimit = isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
 
-  const [effort, setEffort] = useState<Effort>("LOW");
-  const effortDefaultedRef = useRef(false);
+  // Restore the last effort the user explicitly picked (persisted in localStorage).
+  const lastEffort = useSettingsStore((s) => s.lastEffort);
+  const setLastEffort = useSettingsStore((s) => s.setLastEffort);
+  const [effort, setEffort] = useState<Effort>(lastEffort ?? "LOW");
+  // Drives the Home-only dramatic animations (lightning composer + glitch stars).
+  const maxActive = effort === "MAX";
+  // If we restored a saved choice, don't let the plan-based default override it.
+  const effortDefaultedRef = useRef(lastEffort != null);
   useEffect(() => {
     if (effortDefaultedRef.current || balance === undefined) return;
     effortDefaultedRef.current = true;
     if (!isFreePlan) setEffort("HIGH");
   }, [balance, isFreePlan]);
+
+  const handleEffortChange = (next: Effort) => {
+    setEffort(next);
+    setLastEffort(next);
+  };
 
   // Cycle through suggestions while the input is empty.
   useEffect(() => {
@@ -125,16 +141,24 @@ function Home() {
 
   return (
     <div className="h-full overflow-y-auto pt-12">
-      <SparkleParticles
-        className="fixed inset-0 -z-10"
-        particleColor={STAR_COLORS}
-        baseDensity={70}
-        maxParticleSize={1.4}
-        maxOpacity={0.7}
-        minParticleOpacity={0.4}
-        maxSpeed={0.5}
-        enableShootingStars
-      />
+      {/* Ambient silver field — always on. In MAX, MaxStarField layers extra
+          brand-colored stars on top of this same field so the base look stays
+          consistent and MAX just adds a brand sparkle. */}
+      {!reduceMotion && (
+        <SparkleParticles
+          className="fixed inset-0 -z-10"
+          particleColor={STAR_COLORS}
+          baseDensity={70}
+          maxParticleSize={1.4}
+          maxOpacity={0.7}
+          minParticleOpacity={0.4}
+          maxSpeed={0.5}
+          enableShootingStars
+        />
+      )}
+      <AnimatePresence>
+        {maxActive && !reduceMotion && <MaxStarField key="max-stars" />}
+      </AnimatePresence>
       <div className="flex min-h-[70svh] flex-col items-center justify-center">
         <div className="relative z-10 w-full max-w-2xl px-6 text-center">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
@@ -145,37 +169,39 @@ function Home() {
           </p>
 
           <div className="mt-8 text-left">
-            <PromptComposer
-              value={prompt}
-              onChange={setPrompt}
-              onSubmit={submit}
-              isSubmitting={isSubmitting}
-              disabled={atProjectLimit}
-              minRows={3}
-              maxRows={12}
-              rightSlot={
-                <EffortDropdown
-                  effort={effort}
-                  onChange={setEffort}
-                  ceilings={balance?.effortCeilings}
-                />
-              }
-              overlay={
-                showPlaceholder ? (
-                  <TextAnimate
-                    key={suggestion}
-                    as="span"
-                    by="character"
-                    animation="slideLeft"
-                    startOnView={false}
-                    once
-                    className="pointer-events-none absolute left-2 top-1 text-base text-muted-foreground"
-                  >
-                    {SUGGESTIONS[suggestion]}
-                  </TextAnimate>
-                ) : null
-              }
-            />
+            <LightningComposer active={maxActive}>
+              <PromptComposer
+                value={prompt}
+                onChange={setPrompt}
+                onSubmit={submit}
+                isSubmitting={isSubmitting}
+                disabled={atProjectLimit}
+                minRows={3}
+                maxRows={12}
+                rightSlot={
+                  <EffortDropdown
+                    effort={effort}
+                    onChange={handleEffortChange}
+                    ceilings={balance?.effortCeilings}
+                  />
+                }
+                overlay={
+                  showPlaceholder ? (
+                    <TextAnimate
+                      key={suggestion}
+                      as="span"
+                      by="character"
+                      animation="slideLeft"
+                      startOnView={false}
+                      once
+                      className="pointer-events-none absolute left-2 top-1 text-base text-muted-foreground"
+                    >
+                      {SUGGESTIONS[suggestion]}
+                    </TextAnimate>
+                  ) : null
+                }
+              />
+            </LightningComposer>
             {isFreePlan && (
               <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
                 <span>

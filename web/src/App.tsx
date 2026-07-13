@@ -3,6 +3,7 @@ import { useLocation, useOutlet } from "react-router-dom";
 import { UserMenu } from "@/src/components/UserMenu";
 import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
 import { UpgradeModal } from "@/src/features/billing/UpgradeModal";
+import { SettingsModal } from "@/src/features/settings/SettingsModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { cn } from "@/src/lib/utils";
 
@@ -37,6 +38,7 @@ function App() {
       {!isProject && <SiteFooter />}
       <OutOfCreditsModal />
       <UpgradeModal />
+      <SettingsModal />
     </div>
   );
 }

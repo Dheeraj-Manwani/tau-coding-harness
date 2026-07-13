@@ -5,6 +5,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+
 interface BorderGlowProps {
   children?: ReactNode;
   className?: string;
@@ -130,12 +132,16 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   glowRadius = 40,
   glowIntensity = 1.0,
   coneSpread = 25,
-  animated = false,
-  autoAnimate = false,
+  animated: animatedProp = false,
+  autoAnimate: autoAnimateProp = false,
   autoAnimateDuration = 3200,
   colors = ["#c084fc", "#f472b6", "#38bdf8"],
   fillOpacity = 0.5,
 }) => {
+  // Reduced motion: no sweep at all — render a calm, static bordered surface.
+  const reduceMotion = useReduceMotion();
+  const animated = reduceMotion ? false : animatedProp;
+  const autoAnimate = reduceMotion ? false : autoAnimateProp;
   const rafRef = useRef<number | null>(null);
   const [cursorAngle, setCursorAngle] = useState(45);
   const [edgeProximity, setEdgeProximity] = useState(0);

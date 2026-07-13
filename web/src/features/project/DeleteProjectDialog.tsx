@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { Trash2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,7 +31,10 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   const deleteProject = useDeleteProject();
 
-  const handleDelete = () => {
+  const handleDelete = (event: MouseEvent) => {
+    // Prevent Radix from auto-closing the dialog on Action click so it stays
+    // open (showing the "Deleting…" state) until the mutation resolves.
+    event.preventDefault();
     if (!project) return;
     const id = project.id;
     deleteProject.mutate(id, {

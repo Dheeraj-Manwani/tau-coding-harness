@@ -212,6 +212,14 @@ async function loadHistory(projectId: string): Promise<Entry[]> {
       }
     } else if (row.role === MessageRole.ASSISTANT) {
       const stored = row.content as unknown as StoredAssistant;
+      const hasToolCalls = !!stored.tool_calls?.length;
+      const hasContent =
+        typeof stored.content === "string" && stored.content.trim().length > 0;
+      // Skip empty assistant rows — e.g. the anchor row a PREVIEW job writes to
+      // hang a fragment on, or a final turn the model ended with null content.
+      // Replaying one sends `{ role: "assistant" }` with neither content nor
+      // tool_calls, which the completions API rejects with a 400.
+      if (!hasToolCalls && !hasContent) continue;
       entries.push({
         param: {
           role: "assistant",

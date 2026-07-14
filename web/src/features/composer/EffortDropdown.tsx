@@ -62,7 +62,7 @@ export function EffortDropdown({
           <TooltipProvider delayDuration={150}>
             {EFFORT_OPTIONS.map((opt) => {
               const selected = opt.value === effort;
-              return (
+              const item = (
                 <DropdownMenu.Item
                   key={opt.value}
                   onSelect={() => onChange(opt.value)}
@@ -75,29 +75,26 @@ export function EffortDropdown({
                       opt.label
                     )}
                     {opt.hint ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            role="button"
-                            tabIndex={-1}
-                            aria-label={`${opt.label} details`}
-                            onClick={(e) => e.preventDefault()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="inline-flex text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
-                          >
-                            <InfoIcon className="size-3 shrink-0" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="max-w-56">
-                          {opt.hint}
-                        </TooltipContent>
-                      </Tooltip>
+                      <InfoIcon className="size-3 shrink-0 text-[var(--silver-600)]" />
                     ) : null}
                   </span>
                   {selected ? (
                     <CheckIcon className="size-3 shrink-0 text-[var(--silver-900)]" />
                   ) : null}
                 </DropdownMenu.Item>
+              );
+
+              if (!opt.hint) {
+                return item;
+              }
+
+              return (
+                <Tooltip key={opt.value}>
+                  <TooltipTrigger asChild>{item}</TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-56">
+                    {opt.hint}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </TooltipProvider>

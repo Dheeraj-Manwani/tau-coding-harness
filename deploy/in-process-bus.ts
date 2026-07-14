@@ -91,6 +91,12 @@ class InProcessBus {
     return this.buffers.get(jobId)?.events.length ?? 0;
   }
 
+  headIndex(jobId: string): number {
+    const buf = this.buffers.get(jobId);
+    if (!buf || buf.events.length === 0) return -1;
+    return buf.events[buf.events.length - 1]!.index;
+  }
+
   /**
    * Replay buffered events with index > fromIndex, then attach a live listener.
    * Mirrors ws-gateway SocketManager.subscribe: an expired/empty buffer with a

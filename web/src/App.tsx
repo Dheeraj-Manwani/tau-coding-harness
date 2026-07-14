@@ -1,4 +1,4 @@
-import { useLocation, useOutlet } from "react-router-dom";
+import { Link, useLocation, useOutlet } from "react-router-dom";
 
 import { UserMenu } from "@/src/components/UserMenu";
 import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
@@ -19,7 +19,8 @@ function App() {
       {!isProject && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-            <span
+            <Link
+              to="/"
               className={cn(
                 "logo-mark pointer-events-auto size-6",
                 isHome && "logo-mark--white",

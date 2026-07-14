@@ -64,6 +64,7 @@ export interface ProjectDetail {
   latestFragment: Fragment | null;
   /** Id of a still-running job, if any — used to resume the stream on reload. */
   activeJobId: string | null;
+  activeJobEventIndex: number | null;
   checkpoints: ProjectCheckpoint[];
 }
 

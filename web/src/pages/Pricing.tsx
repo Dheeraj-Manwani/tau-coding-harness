@@ -4,7 +4,7 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
 
 const FREE_FEATURES = [
-  "50 free credits (one-time, on signup)",
+  "25 free credits (one-time, on signup)",
   "Up to 3 projects",
   "AI-powered code generation",
   "Live preview in secure sandbox",
@@ -134,7 +134,7 @@ export default function PricingPage() {
               },
               {
                 title: "One-time free credits",
-                body: "Free-tier users receive 50 credits once, when they sign up. There is no daily refill — when they run out, they can redeem a promo code or upgrade to PRO.",
+                body: "Free-tier users receive 25 credits once, when they sign up. There is no daily refill — when they run out, they can redeem a promo code or upgrade to PRO.",
               },
               {
                 title: "PRO monthly grant",

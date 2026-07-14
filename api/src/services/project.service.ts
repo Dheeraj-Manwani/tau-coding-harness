@@ -356,6 +356,7 @@ export async function getProject(projectId: string, userId: string) {
     messages,
     latestFragment,
     activeJobId: activeJob?.id ?? null,
+    activeJobEventIndex: activeJob ? bus.headIndex(activeJob.id) : null,
     checkpoints,
   };
 }

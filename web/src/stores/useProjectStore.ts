@@ -579,6 +579,7 @@ interface ProjectState {
    *  the home→workspace reveal: chat is centered until this is true, then it docks
    *  left and the preview/code panel slides in from the right. */
   buildStarted: boolean;
+  isPreviewJob: boolean;
 
   // Chat
   chatMessages: Message[];
@@ -623,12 +624,20 @@ interface ProjectState {
   initProject: (projectId: string) => void;
   /** Seed chat/files/preview from the persisted project once on entry. */
   hydrate: (detail: ProjectDetail) => void;
+  /** Authoritative rebuild from a fresh project fetch, used to recover from a
+   *  stream gap (`resync`) or a missed terminal event. Unlike {@link hydrate} it
+   *  always rebuilds the transcript and reconciles the loading state against the
+   *  server's `activeJobId` — so the "thinking" shimmer can never outlive the job. */
+  resyncFromDetail: (detail: ProjectDetail) => void;
   /** Populate the file tree from the manifest (paths only, no bodies). */
   hydrateTree: (tree: ProjectTree) => void;
   /** Cache a lazily-loaded file body in the store. */
   setFileContent: (path: string, content: string) => void;
   /** Begin streaming a job; optionally append the prompt as a user bubble. */
   startJob: (jobId: string, prompt?: string) => void;
+  /** Begin streaming a preview-only restart job (drives the preview pane, no chat
+   *  turn — so no user bubble and no "thinking" shimmer). */
+  startPreviewJob: (jobId: string) => void;
   /** Append a user bubble immediately (optimistic, before the job id is known).
    *  Returns the generated message id so callers can remove it on failure. */
   appendUserMessage: (content: string) => string;
@@ -735,6 +744,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       };
     }),
 
+  resyncFromDetail: (detail) =>
+    set((s) => {
+      // Authoritative rebuild — always applied, even mid-stream, because we only
+      // reach here after a real gap (the live buffer expired → `resync`) or after
+      // the status backstop found the job already gone. The DB snapshot is the
+      // source of truth; any in-flight bubble it doesn't contain was lost with the
+      // buffer and will re-stream if the job is genuinely still running.
+      const chatMessages = toConversation(detail.messages, detail.checkpoints);
+      const previewUrl =
+        s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
+      const buildStarted =
+        s.buildStarted || previewUrl != null || chatMessages.length > 0;
+      const hasMoreMessages = detail.messages.length >= 50;
+      const oldestSequence = detail.messages[0]?.sequence ?? null;
+
+      const stillActive = detail.activeJobId != null;
+
+      return {
+        hydrated: true,
+        chatMessages,
+        previewUrl,
+        buildStarted,
+        hasMoreMessages,
+        oldestSequence,
+        // Reconcile the loading state against the server's authority. If the job
+        // is gone, finalize locally so the shimmer/loader can't hang forever.
+        ...(stillActive
+          ? { status: "streaming" as JobStatus, isAiTyping: true }
+          : {
+              status: (s.status === "streaming"
+                ? "done"
+                : s.status) as JobStatus,
+              isAiTyping: false,
+              isPreviewJob: false,
+              streamingId: null,
+              currentJobId: null,
+              activity: null,
+              writingPath: null,
+              pendingActions: [],
+            }),
+      };
+    }),
+
   hydrateTree: (tree) =>
     set((s) => {
       // Rebuild the file map from the manifest, preserving any body already
@@ -772,6 +824,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         currentJobId: jobId,
         status: "streaming",
         isAiTyping: true,
+        isPreviewJob: false,
         activity: "Thinking",
         currentPlan: null,
         chatMessages:
@@ -779,6 +832,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             ? [...s.chatMessages, userMessage(prompt)]
             : s.chatMessages,
       };
+    }),
+
+  startPreviewJob: (jobId) =>
+    set({
+      currentJobId: jobId,
+      status: "streaming",
+      isPreviewJob: true,
+      // No chat turn: the preview pane shows its own "Starting…" state, so we
+      // deliberately leave `isAiTyping` false and append no user bubble.
+      currentPlan: null,
     }),
 
   appendUserMessage: (content) => {

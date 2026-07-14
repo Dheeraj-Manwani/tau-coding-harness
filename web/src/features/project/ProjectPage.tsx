@@ -10,11 +10,13 @@ import {
 } from "react-resizable-panels";
 
 import { cn } from "@/src/lib/utils";
+import { api } from "@/src/lib/api-client";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
 import { useProject, useProjectTree, projectKeys } from "@/src/features/project/api";
-import { useJobStream } from "@/src/features/project/useJobStream";
+import { useJobStream, seedWatermark } from "@/src/features/project/useJobStream";
+import type { ProjectDetail } from "@/src/features/project/types";
 import {
   clearFreshBuild,
   hasFreshBuild,
@@ -29,6 +31,7 @@ function useProjectBootstrap() {
   const startJob = useProjectStore((s) => s.startJob);
   const hydrate = useProjectStore((s) => s.hydrate);
   const hydrateTree = useProjectStore((s) => s.hydrateTree);
+  const resyncFromDetail = useProjectStore((s) => s.resyncFromDetail);
   const status = useProjectStore((s) => s.status);
   const qc = useQueryClient();
 
@@ -46,6 +49,12 @@ function useProjectBootstrap() {
     if (!data) return;
     hydrate(data);
     if (data.activeJobId && !useProjectStore.getState().currentJobId) {
+      // Seed the stream cursor to the job's current head BEFORE the stream
+      // connects, so a reload resumes past already-persisted events instead of
+      // re-streaming them (they're already rendered by hydrate above).
+      if (data.activeJobEventIndex != null) {
+        seedWatermark(data.activeJobId, data.activeJobEventIndex);
+      }
       startJob(data.activeJobId);
     }
   }, [data, hydrate, startJob]);
@@ -60,6 +69,33 @@ function useProjectBootstrap() {
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId), refetchType: "active" });
     }
   }, [status, projectId, qc]);
+
+  // Backstop: while the store believes a job is streaming, poll the server's
+  // authoritative job status. A terminal SSE event (`done`/`error`) is the fast
+  // path that clears the "thinking" shimmer; this is the safety net for when that
+  // event never arrives (worker crash, dropped terminal frame, dedup edge). If
+  // the poll finds the job is no longer active, `resyncFromDetail` finalizes
+  // locally so the shimmer can't hang forever.
+  useEffect(() => {
+    if (!projectId || status !== "streaming") return;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      void api
+        .get<ProjectDetail>(`/project/${projectId}`)
+        .then((r) => {
+          if (cancelled || r.data.activeJobId) return;
+          if (useProjectStore.getState().status !== "streaming") return;
+          resyncFromDetail(r.data);
+        })
+        .catch(() => {
+          /* transient — the next tick retries */
+        });
+    }, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [status, projectId, resyncFromDetail]);
 
   useJobStream();
 }

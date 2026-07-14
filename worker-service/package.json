@@ -10,6 +10,7 @@
     "test": "bun test",
     "generate": "prisma generate",
     "build:template": "bun run scripts/build-template.ts",
+    "check:template": "bun run scripts/check-templates.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

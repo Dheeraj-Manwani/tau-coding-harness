@@ -4,7 +4,8 @@ import { prisma } from "../lib/prisma";
 import { env } from "../lib/env";
 import { getNextSequence } from "../lib/sequence";
 import { meter, type MeterResult } from "../lib/credits";
-import { toCredits } from "../lib/pricing";
+import { toCredits, MIN_SPEND_TO_START_MICRO } from "../lib/pricing";
+import { bus } from "../lib/bus";
 import { publish, makeIndexer } from "../lib/publish";
 import { captureAppScreenshot } from "../lib/screenshot";
 import { putScreenshot } from "../lib/s3";
@@ -171,6 +172,42 @@ interface StoredToolResult {
   content: string;
 }
 
+function balanceToolResults(entries: Entry[]): Entry[] {
+  const out: Entry[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    out.push(entry);
+
+    const param = entry.param;
+    if (param.role !== "assistant") continue;
+    const toolCalls = param.tool_calls;
+    if (!toolCalls || toolCalls.length === 0) continue;
+
+    // Ids answered by the contiguous run of tool messages that follow.
+    const answered = new Set<string>();
+    for (let j = i + 1; j < entries.length; j++) {
+      const next = entries[j]!.param;
+      if (next.role !== "tool") break;
+      answered.add(next.tool_call_id);
+    }
+
+    for (const tc of toolCalls) {
+      if (answered.has(tc.id)) continue;
+      out.push({
+        param: {
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify({
+            error: "The previous run ended before this tool finished.",
+          }),
+        },
+        seq: entry.seq,
+      });
+    }
+  }
+  return out;
+}
+
 async function loadHistory(projectId: string): Promise<Entry[]> {
   const checkpoint = await prisma.contextCheckpoint.findFirst({
     where: { projectId },
@@ -242,7 +279,7 @@ async function loadHistory(projectId: string): Promise<Entry[]> {
     }
   }
 
-  return entries;
+  return balanceToolResults(entries);
 }
 
 export async function runAgentLoop(
@@ -294,7 +331,40 @@ export async function runAgentLoop(
     let maxVerifyForced = false;
     const calibration = createCalibration();
 
+    type StopReason = "insufficient_credits" | "budget" | "cancelled";
+    let stopReason: StopReason | null = null;
+
+    const finishRun = async (reason: StopReason): Promise<void> => {
+      const notice =
+        reason === "cancelled"
+          ? "⏹️ Stopped. This run was halted before the task finished — send another message to continue."
+          : reason === "budget"
+            ? "⚠️ This run reached its per-request credit budget and was stopped before finishing. Send another message to continue where it left off."
+            : "⚠️ Out of credits — this run was stopped before the task finished. Add credits, then send another message to continue.";
+
+      await prisma.$transaction(async (tx) => {
+        const seq = await getNextSequence(tx, projectId);
+        await tx.message.create({
+          data: {
+            project: { connect: { id: projectId } },
+            job: { connect: { id: jobId } },
+            role: MessageRole.ASSISTANT,
+            type: MessageType.RESULT,
+            content: { content: notice } as unknown as Prisma.InputJsonValue,
+            sequence: seq,
+          },
+        });
+      });
+
+      if (reason !== "cancelled") {
+        await publish(jobId, { type: "insufficient_credits" }, nextIndex());
+      }
+    };
+
     while (true) {
+      if (!stopReason && bus.isCancelled(jobId)) stopReason = "cancelled";
+      if (stopReason) break;
+
       if (turn++ >= budget.maxAgentTurns) {
         const message = `Agent exceeded ${budget.maxAgentTurns} turns without finishing`;
         await publish(jobId, { type: "error", message }, nextIndex());
@@ -476,6 +546,7 @@ export async function runAgentLoop(
       );
 
       let holdExhausted = false;
+      let meterAvailable: bigint | null = null;
       try {
         const meterResult = await meterWithRetry(
           userId,
@@ -487,6 +558,7 @@ export async function runAgentLoop(
           { enforce: env.CREDITS_ENFORCE },
         );
         holdExhausted = meterResult.holdExhausted;
+        meterAvailable = meterResult.available;
         meterFailures = 0;
         // Live balance tick: let the UI's CreditsWidget count down turn by turn
         // instead of waiting for its 60s poll.
@@ -515,9 +587,15 @@ export async function runAgentLoop(
         }
       }
 
-      if (env.CREDITS_ENFORCE && holdExhausted) {
-        await publish(jobId, { type: "insufficient_credits" }, nextIndex());
-        break;
+      if (env.CREDITS_ENFORCE && isToolTurn && !stopReason) {
+        if (holdExhausted) {
+          stopReason = "budget";
+        } else if (
+          meterAvailable !== null &&
+          meterAvailable < MIN_SPEND_TO_START_MICRO
+        ) {
+          stopReason = "insufficient_credits";
+        }
       }
 
       // Truncated turn: the response was cut off at MAX_TOKENS. Don't treat it
@@ -772,6 +850,8 @@ export async function runAgentLoop(
         });
       }
     }
+
+    if (stopReason) await finishRun(stopReason);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[worker] agent loop failed for job ${jobId}`, err);

@@ -260,6 +260,31 @@ code {
     0 0 32px #60a5fa44;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--silver-400) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--silver-400);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--silver-600);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Minimal, dark custom scrollbars — thin track, silver thumb. */
 .scrollbar-thin {
   scrollbar-width: thin;

@@ -117,11 +117,27 @@ EOF`,
   );
 }
 
-/** Wire the `@/*` path alias into both tsconfig files shadcn reads. */
+/**
+ * Wire the `@/*` path alias so it resolves everywhere: shadcn/editors (root
+ * `tsconfig.json`) AND `tsc -b` (the app project, which is what the `build`
+ * script actually compiles). References do NOT inherit compilerOptions, so the
+ * alias must live in `tsconfig.app.json` too — the previous version only patched
+ * the root config, so `bun run build` failed with TS2307 on every `@/…` import.
+ *
+ * Two gotchas handled here:
+ *   - `tsconfig.app.json` ships `// /* … *\/` comments, so `JSON.parse` throws —
+ *     we inject with `sed` (comment-safe text insertion) instead.
+ *   - `baseUrl` is deprecated in TS 6+ (errors with TS5101); modern `paths`
+ *     resolves relative to the tsconfig without it, so we omit `baseUrl`.
+ * We also relax `noUnusedLocals`/`noUnusedParameters`, which otherwise fail the
+ * build on shadcn boilerplate (e.g. an unused `React` import) and on the WIP,
+ * half-wired code the agent naturally produces mid-task.
+ */
 export function writeTsconfig(t: TemplateBuilder): TemplateBuilder {
-  return t
-    .runCmd(
-      `cat > tsconfig.json <<'EOF'
+  return (
+    t
+      .runCmd(
+        `cat > tsconfig.json <<'EOF'
 {
   "files": [],
   "references": [
@@ -129,15 +145,23 @@ export function writeTsconfig(t: TemplateBuilder): TemplateBuilder {
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   }
 }
 EOF`,
-    )
-    .runCmd(
-      `bun -e "const fs=require('fs');const f='tsconfig.app.json';const j=JSON.parse(fs.readFileSync(f,'utf8'));j.compilerOptions=j.compilerOptions||{};j.compilerOptions.baseUrl='.';j.compilerOptions.paths={'@/*':['./src/*']};fs.writeFileSync(f,JSON.stringify(j,null,2))"`,
-    );
+      )
+      // Inject the alias as the first key inside compilerOptions.
+      .runCmd(
+        `sed -i 's#"compilerOptions": {#"compilerOptions": {\\n    "paths": { "@/*": ["./src/*"] },#' tsconfig.app.json`,
+      )
+      // Don't fail the build on unused symbols (shadcn boilerplate + agent WIP).
+      .runCmd(
+        `sed -i 's#"noUnusedLocals": true#"noUnusedLocals": false#' tsconfig.app.json`,
+      )
+      .runCmd(
+        `sed -i 's#"noUnusedParameters": true#"noUnusedParameters": false#' tsconfig.app.json`,
+      )
+  );
 }
 
 /** Run `shadcn init` and add the standard component set. */
@@ -564,9 +588,7 @@ export function buildContextMd({
   }
   stackLines.push("- Dev preview: Vite on port 5173");
 
-  const conventions = [
-    "- Import alias: `@/*` -> `./src/*`",
-  ];
+  const conventions = ["- Import alias: `@/*` -> `./src/*`"];
   if (hasServer) {
     conventions.push(
       "- API calls: hit `/api/*` — Vite proxies them to Hono on :3000",
@@ -578,7 +600,7 @@ export function buildContextMd({
     "- Toasts: `<Toaster />` (sonner) is mounted in `src/main.tsx` — call `toast()` from `sonner` anywhere",
     "- Tooltips: `<TooltipProvider>` wraps the app in `src/main.tsx` — use `<Tooltip>` without re-wrapping",
     "- `src/App.tsx` has a catch-all `*` 404 route — keep it last when adding routes",
-    "- Theme: **Spotify-inspired**, **dark by default** (`<html class=\"dark\">`). Both themes live in `src/index.css`: `:root` = light, `.dark` = dark (Spotify green `#1DB954` primary; dark surfaces step `#121212` -> `#181818` -> `#282828`, muted text `#b3b3b3`). Style with shadcn tokens (`bg-background`, `text-foreground`, `bg-primary`, `bg-card`, `text-muted-foreground`, `border-border`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the `dark` class on `<html>` (persist the choice in `localStorage`); for light-only, default to no `dark` class. Edit the palettes in `index.css` rather than introducing parallel color systems.",
+    '- Theme: **Spotify-inspired**, **dark by default** (`<html class="dark">`). Both themes live in `src/index.css`: `:root` = light, `.dark` = dark (Spotify green `#1DB954` primary; dark surfaces step `#121212` -> `#181818` -> `#282828`, muted text `#b3b3b3`). Style with shadcn tokens (`bg-background`, `text-foreground`, `bg-primary`, `bg-card`, `text-muted-foreground`, `border-border`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the `dark` class on `<html>` (persist the choice in `localStorage`); for light-only, default to no `dark` class. Edit the palettes in `index.css` rather than introducing parallel color systems.',
     "- Secrets go in `.env` (gitignored); never commit them",
   );
 

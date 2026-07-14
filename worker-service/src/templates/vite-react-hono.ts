@@ -76,8 +76,6 @@ export default defineConfig({
 })
 EOF`,
   )
-  // shadcn reads the alias from tsconfig; add it to both files the Vite
-  // template generates. (If `shadcn init` ever errors, the alias is the cause.)
   .runCmd(
     `cat > tsconfig.json <<'EOF'
 {
@@ -87,14 +85,19 @@ EOF`,
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   }
 }
 EOF`,
   )
   .runCmd(
-    `bun -e "const fs=require('fs');const f='tsconfig.app.json';const j=JSON.parse(fs.readFileSync(f,'utf8'));j.compilerOptions=j.compilerOptions||{};j.compilerOptions.baseUrl='.';j.compilerOptions.paths={'@/*':['./src/*']};fs.writeFileSync(f,JSON.stringify(j,null,2))"`,
+    `sed -i 's#"compilerOptions": {#"compilerOptions": {\\n    "paths": { "@/*": ["./src/*"] },#' tsconfig.app.json`,
+  )
+  .runCmd(
+    `sed -i 's#"noUnusedLocals": true#"noUnusedLocals": false#' tsconfig.app.json`,
+  )
+  .runCmd(
+    `sed -i 's#"noUnusedParameters": true#"noUnusedParameters": false#' tsconfig.app.json`,
   )
 
   // 6) The Hono API. Bun serves the default export (fetch + port) natively.

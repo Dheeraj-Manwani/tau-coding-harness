@@ -81,7 +81,6 @@ export interface BalanceView {
   reserved: bigint;
   /** gross = free + plan + bonus */
   gross: bigint;
-  /** available = gross − reserved */
   available: bigint;
 }
 
@@ -101,7 +100,7 @@ function view(a: AccountRow): BalanceView {
     bonusBalance: a.bonusBalance,
     reserved: a.reserved,
     gross: g,
-    available: g - a.reserved,
+    available: g,
   };
 }
 
@@ -198,7 +197,7 @@ export async function reserveInTx(
     return {
       holdId: existing.id,
       reserved: existing.amount,
-      available: gross(acc) - acc.reserved,
+      available: gross(acc),
     };
   }
 
@@ -215,32 +214,27 @@ export async function reserveInTx(
     }
   }
 
-  const available = gross(acc) - acc.reserved;
+  const available = gross(acc);
   if (available < MIN_SPEND_TO_START_MICRO) {
     throw new InsufficientCreditsError();
   }
 
-  const ceilingBase = opts.effort
+  const cap = opts.effort
     ? reserveCeilingForEffort(opts.effort)
     : JOB_RESERVE_CEILING_MICRO;
-  const ceiling = available < ceilingBase ? available : ceilingBase;
 
-  await tx.billingAccount.update({
-    where: { userId },
-    data: { reserved: acc.reserved + ceiling },
-  });
   const hold = await tx.creditHold.create({
-    data: { userId, jobId, amount: ceiling, status: HoldStatus.ACTIVE },
+    data: { userId, jobId, amount: cap, status: HoldStatus.ACTIVE },
   });
 
   creditLog("credits.reserve", {
     userId,
     jobId,
-    ceilingMicro: ceiling.toString(),
-    availableAfterMicro: (available - ceiling).toString(),
+    capMicro: cap.toString(),
+    availableMicro: available.toString(),
   });
 
-  return { holdId: hold.id, reserved: ceiling, available: available - ceiling };
+  return { holdId: hold.id, reserved: cap, available };
 }
 
 /**
@@ -300,7 +294,7 @@ export async function meter(
       return {
         debited: 0n,
         consumed: existing?.consumed ?? 0n,
-        available: gross(acc) - acc.reserved,
+        available: gross(acc),
         holdExhausted: false,
       };
     }
@@ -363,7 +357,7 @@ export async function meter(
     const result = {
       debited,
       consumed,
-      available: newGross - acc.reserved,
+      available: newGross,
       holdExhausted,
     };
 
@@ -383,21 +377,18 @@ export async function meter(
 }
 
 /**
- * Settle a job's hold on terminal status: release the reserved ceiling (real
- * consumption already left the balance via meter()). Idempotent — a no-op if the
- * hold is already settled/released. Real token debits are kept; only the unused
- * earmark is returned.
+ * Close a job's per-job spend counter on terminal status. Pay-as-you-go: real
+ * consumption already left the buckets via meter(), and we never reserved
+ * anything against the account, so there is nothing to return to the balance.
+ * Settling only marks the hold SETTLED so it stops counting toward the
+ * concurrency cap. Idempotent, and safe to miss — a never-settled hold can no
+ * longer strand credits (it never touched account.reserved).
  */
 export async function settle(jobId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const hold = await tx.creditHold.findUnique({ where: { jobId } });
     if (!hold || hold.status !== HoldStatus.ACTIVE) return;
 
-    await lockAccount(tx, hold.userId);
-    await tx.billingAccount.update({
-      where: { userId: hold.userId },
-      data: { reserved: { decrement: hold.amount } },
-    });
     await tx.creditHold.update({
       where: { jobId },
       data: { status: HoldStatus.SETTLED, settledAt: new Date() },
@@ -406,9 +397,8 @@ export async function settle(jobId: string): Promise<void> {
     creditLog("credits.settle", {
       jobId,
       userId: hold.userId,
-      holdAmountMicro: hold.amount.toString(),
+      capMicro: hold.amount.toString(),
       consumedMicro: hold.consumed.toString(),
-      releasedMicro: (hold.amount - hold.consumed).toString(),
     });
   });
 }
@@ -494,7 +484,7 @@ export async function redeem(
 
     return {
       creditsGranted: promo.credits,
-      available: newGross - acc.reserved,
+      available: newGross,
     };
   });
 }
@@ -529,7 +519,7 @@ export async function grantBonusCredits(
       return {
         granted: 0n,
         bonusBalance: acc.bonusBalance,
-        available: gross(acc) - acc.reserved,
+        available: gross(acc),
       };
     }
 
@@ -558,7 +548,7 @@ export async function grantBonusCredits(
         return {
           granted: 0n,
           bonusBalance: acc.bonusBalance,
-          available: gross(acc) - acc.reserved,
+          available: gross(acc),
         };
       }
       throw err;
@@ -574,7 +564,7 @@ export async function grantBonusCredits(
     return {
       granted: amountMicro,
       bonusBalance: newBonusBalance,
-      available: newGross - acc.reserved,
+      available: newGross,
     };
   });
 }
@@ -691,19 +681,19 @@ export async function reconcileAccount(
   const actualReserved = account.reserved;
   const activeHoldSum = holdAgg._sum.amount ?? 0n;
   const grossDrift = actualGross - ledgerSum;
+
   const reservedDrift = actualReserved - activeHoldSum;
 
-  if (grossDrift !== 0n || reservedDrift !== 0n) {
+  if (grossDrift !== 0n) {
     creditLog("credits.drift_detected", {
       userId,
       grossDriftMicro: grossDrift.toString(),
-      reservedDriftMicro: reservedDrift.toString(),
     });
   }
 
   return {
     userId,
-    ok: grossDrift === 0n && reservedDrift === 0n,
+    ok: grossDrift === 0n,
     grossDriftMicro: grossDrift.toString(),
     reservedDriftMicro: reservedDrift.toString(),
     actualGrossMicro: actualGross.toString(),

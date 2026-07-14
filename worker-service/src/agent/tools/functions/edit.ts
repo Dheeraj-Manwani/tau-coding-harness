@@ -5,6 +5,7 @@ import {
   chunkString,
   persistFile,
   toRelativePath,
+  toWorkdirPath,
 } from "./utils";
 import { publish } from "@/lib/publish";
 
@@ -27,7 +28,8 @@ export async function editFile(
   const newStr = asString(new_string, "new_string");
   const replaceAll = replace_all === true;
 
-  const original = await sandbox.files.read(p);
+  const abs = toWorkdirPath(p);
+  const original = await sandbox.files.read(abs);
 
   const occurrences = original.split(oldStr).length - 1;
   if (occurrences === 0) {
@@ -46,7 +48,7 @@ export async function editFile(
   const relPath = toRelativePath(p);
   await publish(jobId, { type: "file_start", path: relPath }, indexer());
 
-  await sandbox.files.write(p, updated);
+  await sandbox.files.write(abs, updated);
 
   for (const chunk of chunkString(updated, CHUNK_SIZE)) {
     await publish(

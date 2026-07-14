@@ -382,6 +382,31 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "push_to_github",
+      description:
+        "Push the project's current files to the user's connected GitHub account and open a pull request. Creates the repository automatically on the first push. Use this when the user asks to push, save, publish, or commit the project to GitHub, or to open a PR. Does not require a sandbox — it commits the stored project files. If it returns a 'not connected' error, tell the user to click the GitHub button on the project page to connect their account first. The returned pull request URL is shown to the user.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description:
+              "Short commit message / pull request title describing this update, e.g. 'Add checkout flow'.",
+          },
+          description: {
+            type: "string",
+            description:
+              "Optional longer description of the changes for the pull request body.",
+          },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "check_sandbox",
       description:
         "Cheap liveness check for the current sandbox — returns { alive: true|false }. Call this before trusting a sandbox with a batch of writes, e.g. right after reconnecting to an existing one or after a long idle gap.",

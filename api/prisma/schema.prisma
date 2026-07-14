@@ -75,6 +75,9 @@ model Project {
   previewImageKey       String?
   previewImageUpdatedAt DateTime?
 
+  // "owner/repo" once the first GitHub push creates/links a repo; null before.
+  githubRepo String?
+
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages   Message[]
   jobs       Job[]

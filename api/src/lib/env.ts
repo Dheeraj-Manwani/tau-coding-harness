@@ -39,6 +39,19 @@ const envSchema = z.object({
     .url()
     .default("http://localhost:3000/auth/google/callback"),
 
+  // GitHub OAuth (account-linking for the "Connect GitHub" flow). Optional so the
+  // api still boots without them — the connect endpoints just return "not
+  // configured". The redirect URI must EXACTLY match the GitHub OAuth App
+  // setting and the route the api actually serves (auth router mounts at /auth).
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_REDIRECT_URI: z
+    .string()
+    .url()
+    .default("http://localhost:8080/auth/github/callback"),
+  // `repo` covers private + public repos; narrow to `public_repo` if desired.
+  GITHUB_SCOPE: z.string().default("repo"),
+
   // E2B sandbox (used for sandbox-first file reads)
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
 

@@ -15,6 +15,22 @@ export function toRelativePath(p: string): string {
   return p.startsWith(`${WORK_DIR}/`) ? p.slice(WORK_DIR.length + 1) : p;
 }
 
+/**
+ * Resolve a tool-supplied path (documented as "relative to the project root")
+ * to an absolute sandbox path under WORK_DIR.
+ *
+ * The E2B `files.*` API has no `cwd` option — it resolves relative paths against
+ * the user's home dir (`/home/user`), NOT WORK_DIR (`/home/user/app`). So unlike
+ * `run_command` (which pins `cwd: WORK_DIR`), the filesystem tools must anchor
+ * the path themselves or they'd read/write one level above the app. Absolute
+ * paths are passed through unchanged.
+ */
+export function toWorkdirPath(p: string): string {
+  if (p.startsWith("/")) return p;
+  const rel = p.trim().replace(/^\.\//, "");
+  return rel === "" || rel === "." ? WORK_DIR : `${WORK_DIR}/${rel}`;
+}
+
 export function chunkString(s: string, size: number): string[] {
   const chunks: string[] = [];
   for (let i = 0; i < s.length; i += size) {

@@ -44,7 +44,8 @@ export type ActionKind =
   | "dispatch_debugger"
   | "dispatch_verifier"
   | "dispatch_implementer"
-  | "web_search";
+  | "web_search"
+  | "push_to_github";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -197,6 +198,16 @@ function deriveActionItem(
         kind: "web_search",
         label: `Searched: ${truncateLabel(query, 60)}`,
         meta: { prompt: query },
+        toolCallId,
+      };
+    }
+    case "push_to_github": {
+      const title = String(input.title ?? "");
+      const description = String(input.description ?? "").trim();
+      return {
+        kind: "push_to_github",
+        label: `Pushed to GitHub: ${truncateLabel(title, 50)}`,
+        meta: { prompt: description ? `${title}\n\n${description}` : title },
         toolCallId,
       };
     }

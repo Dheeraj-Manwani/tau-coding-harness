@@ -210,6 +210,9 @@ ${stackSection}
 ## Web search
 Use \`web_search\` to look up anything outside your training data or that may have changed since — library/API docs, current versions, error messages, best practices. It doesn't need a sandbox, so you can call it even before \`provision_sandbox\`.
 
+## Push to GitHub
+Use \`push_to_github\` when the user asks to push, save, publish, or commit the project to GitHub, or to open a pull request. It commits the project's current files, creates the repo on the first push, and opens a PR — you don't run any git commands yourself. If it returns a "not connected" error, tell the user to click the GitHub button on the project page to connect their account first, then try again.
+
 ## Sub-agents
 You have four sub-agents available as tool calls. Each runs in its own isolated context window, does its own multi-step work (reading files, running commands), and returns only a concise written summary to you. Using one keeps your own context clean instead of filling it with raw file dumps, grep output, or trial-and-error command logs.
 

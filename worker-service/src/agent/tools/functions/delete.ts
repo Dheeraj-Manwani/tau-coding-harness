@@ -1,5 +1,5 @@
 import type Sandbox from "e2b";
-import { asString, toRelativePath } from "./utils";
+import { asString, toRelativePath, toWorkdirPath } from "./utils";
 import { prisma } from "@/lib/prisma";
 import { allocateHeadSequence } from "@/lib/headSequence";
 import { publish } from "@/lib/publish";
@@ -13,7 +13,7 @@ export async function deleteFile(
 ) {
   const p = asString((input as { path?: unknown }).path, "path");
   const relPath = toRelativePath(p);
-  await sandbox.files.remove(p);
+  await sandbox.files.remove(toWorkdirPath(p));
 
   // Invariant 3: remove manifest row + bump headSequence in one tx; blob is left untouched.
   const existing = await prisma.projectFile.findUnique({

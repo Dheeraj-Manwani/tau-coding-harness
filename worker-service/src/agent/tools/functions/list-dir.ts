@@ -1,5 +1,5 @@
 import Sandbox, { FileType } from "e2b";
-import { WORK_DIR } from "./utils";
+import { toWorkdirPath, WORK_DIR } from "./utils";
 
 const DEFAULT_DEPTH = 1;
 
@@ -14,7 +14,7 @@ export async function listDir(input: unknown, sandbox: Sandbox) {
       ? Math.floor(rawDepth)
       : DEFAULT_DEPTH;
 
-  const entries = await sandbox.files.list(path, { depth });
+  const entries = await sandbox.files.list(toWorkdirPath(path), { depth });
   return {
     entries: entries.map((e) => ({
       name: e.name,

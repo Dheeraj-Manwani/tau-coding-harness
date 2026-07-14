@@ -5,6 +5,7 @@ import {
   chunkString,
   persistFile,
   toRelativePath,
+  toWorkdirPath,
 } from "./utils";
 import { publish } from "@/lib/publish";
 
@@ -23,7 +24,7 @@ export async function createFile(
   const relPath = toRelativePath(p);
   await publish(jobId, { type: "file_start", path: relPath }, indexer());
 
-  await sandbox.files.write(p, c);
+  await sandbox.files.write(toWorkdirPath(p), c);
 
   for (const chunk of chunkString(c, CHUNK_SIZE)) {
     await publish(

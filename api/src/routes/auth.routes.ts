@@ -6,8 +6,9 @@ import {
   type VerifyCallback,
 } from "passport-google-oauth20";
 import * as authController from "../controllers/auth.controller";
+import * as githubController from "../controllers/github.controller";
 import * as authService from "../services/auth.service";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireRefreshAuth } from "../middleware/auth.middleware";
 import { authRateLimiter } from "../middleware/rateLimit.middleware";
 import { Errors } from "../lib/errors";
 import { env } from "../lib/env";
@@ -78,5 +79,14 @@ router.get(
 );
 
 router.get("/me", requireAuth, authController.me);
+
+// ── GitHub account linking (Connect GitHub) ──
+// `start` runs on a full-page navigation, so it authenticates via the refresh
+// cookie; `callback` authenticates via the signed state it issued. status +
+// disconnect are called from the app over XHR, so they use Bearer auth.
+router.get("/github", requireRefreshAuth, githubController.start);
+router.get("/github/callback", githubController.callback);
+router.get("/github/status", requireAuth, githubController.status);
+router.delete("/github", requireAuth, githubController.disconnect);
 
 export default router;

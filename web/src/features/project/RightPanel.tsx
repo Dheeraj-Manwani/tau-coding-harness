@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { DropdownMenu } from "radix-ui";
 import {
   CodeIcon,
   ExternalLinkIcon,
@@ -10,6 +11,7 @@ import {
   SmartphoneIcon,
   TabletIcon,
   TvMinimalIcon,
+  Unlink2Icon,
 } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
@@ -19,6 +21,12 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { UserMenu } from "@/src/components/UserMenu";
+import {
+  useGithubStatus,
+  useDisconnectGithub,
+  useGithubReturnToast,
+  startGithubConnect,
+} from "@/src/features/auth/github";
 import {
   useProjectStore,
   type PreviewDevice,
@@ -126,22 +134,69 @@ function GithubMark({ className }: { className?: string }) {
 }
 
 function GithubButton() {
-  // Placeholder for the upcoming "Connect to GitHub" flow.
+  useGithubReturnToast();
+  const { data: status } = useGithubStatus();
+  const disconnect = useDisconnectGithub();
+  const connected = status?.connected ?? false;
+
+  const trigger = (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      aria-label={
+        connected
+          ? `GitHub connected as ${status?.username}`
+          : "Connect GitHub"
+      }
+      onClick={connected ? undefined : startGithubConnect}
+      className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] text-[var(--silver-900)] transition-colors hover:border-[var(--silver-400)] hover:bg-[var(--space-overlay)]"
+    >
+      <GithubMark className="size-4.5" />
+      {connected && (
+        <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-[var(--space-void)] bg-green-500" />
+      )}
+    </motion.button>
+  );
+
+  // Not connected: a plain button that kicks off the OAuth consent flow.
+  if (!connected) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+        <TooltipContent>Connect GitHub</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Connected: a dropdown showing the linked account with a Disconnect action.
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label="Connect GitHub"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] text-[var(--silver-900)] transition-colors hover:border-[var(--silver-400)] hover:bg-[var(--space-overlay)]"
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-50 min-w-56 rounded-lg border border-silver-400/30 bg-space-surface p-1 text-left shadow-xl"
         >
-          <GithubMark className="size-4.5" />
-        </motion.button>
-      </TooltipTrigger>
-      <TooltipContent>Connect GitHub</TooltipContent>
-    </Tooltip>
+          <div className="px-3 py-2.5">
+            <p className="text-xs text-silver-600">GitHub connected as</p>
+            <p className="truncate text-sm font-medium text-silver-900">
+              {status?.username}
+            </p>
+          </div>
+          <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
+          <DropdownMenu.Item
+            onSelect={() => disconnect.mutate()}
+            disabled={disconnect.isPending}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay data-[disabled]:opacity-50"
+          >
+            <Unlink2Icon className="size-4" />
+            Disconnect
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 

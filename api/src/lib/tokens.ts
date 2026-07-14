@@ -114,6 +114,30 @@ export async function rotateRefreshToken(input: {
   return { user, tokens };
 }
 
+/**
+ * Resolve the user behind a refresh token WITHOUT rotating or revoking it.
+ *
+ * Used to authenticate a top-level browser navigation (e.g. the "Connect GitHub"
+ * start route), where the httpOnly refresh cookie is the only credential the
+ * browser sends — an Authorization: Bearer header can't ride a plain <a href>.
+ * Returns null for missing/revoked/expired tokens.
+ */
+export async function userFromRefreshToken(
+  rawToken: string,
+): Promise<User | null> {
+  const existing = await authRepository.findRefreshTokenByHash(
+    hashToken(rawToken),
+  );
+  if (
+    !existing ||
+    existing.revokedAt ||
+    existing.expiresAt.getTime() <= Date.now()
+  ) {
+    return null;
+  }
+  return authRepository.findUserById(existing.userId);
+}
+
 export async function revokeRefreshToken(rawToken: string): Promise<void> {
   const existing = await authRepository.findRefreshTokenByHash(
     hashToken(rawToken),

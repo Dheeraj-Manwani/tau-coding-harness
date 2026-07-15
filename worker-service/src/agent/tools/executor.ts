@@ -20,7 +20,11 @@ import { tailCommandOutput } from "./functions/tail-command-output";
 import { waitForPort } from "./functions/wait-for-port";
 import { checkSandbox } from "./functions/check-sandbox";
 import { webSearch } from "./functions/web-search";
-import { pushProjectToGithub } from "@/lib/github";
+import {
+  pushProjectToGithub,
+  createGithubIssue,
+  isPushMode,
+} from "@/lib/github";
 import { dispatchExplorer } from "./sub-agents/dispatch-explorer";
 import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
 import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
@@ -112,11 +116,25 @@ export async function executeTool(
     case "web_search":
       return webSearch(input);
     case "push_to_github": {
+      const { title, description, mode, branch } = (input ?? {}) as {
+        title?: unknown;
+        description?: unknown;
+        mode?: unknown;
+        branch?: unknown;
+      };
+      return pushProjectToGithub(projectId, userId, {
+        title: asString(title, "title"),
+        body: typeof description === "string" ? description : "",
+        ...(isPushMode(mode) ? { mode } : {}),
+        ...(typeof branch === "string" && branch.trim() ? { branch } : {}),
+      });
+    }
+    case "create_github_issue": {
       const { title, description } = (input ?? {}) as {
         title?: unknown;
         description?: unknown;
       };
-      return pushProjectToGithub(projectId, userId, {
+      return createGithubIssue(projectId, userId, {
         title: asString(title, "title"),
         body: typeof description === "string" ? description : "",
       });

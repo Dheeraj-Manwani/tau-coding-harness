@@ -384,7 +384,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "push_to_github",
       description:
-        "Push the project's current files to the user's connected GitHub account and open a pull request. Creates the repository automatically on the first push. Use this when the user asks to push, save, publish, or commit the project to GitHub, or to open a PR. Does not require a sandbox — it commits the stored project files. If it returns a 'not connected' error, tell the user to click the GitHub button on the project page to connect their account first. The returned pull request URL is shown to the user.",
+        "Push the project's current files to the user's connected GitHub account. Creates the repository automatically on the first push. Use this when the user asks to push, save, publish, or commit the project to GitHub, or to open a pull request. Does not require a sandbox — it commits the stored project files. If it returns a 'not connected' error, tell the user to click the GitHub button on the project page to connect their account first. The returned link is shown to the user.",
       parameters: {
         type: "object",
         properties: {
@@ -397,6 +397,41 @@ export const TOOL_DEFINITIONS = [
             type: "string",
             description:
               "Optional longer description of the changes for the pull request body.",
+          },
+          branch: {
+            type: "string",
+            description:
+              "Branch name for this change, related to the request — lowercase words separated by hyphens, e.g. 'add-checkout-flow' or 'fix-login-redirect'. It is namespaced under 'tau/' automatically. Used when opening a new pull request (mode 'new_pr'); ignored for 'update_pr' and 'direct'. Omit to auto-generate one from the title.",
+          },
+          mode: {
+            type: "string",
+            enum: ["new_pr", "update_pr", "direct"],
+            description:
+              "How to push. 'new_pr' (default): a fresh branch + new pull request. 'update_pr': add the commit to the existing Tau branch and its open PR (use for follow-up pushes so PRs don't pile up). 'direct': commit straight to the default branch with no PR. Omit to use the project's configured default.",
+          },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_github_issue",
+      description:
+        "Open a GitHub issue on the project's linked repository. Use this when the user asks to file/create an issue, or to track a bug or follow-up task you couldn't complete. The project must already be linked to a repo (push to GitHub first). Returns the issue URL, which is shown to the user.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Short issue title, e.g. 'Checkout total is wrong for discounted items'.",
+          },
+          description: {
+            type: "string",
+            description:
+              "Issue body in Markdown — what's wrong, steps to reproduce, or the task to do.",
           },
         },
         required: ["title"],

@@ -78,6 +78,14 @@ model Project {
   // "owner/repo" once the first GitHub push creates/links a repo; null before.
   githubRepo String?
 
+  githubDefaultBranch String?
+  githubVisibility    String?
+  lastPushedBranch    String?
+  lastPrUrl           String?
+  lastPrNumber        Int?
+  lastPushedSequence  Int?
+  githubPushMode      String  @default("new_pr") // new_pr | update_pr | direct
+
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages   Message[]
   jobs       Job[]

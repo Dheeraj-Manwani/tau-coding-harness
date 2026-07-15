@@ -45,7 +45,8 @@ export type ActionKind =
   | "dispatch_verifier"
   | "dispatch_implementer"
   | "web_search"
-  | "push_to_github";
+  | "push_to_github"
+  | "create_github_issue";
 
 export type TodoStatus = "pending" | "done" | "skipped" | "blocked";
 
@@ -207,6 +208,16 @@ function deriveActionItem(
       return {
         kind: "push_to_github",
         label: `Pushed to GitHub: ${truncateLabel(title, 50)}`,
+        meta: { prompt: description ? `${title}\n\n${description}` : title },
+        toolCallId,
+      };
+    }
+    case "create_github_issue": {
+      const title = String(input.title ?? "");
+      const description = String(input.description ?? "").trim();
+      return {
+        kind: "create_github_issue",
+        label: `Filed issue: ${truncateLabel(title, 50)}`,
         meta: { prompt: description ? `${title}\n\n${description}` : title },
         toolCallId,
       };

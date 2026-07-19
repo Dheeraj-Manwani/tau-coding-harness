@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/src/lib/api-client";
+import { projectGithubKeys } from "@/src/features/project/github";
 import type {
   AddMessageResponse,
   Effort,
@@ -12,6 +13,7 @@ import type {
   ProjectFileResponse,
   ProjectTree,
   RestartPreviewResponse,
+  SaveProjectFileResponse,
 } from "./types";
 
 export const projectKeys = {
@@ -164,5 +166,35 @@ export function useProjectFile(
     enabled: Boolean(projectId && path) && options.enabled,
     staleTime: Infinity,
     retry: false,
+  });
+}
+
+/**
+ * `PUT /project/:id/file` — persist a manual edit.
+ *
+ * `baseHash` is the hash the editor loaded; the server rejects with 409 if the
+ * file moved underneath it. On success we write straight into the file query's
+ * cache — with `staleTime: Infinity` it would otherwise never refetch and a tab
+ * round-trip would show pre-save content.
+ */
+export function useSaveProjectFile(projectId: string | undefined) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: { path: string; content: string; baseHash?: string }) =>
+      api
+        .put<SaveProjectFileResponse>(`/project/${projectId}/file`, vars)
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData<ProjectFileResponse>(
+        projectKeys.file(projectId ?? "", vars.path),
+        { content: vars.content, contentHash: data.contentHash },
+      );
+      // The GitHub panel derives "N changes since last push" from headSequence,
+      // which this save just bumped.
+      void qc.invalidateQueries({
+        queryKey: projectGithubKeys.info(projectId ?? ""),
+      });
+    },
   });
 }

@@ -8,6 +8,7 @@ import {
   deleteProject,
   getProjectTree,
   getProjectFile,
+  saveProjectFile,
   getPreviewStatus,
   restartPreview,
   submitJobAnswer,
@@ -24,6 +25,7 @@ router.post("/:projectId/message", addMessage);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
+router.put("/:projectId/file", saveProjectFile);
 router.get("/:projectId/preview/status", getPreviewStatus);
 router.post("/:projectId/preview/restart", restartPreview);
 router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);

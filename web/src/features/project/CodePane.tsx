@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { okaidia } from "react-syntax-highlighter/dist/esm/styles/prism";
-import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
-import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
-import jsx from "react-syntax-highlighter/dist/esm/languages/prism/jsx";
-import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
-import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
-import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
-import markup from "react-syntax-highlighter/dist/esm/languages/prism/markup";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CodeMirror, { EditorView, keymap } from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { css as cssLang } from "@codemirror/lang-css";
+import { json as jsonLang } from "@codemirror/lang-json";
+import { html as htmlLang } from "@codemirror/lang-html";
+import { oneDark } from "@codemirror/theme-one-dark";
 import { getIcon } from "material-file-icons";
 import {
   ChevronLeftIcon,
@@ -25,19 +22,15 @@ import {
   ContextMenuTrigger,
 } from "@/src/components/ui/context-menu";
 
-// Register the common web languages the agent emits (keeps the bundle small).
-SyntaxHighlighter.registerLanguage("tsx", tsx);
-SyntaxHighlighter.registerLanguage("typescript", typescript);
-SyntaxHighlighter.registerLanguage("jsx", jsx);
-SyntaxHighlighter.registerLanguage("javascript", javascript);
-SyntaxHighlighter.registerLanguage("json", json);
-SyntaxHighlighter.registerLanguage("css", css);
-SyntaxHighlighter.registerLanguage("markup", markup);
-
 import { cn } from "@/src/lib/utils";
 import { File, Folder, Tree } from "@/src/components/ui/file-tree";
-import { useProjectStore } from "@/src/stores/useProjectStore";
+import {
+  isFileDirty,
+  useProjectStore,
+  type ProjectFile as ProjectFileState,
+} from "@/src/stores/useProjectStore";
 import { useProjectFile } from "@/src/features/project/api";
+import { useFileSave } from "@/src/features/project/useFileSave";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
 
 /** Material (VS Code) file icon for a filename, sized to fit inline. */
@@ -65,15 +58,24 @@ function basename(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
-function languageFor(name: string): string {
-  if (name.endsWith(".tsx")) return "tsx";
-  if (name.endsWith(".ts")) return "typescript";
-  if (name.endsWith(".jsx")) return "jsx";
-  if (name.endsWith(".js") || name.endsWith(".mjs")) return "javascript";
-  if (name.endsWith(".json")) return "json";
-  if (name.endsWith(".css")) return "css";
-  if (name.endsWith(".html") || name.endsWith(".svg")) return "markup";
-  return "text";
+/**
+ * CodeMirror language extensions for the file types the agent emits.
+ *
+ * Note these are *syntax* modes only — there is deliberately no TypeScript
+ * language service here. Type definitions live in the sandbox's node_modules,
+ * which is excluded from the file manifest (`seedTemplateFiles`), so semantic
+ * analysis in the browser would flag every third-party import as unresolved.
+ * See doc/USER_CODE_EDITING.md §3.
+ */
+function languageFor(name: string) {
+  if (name.endsWith(".tsx")) return [javascript({ typescript: true, jsx: true })];
+  if (name.endsWith(".ts")) return [javascript({ typescript: true })];
+  if (name.endsWith(".jsx")) return [javascript({ jsx: true })];
+  if (name.endsWith(".js") || name.endsWith(".mjs")) return [javascript()];
+  if (name.endsWith(".json")) return [jsonLang()];
+  if (name.endsWith(".css")) return [cssLang()];
+  if (name.endsWith(".html") || name.endsWith(".svg")) return [htmlLang()];
+  return [];
 }
 
 // ── Dynamic file tree ───────────────────────────────────────────────────────
@@ -244,6 +246,13 @@ function TabBar() {
                 >
                   <MaterialIcon name={name} className="size-3.5" />
                   <span className="whitespace-nowrap">{name}</span>
+                  {isFileDirty(files[id]) && (
+                    <span
+                      aria-label="Unsaved changes"
+                      title="Unsaved changes"
+                      className="size-1.5 shrink-0 rounded-full bg-[var(--silver-600)] group-hover/tab:hidden"
+                    />
+                  )}
                   <button
                     type="button"
                     aria-label={`Close ${name}`}
@@ -251,7 +260,10 @@ function TabBar() {
                       e.stopPropagation();
                       closeFile(id);
                     }}
-                    className="flex size-4 items-center justify-center rounded-[var(--radius-sm)] opacity-0 transition-opacity group-hover/tab:opacity-100 hover:bg-[var(--space-void)]"
+                    className={cn(
+                      "flex size-4 items-center justify-center rounded-[var(--radius-sm)] opacity-0 transition-opacity group-hover/tab:opacity-100 hover:bg-[var(--space-void)]",
+                      isFileDirty(files[id]) && "group-hover/tab:opacity-100",
+                    )}
                   >
                     <XIcon className="size-3" />
                   </button>
@@ -304,12 +316,42 @@ function TabBar() {
   );
 }
 
+/** Status line under the editor: why you can't type, or what the save is doing. */
+function EditorStatus({
+  file,
+  isBuilding,
+}: {
+  file: ProjectFileState;
+  isBuilding: boolean;
+}) {
+  if (isBuilding) {
+    return (
+      <span className="text-[var(--silver-600)]">
+        Editing is paused while tau is building
+      </span>
+    );
+  }
+  if (file.saveError) {
+    return <span className="text-[var(--danger, #f87171)]">{file.saveError}</span>;
+  }
+  if (file.saving) return <span className="text-[var(--silver-600)]">Saving…</span>;
+  if (isFileDirty(file))
+    return <span className="text-[var(--silver-600)]">Unsaved changes</span>;
+  return <span className="text-[var(--silver-600)]">Saved</span>;
+}
+
 function CodeEditor() {
   const files = useProjectStore((s) => s.files);
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const projectId = useProjectStore((s) => s.projectId);
   const setFileContent = useProjectStore((s) => s.setFileContent);
+  const setFileDraft = useProjectStore((s) => s.setFileDraft);
+  // The agent writes these same files. Rather than race it, edits are blocked
+  // while a job is live — the api refuses them anyway (409).
+  const isBuilding = useProjectStore((s) => s.status === "streaming");
   const file = activeFileId ? files[activeFileId] : undefined;
+
+  const { flush, scheduleSave } = useFileSave(projectId ?? undefined);
 
   const needsLoad = file !== undefined && file.content === undefined;
   const {
@@ -322,9 +364,54 @@ function CodeEditor() {
 
   useEffect(() => {
     if (fetched !== undefined && activeFileId) {
-      setFileContent(activeFileId, fetched.content);
+      setFileContent(activeFileId, fetched.content, fetched.contentHash);
     }
   }, [fetched, activeFileId, setFileContent]);
+
+  // Flush a pending autosave when switching away from a dirty file, so edits
+  // can't sit unsaved behind a tab the user has moved on from.
+  const previousFileId = useRef(activeFileId);
+  useEffect(() => {
+    const previous = previousFileId.current;
+    if (previous && previous !== activeFileId) flush(previous);
+    previousFileId.current = activeFileId;
+  }, [activeFileId, flush]);
+
+  const handleChange = useCallback(
+    (value: string) => {
+      if (!activeFileId || isBuilding) return;
+      setFileDraft(activeFileId, value);
+      scheduleSave(activeFileId);
+    },
+    [activeFileId, isBuilding, setFileDraft, scheduleSave],
+  );
+
+  // Cmd/Ctrl+S saves now. Registered as a CodeMirror keybinding so it only
+  // applies with focus in the editor and the browser's own save dialog is
+  // suppressed.
+  const saveKeymap = useMemo(
+    () =>
+      keymap.of([
+        {
+          key: "Mod-s",
+          preventDefault: true,
+          run: () => {
+            if (activeFileId) flush(activeFileId);
+            return true;
+          },
+        },
+      ]),
+    [activeFileId, flush],
+  );
+
+  const extensions = useMemo(
+    () => [
+      ...languageFor(activeFileId ? basename(activeFileId) : ""),
+      saveKeymap,
+      EditorView.lineWrapping,
+    ],
+    [activeFileId, saveKeymap],
+  );
 
   if (!file) {
     return (
@@ -341,8 +428,9 @@ function CodeEditor() {
     );
   }
 
-  const name = basename(file.path);
-  const content = file.content ?? fetched?.content ?? "";
+  // The draft is the source of truth while the user is typing; fall back to the
+  // saved body, then to whatever the fetch just returned.
+  const value = file.draft ?? file.content ?? fetched?.content ?? "";
 
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">
@@ -356,37 +444,37 @@ function CodeEditor() {
           Could not load file contents.
         </div>
       ) : (
-        <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
-          <SyntaxHighlighter
-            language={languageFor(name)}
-            style={okaidia}
-            showLineNumbers
-            lineNumberStyle={{
-              minWidth: "2.5em",
-              paddingRight: "1em",
-              opacity: 0.5,
-              userSelect: "none",
-            }}
-            customStyle={{
-              margin: 0,
-              padding: "0.75rem 0",
-              fontSize: "13px",
-              minHeight: "100%",
-            }}
-            codeTagProps={{
-              style: {
-                fontFamily: "var(--mono)",
-                display: "block",
-                background: "transparent",
-                padding: 0,
-                borderRadius: 0,
-                whiteSpace: "pre",
-              },
-            }}
-          >
-            {content}
-          </SyntaxHighlighter>
-        </div>
+        <>
+          <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
+            <CodeMirror
+              // Remount on file switch so undo history doesn't leak across files.
+              key={activeFileId}
+              value={value}
+              theme={oneDark}
+              extensions={extensions}
+              editable={!isBuilding}
+              onChange={handleChange}
+              onBlur={() => activeFileId && flush(activeFileId)}
+              basicSetup={{ foldGutter: false, highlightActiveLine: !isBuilding }}
+              style={{ fontSize: "13px", fontFamily: "var(--mono)" }}
+              height="100%"
+              className="h-full [&_.cm-editor]:h-full [&_.cm-gutters]:border-none"
+            />
+          </div>
+          <div className="flex shrink-0 items-center justify-between border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-1 text-[11px]">
+            <EditorStatus file={file} isBuilding={isBuilding} />
+            {!isBuilding && isFileDirty(file) && !file.saving && (
+              <button
+                type="button"
+                onClick={() => flush(file.path)}
+                className="text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
+              >
+                Save
+                <span className="ml-1 opacity-60">⌘S</span>
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

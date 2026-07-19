@@ -57,6 +57,40 @@ export function blobExists(
   return objectExists(blobKey(userId, projectId, hash));
 }
 
+export interface PutBlobResult {
+  key: string;
+  /** true when the blob already existed and no PUT was performed. */
+  skipped: boolean;
+}
+
+/**
+ * Content-addressed blob upload. Mirrors `worker-service/src/lib/s3.ts:putBlob`
+ * — keep the two in sync (see OVERVIEW.md #7, duplicated libs).
+ */
+export async function putBlob(
+  userId: string,
+  projectId: string,
+  hash: string,
+  body: string | Uint8Array,
+): Promise<PutBlobResult> {
+  const key = blobKey(userId, projectId, hash);
+
+  if (await objectExists(key)) {
+    return { key, skipped: true };
+  }
+
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: "application/octet-stream",
+    }),
+  );
+
+  return { key, skipped: false };
+}
+
 export async function getBlob(
   userId: string,
   projectId: string,

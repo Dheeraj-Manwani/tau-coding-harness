@@ -172,6 +172,33 @@ interface StoredToolResult {
   content: string;
 }
 
+/** Content of a hidden USER_EDIT row — a manual edit the user made in the code
+ *  editor. Written by the api (`saveProjectFile`). See doc/USER_CODE_EDITING.md. */
+interface StoredUserEdit {
+  path: string;
+  diff: string;
+  truncated: boolean;
+  linesAdded: number;
+  linesRemoved: number;
+}
+
+/**
+ * Render a hidden USER_EDIT row as a user-role turn.
+ *
+ * The user's edit is already applied to the file — this is a notification, not
+ * a request, and the prompt says so explicitly to stop the model "helpfully"
+ * re-applying or reverting it. We send the diff rather than the content because
+ * the model can always `read_file` the live sandbox for bytes; what it can't do
+ * is notice that something moved.
+ */
+function userEditPrompt(edit: StoredUserEdit): string {
+  const stat = `+${edit.linesAdded}/-${edit.linesRemoved}`;
+  if (edit.truncated) {
+    return `[The user manually edited ${edit.path} in the code editor (${stat} lines). This is not a request — the change is already applied to the file. The diff was too large to include in full; re-read the file before relying on your memory of it.]\n\n${edit.diff}`;
+  }
+  return `[The user manually edited ${edit.path} in the code editor (${stat} lines). This is not a request — the change is already applied to the file. Unified diff:]\n\n${edit.diff}`;
+}
+
 function balanceToolResults(entries: Entry[]): Entry[] {
   const out: Entry[] = [];
   for (let i = 0; i < entries.length; i++) {
@@ -273,6 +300,16 @@ async function loadHistory(projectId: string): Promise<Entry[]> {
           role: "user",
           content:
             row.content as unknown as OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"],
+        },
+        seq: row.sequence,
+      });
+    } else if (row.type === MessageType.USER_EDIT) {
+      // Hidden row: the model sees it, the chat transcript doesn't (web's
+      // toConversation has no branch for this type). doc/USER_CODE_EDITING.md.
+      entries.push({
+        param: {
+          role: "user",
+          content: userEditPrompt(row.content as unknown as StoredUserEdit),
         },
         seq: row.sequence,
       });

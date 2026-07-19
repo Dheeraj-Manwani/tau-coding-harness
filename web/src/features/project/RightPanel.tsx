@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   CodeIcon,
@@ -26,9 +26,10 @@ import {
   type Tab,
 } from "@/src/stores/useProjectStore";
 import { PreviewPane } from "@/src/features/project/PreviewPane";
+import { previewSrc } from "@/src/features/project/previewUrl";
 
-// Lazy so the editor's heavy deps (syntax highlighter + file icons) only load
-// when the Code tab is first opened, not on initial project render.
+// Lazy so the editor's heavy deps (CodeMirror + file icons) only load when the
+// Code tab is first opened, not on initial project render.
 const CodePane = lazy(() =>
   import("@/src/features/project/CodePane").then((m) => ({
     default: m.CodePane,
@@ -119,8 +120,23 @@ function DeviceSwitcher() {
 
 function UrlBar() {
   const previewUrl = useProjectStore((s) => s.previewUrl);
+  const previewPath = useProjectStore((s) => s.previewPath);
   const reloadPreview = useProjectStore((s) => s.reloadPreview);
+  const setPreviewPath = useProjectStore((s) => s.setPreviewPath);
   const hasUrl = Boolean(previewUrl);
+
+  // While the user is typing, the input shows their draft; the committed path
+  // is only replaced on Enter. `null` means "not editing — show the real path".
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? previewPath;
+
+  const fullUrl = previewSrc(previewUrl, previewPath);
+
+  const commit = () => {
+    if (!hasUrl) return;
+    setPreviewPath(value);
+    setDraft(null);
+  };
 
   return (
     <motion.div
@@ -130,38 +146,58 @@ function UrlBar() {
       transition={{ duration: 0.15 }}
       className="flex flex-1 items-center gap-2"
     >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ rotate: 180 }}
+            disabled={!hasUrl}
+            onClick={() => hasUrl && reloadPreview()}
+            aria-label="Reload preview"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RotateCwIcon className="size-3.5" />
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent>Reload preview</TooltipContent>
+      </Tooltip>
+
       <div className="relative flex flex-1 items-center">
         <input
-          readOnly
-          value={previewUrl ?? ""}
-          placeholder="No preview yet — tau will build one"
-          onClick={(e) => e.currentTarget.select()}
-          className="w-full cursor-default rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] py-1.5 pl-3 pr-8 text-xs text-[var(--silver-600)] focus:outline-none"
+          value={hasUrl ? value : ""}
+          disabled={!hasUrl}
+          spellCheck={false}
+          autoComplete="off"
+          // The origin is a generated sandbox hostname — not useful in the bar,
+          // but worth having on hover and for copy/paste.
+          title={fullUrl ?? undefined}
+          placeholder={hasUrl ? "/" : "No preview yet — tau will build one"}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              setDraft(null);
+              e.currentTarget.blur();
+            }
+          }}
+          // Abandon an uncommitted edit rather than leave the bar showing a path
+          // the preview was never sent to.
+          onBlur={() => setDraft(null)}
+          className="w-full rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] py-1.5 pl-3 pr-3 text-xs text-[var(--silver-900)] transition-colors placeholder:text-[var(--silver-600)] focus:border-[var(--blue-500)] focus:outline-none disabled:cursor-default disabled:text-[var(--silver-600)]"
         />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ rotate: 180 }}
-              disabled={!hasUrl}
-              onClick={() => hasUrl && reloadPreview()}
-              aria-label="Reload preview"
-              className="absolute right-1.5 flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--silver-600)] transition-colors hover:text-(--silver-900) disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <RotateCwIcon className="size-3.5" />
-            </motion.button>
-          </TooltipTrigger>
-          <TooltipContent>Reload preview</TooltipContent>
-        </Tooltip>
       </div>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.button
             type="button"
             whileHover={{ scale: 1.1 }}
             disabled={!hasUrl}
-            onClick={() => previewUrl && window.open(previewUrl, "_blank")}
+            onClick={() => fullUrl && window.open(fullUrl, "_blank")}
             aria-label="Open in new tab"
             className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
           >

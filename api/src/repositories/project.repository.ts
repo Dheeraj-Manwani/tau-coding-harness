@@ -6,7 +6,7 @@ import type {
   Job,
   Fragment,
 } from "../generated/prisma/client";
-import { JobStatus } from "../generated/prisma/enums";
+import { JobStatus, MessageType } from "../generated/prisma/enums";
 
 export function createProject(
   tx: Prisma.TransactionClient,
@@ -98,12 +98,25 @@ export function findActiveJob(
   });
 }
 
+/**
+ * Rows the chat transcript is built from.
+ *
+ * USER_EDIT rows are hidden by design — they exist only to tell the model about
+ * a manual edit (doc/USER_CODE_EDITING.md). Excluding them here rather than
+ * client-side matters for correctness, not just bytes: every feed query below is
+ * `take: limit`, so hidden rows would eat the page window and silently push real
+ * messages out of the transcript.
+ */
+const CHAT_MESSAGE_TYPES = {
+  type: { not: MessageType.USER_EDIT },
+} satisfies Prisma.MessageWhereInput;
+
 export async function findRecentMessages(
   projectId: string,
   limit: number,
 ): Promise<Message[]> {
   const rows = await prisma.message.findMany({
-    where: { projectId },
+    where: { projectId, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "desc" },
     take: limit,
   });
@@ -116,7 +129,7 @@ export async function findMessagesBefore(
   limit: number,
 ): Promise<{ messages: Message[]; hasMore: boolean }> {
   const rows = await prisma.message.findMany({
-    where: { projectId, sequence: { lt: beforeSequence } },
+    where: { projectId, sequence: { lt: beforeSequence }, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "desc" },
     take: limit + 1,
   });
@@ -130,7 +143,7 @@ export async function listMessages(
   opts: { cursor?: string; limit: number },
 ): Promise<{ messages: Message[]; nextCursor: string | null }> {
   const rows = await prisma.message.findMany({
-    where: { projectId },
+    where: { projectId, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "asc" },
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),

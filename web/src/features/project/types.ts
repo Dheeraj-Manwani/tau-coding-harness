@@ -103,6 +103,13 @@ export interface ProjectTree {
 /** `GET /project/:id/file?path=…` response. */
 export interface ProjectFileResponse {
   content: string;
+  /** Hash of the content served — echoed back on save for optimistic concurrency. */
+  contentHash: string;
+}
+
+export interface SaveProjectFileResponse {
+  contentHash: string;
+  headSequence: number;
 }
 
 // ── Live events (worker → Redis → ws-gateway) ───────────────────────────────

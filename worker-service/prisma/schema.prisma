@@ -118,6 +118,7 @@ enum MessageType {
   ERROR
   TOOL_REQ
   TOOL_RES
+  USER_EDIT
 }
 
 model Message {

@@ -37,6 +37,20 @@ export const projectFileQuerySchema = z.object({
   path: z.string().min(1, "path is required"),
 });
 
+const MAX_FILE_BYTES = 1_000_000;
+
+export const projectFileSaveSchema = z.object({
+  path: z.string().min(1, "path is required"),
+  content: z
+    .string()
+    .max(MAX_FILE_BYTES, "File is too large to save")
+    // The whole storage path assumes UTF-8 text (Buffer.byteLength(…, "utf-8"),
+    // getBlobText). Reject binary rather than corrupt it.
+    .refine((c) => !c.includes("\0"), "Binary files can't be edited"),
+  /** Hash of the content the editor loaded, for optimistic concurrency. */
+  baseHash: z.string().min(1).optional(),
+});
+
 export const jobIdParamSchema = z.object({
   projectId: z.uuid("Invalid project id"),
   jobId: z.uuid("Invalid job id"),

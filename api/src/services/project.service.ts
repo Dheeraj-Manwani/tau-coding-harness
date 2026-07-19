@@ -15,6 +15,12 @@ import {
 } from "../lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
 import { getBlobText, deleteProjectBlobs, presignGet } from "../lib/s3";
+import {
+  writeProjectFile,
+  buildEditDiff,
+  sha256Hex,
+  toWorkdirPath,
+} from "../lib/projectFiles";
 import { bus } from "../lib/bus";
 import {
   MessageRole,
@@ -438,6 +444,41 @@ export async function deleteProject(
   await projectRepo.deleteProject(projectId);
 }
 
+/**
+ * Resolve a file's current content, sandbox-first with an R2 fallback.
+ *
+ * The returned `contentHash` is the hash of the content actually served, which
+ * is NOT always the manifest's `contentHash`: a `run_command` that rewrites a
+ * file (a build step, `bun add` touching package.json) changes the sandbox
+ * without going through `persistFile`. Callers doing optimistic concurrency
+ * must therefore compare against *this* hash, resolved the same way, rather
+ * than against the manifest — otherwise a legitimately diverged sandbox would
+ * reject every save.
+ */
+async function readProjectFileContent(
+  project: { id: string; sandboxId: string | null; sandboxStatus: SandboxStatus },
+  userId: string,
+  filePath: string,
+): Promise<{ content: string; contentHash: string }> {
+  // Sandbox-first: return live content when sandbox is up.
+  if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      const content = await sandbox.files.read(toWorkdirPath(filePath));
+      return { content, contentHash: sha256Hex(content) };
+    } catch {
+      // Sandbox unreachable — fall through to R2 blob.
+    }
+  }
+
+  // R2 blob fallback via manifest hash.
+  const record = await projectRepo.findProjectFileRecord(project.id, filePath);
+  if (!record) throw Errors.notFound("File not found");
+
+  const content = await getBlobText(userId, project.id, record.contentHash);
+  return { content, contentHash: record.contentHash };
+}
+
 export async function getProjectFile(
   projectId: string,
   userId: string,
@@ -449,25 +490,183 @@ export async function getProjectFile(
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  // Sandbox-first: return live content when sandbox is up.
-  const WORK_DIR = "/home/user/app";
-  if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
-    try {
-      const sandbox = await Sandbox.connect(project.sandboxId);
-      const absPath = filePath.startsWith("/")
-        ? filePath
-        : `${WORK_DIR}/${filePath}`;
-      const content = await sandbox.files.read(absPath);
-      return { content };
-    } catch {
-      // Sandbox unreachable — fall through to R2 blob.
-    }
+  return readProjectFileContent(project, userId, filePath);
+}
+
+/** Max source-file size accepted from the editor. */
+const MAX_EDIT_BYTES = 1_000_000;
+
+/**
+ * Persist a manual edit the user made in the code editor.
+ *
+ * Writes the live sandbox (best-effort) + R2 + the ProjectFile manifest, and
+ * records a hidden USER_EDIT message so the agent learns about the change on
+ * its next turn without the edit appearing in the chat transcript.
+ *
+ * See doc/USER_CODE_EDITING.md.
+ */
+export async function saveProjectFile(
+  projectId: string,
+  userId: string,
+  filePath: string,
+  content: string,
+  baseHash?: string,
+) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
   }
 
-  // R2 blob fallback via manifest hash.
+  // The agent writes these same files. Rather than race it, refuse while a job
+  // is live — mirrors addMessage's "generation in progress" conflict.
+  const active = await projectRepo.findActiveJob(projectId);
+  if (active) throw Errors.conflict("generation in progress");
+
+  // v1 edits existing files only; creating/renaming from the editor is not
+  // supported, so the path must already be in the manifest.
   const record = await projectRepo.findProjectFileRecord(projectId, filePath);
   if (!record) throw Errors.notFound("File not found");
 
-  const content = await getBlobText(userId, projectId, record.contentHash);
-  return { content };
+  if (Buffer.byteLength(content, "utf-8") > MAX_EDIT_BYTES) {
+    throw Errors.badRequest("File is too large to save");
+  }
+  if (content.includes("\0")) {
+    throw Errors.badRequest("Binary files can't be edited");
+  }
+
+  const before = await readProjectFileContent(project, userId, filePath);
+
+  if (baseHash && baseHash !== before.contentHash) {
+    throw Errors.conflict("file changed since it was opened");
+  }
+
+  if (before.contentHash === sha256Hex(content)) {
+    return { contentHash: before.contentHash, headSequence: project.headSequence };
+  }
+
+  // Sandbox first: it's what readProjectFileContent serves back, so writing it
+  // before the manifest means a read-after-write can't show stale content. A
+  // failure here is not fatal — R2 + the manifest are the durable truth and the
+  // next provisionSandbox rehydrates from them.
+  if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      await sandbox.files.write(toWorkdirPath(filePath), content);
+    } catch (err) {
+      console.warn(
+        `[projectFile] sandbox write failed for ${projectId}:${filePath}`,
+        err,
+      );
+    }
+  }
+
+  const result = await writeProjectFile(
+    projectId,
+    userId,
+    filePath,
+    content,
+    {
+      inTransaction: (tx) =>
+        recordUserEdit(tx, {
+          projectId,
+          userId,
+          filePath,
+          before: before.content,
+          beforeHash: before.contentHash,
+          after: content,
+        }),
+    },
+  );
+
+  return {
+    contentHash: result.contentHash,
+    headSequence: result.headSequence ?? project.headSequence,
+  };
+}
+
+/**
+ * Write (or coalesce into) the hidden USER_EDIT message for an edit.
+ *
+ * Consecutive saves to the same file with nothing else in between collapse into
+ * a single row, re-diffed against the *original* base so the model sees one
+ * coherent change rather than a save-by-save replay. Coalescing is skipped when
+ * the original base content can't be recovered from R2.
+ */
+async function recordUserEdit(
+  tx: Prisma.TransactionClient,
+  args: {
+    projectId: string;
+    userId: string;
+    filePath: string;
+    before: string;
+    beforeHash: string;
+    after: string;
+  },
+): Promise<void> {
+  const { projectId, userId, filePath, before, beforeHash, after } = args;
+
+  const latest = await tx.message.findFirst({
+    where: { projectId },
+    orderBy: { sequence: "desc" },
+    select: { id: true, type: true, content: true },
+  });
+
+  const prior =
+    latest?.type === MessageType.USER_EDIT
+      ? (latest.content as unknown as StoredUserEdit)
+      : null;
+
+  if (prior && prior.path === filePath) {
+    // Re-diff from the run's original base so the row stays a single change.
+    const base = await recoverBaseContent(userId, projectId, prior.baseHash);
+    if (base !== null) {
+      const diff = buildEditDiff(filePath, base, after);
+      await tx.message.update({
+        where: { id: latest!.id },
+        data: {
+          content: {
+            path: filePath,
+            baseHash: prior.baseHash,
+            ...diff,
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
+      return;
+    }
+  }
+
+  const diff = buildEditDiff(filePath, before, after);
+  const sequence = await getNextSequence(tx, projectId);
+  await projectRepo.createMessage(tx, {
+    projectId,
+    role: MessageRole.USER,
+    type: MessageType.USER_EDIT,
+    content: { path: filePath, baseHash: beforeHash, ...diff },
+    sequence,
+  });
+}
+
+interface StoredUserEdit {
+  path: string;
+  baseHash: string;
+  diff: string;
+  truncated: boolean;
+  linesAdded: number;
+  linesRemoved: number;
+}
+
+/** Blobs are content-addressed and immutable, so a base hash is enough to get
+ *  the exact bytes back — unless it was never blobbed (a sandbox-only version,
+ *  e.g. a file a build step rewrote). Returns null in that case. */
+async function recoverBaseContent(
+  userId: string,
+  projectId: string,
+  hash: string,
+): Promise<string | null> {
+  try {
+    return await getBlobText(userId, projectId, hash);
+  } catch {
+    return null;
+  }
 }

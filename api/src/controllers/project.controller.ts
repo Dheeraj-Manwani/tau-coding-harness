@@ -6,6 +6,7 @@ import {
   listMessagesQuerySchema,
   listProjectsQuerySchema,
   projectFileQuerySchema,
+  projectFileSaveSchema,
   jobIdParamSchema,
   jobAnswerSchema,
 } from "../schemas/project.schema";
@@ -158,6 +159,28 @@ export const getProjectFile = async (
     const { projectId } = parse(projectIdParamSchema, req.params);
     const { path } = parse(projectFileQuerySchema, req.query);
     const result = await projectService.getProjectFile(projectId, userId, path);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const saveProjectFile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { path, content, baseHash } = parse(projectFileSaveSchema, req.body);
+    const result = await projectService.saveProjectFile(
+      projectId,
+      userId,
+      path,
+      content,
+      baseHash,
+    );
     res.status(200).json(result);
   } catch (err) {
     next(err);

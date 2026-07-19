@@ -10,6 +10,8 @@ import type {
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { billingKeys, type BalanceSummary } from "@/src/features/billing/api";
 import { queryClient } from "@/src/lib/query-client";
+import { sha256Hex } from "@/src/lib/hash";
+import { normalizePreviewPath } from "@/src/features/project/previewUrl";
 
 /** Pull the credit balance back from the server after a job settles. */
 function invalidateBalance(): void {
@@ -90,7 +92,23 @@ export type PreviewDevice = "mobile" | "tablet" | "desktop";
  *  `content` is absent for manifest-only entries; lazy-loaded on click. */
 export interface ProjectFile {
   path: string;
+  /** Last content known to be on the server. */
   content?: string;
+  /**
+   * Unsaved editor buffer. Lives in the store, not the editor component, so it
+   * survives switching tabs. `undefined` means "no local edits".
+   */
+  draft?: string;
+  /** Hash of `content` as the server served it — sent as `baseHash` on save so
+   *  a file that moved underneath us is rejected instead of clobbered. */
+  savedHash?: string;
+  saving?: boolean;
+  saveError?: string | null;
+}
+
+/** A file has unsaved edits when its draft diverges from the saved content. */
+export function isFileDirty(file: ProjectFile | undefined): boolean {
+  return file?.draft !== undefined && file.draft !== file.content;
 }
 
 /** Lifecycle of the project's active generation job. */
@@ -626,7 +644,12 @@ interface ProjectState {
   headSequence: number | null;
   /** Path of the file currently being written by the agent, or null. */
   writingPath: string | null;
+  /** Origin of the live sandbox (`https://<host>`), with no path component. */
   previewUrl: string | null;
+  /** Path the preview iframe is pointed at — what the URL bar shows and edits.
+   *  Cross-origin means we can't observe navigation *inside* the app, so this is
+   *  where we last sent it, not necessarily where it is now. */
+  previewPath: string;
   /** Bumped to force the preview iframe to remount (manual reload). */
   previewNonce: number;
 
@@ -654,7 +677,16 @@ interface ProjectState {
   /** Populate the file tree from the manifest (paths only, no bodies). */
   hydrateTree: (tree: ProjectTree) => void;
   /** Cache a lazily-loaded file body in the store. */
-  setFileContent: (path: string, content: string) => void;
+  setFileContent: (path: string, content: string, contentHash?: string) => void;
+  /** Record the user's in-progress edits to a file (see {@link isFileDirty}). */
+  setFileDraft: (path: string, draft: string) => void;
+  /** Mark a save in flight, so the tab can show progress and the editor can
+   *  avoid firing a second save for the same buffer. */
+  setFileSaving: (path: string, saving: boolean) => void;
+  /** Commit a successful save: the draft becomes the new server truth. */
+  markFileSaved: (path: string, content: string, contentHash: string) => void;
+  /** Surface a failed save; the draft is deliberately kept so nothing typed is lost. */
+  setFileSaveError: (path: string, error: string | null) => void;
   /** Begin streaming a job; optionally append the prompt as a user bubble. */
   startJob: (jobId: string, prompt?: string) => void;
   /** Begin streaming a preview-only restart job (drives the preview pane, no chat
@@ -681,6 +713,10 @@ interface ProjectState {
   setActiveTab: (tab: Tab) => void;
   /** Remount the preview iframe to reload the running app. */
   reloadPreview: () => void;
+  /** Point the preview at a path (`/`, `/home`, `/items?id=1`). Always remounts,
+   *  so re-entering the current path re-navigates instead of silently doing
+   *  nothing — matching what Enter in a browser address bar does. */
+  setPreviewPath: (path: string) => void;
   openFile: (id: string) => void;
   closeFile: (id: string) => void;
   closeOtherFiles: (id: string) => void;
@@ -711,6 +747,7 @@ const FRESH = {
   headSequence: null as number | null,
   writingPath: null as string | null,
   previewUrl: null,
+  previewPath: "/",
   previewNonce: 0,
   cancelStream: null,
   activeTab: "preview" as Tab,
@@ -832,9 +869,55 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { files, headSequence: tree.headSequence, buildStarted };
     }),
 
-  setFileContent: (path, content) =>
+  setFileContent: (path, content, contentHash) =>
     set((s) => ({
-      files: { ...s.files, [path]: { ...s.files[path], path, content } },
+      files: {
+        ...s.files,
+        [path]: { ...s.files[path], path, content, savedHash: contentHash },
+      },
+    })),
+
+  setFileDraft: (path, draft) =>
+    set((s) => ({
+      files: { ...s.files, [path]: { ...s.files[path], path, draft } },
+    })),
+
+  setFileSaving: (path, saving) =>
+    set((s) => ({
+      files: { ...s.files, [path]: { ...s.files[path], path, saving } },
+    })),
+
+  markFileSaved: (path, content, contentHash) =>
+    set((s) => {
+      const file = s.files[path];
+      // Keep the draft if the user kept typing while the save was in flight —
+      // dropping it would silently revert those keystrokes to the saved body.
+      const draft =
+        file?.draft !== undefined && file.draft !== content
+          ? file.draft
+          : undefined;
+      return {
+        files: {
+          ...s.files,
+          [path]: {
+            ...file,
+            path,
+            content,
+            savedHash: contentHash,
+            draft,
+            saving: false,
+            saveError: null,
+          },
+        },
+      };
+    }),
+
+  setFileSaveError: (path, error) =>
+    set((s) => ({
+      files: {
+        ...s.files,
+        [path]: { ...s.files[path], path, saving: false, saveError: error },
+      },
     })),
 
   startJob: (jobId, prompt) =>
@@ -887,7 +970,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       };
     }),
 
-  applyEvent: (event) => applyEvent(set, event),
+  applyEvent: (event) => applyEvent(set, get, event),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
   answerPendingQuestion: (answer) =>
@@ -901,6 +984,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setChatOpen: (isChatOpen) => set({ isChatOpen }),
   setActiveTab: (activeTab) => set({ activeTab }),
   reloadPreview: () => set((s) => ({ previewNonce: s.previewNonce + 1 })),
+
+  setPreviewPath: (path) =>
+    set((s) => ({
+      previewPath: normalizePreviewPath(path),
+      previewNonce: s.previewNonce + 1,
+    })),
 
   openFile: (id) =>
     set((s) => ({
@@ -948,6 +1037,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 type SetState = (
   partial: Partial<ProjectState> | ((s: ProjectState) => Partial<ProjectState>),
 ) => void;
+
+type GetState = () => ProjectState;
 
 /** Ensure there is a streaming assistant bubble to append text into. */
 function ensureStreamingBubble(s: ProjectState): {
@@ -1025,7 +1116,7 @@ function flushPendingActions(s: ProjectState): {
   };
 }
 
-function applyEvent(set: SetState, event: JobEvent): void {
+function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
   switch (event.type) {
     case "thinking":
       set({ isAiTyping: true, status: "streaming", activity: event.message });
@@ -1309,13 +1400,42 @@ function applyEvent(set: SetState, event: JobEvent): void {
       return;
     }
 
-    case "file_done":
+    case "file_done": {
       set(
         event.headSequence !== undefined
           ? { writingPath: null, headSequence: event.headSequence }
           : { writingPath: null },
       );
+
+      // The agent just replaced this file's body, so the `savedHash` we're
+      // holding describes content that no longer exists. Re-derive it from what
+      // streamed in (identical to what the server persisted) so a later edit
+      // still has a valid base to save against.
+      //
+      // Deliberately NOT done when the file has unsaved edits: that draft was
+      // written against the superseded body, and refreshing the base would let
+      // it save cleanly straight over the agent's work. Leaving the stale hash
+      // makes the save 409 instead, and the user is told to reopen the file.
+      const donePath = normalizePath(event.path);
+      const doneFile = get().files[donePath];
+      if (doneFile?.content !== undefined && !isFileDirty(doneFile)) {
+        const streamed = doneFile.content;
+        void sha256Hex(streamed).then((hash) => {
+          set((s) => {
+            const current = s.files[donePath];
+            // Bail if anything moved while we were hashing.
+            if (!current || current.content !== streamed) return s;
+            return {
+              files: {
+                ...s.files,
+                [donePath]: { ...current, savedHash: hash },
+              },
+            };
+          });
+        });
+      }
       return;
+    }
 
     case "file_delete": {
       const path = normalizePath(event.path);

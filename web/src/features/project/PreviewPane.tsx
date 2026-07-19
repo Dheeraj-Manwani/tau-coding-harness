@@ -9,6 +9,7 @@ import {
   usePreviewStatus,
   useRestartPreview,
 } from "@/src/features/project/api";
+import { previewSrc } from "@/src/features/project/previewUrl";
 
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
@@ -86,6 +87,7 @@ function PreviewStopped({
 
 export function PreviewPane({ device }: { device: string }) {
   const previewUrl = useProjectStore((s) => s.previewUrl);
+  const previewPath = useProjectStore((s) => s.previewPath);
   const previewNonce = useProjectStore((s) => s.previewNonce);
   const projectId = useProjectStore((s) => s.projectId);
   const status = useProjectStore((s) => s.status);
@@ -113,6 +115,8 @@ export function PreviewPane({ device }: { device: string }) {
   const isDown =
     Boolean(previewUrl) && !isStreaming && liveness.data?.alive === false;
 
+  const src = previewSrc(previewUrl, previewPath);
+
   const handleStart = () => {
     if (!projectId || starting) return;
     restart.mutate(undefined, {
@@ -134,10 +138,13 @@ export function PreviewPane({ device }: { device: string }) {
       >
         {starting || isDown ? (
           <PreviewStopped starting={starting} onStart={handleStart} />
-        ) : previewUrl ? (
+        ) : src ? (
           <iframe
+            // The nonce is bumped by both reload and any path change, so the
+            // frame remounts either way — re-entering the current path still
+            // re-navigates instead of being a no-op.
             key={`${previewUrl}-${previewNonce}`}
-            src={previewUrl}
+            src={src}
             title="App preview"
             className="h-full w-full border-0 bg-white"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"

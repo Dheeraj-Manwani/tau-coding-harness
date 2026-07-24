@@ -71,6 +71,19 @@ class InProcessBus {
     return () => void this.dispatches.off("job", handler);
   }
 
+  /**
+   * Remove every registered dispatch handler. The economy runner is the sole
+   * intended consumer of job dispatch, so it calls this before (re)registering.
+   * The bus is a process-global singleton that survives `bun --hot` reloads,
+   * but the runner module re-executes on every reload — without this sweep each
+   * reload would leave its previous handler registered and a single dispatched
+   * job would run once per accumulated handler (the model appears to "respond"
+   * several times over).
+   */
+  clearDispatchHandlers(): void {
+    this.dispatches.removeAllListeners("job");
+  }
+
   // ── roles 2 + 3: live events + replay buffer ──────────────────────────────
   emit(jobId: string, event: JobEvent): void {
     let buf = this.buffers.get(jobId);

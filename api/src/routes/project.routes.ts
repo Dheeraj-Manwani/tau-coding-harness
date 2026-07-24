@@ -12,6 +12,7 @@ import {
   getPreviewStatus,
   restartPreview,
   submitJobAnswer,
+  cancelAllJobs,
 } from "../controllers/project.controller";
 import * as github from "../controllers/githubProject.controller";
 
@@ -19,6 +20,9 @@ const router = Router();
 
 router.post("/", initializeProject);
 router.get("/", listProjects);
+// User-scoped, not project-scoped — declared before the `/:projectId` routes so
+// "jobs" is never captured as a projectId.
+router.post("/jobs/cancel-all", cancelAllJobs);
 router.get("/:projectId", getProject);
 router.get("/:projectId/messages", listMessages);
 router.post("/:projectId/message", addMessage);

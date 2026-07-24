@@ -151,6 +151,20 @@ export const submitJobAnswer = async (
   }
 };
 
+export const cancelAllJobs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const cancelled = await projectService.cancelAllActiveJobs(userId);
+    res.status(200).json({ cancelled });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getProjectFile = async (
   req: Request,
   res: Response,

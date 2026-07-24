@@ -74,6 +74,7 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
+import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
@@ -970,15 +971,15 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
           attachments.restore(sentAttachments);
           if (err instanceof ApiError && err.status === 402) {
             openOutOfCredits();
+          } else if (err instanceof ApiError && err.status === 429) {
+            showConcurrentJobLimitToast();
           } else {
             toast.error(
               err instanceof ApiError && err.status === 409
                 ? "A generation is already in progress."
-                : err instanceof ApiError && err.status === 429
-                  ? "You already have the maximum number of generations running. Wait for one to finish and try again."
-                  : err instanceof ApiError
-                    ? err.message
-                    : "Couldn't send your message",
+                : err instanceof ApiError
+                  ? err.message
+                  : "Couldn't send your message",
             );
           }
         },

@@ -172,8 +172,16 @@ async function markFailed(jobId: string, err: unknown): Promise<void> {
  * concurrency limit and one retry, replacing the BullMQ worker. No Redis, no
  * durability — a process restart drops queued/in-flight jobs (accepted
  * tradeoff, see doc/economy-deployment.md).
+ *
+ * Idempotent across `bun --hot` reloads: the `bus` is a process-global
+ * singleton that outlives this module, so any dispatch handler left over from a
+ * previous execution is swept before a fresh one is wired. Without this, each
+ * reload would accumulate another handler and a single dispatched job would run
+ * once per handler — the model appears to "respond" several times over.
  */
 export function startRunner(): void {
+  bus.clearDispatchHandlers();
+
   const MAX_ATTEMPTS = 2; // mirror BullMQ attempts: 2 (initial + 1 retry)
   const queue: DispatchPayload[] = [];
   const attempts = new Map<string, number>();

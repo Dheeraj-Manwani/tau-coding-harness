@@ -10,6 +10,7 @@ import {
   reserveInTx,
   ensureBillingAccount,
   lockAccount,
+  settle,
   InsufficientCreditsError,
   ConcurrentJobLimitError,
 } from "../lib/credits";
@@ -31,6 +32,8 @@ import {
   MessageRole,
   MessageType,
   JobType,
+  JobStatus,
+  HoldStatus,
   SandboxStatus,
   Plan,
 } from "../generated/prisma/enums";
@@ -532,6 +535,50 @@ export async function submitJobAnswer(
     throw Errors.conflict("Job is not waiting for a response");
 
   bus.pushUserResponse(jobId, answer);
+}
+
+/**
+ * Free every concurrent-job slot the user is holding.
+ *
+ * The {@link ConcurrentJobLimitError} 429 is gated on the count of ACTIVE credit
+ * holds — NOT on live jobs — so this targets the holds directly. A hold can
+ * outlive its job (the worker crashed mid-run, or a terminal frame never
+ * settled it), leaving phantom concurrency that no `bus.requestCancel` can clear
+ * because there is no running job to cancel. For each ACTIVE hold:
+ *   - if its job is still QUEUED/RUNNING, signal a cancel (as the single-job
+ *     stop button does) and let the worker flip the job to CANCELLED + settle
+ *     the hold;
+ *   - otherwise the hold is stuck behind an already-terminal job, so settle it
+ *     here so the slot frees immediately.
+ *
+ * Returns how many holds were freed so the caller can report whether anything
+ * was actually blocking.
+ */
+export async function cancelAllActiveJobs(userId: string): Promise<number> {
+  const holds = await prisma.creditHold.findMany({
+    where: { userId, status: HoldStatus.ACTIVE },
+    select: { jobId: true },
+  });
+  if (holds.length === 0) return 0;
+
+  const jobs = await prisma.job.findMany({
+    where: { id: { in: holds.map((h) => h.jobId) } },
+    select: { id: true, status: true },
+  });
+  const statusByJobId = new Map(jobs.map((j) => [j.id, j.status]));
+
+  for (const { jobId } of holds) {
+    const status = statusByJobId.get(jobId);
+    if (status === JobStatus.QUEUED || status === JobStatus.RUNNING) {
+      // Live job — the worker settles the hold as it tears the run down.
+      bus.requestCancel(jobId);
+    } else {
+      // Stuck hold (terminal or missing job) — settle directly. Idempotent, and
+      // pay-as-you-go means this only clears the concurrency slot, never refunds.
+      await settle(jobId);
+    }
+  }
+  return holds.length;
 }
 
 export async function deleteProject(

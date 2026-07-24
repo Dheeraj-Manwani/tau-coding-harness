@@ -81,6 +81,17 @@ export function useAddMessage(projectId: string) {
   });
 }
 
+/**
+ * `POST /project/jobs/cancel-all` — cancel every in-flight generation the user
+ * owns. Used by the concurrent-job-limit toast to free the blocked slot so the
+ * user can start a new generation without waiting for the running one to finish.
+ */
+export function cancelAllJobs(): Promise<{ cancelled: number }> {
+  return api
+    .post<{ cancelled: number }>("/project/jobs/cancel-all")
+    .then((r) => r.data);
+}
+
 /** `DELETE /project/:id` — permanently delete a project and all its data. */
 export function useDeleteProject() {
   const qc = useQueryClient();

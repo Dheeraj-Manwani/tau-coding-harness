@@ -13,6 +13,7 @@ import { MaxStarField } from "@/src/features/home/MaxStarField";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
+import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
 import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
@@ -125,9 +126,7 @@ function Home() {
           if (err instanceof ApiError && err.status === 402) {
             openOutOfCredits();
           } else if (err instanceof ApiError && err.status === 429) {
-            toast.error(
-              "You already have the maximum number of generations running. Wait for one to finish and try again.",
-            );
+            showConcurrentJobLimitToast();
           } else if (
             err instanceof ApiError &&
             err.message === "PROJECT_LIMIT_REACHED"

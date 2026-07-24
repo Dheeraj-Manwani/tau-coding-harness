@@ -7,6 +7,9 @@
 
 export type Effort = "LOW" | "HIGH" | "MAX";
 
+export type { MessageAttachment } from "@/src/features/composer/attachments/types";
+import type { MessageAttachment } from "@/src/features/composer/attachments/types";
+
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
  *  store — we keep it `unknown` here rather than over-specifying. */
@@ -17,6 +20,7 @@ export interface ProjectMessage {
   content: unknown;
   sequence: number;
   createdAt: string;
+  attachments?: MessageAttachment[];
 }
 
 export interface Fragment {

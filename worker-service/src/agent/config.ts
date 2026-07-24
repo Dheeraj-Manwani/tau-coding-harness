@@ -8,6 +8,16 @@ export const MAX_INTENT_NUDGES = 2;
 
 export const CONTEXT_WINDOW = env.MODEL_CONTEXT_WINDOW;
 export const CONTEXT_BUDGET = Math.max(CONTEXT_WINDOW * 0.6, 8_000);
+
+/** All models share a single context window. Kept model-keyed so call sites
+ *  don't change if a per-model window is ever reintroduced. */
+export function contextWindowForModel(_model: string): number {
+  return CONTEXT_WINDOW;
+}
+
+export function contextBudgetForModel(model: string): number {
+  return Math.max(contextWindowForModel(model) * 0.6, 8_000);
+}
 export const CONTEXT_COMPACT_RATIO = 0.6;
 export const CONTEXT_SUMMARIZE_RATIO = 0.75;
 export const CONTEXT_KEEP_TAIL_TOKENS = 24_000;
@@ -29,10 +39,19 @@ import {
   type TemplateKey,
 } from "../templates/registry";
 import { env } from "../lib/env";
+import { kimi } from "../lib/kimi";
 import type { Effort } from "../generated/prisma/enums";
 
+/**
+ * LOW → Deepseek flash, HIGH → Deepseek pro, MAX → Kimi K2.7 Code.
+ *
+ * MAX falls back to the Deepseek model when Kimi isn't configured — a missing
+ * key should degrade the top tier, not fail every job booked into it.
+ */
 export function modelForEffort(effort: Effort): string {
-  return effort === "LOW" ? env.DEEPSEEK_MODEL_FLASH : env.DEEPSEEK_MODEL;
+  if (effort === "LOW") return env.DEEPSEEK_MODEL_FLASH;
+  if (effort === "MAX" && kimi) return env.KIMI_MODEL_MAX;
+  return env.DEEPSEEK_MODEL;
 }
 
 /**

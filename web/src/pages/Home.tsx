@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { MaxStarField } from "@/src/features/home/MaxStarField";
@@ -50,8 +51,11 @@ function Home() {
   const [prompt, setPrompt] = useState("");
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
+  const attachments = useAttachments();
   const isSubmitting = initProject.isPending;
-  const showPlaceholder = prompt.length === 0;
+  // Otherwise the suggestion carousel animates over the chip rail.
+  const showPlaceholder =
+    prompt.length === 0 && attachments.attachments.length === 0;
   const reduceMotion = useReduceMotion();
 
   // Proactively surface the free-plan project cap instead of only failing on
@@ -91,7 +95,10 @@ function Home() {
 
   const submit = () => {
     const message = prompt.trim();
-    if (message.length === 0 || isSubmitting) return;
+    const attachmentIds = attachments.readyIds;
+    if ((message.length === 0 && attachmentIds.length === 0) || isSubmitting)
+      return;
+    if (attachments.isBusy) return;
     if (atProjectLimit) {
       toast.error(
         "You've reached the free plan limit of 3 projects. Delete one or upgrade to Pro to create more.",
@@ -103,9 +110,10 @@ function Home() {
     // route. The prompt + jobId ride along in router state so the workspace can
     // show the message and subscribe to the live stream immediately.
     initProject.mutate(
-      { message, effort },
+      { message, effort, attachmentIds },
       {
         onSuccess: ({ projectId, jobId }) => {
+          attachments.clear();
           // Flag this project so its page plays the centered → split reveal once.
           markFreshBuild(projectId);
           navigate(`/project/${projectId}`, {
@@ -178,6 +186,11 @@ function Home() {
                 disabled={atProjectLimit}
                 minRows={3}
                 maxRows={12}
+                attachments={attachments.attachments}
+                onAttach={(files) => attachments.addFiles(files, prompt)}
+                onRemoveAttachment={attachments.remove}
+                onPasteLarge={attachments.addPaste}
+                attachmentsBusy={attachments.isBusy}
                 rightSlot={
                   <EffortDropdown
                     effort={effort}

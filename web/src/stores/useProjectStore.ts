@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type {
   JobEvent,
+  MessageAttachment,
   ProjectCheckpoint,
   ProjectDetail,
   ProjectMessage,
@@ -83,6 +84,8 @@ export interface Message {
   /** Tool calls + thinking steps that produced this ai message. */
   actions?: ActionItem[];
   divider?: DividerMeta;
+  /** Attachments the user sent with this turn; rendered as read-only chips. */
+  attachments?: MessageAttachment[];
 }
 
 export type Tab = "preview" | "code";
@@ -118,8 +121,17 @@ export type JobStatus = "idle" | "streaming" | "done" | "error" | "cancelled";
 
 const now = () => Date.now();
 
-function userMessage(content: string): Message {
-  return { id: crypto.randomUUID(), role: "user", content, timestamp: now() };
+function userMessage(
+  content: string,
+  attachments?: MessageAttachment[],
+): Message {
+  return {
+    id: crypto.randomUUID(),
+    role: "user",
+    content,
+    timestamp: now(),
+    ...(attachments?.length ? { attachments } : {}),
+  };
 }
 
 function basename(path: string): string {
@@ -398,6 +410,23 @@ function dividerMessage(cp: ProjectCheckpoint): Message {
   };
 }
 
+/**
+ * Text the api generated for the model, which must never render as the user's
+ * chat bubble. Attachment blocks are self-identifying; the second entry is a
+ * placeholder that shipped briefly at index 0 before it was moved to the end,
+ * so messages written in that window still carry it. Recognising it here is
+ * cheaper and safer than rewriting stored conversation history.
+ */
+const LEGACY_EMPTY_MESSAGE_PLACEHOLDER =
+  "(no message — see the attached content below)";
+
+function isGeneratedBlock(text: string): boolean {
+  return (
+    text.startsWith("<attachment ") ||
+    text.trim() === LEGACY_EMPTY_MESSAGE_PLACEHOLDER
+  );
+}
+
 function toConversation(
   rows: ProjectMessage[],
   checkpoints: ProjectCheckpoint[] = [],
@@ -420,15 +449,22 @@ function toConversation(
 
     if (row.role === "USER" && row.type === "USER") {
       const blocks = row.content as { type?: string; text?: string }[] | string;
-      const text = Array.isArray(blocks)
-        ? blocks.map((b) => b?.text ?? "").join("")
+      // Only the first block is the user's own words — later ones are extracted
+      // attachment text, which would otherwise splice into their bubble. When
+      // the user sent attachments and typed nothing there is no such block, so
+      // whatever sits at index 0 is ours and must not render as their message.
+      const first = Array.isArray(blocks)
+        ? (blocks[0]?.text ?? "")
         : String(blocks ?? "");
-      if (text)
+      const text = isGeneratedBlock(first) ? "" : first;
+      const attachments = row.attachments ?? [];
+      if (text || attachments.length > 0)
         messages.push({
           id: row.id,
           role: "user",
           content: text,
           timestamp: ts,
+          ...(attachments.length > 0 ? { attachments } : {}),
         });
       turnStart = messages.length; // ai messages from here onward are this turn's response
     } else if (row.role === "ASSISTANT" && row.type === "TOOL_REQ") {
@@ -694,7 +730,12 @@ interface ProjectState {
   startPreviewJob: (jobId: string) => void;
   /** Append a user bubble immediately (optimistic, before the job id is known).
    *  Returns the generated message id so callers can remove it on failure. */
-  appendUserMessage: (content: string) => string;
+  /** Optimistic user turn. Pass `attachments` so an attachment-only send shows
+   *  its chips immediately instead of a bare timestamp until the next reload. */
+  appendUserMessage: (
+    content: string,
+    attachments?: MessageAttachment[],
+  ) => string;
   /** Remove a single chat bubble by id (used to roll back a failed optimistic send). */
   removeChatMessage: (id: string) => void;
   /** Prepend a batch of older messages loaded by scroll-up pagination. */
@@ -949,8 +990,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       currentPlan: null,
     }),
 
-  appendUserMessage: (content) => {
-    const msg = userMessage(content);
+  appendUserMessage: (content, attachments) => {
+    const msg = userMessage(content, attachments);
     set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
     return msg.id;
   },

@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { deepseek } from "../lib/deepseek";
+import { clientForModel } from "../lib/kimi";
 import { prisma } from "../lib/prisma";
 import { env } from "../lib/env";
 import { getNextSequence } from "../lib/sequence";
@@ -24,7 +24,7 @@ import {
   MAX_TOKENS,
   MAX_TRUNCATION_RETRIES,
   MAX_INTENT_NUDGES,
-  CONTEXT_BUDGET,
+  contextBudgetForModel,
   INTENT_TO_CONTINUE_RE,
   TRUNCATION_NUDGE,
   PREVIEW_PORT,
@@ -496,12 +496,14 @@ export async function runAgentLoop(
 
       const contextTokens =
         estimateTokensCalibrated(mgmt.ctx, calibration) + TOOL_SCHEMA_TOKENS;
+      const contextBudget = contextBudgetForModel(model);
       console.log(
         `[worker] job ${jobId} turn ${turn} context ≈${contextTokens} tokens ` +
-          `(budget ${CONTEXT_BUDGET}, ${((contextTokens / CONTEXT_BUDGET) * 100).toFixed(1)}%)`,
+          `(budget ${contextBudget}, ` +
+          `${((contextTokens / contextBudget) * 100).toFixed(1)}%)`,
       );
 
-      const stream = deepseek.chat.completions.stream({
+      const stream = clientForModel(model).chat.completions.stream({
         model,
         max_tokens: MAX_TOKENS,
         tools,

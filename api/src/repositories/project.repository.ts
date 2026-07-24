@@ -111,14 +111,45 @@ const CHAT_MESSAGE_TYPES = {
   type: { not: MessageType.USER_EDIT },
 } satisfies Prisma.MessageWhereInput;
 
+/** Enough to render a chip. `extractedText` is excluded on purpose — up to
+ *  500KB per paste that the bubble never shows; the modal fetches it on demand.
+ *  `preview` is the denormalised first 240 chars, which a paste chip DOES show. */
+const ATTACHMENT_SUMMARY = {
+  select: {
+    id: true,
+    kind: true,
+    status: true,
+    filename: true,
+    mimeType: true,
+    sizeBytes: true,
+    extractionError: true,
+    preview: true,
+  },
+  orderBy: { createdAt: "asc" },
+} satisfies Prisma.Message$attachmentsArgs;
+
+export type MessageWithAttachments = Message & {
+  attachments: {
+    id: string;
+    kind: string;
+    status: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    extractionError: string | null;
+    preview: string | null;
+  }[];
+};
+
 export async function findRecentMessages(
   projectId: string,
   limit: number,
-): Promise<Message[]> {
+): Promise<MessageWithAttachments[]> {
   const rows = await prisma.message.findMany({
     where: { projectId, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "desc" },
     take: limit,
+    include: { attachments: ATTACHMENT_SUMMARY },
   });
   return rows.reverse();
 }
@@ -127,11 +158,12 @@ export async function findMessagesBefore(
   projectId: string,
   beforeSequence: number,
   limit: number,
-): Promise<{ messages: Message[]; hasMore: boolean }> {
+): Promise<{ messages: MessageWithAttachments[]; hasMore: boolean }> {
   const rows = await prisma.message.findMany({
     where: { projectId, sequence: { lt: beforeSequence }, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "desc" },
     take: limit + 1,
+    include: { attachments: ATTACHMENT_SUMMARY },
   });
   const hasMore = rows.length > limit;
   const messages = (hasMore ? rows.slice(0, limit) : rows).reverse();
@@ -141,12 +173,13 @@ export async function findMessagesBefore(
 export async function listMessages(
   projectId: string,
   opts: { cursor?: string; limit: number },
-): Promise<{ messages: Message[]; nextCursor: string | null }> {
+): Promise<{ messages: MessageWithAttachments[]; nextCursor: string | null }> {
   const rows = await prisma.message.findMany({
     where: { projectId, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "asc" },
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    include: { attachments: ATTACHMENT_SUMMARY },
   });
 
   const hasMore = rows.length > opts.limit;

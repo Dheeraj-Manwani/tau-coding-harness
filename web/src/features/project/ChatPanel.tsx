@@ -51,6 +51,9 @@ import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
+import { MessageAttachmentRail } from "@/src/features/composer/attachments/AttachmentRail";
+import { toMessageAttachments } from "@/src/features/composer/attachments/chipModel";
 import {
   useProjectStore,
   type ActionItem,
@@ -464,35 +467,45 @@ function ChatBubble({
   }, [message.content]);
 
   if (message.role === "user") {
+    const attachments = message.attachments ?? [];
     const bubble = (
       <div className="flex flex-col items-end gap-1">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--space-overlay)] px-3.5 py-2 text-sm leading-relaxed text-[var(--silver-900)]">
-          <div
-            ref={contentRef}
-            style={
-              expanded
-                ? undefined
-                : {
-                    WebkitLineClamp: USER_MSG_LINE_CLAMP,
-                    display: "-webkit-box",
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }
-            }
-            className="whitespace-pre-wrap break-words"
-          >
-            {message.content}
+        {attachments.length > 0 && (
+          <div className="max-w-[85%]">
+            <MessageAttachmentRail attachments={attachments} />
           </div>
-          {(overflows || expanded) && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-1 text-[11px] text-[var(--blue-500)] hover:underline"
+        )}
+        {/* Attachment-only turns have no text of their own — render the chips
+            and the timestamp, but no empty bubble. */}
+        {message.content && (
+          <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--space-overlay)] px-3.5 py-2 text-sm leading-relaxed text-[var(--silver-900)]">
+            <div
+              ref={contentRef}
+              style={
+                expanded
+                  ? undefined
+                  : {
+                      WebkitLineClamp: USER_MSG_LINE_CLAMP,
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }
+              }
+              className="whitespace-pre-wrap break-words"
             >
-              {expanded ? "Show less" : "Show more"}
-            </button>
-          )}
-        </div>
+              {message.content}
+            </div>
+            {(overflows || expanded) && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-1 text-[11px] text-[var(--blue-500)] hover:underline"
+              >
+                {expanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </div>
+        )}
         <span className="px-1 text-[11px] text-[var(--silver-600)]">
           {formatRelativeTime(message.timestamp)}
         </span>
@@ -817,6 +830,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   };
 
   const [draft, setDraft] = useState("");
+  const attachments = useAttachments();
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -924,20 +938,36 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   };
 
   const canSend =
-    draft.trim().length > 0 && !isStreaming && !addMessage.isPending;
+    (draft.trim().length > 0 || attachments.attachments.length > 0) &&
+    !isStreaming &&
+    !addMessage.isPending &&
+    !attachments.isBusy;
 
   const submit = () => {
     const content = draft.trim();
-    if (!content || !projectId || isStreaming || addMessage.isPending) return;
+    const attachmentIds = attachments.readyIds;
+    if (
+      (!content && attachmentIds.length === 0) ||
+      !projectId ||
+      isStreaming ||
+      addMessage.isPending ||
+      attachments.isBusy
+    )
+      return;
 
-    const msgId = appendUserMessage(content);
+    // Snapshot for rollback — a failed send shouldn't eat the attachments.
+    const sentAttachments = attachments.attachments;
+    const msgId = appendUserMessage(content, toMessageAttachments(sentAttachments));
     setDraft("");
+    attachments.clear();
     addMessage.mutate(
-      { message: content, effort },
+      { message: content, effort, attachmentIds },
       {
         onSuccess: ({ jobId }) => startJob(jobId, content),
         onError: (err) => {
           removeChatMessage(msgId);
+          setDraft(content);
+          attachments.restore(sentAttachments);
           if (err instanceof ApiError && err.status === 402) {
             openOutOfCredits();
           } else {
@@ -1054,6 +1084,11 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             maxRows={4}
             isSubmitting={!canSend && draft.trim().length > 0}
             compact
+            attachments={attachments.attachments}
+            onAttach={(files) => attachments.addFiles(files, draft)}
+            onRemoveAttachment={attachments.remove}
+            onPasteLarge={attachments.addPaste}
+            attachmentsBusy={attachments.isBusy}
             rightSlot={
               <EffortDropdown
                 effort={effort}

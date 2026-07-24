@@ -49,3 +49,20 @@ Live streaming now rides the api origin over SSE, so **`VITE_WS_URL` is gone**.
 - **Boot-required env:** `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`,
   `GOOGLE_CLIENT_SECRET` are constructed at import and must be set (even though
   the schema marks them optional).
+- **Optional URL vars must be commented out, not left empty.** An empty string
+  fails zod's `.url()` (which `.optional()` doesn't rescue) and the api exits on
+  boot. Applies to `R2_PUBLIC_BASE_URL` and friends.
+- **`KIMI_API_KEY` degrades silently, it doesn't fail loudly.** Without it, MAX
+  effort quietly falls back to `DEEPSEEK_MODEL` and image/document attachments
+  record a per-attachment extraction failure. Both services read the same key
+  in combined mode. See `doc/PROMPT_ATTACHMENTS.md` and `doc/OVERVIEW.md`.
+- **Attachments need an R2 CORS rule** allowing `PUT` from `APP_URL` — uploads
+  go browser → R2 directly via presigned PUT. Without it the preflight 403s and
+  every upload fails. Apply `deploy/r2-cors.json` (edit the origins first):
+
+  ```
+  Cloudflare dashboard → R2 → your bucket → Settings → CORS Policy → Edit
+  ```
+
+  `AllowedHeaders` must include `content-type`, since the client sends it as an
+  unsigned header to set the stored object's type.

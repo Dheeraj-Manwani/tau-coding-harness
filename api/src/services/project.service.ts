@@ -23,6 +23,11 @@ import {
 } from "../lib/projectFiles";
 import { bus } from "../lib/bus";
 import {
+  attachmentBlock,
+  waitForExtraction,
+  type ResolvedAttachment,
+} from "../lib/attachments";
+import {
   MessageRole,
   MessageType,
   JobType,
@@ -74,8 +79,84 @@ async function generateProjectName(message: string): Promise<string> {
   }
 }
 
-function userMessageContent(text: string): Prisma.InputJsonValue {
-  return [{ type: "text", text }];
+/**
+ * Build the content-block array for a USER message. Attachment text is
+ * materialized in here rather than resolved later, which is what lets the
+ * worker's `loadHistory()` stay untouched — it hands `Message.content` straight
+ * to the completions API, so every block must be a valid content part.
+ *
+ * Call this BEFORE opening the write transaction; it can block for up to
+ * `EXTRACTION_WAIT_MS`.
+ */
+async function buildUserMessage(
+  userId: string,
+  text: string,
+  attachmentIds: string[],
+): Promise<{
+  content: Prisma.InputJsonValue;
+  resolved: ResolvedAttachment[];
+}> {
+  const blocks: { type: "text"; text: string }[] = [];
+  if (text.trim().length > 0) blocks.push({ type: "text", text });
+
+  if (attachmentIds.length === 0) {
+    return { content: blocks, resolved: [] };
+  }
+  if (attachmentIds.length > env.ATTACHMENT_MAX_PER_MESSAGE) {
+    throw Errors.badRequest("TOO_MANY_ATTACHMENTS");
+  }
+
+  let resolved: ResolvedAttachment[];
+  try {
+    resolved = await waitForExtraction(userId, attachmentIds);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "ATTACHMENT_NOT_FOUND") throw Errors.notFound(code);
+    if (code === "ATTACHMENT_FORBIDDEN") throw Errors.forbidden(code);
+    if (code === "ATTACHMENT_ALREADY_USED") throw Errors.conflict(code);
+    throw err;
+  }
+
+  for (const a of resolved) {
+    blocks.push({ type: "text", text: attachmentBlock(a) });
+  }
+
+  // Without this an attachment-only message reads as a bare document dump. It
+  // goes LAST on purpose: the transcript treats block 0 as the user's own
+  // words, so leading with it renders our instruction as their chat bubble.
+  if (blocks.length === resolved.length) {
+    blocks.push({
+      type: "text",
+      text: "The user sent the attached content without a message. Respond to it.",
+    });
+  }
+
+  return { content: blocks, resolved };
+}
+
+/** The `messageId: null` guard makes this a no-op if a concurrent request
+ *  claimed the attachments first. */
+async function linkAttachments(
+  tx: Prisma.TransactionClient,
+  attachmentIds: string[],
+  messageId: string,
+): Promise<void> {
+  if (attachmentIds.length === 0) return;
+  await tx.attachment.updateMany({
+    where: { id: { in: attachmentIds }, messageId: null },
+    data: { messageId },
+  });
+}
+
+/** Job.prompt is informational — the loop reads history, not this — but it
+ *  shows up in logs, so keep it honest about what was sent. */
+function promptWithAttachments(
+  text: string,
+  resolved: ResolvedAttachment[],
+): string {
+  if (resolved.length === 0) return text;
+  const names = resolved.map((a) => a.filename).join(", ");
+  return text.trim().length > 0 ? `${text}\n\n[Attached: ${names}]` : `[Attached: ${names}]`;
 }
 
 export interface InitializeProjectResult {
@@ -87,8 +168,20 @@ export async function initializeProject(
   userId: string,
   message: string,
   effort: Effort,
+  attachmentIds: string[] = [],
 ): Promise<InitializeProjectResult> {
-  const name = await generateProjectName(message);
+  // Before the transaction — this can block on extraction. When the user sent
+  // an image with no words, name off the extracted text instead.
+  const { content, resolved } = await buildUserMessage(
+    userId,
+    message,
+    attachmentIds,
+  );
+  const name = await generateProjectName(
+    message.trim().length > 0
+      ? message
+      : (resolved[0]?.extractedText?.slice(0, 2_000) ?? message),
+  );
 
   const { projectId, jobId } = await prisma.$transaction(async (tx) => {
     const account = await ensureBillingAccount(userId, tx);
@@ -107,7 +200,7 @@ export async function initializeProject(
 
     const job = await projectRepo.createJob(tx, {
       projectId: project.id,
-      prompt: message,
+      prompt: promptWithAttachments(message, resolved),
       type: JobType.GENERATION,
       effort,
     });
@@ -130,13 +223,14 @@ export async function initializeProject(
     }
 
     const sequence = await getNextSequence(tx, project.id);
-    await projectRepo.createMessage(tx, {
+    const userMessage = await projectRepo.createMessage(tx, {
       projectId: project.id,
       role: MessageRole.USER,
       type: MessageType.USER,
-      content: userMessageContent(message),
+      content,
       sequence,
     });
+    await linkAttachments(tx, attachmentIds, userMessage.id);
 
     return { projectId: project.id, jobId: job.id };
   });
@@ -145,7 +239,7 @@ export async function initializeProject(
     jobId,
     projectId,
     userId,
-    prompt: message,
+    prompt: promptWithAttachments(message, resolved),
     effort,
   });
   await projectRepo.setJobQueueId(jobId, queueJobId);
@@ -160,14 +254,23 @@ export interface AddMessageResult {
 export async function addMessage(
   projectId: string,
   userId: string,
-  content: string,
+  text: string,
   effort: Effort,
+  attachmentIds: string[] = [],
 ): Promise<AddMessageResult> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
   if (project.userId !== userId) {
     throw Errors.forbidden("You do not have access to this project");
   }
+
+  // Before the transaction — this can block on an in-flight extraction.
+  const { content, resolved } = await buildUserMessage(
+    userId,
+    text,
+    attachmentIds,
+  );
+  const prompt = promptWithAttachments(text, resolved);
 
   const jobId = await prisma.$transaction(
     async (tx) => {
@@ -176,7 +279,7 @@ export async function addMessage(
 
       const job = await projectRepo.createJob(tx, {
         projectId,
-        prompt: content,
+        prompt,
         type: JobType.GENERATION,
         effort,
       });
@@ -199,13 +302,14 @@ export async function addMessage(
       }
 
       const sequence = await getNextSequence(tx, projectId);
-      await projectRepo.createMessage(tx, {
+      const userMessage = await projectRepo.createMessage(tx, {
         projectId,
         role: MessageRole.USER,
         type: MessageType.USER,
-        content: userMessageContent(content),
+        content,
         sequence,
       });
+      await linkAttachments(tx, attachmentIds, userMessage.id);
 
       return job.id;
     },
@@ -216,7 +320,7 @@ export async function addMessage(
     jobId,
     projectId,
     userId,
-    prompt: content,
+    prompt,
     effort,
   });
   await projectRepo.setJobQueueId(jobId, queueJobId);

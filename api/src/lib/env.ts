@@ -31,6 +31,26 @@ const envSchema = z.object({
   DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   DEEPSEEK_MODEL: z.string().default("deepseek-v4-pro"),
 
+  KIMI_API_KEY: z.string().optional(),
+  KIMI_BASE_URL: z.string().url().default("https://api.moonshot.ai/v1"),
+  KIMI_EXTRACT_MODEL: z.string().default("kimi-k2.6"),
+
+  ATTACHMENTS_ENABLED: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
+  ATTACHMENT_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 1024 * 1024),
+  ATTACHMENT_MAX_IMAGE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
+  ATTACHMENT_MAX_PER_MESSAGE: z.coerce.number().int().positive().default(5),
+
   // Google OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
@@ -75,7 +95,7 @@ const envSchema = z.object({
   // Admin API key
   ADMIN_API_KEY: z.string().optional(),
   // Maximum simultaneous active jobs per user enforced at reserve time (0 = no cap).
-  CREDITS_MAX_CONCURRENT_JOBS: z.coerce.number().int().nonnegative().default(3),
+  CREDITS_MAX_CONCURRENT_JOBS: z.coerce.number().int().nonnegative().default(1),
 
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),

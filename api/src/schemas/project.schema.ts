@@ -6,17 +6,22 @@ const MAX_NAME = 100;
 const messageContent = z
   .string()
   .trim()
-  .min(1, "Message can't be empty")
   .max(MAX_PROMPT, `Message must be at most ${MAX_PROMPT} characters`);
 
 export const messageRole = z.enum(["USER", "ASSISTANT"]);
 export const messageType = z.enum(["RESULT", "ERROR"]);
 export const effortSchema = z.enum(["LOW", "HIGH", "MAX"]).default("LOW");
 
-export const messageSchema = z.object({
-  message: messageContent,
-  effort: effortSchema,
-});
+export const messageSchema = z
+  .object({
+    message: messageContent,
+    effort: effortSchema,
+    attachmentIds: z.array(z.uuid()).max(10).default([]),
+  })
+  .refine((v) => v.message.length > 0 || v.attachmentIds.length > 0, {
+    message: "Message can't be empty",
+    path: ["message"],
+  });
 
 export const projectIdParamSchema = z.object({
   projectId: z.uuid("Invalid project id"),

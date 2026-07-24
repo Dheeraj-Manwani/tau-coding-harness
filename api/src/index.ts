@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import passport from "passport";
 import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
+import attachmentRoutes from "./routes/attachment.routes";
 import creditsRoutes from "./routes/credits.routes";
 import adminRoutes from "./routes/admin.routes";
 import billingRoutes from "./routes/billing.routes";
@@ -14,6 +15,7 @@ import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
 import { sweepStuckHolds } from "./lib/credits";
+import { sweepAttachments } from "./services/attachment.service";
 
 async function runSweep(): Promise<void> {
   try {
@@ -33,6 +35,25 @@ async function runSweep(): Promise<void> {
   }
 }
 
+async function runAttachmentSweep(): Promise<void> {
+  try {
+    const { orphansDeleted, stuckReset, errors } = await sweepAttachments();
+    if (orphansDeleted > 0 || stuckReset > 0 || errors.length > 0) {
+      console.log(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "attachments.sweep",
+          orphansDeleted,
+          stuckReset,
+          errors,
+        }),
+      );
+    }
+  } catch (err) {
+    console.error("[attachments] scheduled sweep failed:", err);
+  }
+}
+
 /**
  * Reclaim stuck credit holds on startup and every hour thereafter. Extracted
  * from top-level so combined (economy) mode can start it explicitly after
@@ -41,6 +62,9 @@ async function runSweep(): Promise<void> {
 export function startApiBackground(): void {
   void runSweep();
   setInterval(() => void runSweep(), 60 * 60 * 1000);
+
+  void runAttachmentSweep();
+  setInterval(() => void runAttachmentSweep(), 60 * 60 * 1000);
 }
 
 /**
@@ -83,6 +107,7 @@ export function buildApp(
   app.use(requireAuth);
 
   app.use("/project", projectRoutes);
+  app.use("/attachments", attachmentRoutes);
   app.use("/credits", creditsRoutes);
   app.use("/billing", billingRoutes);
 

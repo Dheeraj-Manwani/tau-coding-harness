@@ -31,6 +31,11 @@ export const r2 =
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
     },
     forcePathStyle: true,
+    // AWS SDK >= 3.729 defaults this to "WHEN_SUPPORTED", which signs a CRC32
+    // of the (absent) body into every presigned PUT, so the browser's upload
+    // 403s on the mismatch. Mirrors api/src/lib/s3.ts.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 
 if (env.NODE_ENV !== "production") {

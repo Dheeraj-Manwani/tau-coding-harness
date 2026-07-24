@@ -20,11 +20,12 @@ export const initializeProject = async (
 ) => {
   try {
     const userId = requireUserId(req);
-    const { message, effort } = parse(messageSchema, req.body);
+    const { message, effort, attachmentIds } = parse(messageSchema, req.body);
     const result = await projectService.initializeProject(
       userId,
       message,
       effort,
+      attachmentIds,
     );
     res.status(201).json(result);
   } catch (err) {
@@ -90,12 +91,13 @@ export const addMessage = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { message, effort } = parse(messageSchema, req.body);
+    const { message, effort, attachmentIds } = parse(messageSchema, req.body);
     const result = await projectService.addMessage(
       projectId,
       userId,
       message,
       effort,
+      attachmentIds,
     );
     res.status(201).json(result);
   } catch (err) {

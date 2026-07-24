@@ -50,8 +50,11 @@ export function useProject(projectId: string | undefined) {
 /** `POST /project` — create a project from the first prompt and enqueue a job. */
 export function useInitProject() {
   return useMutation({
-    mutationFn: (vars: { message: string; effort: Effort }) =>
-      api.post<InitProjectResponse>("/project", vars).then((r) => r.data),
+    mutationFn: (vars: {
+      message: string;
+      effort: Effort;
+      attachmentIds?: string[];
+    }) => api.post<InitProjectResponse>("/project", vars).then((r) => r.data),
   });
 }
 
@@ -63,7 +66,11 @@ export function useInitProject() {
 export function useAddMessage(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { message: string; effort: Effort }) =>
+    mutationFn: (vars: {
+      message: string;
+      effort: Effort;
+      attachmentIds?: string[];
+    }) =>
       api
         .post<AddMessageResponse>(`/project/${projectId}/message`, vars)
         .then((r) => r.data),

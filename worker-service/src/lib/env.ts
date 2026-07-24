@@ -18,6 +18,10 @@ const envSchema = z.object({
   DEEPSEEK_MODEL_FLASH: z.string().default("deepseek-v4-flash"),
   MODEL_CONTEXT_WINDOW: z.coerce.number().int().positive().default(128_000),
 
+  KIMI_API_KEY: z.string().optional(),
+  KIMI_BASE_URL: z.string().url().default("https://api.moonshot.ai/v1"),
+  KIMI_MODEL_MAX: z.string().default("kimi-k2.7-code"),
+
   // ── E2B sandbox ──
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
 

@@ -22,6 +22,7 @@ model User {
   billing       BillingAccount?
   promoRedeems  PromoRedemption[]
   subscriptions Subscription[]
+  attachments   Attachment[]
 }
 
 model OAuthAccount {
@@ -141,12 +142,68 @@ model Message {
   jobId String?
   job   Job?    @relation(fields: [jobId], references: [id])
 
-  fragment  Fragment?
-  toolCalls ToolCall[]
+  fragment    Fragment?
+  toolCalls   ToolCall[]
+  attachments Attachment[]
 
   @@unique([projectId, sequence])
   @@index([projectId])
   @@index([jobId])
+}
+
+enum AttachmentKind {
+  IMAGE
+  PASTED
+  FILE
+}
+
+enum AttachmentStatus {
+  PENDING
+  EXTRACTING
+  READY
+  FAILED
+}
+
+// Extracted text is materialized into Message.content at send time, so this
+// table is only for the UI (chips, preview, download) and provenance.
+model Attachment {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind   AttachmentKind
+  status AttachmentStatus @default(PENDING)
+
+  filename  String
+  mimeType  String
+  sizeBytes Int
+
+  // Null for PASTED — the text is the payload.
+  blobKey     String?
+  // sha256 of the bytes; drives the extraction cache.
+  contentHash String?
+
+  // What the agent actually sees. For PASTED this is the raw paste.
+  extractedText   String?
+  extractionError String?
+
+  // First ~240 chars of extractedText, denormalised so the chat transcript can
+  // render a paste chip without dragging the whole (up to 500KB) body along.
+  preview String?
+
+  extractionModel  String?
+  extractionTokens Int     @default(0)
+
+  // Null until the message is sent. Orphans are swept hourly.
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([messageId])
+  @@index([userId, contentHash])
 }
 
 model ToolCall {

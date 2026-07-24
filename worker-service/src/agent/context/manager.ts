@@ -1,5 +1,5 @@
 import {
-  CONTEXT_BUDGET,
+  contextBudgetForModel,
   CONTEXT_COMPACT_RATIO,
   CONTEXT_KEEP_TAIL_TOKENS,
   CONTEXT_SUMMARIZE_RATIO,
@@ -54,11 +54,12 @@ export async function manageContext(
 ): Promise<ManageResult> {
   const raw = entries.map((e) => e.param);
   const before = estimateTokensCalibrated(raw, opts.calibration);
+  const budget = contextBudgetForModel(opts.model);
 
   // 1. Mechanical compaction (ephemeral) once past the compaction ratio.
   let compacted: ManageResult["compacted"];
   let ctx = raw;
-  if (before > CONTEXT_COMPACT_RATIO * CONTEXT_BUDGET) {
+  if (before > CONTEXT_COMPACT_RATIO * budget) {
     const res = compact(raw, { maxToolResultTokens: MAX_TOOL_RESULT_TOKENS });
     ctx = res.messages;
     if (res.changed) {
@@ -71,7 +72,7 @@ export async function manageContext(
   let outEntries = entries;
   if (
     estimateTokensCalibrated(ctx, opts.calibration) >
-    CONTEXT_SUMMARIZE_RATIO * CONTEXT_BUDGET
+    CONTEXT_SUMMARIZE_RATIO * budget
   ) {
     // Summarization makes a live LLM call, so it can fail transiently. It must
     // never take the whole job down with it — a summarize failure just means we

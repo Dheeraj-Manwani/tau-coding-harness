@@ -1,4 +1,4 @@
-import { deepseek } from "../../lib/deepseek";
+import { clientForModel } from "../../lib/kimi";
 import { SUMMARY_MAX_TOKENS } from "../config";
 import { pickBoundary } from "./boundary";
 import { compact } from "./compact";
@@ -112,7 +112,7 @@ export async function summarize(
   );
   const transcript = renderTranscript(compacted.messages);
 
-  const completion = await deepseek.chat.completions.create({
+  const completion = await clientForModel(opts.model).chat.completions.create({
     model: opts.model,
     temperature: 0.2,
     max_tokens: SUMMARY_MAX_TOKENS,

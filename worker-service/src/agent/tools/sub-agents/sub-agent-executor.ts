@@ -1,4 +1,4 @@
-import { deepseek } from "@/lib/deepseek";
+import { clientForModel } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { publish } from "@/lib/publish";
@@ -85,7 +85,7 @@ export const executeSubAgentLoop = async (
       return lastContent || `Stopped: exceeded ${maxSubagentTurns} turns.`;
     }
 
-    const stream = deepseek.chat.completions.stream({
+    const stream = clientForModel(model).chat.completions.stream({
       model,
       max_tokens: MAX_TOKENS_FOR_SUBAGENT,
       tools,

@@ -61,6 +61,102 @@ function sha256Hex(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
+function sha256HexBytes(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/**
+ * File extensions whose contents are binary and must NOT go through the UTF-8
+ * text pipeline (persist/rehydrate/serve/commit would corrupt them). Downloaded
+ * assets (images, fonts, media) live here. Note SVG is deliberately absent — it
+ * is XML text and round-trips fine as a string. This classification is by path
+ * alone, so it needs no schema column and stays consistent across the api and
+ * worker services.
+ */
+const BINARY_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "ico",
+  "tiff",
+  "tif",
+  "woff",
+  "woff2",
+  "ttf",
+  "otf",
+  "eot",
+  "mp3",
+  "wav",
+  "ogg",
+  "mp4",
+  "webm",
+  "mov",
+  "pdf",
+]);
+
+export function isBinaryPath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  if (dot === -1) return false;
+  return BINARY_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
+}
+
+/**
+ * Persist a binary file (downloaded asset) to R2 + the manifest, the binary
+ * counterpart to {@link persistFile}. Hashes and stores the raw bytes so the
+ * blob round-trips losslessly; rehydrate reads it back with `getBlob` (bytes),
+ * not `getBlobText`. Publishes only `file_done` — binary content is never
+ * streamed as `file_chunk` (the chat/code panel treat chunks as UTF-8 text).
+ */
+export async function persistBinaryFile(
+  jobId: string,
+  projectId: string,
+  userId: string,
+  path: string,
+  bytes: Uint8Array,
+  indexer: () => number,
+): Promise<void> {
+  const hash = sha256HexBytes(bytes);
+  const sizeBytes = bytes.byteLength;
+
+  const existing = await prisma.projectFile.findUnique({
+    where: { projectId_path: { projectId, path } },
+    select: { contentHash: true },
+  });
+
+  if (existing?.contentHash === hash) {
+    await publish(jobId, { type: "file_done", path }, indexer());
+    return;
+  }
+
+  await putBlob(userId, projectId, hash, bytes);
+
+  const seq = await prisma.$transaction(async (tx) => {
+    const s = await allocateHeadSequence(tx, projectId);
+    await tx.projectFile.upsert({
+      where: { projectId_path: { projectId, path } },
+      create: {
+        projectId,
+        path,
+        contentHash: hash,
+        sizeBytes,
+        lastSequence: s,
+      },
+      update: { contentHash: hash, sizeBytes, lastSequence: s },
+    });
+    return s;
+  });
+
+  await publish(
+    jobId,
+    { type: "file_done", path, headSequence: seq },
+    indexer(),
+  );
+}
+
 export function isLongRunning(command: string): boolean {
   return (
     /(^|\s)(npm|pnpm|yarn|bun)\s+(run\s+)?(dev|start|serve|preview)\b/.test(

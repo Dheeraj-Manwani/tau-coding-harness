@@ -26,11 +26,14 @@ import {
   GlobeIcon,
   GitPullRequestIcon,
   CircleDotIcon,
+  DownloadIcon,
   HammerIcon,
   HeartPulseIcon,
   HomeIcon,
+  ImagesIcon,
   ListPlusIcon,
   Loader2Icon,
+  RulerIcon,
   MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
@@ -125,6 +128,9 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "dispatch_implementer")
     return <HammerIcon className="size-3.5" />;
   if (kind === "web_search") return <GlobeIcon className="size-3.5" />;
+  if (kind === "search_images") return <ImagesIcon className="size-3.5" />;
+  if (kind === "image_dimensions") return <RulerIcon className="size-3.5" />;
+  if (kind === "download_asset") return <DownloadIcon className="size-3.5" />;
   if (kind === "push_to_github")
     return <GitPullRequestIcon className="size-3.5" />;
   if (kind === "create_github_issue")
@@ -254,6 +260,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
     action.kind === "dispatch_verifier" ||
     action.kind === "dispatch_implementer" ||
     action.kind === "web_search" ||
+    action.kind === "search_images" ||
     action.kind === "push_to_github" ||
     action.kind === "create_github_issue"
   ) {
@@ -261,16 +268,21 @@ function ActionDetail({ action }: { action: ActionItem }) {
       | { prompt?: string; result?: string }
       | undefined;
     const taskLabel =
-      action.kind === "web_search"
+      action.kind === "web_search" || action.kind === "search_images"
         ? "Query"
         : action.kind === "push_to_github"
           ? "Update"
           : action.kind === "create_github_issue"
             ? "Issue"
             : "Task";
-    const resultLabel = action.kind === "web_search" ? "Results" : "Result";
+    const resultLabel =
+      action.kind === "search_images"
+        ? "Images"
+        : action.kind === "web_search"
+          ? "Results"
+          : "Result";
     const loadingLabel =
-      action.kind === "web_search"
+      action.kind === "web_search" || action.kind === "search_images"
         ? "Searching…"
         : action.kind === "push_to_github"
           ? "Pushing…"
@@ -315,6 +327,7 @@ const FILE_LINK_KINDS = new Set<ActionItem["kind"]>([
   "create_file",
   "edit_file",
   "read_file",
+  "download_asset",
 ]);
 
 function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
@@ -379,6 +392,7 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
             action.kind === "dispatch_verifier" ||
             action.kind === "dispatch_implementer" ||
             action.kind === "web_search" ||
+            action.kind === "search_images" ||
             action.kind === "push_to_github" ||
             action.kind === "create_github_issue";
           const isOpen = expanded.has(i);

@@ -104,12 +104,23 @@ export interface ProjectTree {
   headSequence: number;
 }
 
-/** `GET /project/:id/file?path=…` response. */
-export interface ProjectFileResponse {
-  content: string;
-  /** Hash of the content served — echoed back on save for optimistic concurrency. */
-  contentHash: string;
-}
+/** `GET /project/:id/file?path=…` response.
+ *  Text files return their `content`; binary assets (images, fonts, media)
+ *  return a short-lived presigned `url` to preview instead — their bytes never
+ *  round-trip through the text editor. */
+export type ProjectFileResponse =
+  | {
+      binary?: false;
+      content: string;
+      /** Hash of the content served — echoed back on save for optimistic concurrency. */
+      contentHash: string;
+    }
+  | {
+      binary: true;
+      /** Presigned URL to the asset in R2, for inline preview. */
+      url: string;
+      contentHash: string;
+    };
 
 export interface SaveProjectFileResponse {
   contentHash: string;

@@ -382,6 +382,74 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "search_images",
+      description:
+        "Find real, usable image URLs for a query — each returned with an AI description of what it actually depicts (e.g. 'front-facing photo of a silver Diet Coke can, transparent background' vs 'red Coca-Cola vector logo'). Use this to source assets (product photos, backgrounds, icons, hero images) instead of guessing at download URLs from web_search text results. Read each result's description to pick the right one — the correct subject, a photo vs a logo, and a transparent background when you need a cutout. Then verify resolution with image_dimensions and download the winner with run_command(\"curl -L -o public/<name> <url>\"). Does not require a sandbox.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "What to find, described precisely. Include the subject plus qualifiers that matter for the use, e.g. 'Diet Coke can transparent PNG front view' or 'mountain landscape wide 4k'.",
+          },
+          max_results: {
+            type: "number",
+            description:
+              "Max number of images to return (1-10). Defaults to 5.",
+          },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "image_dimensions",
+      description:
+        "Return { width, height, format, fileSize } for an image URL without downloading the whole file. Use it to confirm a candidate asset is high-resolution enough for its use (e.g. a fullscreen hero or parallax layer needs a large image) before committing to it. Does not require a sandbox.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The image URL to inspect.",
+          },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "download_asset",
+      description:
+        "Download a remote asset (image, font, media) from a URL INTO the project so it persists. Use this instead of `run_command(\"curl -o …\")` for any asset you want to keep: a curl'd file lives only in the throwaway sandbox and is lost on the next rebuild, while this saves the bytes durably (they show in the file tree, survive reloads, and push to GitHub). Typical flow: search_images → pick by description → image_dimensions to confirm resolution → download_asset into public/. Requires a provisioned sandbox.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The direct URL of the asset to download.",
+          },
+          path: {
+            type: "string",
+            description:
+              "Destination path relative to the project root, including filename and extension, e.g. 'public/coke-can.png'. Keep downloadable assets under 'public/'.",
+          },
+        },
+        required: ["url", "path"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "push_to_github",
       description:
         "Push the project's current files to the user's connected GitHub account. Creates the repository automatically on the first push. Use this when the user asks to push, save, publish, or commit the project to GitHub, or to open a pull request. Does not require a sandbox — it commits the stored project files. If it returns a 'not connected' error, tell the user to click the GitHub button on the project page to connect their account first. The returned link is shown to the user.",

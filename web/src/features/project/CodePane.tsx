@@ -58,6 +58,27 @@ function basename(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
+function extOf(path: string): string {
+  const dot = path.lastIndexOf(".");
+  return dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
+}
+
+// Binary asset extensions — mirrors the server's isBinaryPath. These are served
+// as a presigned URL (not text) and rendered as a preview, never in CodeMirror.
+// SVG is intentionally absent: it's XML text and stays editable in the editor.
+const BINARY_EXTS = new Set([
+  "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico", "tiff", "tif",
+  "woff", "woff2", "ttf", "otf", "eot", "mp3", "wav", "ogg", "mp4", "webm",
+  "mov", "pdf",
+]);
+const IMAGE_EXTS = new Set([
+  "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico",
+]);
+
+function isBinaryPath(path: string): boolean {
+  return BINARY_EXTS.has(extOf(path));
+}
+
 /**
  * CodeMirror language extensions for the file types the agent emits.
  *
@@ -353,7 +374,12 @@ function CodeEditor() {
 
   const { flush, scheduleSave } = useFileSave(projectId ?? undefined);
 
-  const needsLoad = file !== undefined && file.content === undefined;
+  // Binary assets always need a fetch (for their presigned preview URL) — their
+  // in-store `content` is an empty placeholder from the file_start event, so the
+  // usual `content === undefined` check would wrongly skip the load.
+  const needsLoad =
+    file !== undefined &&
+    (file.content === undefined || isBinaryPath(activeFileId));
   const {
     data: fetched,
     isLoading,
@@ -363,7 +389,9 @@ function CodeEditor() {
   });
 
   useEffect(() => {
-    if (fetched !== undefined && activeFileId) {
+    // Only text files carry `content`; binary assets return a preview URL and
+    // must not be pushed into the (text) file buffer.
+    if (fetched !== undefined && !fetched.binary && activeFileId) {
       setFileContent(activeFileId, fetched.content, fetched.contentHash);
     }
   }, [fetched, activeFileId, setFileContent]);
@@ -428,9 +456,58 @@ function CodeEditor() {
     );
   }
 
+  // Binary assets (downloaded images, fonts, media) can't be shown in the text
+  // editor — render a preview from the presigned URL the api hands back instead.
+  if (isBinaryPath(activeFileId)) {
+    return (
+      <div className="flex h-full flex-col bg-[var(--space-void)]">
+        <TabBar />
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
+          {isLoading ? (
+            <LoaderCircleIcon className="size-5 animate-spin text-[var(--silver-600)]" />
+          ) : isError || !fetched || !fetched.binary ? (
+            <span className="text-sm text-[var(--silver-600)]">
+              Could not load asset.
+            </span>
+          ) : IMAGE_EXTS.has(extOf(activeFileId)) ? (
+            <img
+              src={fetched.url}
+              alt={basename(activeFileId)}
+              className="max-h-full max-w-full rounded-md object-contain shadow-lg"
+              // Checkerboard so transparent PNGs read as transparent, not black.
+              style={{
+                backgroundImage:
+                  "linear-gradient(45deg,#2a2f3a 25%,transparent 25%),linear-gradient(-45deg,#2a2f3a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2f3a 75%),linear-gradient(-45deg,transparent 75%,#2a2f3a 75%)",
+                backgroundSize: "16px 16px",
+                backgroundPosition: "0 0,0 8px,8px -8px,-8px 0",
+              }}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-sm text-[var(--silver-600)]">
+              <MaterialIcon
+                name={basename(activeFileId)}
+                className="size-10"
+              />
+              <span>{basename(activeFileId)}</span>
+              <a
+                href={fetched.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[var(--blue-500)] hover:underline"
+              >
+                Open asset
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // The draft is the source of truth while the user is typing; fall back to the
-  // saved body, then to whatever the fetch just returned.
-  const value = file.draft ?? file.content ?? fetched?.content ?? "";
+  // saved body, then to whatever the fetch just returned (text files only).
+  const fetchedText = fetched && !fetched.binary ? fetched.content : undefined;
+  const value = file.draft ?? file.content ?? fetchedText ?? "";
 
   return (
     <div className="flex h-full flex-col bg-[var(--space-void)]">

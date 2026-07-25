@@ -15,12 +15,18 @@ import {
   ConcurrentJobLimitError,
 } from "../lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "../lib/pricing";
-import { getBlobText, deleteProjectBlobs, presignGet } from "../lib/s3";
+import {
+  getBlobText,
+  deleteProjectBlobs,
+  presignGet,
+  blobKey,
+} from "../lib/s3";
 import {
   writeProjectFile,
   buildEditDiff,
   sha256Hex,
   toWorkdirPath,
+  isBinaryPath,
 } from "../lib/projectFiles";
 import { bus } from "../lib/bus";
 import {
@@ -639,6 +645,16 @@ export async function getProjectFile(
   if (!project) throw Errors.notFound("Project not found");
   if (project.userId !== userId) {
     throw Errors.forbidden("You do not have access to this project");
+  }
+
+  // Binary assets can't be served as text (a UTF-8 decode corrupts them, and
+  // the editor can't render them anyway). Hand back a short-lived presigned URL
+  // to the R2 blob so the client can preview it as an image/media instead.
+  if (isBinaryPath(filePath)) {
+    const record = await projectRepo.findProjectFileRecord(project.id, filePath);
+    if (!record) throw Errors.notFound("File not found");
+    const url = await presignGet(blobKey(userId, project.id, record.contentHash));
+    return { binary: true as const, url, contentHash: record.contentHash };
   }
 
   return readProjectFileContent(project, userId, filePath);

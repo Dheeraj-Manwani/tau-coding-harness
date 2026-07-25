@@ -20,6 +20,9 @@ import { tailCommandOutput } from "./functions/tail-command-output";
 import { waitForPort } from "./functions/wait-for-port";
 import { checkSandbox } from "./functions/check-sandbox";
 import { webSearch } from "./functions/web-search";
+import { searchImages } from "./functions/search-images";
+import { imageDimensions } from "./functions/image-dimensions";
+import { downloadAsset } from "./functions/download-asset";
 import {
   pushProjectToGithub,
   createGithubIssue,
@@ -115,6 +118,10 @@ export async function executeTool(
       return { success: true };
     case "web_search":
       return webSearch(input);
+    case "search_images":
+      return searchImages(input);
+    case "image_dimensions":
+      return imageDimensions(input);
     case "push_to_github": {
       const { title, description, mode, branch } = (input ?? {}) as {
         title?: unknown;
@@ -178,6 +185,15 @@ export async function executeTool(
         return await listDir(input, sandbox);
       case "delete_file":
         return await deleteFile(input, sandbox, jobId, projectId, indexer);
+      case "download_asset":
+        return await downloadAsset(
+          input,
+          sandbox,
+          jobId,
+          projectId,
+          userId,
+          indexer,
+        );
       case "run_command":
         return await runCommand(input, sandbox);
       case "tail_command_output":

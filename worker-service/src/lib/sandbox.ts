@@ -3,7 +3,8 @@ import { Sandbox } from "e2b";
 import { prisma } from "./prisma";
 import { bus } from "./bus";
 import { env } from "./env";
-import { getBlobText, putBlob } from "./s3";
+import { getBlob, getBlobText, putBlob } from "./s3";
+import { isBinaryPath } from "../agent/tools/functions/utils";
 import { publish } from "./publish";
 import { allocateHeadSequence } from "./headSequence";
 import { SandboxStatus } from "../generated/prisma/enums";
@@ -134,10 +135,22 @@ async function rehydrateSandbox(
   for (let i = 0; i < files.length; i += BATCH) {
     const settled = await Promise.allSettled(
       files.slice(i, i + BATCH).map(async ({ path, contentHash }) => {
-        const content = await getBlobText(userId, projectId, contentHash);
         // Support both legacy absolute paths (/home/user/app/…) and relative paths.
         const absPath = path.startsWith("/") ? path : `${WORK_DIR}/${path}`;
-        await sandbox.files.write(absPath, content);
+        // Binary assets must round-trip as raw bytes — a UTF-8 decode/encode
+        // would corrupt them. Text files go through the string path as before.
+        if (isBinaryPath(path)) {
+          const bytes = await getBlob(userId, projectId, contentHash);
+          // e2b's write takes an ArrayBuffer; hand it the blob's exact bytes.
+          const ab = bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength,
+          ) as ArrayBuffer;
+          await sandbox.files.write(absPath, ab);
+        } else {
+          const content = await getBlobText(userId, projectId, contentHash);
+          await sandbox.files.write(absPath, content);
+        }
       }),
     );
 

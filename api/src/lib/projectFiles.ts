@@ -25,6 +25,43 @@ export function sha256Hex(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
+/**
+ * Extensions whose blobs are binary and must NOT be read/served/committed as
+ * UTF-8 text. Kept in sync with the worker's `isBinaryPath`
+ * (`worker-service/src/agent/tools/functions/utils.ts`). SVG is intentionally
+ * excluded — it is XML text.
+ */
+const BINARY_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "ico",
+  "tiff",
+  "tif",
+  "woff",
+  "woff2",
+  "ttf",
+  "otf",
+  "eot",
+  "mp3",
+  "wav",
+  "ogg",
+  "mp4",
+  "webm",
+  "mov",
+  "pdf",
+]);
+
+export function isBinaryPath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  if (dot === -1) return false;
+  return BINARY_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
+}
+
 export interface WriteProjectFileResult {
   contentHash: string;
   sizeBytes: number;

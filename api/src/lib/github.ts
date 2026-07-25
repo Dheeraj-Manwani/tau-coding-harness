@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
-import { getBlobText } from "./s3";
+import { getBlob, getBlobText } from "./s3";
+import { isBinaryPath } from "./projectFiles";
 
 /**
  * Server-side git engine. We never run `git` in the sandbox — instead we build
@@ -349,6 +350,7 @@ async function uploadBlob(
   fullName: string,
   contentHash: string,
   content: string,
+  encoding: "utf-8" | "base64" = "utf-8",
 ): Promise<string> {
   const cacheKey = `${fullName}:${contentHash}`;
   const cached = blobShaCache.get(cacheKey);
@@ -359,7 +361,7 @@ async function uploadBlob(
     token,
     "POST",
     `/repos/${owner}/${repo}/git/blobs`,
-    { content, encoding: "utf-8" },
+    { content, encoding },
   );
   blobShaCache.set(cacheKey, blob.sha);
   // Bound the cache so a long-lived process can't grow it without limit.
@@ -455,6 +457,20 @@ async function buildProjectTree(
 ): Promise<{ path: string; mode: string; type: "blob"; sha: string }[]> {
   return Promise.all(
     files.map(async ({ path, contentHash }) => {
+      // Binary assets must be committed as base64 — GitHub's blob API corrupts
+      // them under utf-8, the same way our own text pipeline would.
+      if (isBinaryPath(path)) {
+        const bytes = await getBlob(userId, projectId, contentHash);
+        const content = Buffer.from(bytes).toString("base64");
+        const sha = await uploadBlob(
+          token,
+          fullName,
+          contentHash,
+          content,
+          "base64",
+        );
+        return { path, mode: GIT_FILE_MODE, type: "blob" as const, sha };
+      }
       const content = await getBlobText(userId, projectId, contentHash);
       const sha = await uploadBlob(token, fullName, contentHash, content);
       return { path, mode: GIT_FILE_MODE, type: "blob" as const, sha };

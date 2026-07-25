@@ -48,6 +48,9 @@ export type ActionKind =
   | "dispatch_verifier"
   | "dispatch_implementer"
   | "web_search"
+  | "search_images"
+  | "image_dimensions"
+  | "download_asset"
   | "push_to_github"
   | "create_github_issue";
 
@@ -232,6 +235,31 @@ function deriveActionItem(
         toolCallId,
       };
     }
+    case "search_images": {
+      const query = String(input.query ?? "");
+      return {
+        kind: "search_images",
+        label: `Searched images: ${truncateLabel(query, 55)}`,
+        meta: { prompt: query },
+        toolCallId,
+      };
+    }
+    case "image_dimensions": {
+      const url = String(input.url ?? "");
+      return {
+        kind: "image_dimensions",
+        label: `Checked image ${truncateLabel(basename(url), 40)}`,
+      };
+    }
+    case "download_asset": {
+      const dest = normalizePath(String(input.path ?? ""));
+      const file = basename(dest);
+      return {
+        kind: "download_asset",
+        label: `Downloaded ${file}`,
+        meta: { path: dest },
+      };
+    }
     case "push_to_github": {
       const title = String(input.title ?? "");
       const description = String(input.description ?? "").trim();
@@ -346,6 +374,23 @@ function formatWebSearchResult(answer: unknown, results: unknown[]): string {
   return parts.join("\n\n");
 }
 
+/** Render a search_images tool's { images: [{ url, description }] } as markdown. */
+function formatImageSearchResult(images: unknown[]): string {
+  const parts: string[] = [];
+  for (const img of images) {
+    if (!img || typeof img !== "object") continue;
+    const { url, description } = img as { url?: unknown; description?: unknown };
+    const u = typeof url === "string" ? url : "";
+    if (!u) continue;
+    const desc =
+      typeof description === "string" && description.trim()
+        ? truncateLabel(description.trim(), 160)
+        : "image";
+    parts.push(`- [${desc}](${u})`);
+  }
+  return parts.length ? parts.join("\n") : "No images found.";
+}
+
 /** Pull the sub-agent's written summary out of a dispatch_* tool's raw output. */
 function extractDispatchResult(output: unknown): string {
   if (output && typeof output === "object") {
@@ -354,9 +399,15 @@ function extractDispatchResult(output: unknown): string {
       error?: unknown;
       results?: unknown;
       answer?: unknown;
+      images?: unknown;
+      note?: unknown;
     };
     if (typeof o.summary === "string") return o.summary;
     if (typeof o.error === "string") return `Error: ${o.error}`;
+    if (Array.isArray(o.images)) {
+      const formatted = formatImageSearchResult(o.images);
+      return typeof o.note === "string" ? `${o.note}\n\n${formatted}` : formatted;
+    }
     if (Array.isArray(o.results)) {
       return formatWebSearchResult(o.answer, o.results);
     }

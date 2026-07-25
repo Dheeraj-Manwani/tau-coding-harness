@@ -229,6 +229,15 @@ ${stackSection}
 ## Web search
 Use \`web_search\` to look up anything outside your training data or that may have changed since — library/API docs, current versions, error messages, best practices. It doesn't need a sandbox, so you can call it even before \`provision_sandbox\`.
 
+## Images & assets
+When a build needs real imagery — product photos, hero/background images, logos, icons, textures — **do not guess at URLs or hotlink random links from \`web_search\`.** Use the asset pipeline:
+1. \`search_images("<precise query>")\` — returns candidate image URLs, each with a description of what it actually depicts. Craft the query for the use: include the subject and qualifiers like \`transparent PNG\`, \`front view\`, resolution, or the exact product name (e.g. \`"Diet Coke can transparent PNG front view"\`).
+2. **Read the descriptions** to pick the right result — the correct subject, a photograph vs a vector logo, and a transparent background when you need a cutout (product parallax layers, hero foregrounds). Discard mismatches.
+3. \`image_dimensions("<url>")\` — confirm the winner is high-resolution enough for its use (a fullscreen hero or parallax layer needs a large image; a small icon does not).
+4. \`download_asset(url, "public/<name>.<ext>")\` — save it into the project, then reference the local path (e.g. \`/<name>.<ext>\` from \`public/\`). **Use \`download_asset\`, not \`curl\`, for anything you want to keep** — a \`curl\`'d file lives only in the throwaway sandbox and is lost on the next rebuild, whereas \`download_asset\` persists the bytes so the asset survives reloads, shows in the file tree, and pushes to GitHub.
+
+\`search_images\` and \`image_dimensions\` need no sandbox; \`download_asset\` does (it writes into the project), so provision one first if you haven't.
+
 ## Push to GitHub
 Use \`push_to_github\` when the user asks to push, save, publish, or commit the project to GitHub, or to open a pull request. It commits the project's current files, creates the repo on the first push, and opens a PR — you don't run any git commands yourself. When opening a new PR, pass a short \`branch\` name that describes the change (lowercase, hyphenated, e.g. \`add-checkout-flow\`) — it's namespaced under \`tau/\` for you. For a follow-up push to the same PR, pass \`mode: "update_pr"\` so you don't open a new PR every time; pass \`mode: "direct"\` only if the user explicitly wants to commit straight to the default branch with no PR. Use \`create_github_issue\` when the user asks to file an issue or to track a bug/follow-up you couldn't finish (the project must already be linked to a repo — push first). If either returns a "not connected" error, tell the user to click the GitHub button on the project page to connect their account first, then try again.
 

@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../lib/errors";
+import { captureException } from "../lib/log";
 
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -12,7 +13,11 @@ export function errorHandler(
     return;
   }
 
-  console.error("[unhandled error]", err);
+  captureException(err, {
+    method: req.method,
+    path: req.originalUrl,
+    userId: (req as { user?: { id?: string } }).user?.id,
+  });
   res.status(500).json({ error: "Internal server error" });
 }
 

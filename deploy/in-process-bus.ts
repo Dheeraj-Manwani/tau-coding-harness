@@ -32,6 +32,41 @@ export interface DispatchPayload {
   type?: string;
 }
 
+/**
+ * Coarse "what is this job doing" state. Deliberately small — it exists to make
+ * a stuck job legible at a glance, not to mirror the agent loop's control flow.
+ */
+export type JobPhase =
+  | "queued"
+  | "provisioning"
+  | "llm"
+  | `tool:${string}`
+  | `subagent:${string}`
+  | "waiting_user"
+  | "finishing";
+
+export interface JobRegistryEntry {
+  jobId: string;
+  projectId?: string;
+  userId?: string;
+  effort?: string;
+  model?: string;
+  startedAt: number;
+  phase: JobPhase;
+  turn: number;
+  /** Last time this job did anything observable — the live stall signal. */
+  lastEventAt: number;
+  eventCount: number;
+  toolCallCount: number;
+  sandboxId: string | null;
+}
+
+export interface RunnerStats {
+  queueDepth: number;
+  active: number;
+  concurrency: number;
+}
+
 interface JobBuffer {
   events: JobEvent[];
   lastTouched: number;
@@ -62,13 +97,20 @@ class InProcessBus {
   private readonly waiters = new Map<string, Array<(v: string) => void>>(); // role 6
   private readonly pendingAnswers = new Map<string, string[]>(); // role 6
   private readonly plans = new Map<string, number>(); // role 7: jobId -> expiresAt
-  private readonly resident = new Map<string, number>(); // jobId -> startedAt
+  private readonly resident = new Map<string, JobRegistryEntry>();
+  private readonly registryEvents = new EventEmitter();
+  private readonly runnerStats: RunnerStats = {
+    queueDepth: 0,
+    active: 0,
+    concurrency: 0,
+  };
 
   constructor() {
     // Many concurrent SSE subscribers / jobs — disable the listener-leak warning.
     this.events.setMaxListeners(0);
     this.dispatches.setMaxListeners(0);
     this.cancels.setMaxListeners(0);
+    this.registryEvents.setMaxListeners(0);
     const timer = setInterval(() => this.sweep(), SWEEP_INTERVAL_MS);
     timer.unref?.();
   }
@@ -132,6 +174,13 @@ class InProcessBus {
     if (buf.events.length > RING_MAX) {
       buf.events.splice(0, buf.events.length - RING_MAX);
     }
+    // Keep the live registry's activity clock honest without a second call site:
+    // anything the user sees counts as this job doing something.
+    const entry = this.resident.get(jobId);
+    if (entry) {
+      entry.lastEventAt = Date.now();
+      entry.eventCount++;
+    }
     this.events.emit(jobId, event);
   }
 
@@ -154,6 +203,15 @@ class InProcessBus {
   /** Number of buffered events for a job (replaces `redis.llen`). */
   length(jobId: string): number {
     return this.buffers.get(jobId)?.events.length ?? 0;
+  }
+
+  /**
+   * Every buffered frame for a job, in order — exactly what the user's browser
+   * received. Lets the admin console replay a run frame by frame, which is the
+   * difference between "the user says it hung" and seeing where it stopped.
+   */
+  replay(jobId: string): JobEvent[] {
+    return [...(this.buffers.get(jobId)?.events ?? [])];
   }
 
   headIndex(jobId: string): number {
@@ -185,18 +243,35 @@ class InProcessBus {
     return () => void this.events.off(jobId, listener);
   }
 
-  // ── job residency ─────────────────────────────────────────────────────────
+  // ── job residency + live registry ─────────────────────────────────────────
   /**
-   * Which jobs this process is actually executing right now.
+   * Which jobs this process is actually executing right now, and what each one
+   * is doing.
    *
-   * The stale-job reaper reads this: a `Job` row can look abandoned (no recent
-   * heartbeat) while the run is perfectly alive but stuck in one long turn, and
-   * reaping it would mark FAILED a job that then keeps writing messages. Held in
-   * memory on purpose — the whole point is that it vanishes when the process
-   * does, which is exactly when the rows it was protecting become reapable.
+   * Two consumers:
+   *   1. the stale-job reaper — a `Job` row can look abandoned (no recent
+   *      heartbeat) while the run is perfectly alive but stuck in one long turn,
+   *      and reaping it would mark FAILED a job that then keeps writing;
+   *   2. the admin console — "what is the box doing right now" is otherwise
+   *      unanswerable without an SSH session.
+   *
+   * Held in memory on purpose: the whole point is that it vanishes when the
+   * process does, which is exactly when the rows it was protecting become
+   * reapable. Postgres holds the durable half (`Job.lastHeartbeatAt`).
    */
-  markResident(jobId: string): void {
-    this.resident.set(jobId, Date.now());
+  markResident(jobId: string, init: Partial<JobRegistryEntry> = {}): void {
+    const now = Date.now();
+    this.resident.set(jobId, {
+      jobId,
+      startedAt: now,
+      phase: "queued",
+      turn: 0,
+      lastEventAt: now,
+      eventCount: 0,
+      toolCallCount: 0,
+      sandboxId: null,
+      ...init,
+    });
   }
 
   clearResident(jobId: string): void {
@@ -209,8 +284,53 @@ class InProcessBus {
 
   /** How long this job has been executing here, or null if it isn't. */
   residentForMs(jobId: string): number | null {
-    const since = this.resident.get(jobId);
-    return since === undefined ? null : Date.now() - since;
+    const entry = this.resident.get(jobId);
+    return entry === undefined ? null : Date.now() - entry.startedAt;
+  }
+
+  /**
+   * Record what a resident job is doing. A no-op for a job this process isn't
+   * running, so callers never have to check first.
+   *
+   * Called from the same places that already `publish()`, so the operator view
+   * and the user's view are written from one code path and cannot drift.
+   */
+  setPhase(jobId: string, phase: JobPhase, patch: Partial<JobRegistryEntry> = {}): void {
+    const entry = this.resident.get(jobId);
+    if (!entry) return;
+    entry.phase = phase;
+    entry.lastEventAt = Date.now();
+    Object.assign(entry, patch);
+    this.registryEvents.emit("change", { ...entry });
+  }
+
+  /** Snapshot of one resident job, or null. */
+  registryEntry(jobId: string): JobRegistryEntry | null {
+    const entry = this.resident.get(jobId);
+    return entry ? { ...entry } : null;
+  }
+
+  /** Snapshot of everything executing right now. */
+  registrySnapshot(): JobRegistryEntry[] {
+    return [...this.resident.values()].map((e) => ({ ...e }));
+  }
+
+  /** Subscribe to registry transitions across all jobs (the admin firehose). */
+  onRegistryChange(cb: (e: JobRegistryEntry) => void): () => void {
+    this.registryEvents.on("change", cb);
+    return () => void this.registryEvents.off("change", cb);
+  }
+
+  /**
+   * Runner counters. `startRunner` keeps these as locals; lifting them here is
+   * what makes queue depth answerable from an HTTP handler.
+   */
+  setRunnerStats(stats: Partial<RunnerStats>): void {
+    Object.assign(this.runnerStats, stats);
+  }
+
+  runnerSnapshot(): RunnerStats {
+    return { ...this.runnerStats };
   }
 
   // ── role 4: cancellation ──────────────────────────────────────────────────

@@ -94,6 +94,17 @@ const envSchema = z.object({
 
   // Admin API key
   ADMIN_API_KEY: z.string().optional(),
+  // Admin console may show user content (prompts, messages, tool IO). Off by
+  // default: those are the user's words, and an operator browsing them casually
+  // is a privacy problem even when the access itself is legitimate. Every read
+  // that returns content is audit-logged regardless.
+  ADMIN_ALLOW_CONTENT: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+  // Where operational alerts go (Slack/Discord incoming webhook). Unset = the
+  // sweep still computes and logs the numbers, it just doesn't page anyone.
+  ALERT_WEBHOOK_URL: z.string().url().optional(),
   // Maximum simultaneous active jobs per user enforced at reserve time (0 = no cap).
   CREDITS_MAX_CONCURRENT_JOBS: z.coerce.number().int().nonnegative().default(1),
 

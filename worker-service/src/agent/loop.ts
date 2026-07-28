@@ -7,6 +7,7 @@ import { meter, type MeterResult } from "../lib/credits";
 import { toCredits, MIN_SPEND_TO_START_MICRO } from "../lib/pricing";
 import { bus } from "../lib/bus";
 import { publish, publishTerminal, makeIndexer } from "../lib/publish";
+import { captureException, log } from "../lib/log";
 import { captureAppScreenshot } from "../lib/screenshot";
 import { putScreenshot } from "../lib/s3";
 import type { Sandbox } from "../lib/sandbox";
@@ -386,6 +387,9 @@ export async function runAgentLoop(
   const budget = budgetForEffort(effort);
   const tools = toolsForEffort(effort);
   const deadline = Date.now() + budget.maxWallClockMs;
+  // Declared out here so the catch can report which turn the run died on —
+  // "failed on turn 1" and "failed on turn 180" are very different incidents.
+  let turn = 0;
 
   try {
     // Determine which template the agent is (or will be) working in. A template
@@ -409,7 +413,6 @@ export async function runAgentLoop(
       { param: { role: "system", content: systemPrompt }, seq: null },
       ...(await loadHistory(projectId)),
     ];
-    let turn = 0;
     let truncationRetries = 0;
     let intentNudges = 0;
     let meterFailures = 0;
@@ -484,7 +487,7 @@ export async function runAgentLoop(
           data: { lastHeartbeatAt: new Date(), currentTurn: turn },
         })
         .catch((err) =>
-          console.error(`[worker] heartbeat failed for job ${jobId}`, err),
+          captureException(err, { jobId, detail: "heartbeat update failed" }),
         );
 
       const mgmt = await manageContext(entries, { model, calibration });
@@ -505,10 +508,11 @@ export async function runAgentLoop(
             },
           });
         } catch (err) {
-          console.error(
-            `[worker] failed to persist context checkpoint for job ${jobId}`,
-            err,
-          );
+          captureException(err, {
+            jobId,
+            projectId,
+            detail: "failed to persist context checkpoint",
+          });
         }
 
         try {
@@ -540,10 +544,11 @@ export async function runAgentLoop(
             });
           }
         } catch (err) {
-          console.error(
-            `[worker] failed to meter summarization for job ${jobId}`,
-            err,
-          );
+          captureException(err, {
+            jobId,
+            userId,
+            detail: "failed to meter summarization",
+          });
         }
         await publish(jobId, {
           type: "context_summarized",
@@ -564,11 +569,20 @@ export async function runAgentLoop(
       const contextTokens =
         estimateTokensCalibrated(mgmt.ctx, calibration) + TOOL_SCHEMA_TOKENS;
       const contextBudget = contextBudgetForModel(model);
-      console.log(
-        `[worker] job ${jobId} turn ${turn} context ≈${contextTokens} tokens ` +
-          `(budget ${contextBudget}, ` +
-          `${((contextTokens / contextBudget) * 100).toFixed(1)}%)`,
-      );
+      log.info("job.turn", {
+        jobId,
+        projectId,
+        turn,
+        model,
+        contextTokens,
+        contextBudget,
+        contextPct: Number(((contextTokens / contextBudget) * 100).toFixed(1)),
+      });
+      bus.setPhase(jobId, "llm", {
+        turn,
+        model,
+        sandboxId: sandboxRef.current?.sandboxId ?? null,
+      });
 
       const stream = clientForModel(model).chat.completions.stream({
         model,
@@ -676,10 +690,12 @@ export async function runAgentLoop(
           });
         }
       } catch (err) {
-        console.error(
-          `[worker] meter failed for job ${jobId} seq ${sequence}`,
-          err,
-        );
+        captureException(err, {
+          jobId,
+          userId,
+          sequence,
+          detail: "meter failed",
+        });
         // Fail-closed once metering has failed repeatedly (see constant).
         if (
           env.CREDITS_ENFORCE &&
@@ -800,10 +816,11 @@ export async function runAgentLoop(
 
         if (previewUrl && filesChanged && env.SCREENSHOT_ENABLED) {
           await captureAndStore(projectId, userId, previewUrl).catch((err) =>
-            console.error(
-              `[worker] screenshot failed for project ${projectId}`,
-              err,
-            ),
+            captureException(err, {
+              jobId,
+              projectId,
+              detail: "screenshot failed",
+            }),
           );
         }
         break;
@@ -853,6 +870,12 @@ export async function runAgentLoop(
         });
 
         await publish(jobId, { type: "tool_req", toolName, toolCallId, input });
+        bus.setPhase(
+          jobId,
+          SUBAGENT_TOOLS.has(toolName)
+            ? (`subagent:${toolName.replace("dispatch_", "")}` as const)
+            : (`tool:${toolName}` as const),
+        );
 
         let output: unknown;
         try {
@@ -889,6 +912,8 @@ export async function runAgentLoop(
         }
 
         await publish(jobId, { type: "tool_res", toolCallId, output });
+        const live = bus.registryEntry(jobId);
+        if (live) bus.setPhase(jobId, "llm", { toolCallCount: live.toolCallCount + 1 });
         return { tool_call_id: toolCallId, content: JSON.stringify(output) };
       };
 
@@ -955,7 +980,7 @@ export async function runAgentLoop(
     // may still retry this job, and a frame emitted now would close the
     // client's stream and orphan the retry (§2.4). `markFailed` publishes once
     // the runner has actually given up.
-    console.error(`[worker] agent loop failed for job ${jobId}`, err);
+    captureException(err, { jobId, projectId, userId, effort, model, turn });
     throw err;
   }
 }

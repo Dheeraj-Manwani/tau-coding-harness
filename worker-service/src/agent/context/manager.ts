@@ -5,6 +5,7 @@ import {
   CONTEXT_SUMMARIZE_RATIO,
   MAX_TOOL_RESULT_TOKENS,
 } from "../config";
+import { log } from "../../lib/log";
 import { compact } from "./compact";
 import { summarize, type SummarizeResult } from "./summarize";
 import { estimateTokensCalibrated, type TokenCalibration } from "./tokens";
@@ -30,14 +31,11 @@ async function summarizeWithRetry(
   try {
     return await summarize(...args);
   } catch (err) {
-    console.error("[worker] summarization failed, retrying once", err);
+    log.warn("context.summarize.retry", { error: String(err) });
     try {
       return await summarize(...args);
     } catch (err2) {
-      console.error(
-        "[worker] summarization failed after retry, proceeding without it",
-        err2,
-      );
+      log.error("context.summarize.failed", { error: String(err2) });
       return null;
     }
   }

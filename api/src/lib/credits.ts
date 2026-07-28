@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { log } from "./log";
 import type { Prisma } from "../generated/prisma/client";
 import { HoldStatus, LedgerType } from "../generated/prisma/enums";
 import type { Effort } from "../generated/prisma/enums";
@@ -16,9 +17,7 @@ type Tx = Prisma.TransactionClient;
 
 /** Emit a structured JSON log line for every credit mutation. */
 function creditLog(event: string, fields: Record<string, unknown>): void {
-  console.log(
-    JSON.stringify({ ts: new Date().toISOString(), event, ...fields }),
-  );
+  log.info(event, fields);
 }
 
 export class InsufficientCreditsError extends Error {

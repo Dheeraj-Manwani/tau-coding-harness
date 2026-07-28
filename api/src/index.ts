@@ -13,9 +13,15 @@ import webhookRoutes from "./routes/webhook.routes";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
+import {
+  createSession,
+  ui as adminUi,
+} from "./controllers/admin.controller";
 import { requestLogger } from "./middleware/logger.middleware";
 import { sweepStuckHolds } from "./lib/credits";
+import { captureException, log } from "./lib/log";
 import { reapStaleJobs } from "./lib/jobs";
+import { runAlertCheck } from "./lib/alerts";
 import { sweepAttachments } from "./services/attachment.service";
 
 /**
@@ -31,54 +37,36 @@ async function runSweep(onBoot = false): Promise<void> {
   try {
     const { reaped, jobIds, errors } = await reapStaleJobs(onBoot);
     if (reaped > 0 || errors.length > 0) {
-      console.log(
-        JSON.stringify({
-          ts: new Date().toISOString(),
-          event: "jobs.reap",
-          onBoot,
-          reaped,
-          jobIds,
-          errors,
-        }),
-      );
+      log.info("jobs.reap", { onBoot, reaped, jobIds, errors });
     }
   } catch (err) {
-    console.error("[jobs] stale-job reap failed:", err);
+    captureException(err, { detail: "stale-job reap failed" });
   }
 
   try {
     const { swept, errors } = await sweepStuckHolds();
     if (swept > 0 || errors.length > 0) {
-      console.log(
-        JSON.stringify({
-          ts: new Date().toISOString(),
-          event: "credits.sweep.scheduled",
-          swept,
-          errors,
-        }),
-      );
+      log.info("credits.sweep.scheduled", { swept, errors });
     }
   } catch (err) {
-    console.error("[credits] scheduled sweep failed:", err);
+    captureException(err, { detail: "credit hold sweep failed" });
   }
+
+  // Evaluate alerts last, so they see the post-cleanup state — otherwise every
+  // sweep would page about the very rows it just fixed. Skipped on boot: the
+  // reap has only just run and the metric windows are about a process that is
+  // no longer the one serving traffic.
+  if (!onBoot) await runAlertCheck();
 }
 
 async function runAttachmentSweep(): Promise<void> {
   try {
     const { orphansDeleted, stuckReset, errors } = await sweepAttachments();
     if (orphansDeleted > 0 || stuckReset > 0 || errors.length > 0) {
-      console.log(
-        JSON.stringify({
-          ts: new Date().toISOString(),
-          event: "attachments.sweep",
-          orphansDeleted,
-          stuckReset,
-          errors,
-        }),
-      );
+      log.info("attachments.sweep", { orphansDeleted, stuckReset, errors });
     }
   } catch (err) {
-    console.error("[attachments] scheduled sweep failed:", err);
+    captureException(err, { detail: "attachment sweep failed" });
   }
 }
 
@@ -127,6 +115,15 @@ export function buildApp(
   app.use(passport.initialize());
 
   app.use("/auth", authRoutes);
+
+  // Two admin routes sit OUTSIDE the admin gate, deliberately:
+  //   - `/admin/session` performs its own key check (it is how you get past the
+  //     gate in a browser, which can't send a header on navigation);
+  //   - `/admin/ui` is an empty HTML shell with no data in it — every number it
+  //     shows is fetched from the guarded endpoints below, so serving the page
+  //     to an unauthenticated visitor reveals nothing but a login box.
+  app.post("/admin/session", createSession);
+  app.get("/admin/ui", adminUi);
   app.use("/admin", requireAdminKey, adminRoutes);
 
   // Note: the dev-only BullMQ dashboard is removed in the economy build —
@@ -153,5 +150,5 @@ export function buildApp(
 if (import.meta.main) {
   const app = buildApp();
   startApiBackground();
-  app.listen(env.PORT, () => console.log(`Server started on ${env.PORT}`));
+  app.listen(env.PORT, () => log.info("api.ready", { port: env.PORT }));
 }

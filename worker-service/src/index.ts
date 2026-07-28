@@ -2,9 +2,11 @@ import { env } from "./lib/env";
 import { bus, type DispatchPayload } from "./lib/bus";
 import { prisma } from "./lib/prisma";
 import { publish, publishTerminal } from "./lib/publish";
+import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
 import { AgentStopError, runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
+import { finalizeJobRollups } from "./lib/jobRollups";
 import { getNextSequence } from "./lib/sequence";
 import { PREVIEW_PORT } from "./agent/config";
 import {
@@ -73,7 +75,11 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
 export async function processJob(payload: DispatchPayload): Promise<void> {
   // Tell the reaper this process owns the job, so a stale heartbeat during one
   // long turn isn't mistaken for an abandoned run (api/src/lib/jobs.ts).
-  bus.markResident(payload.jobId);
+  bus.markResident(payload.jobId, {
+    projectId: payload.projectId,
+    userId: payload.userId,
+    effort: payload.effort,
+  });
   try {
     await runJob(payload);
   } finally {
@@ -96,7 +102,7 @@ async function runJob(payload: DispatchPayload): Promise<void> {
         },
       });
     } catch (err) {
-      console.error(`[runner] preview job ${jobId} failed`, err);
+      captureException(err, { jobId, projectId, userId, phase: "preview" });
       await markFailed(jobId, err, "Couldn't start the preview");
     }
     return;
@@ -119,7 +125,7 @@ async function runJob(payload: DispatchPayload): Promise<void> {
         await settle(jobId);
         await publishTerminal(jobId, { type: "cancelled" });
       } catch (err) {
-        console.error(`[runner] cancel handling failed for ${jobId}`, err);
+        captureException(err, { jobId, event: "job.cancel.failed" });
       }
     })();
   });
@@ -137,12 +143,23 @@ async function runJob(payload: DispatchPayload): Promise<void> {
     });
 
     await publish(jobId, { type: "thinking", message: "Thinking" });
+    log.info("job.start", { jobId, projectId, userId, effort });
 
+    bus.setPhase(jobId, "provisioning");
     const hasFiles =
       (await prisma.projectFile.count({ where: { projectId } })) > 0;
     const initialSandbox = hasFiles
       ? await provisionSandbox(projectId, userId, jobId)
       : undefined;
+    if (initialSandbox) {
+      bus.setPhase(jobId, "llm", { sandboxId: initialSandbox.sandboxId });
+      await prisma.job
+        .update({
+          where: { id: jobId },
+          data: { sandboxId: initialSandbox.sandboxId },
+        })
+        .catch(() => {});
+    }
 
     const finishReason = await runAgentLoop(
       jobId,
@@ -163,8 +180,10 @@ async function runJob(payload: DispatchPayload): Promise<void> {
         },
       });
       await settle(jobId).catch((err) =>
-        console.error(`[runner] settle failed on complete for ${jobId}`, err),
+        captureException(err, { jobId, detail: "settle failed on complete" }),
       );
+      await finalizeJobRollups(jobId);
+      log.info("job.finish", { jobId, projectId, userId, finishReason });
     }
   } finally {
     offCancel();
@@ -204,16 +223,19 @@ async function markFailed(
       },
     })
     .catch((e) =>
-      console.error(`[runner] failed-status update error for ${jobId}`, e),
+      captureException(e, { jobId, detail: "failed-status update" }),
     );
   await settle(jobId).catch((e) =>
-    console.error(`[runner] settle failed on job failure for ${jobId}`, e),
+    captureException(e, { jobId, detail: "settle failed on job failure" }),
   );
+  // A failed run still spent tokens — roll them up so cost reporting is not
+  // silently blind to exactly the jobs worth investigating.
+  await finalizeJobRollups(jobId);
   await publishTerminal(jobId, {
     type: "error",
     message: userMessage ?? message,
   }).catch((e) =>
-    console.error(`[runner] terminal publish failed for ${jobId}`, e),
+    captureException(e, { jobId, detail: "terminal publish failed" }),
   );
 }
 
@@ -237,16 +259,29 @@ export function startRunner(): void {
   const attempts = new Map<string, number>();
   let active = 0;
 
+  // Mirror the runner's counters onto the bus so queue depth and in-flight
+  // count are answerable from an HTTP handler (GET /admin/health) instead of
+  // existing only as locals nobody outside this closure can see.
+  const publishStats = (): void =>
+    bus.setRunnerStats({
+      queueDepth: queue.length,
+      active,
+      concurrency: env.WORKER_CONCURRENCY,
+    });
+
   const pump = (): void => {
     while (active < env.WORKER_CONCURRENCY && queue.length > 0) {
       const payload = queue.shift();
       if (!payload) break;
       active += 1;
+      publishStats();
       void runOne(payload).finally(() => {
         active -= 1;
+        publishStats();
         pump();
       });
     }
+    publishStats();
   };
 
   const runOne = async (payload: DispatchPayload): Promise<void> => {
@@ -259,10 +294,14 @@ export function startRunner(): void {
       // the user explicitly stopped.
       if (n < MAX_ATTEMPTS && !bus.isCancelled(payload.jobId)) {
         attempts.set(payload.jobId, n);
-        console.error(
-          `[runner] job ${payload.jobId} failed (attempt ${n}/${MAX_ATTEMPTS}), retrying`,
-          err,
-        );
+        captureException(err, {
+          jobId: payload.jobId,
+          projectId: payload.projectId,
+          userId: payload.userId,
+          attempt: n,
+          maxAttempts: MAX_ATTEMPTS,
+          willRetry: true,
+        });
         // No terminal frame here on purpose: publishing one would make the
         // client finalize and close its stream, so the retry would run with
         // nobody listening (§2.4). The browser keeps shimmering through it.
@@ -275,7 +314,13 @@ export function startRunner(): void {
         queue.push(payload);
       } else {
         attempts.delete(payload.jobId);
-        console.error(`[runner] job ${payload.jobId} failed permanently`, err);
+        captureException(err, {
+          jobId: payload.jobId,
+          projectId: payload.projectId,
+          userId: payload.userId,
+          attempt: n,
+          willRetry: false,
+        });
         await markFailed(payload.jobId, err);
       }
     }
@@ -286,13 +331,15 @@ export function startRunner(): void {
     pump();
   });
 
-  console.log(
-    `[runner] ready — in-process, concurrency=${env.WORKER_CONCURRENCY} (no redis)`,
-  );
+  publishStats();
+  log.info("runner.ready", {
+    concurrency: env.WORKER_CONCURRENCY,
+    transport: "in-process",
+  });
 }
 
 async function shutdown(signal: string): Promise<void> {
-  console.log(`[runner] received ${signal}, shutting down…`);
+  log.info("runner.shutdown", { signal });
   await prisma.$disconnect();
   process.exit(0);
 }

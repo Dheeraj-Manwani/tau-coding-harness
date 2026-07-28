@@ -6,6 +6,7 @@ import { env } from "./env";
 import { getBlob, getBlobText, putBlob } from "./s3";
 import { isBinaryPath } from "../agent/tools/functions/utils";
 import { publish } from "./publish";
+import { log } from "./log";
 import { allocateHeadSequence } from "./headSequence";
 import { SandboxStatus } from "../generated/prisma/enums";
 import {
@@ -49,9 +50,7 @@ async function seedTemplateFiles(
   const absPaths = stdout.trim().split("\n").filter(Boolean);
   if (absPaths.length === 0) return;
 
-  console.log(
-    `[sandbox] seeding ${absPaths.length} template file(s) for project ${projectId}`,
-  );
+  log.info("sandbox.seed.start", { jobId, projectId, files: absPaths.length });
 
   const BATCH = 10;
   const records: Array<{
@@ -78,10 +77,11 @@ async function seedTemplateFiles(
       if (result.status === "fulfilled") {
         records.push(result.value);
       } else {
-        console.warn(
-          "[sandbox] skipped file during template seed:",
-          result.reason,
-        );
+        log.warn("sandbox.seed.skip", {
+          jobId,
+          projectId,
+          reason: String(result.reason),
+        });
       }
     }
   }
@@ -100,9 +100,7 @@ async function seedTemplateFiles(
     }
   });
 
-  console.log(
-    `[sandbox] seeded ${records.length} template file(s) for project ${projectId}`,
-  );
+  log.info("sandbox.seed.done", { jobId, projectId, files: records.length });
 
   // Tell the frontend to refetch the tree
   await publish(jobId, { type: "resync" });
@@ -125,9 +123,11 @@ async function rehydrateSandbox(
     return;
   }
 
-  console.log(
-    `[sandbox] rehydrating ${files.length} file(s) for project ${projectId}`,
-  );
+  log.info("sandbox.rehydrate.start", {
+    jobId,
+    projectId,
+    files: files.length,
+  });
 
   // Fetch blobs from R2 and write to the sandbox in bounded concurrent batches.
   const BATCH = 10;
@@ -155,10 +155,11 @@ async function rehydrateSandbox(
 
     for (const result of settled) {
       if (result.status === "rejected") {
-        console.warn(
-          "[sandbox] skipped file during rehydration:",
-          result.reason,
-        );
+        log.warn("sandbox.rehydrate.skip", {
+          jobId,
+          projectId,
+          reason: String(result.reason),
+        });
       }
     }
   }
@@ -169,12 +170,13 @@ async function rehydrateSandbox(
       `cd ${WORK_DIR} && bun install --frozen-lockfile`,
       { timeoutMs: 2 * 60_000 },
     );
-    console.log(`[sandbox] rehydration complete for project ${projectId}`);
+    log.info("sandbox.rehydrate.done", { jobId, projectId });
   } catch (err) {
-    console.warn(
-      "[sandbox] bun install after rehydration failed (non-fatal):",
-      err,
-    );
+    log.warn("sandbox.rehydrate.install_failed", {
+      jobId,
+      projectId,
+      error: String(err),
+    });
   }
 }
 
@@ -189,19 +191,24 @@ async function createFreshSandbox(
   const sandbox = await Sandbox.create(e2bName, {
     timeoutMs: SANDBOX_IDLE_TIMEOUT_MS,
   });
-  console.log(
-    `[sandbox] created new sandbox ${sandbox.sandboxId} from "${e2bName}" (${templateKey})`,
-  );
+  log.info("sandbox.provision", {
+    jobId,
+    projectId,
+    sandboxId: sandbox.sandboxId,
+    template: e2bName,
+    templateKey,
+  });
 
   try {
     await rehydrateSandbox(sandbox, projectId, userId, jobId);
   } catch (err) {
     if (!allowRetry) throw err;
 
-    console.warn(
-      "[sandbox] rehydration failed on freshly created sandbox; retrying once",
-      err,
-    );
+    log.warn("sandbox.rehydrate.retry", {
+      jobId,
+      projectId,
+      error: String(err),
+    });
     return createFreshSandbox(projectId, userId, jobId, templateKey, false);
   }
 
@@ -232,18 +239,21 @@ export async function provisionSandbox(
 
   if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
     try {
-      console.log(
-        "[sandbox] reconnecting to existing sandbox",
-        project.sandboxId,
-      );
+      log.info("sandbox.reconnect", {
+        jobId,
+        projectId,
+        sandboxId: project.sandboxId,
+      });
       const sandbox = await getSandbox(project.sandboxId);
       await verifySandboxAlive(sandbox);
       return sandbox;
     } catch (err) {
-      console.warn(
-        `[sandbox] reconnect to ${project.sandboxId} failed; provisioning a new sandbox`,
-        err,
-      );
+      log.warn("sandbox.reconnect.failed", {
+        jobId,
+        projectId,
+        sandboxId: project.sandboxId,
+        error: String(err),
+      });
     }
   }
 

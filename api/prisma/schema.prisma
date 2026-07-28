@@ -265,6 +265,16 @@ model Job {
   // it finished, or because it ran out of budget mid-task.
   finishReason FinishReason?
 
+  // Operational rollups, written as the run ends. All of this is derivable by
+  // joining TokenUsage/Message, but the admin views read it per-row and per-
+  // window — denormalising keeps those queries a single scan instead of a join
+  // over every turn of every job.
+  model       String?
+  sandboxId   String?
+  inputTokens  Int    @default(0)
+  outputTokens Int    @default(0)
+  costMicro    BigInt @default(0)
+
   messages   Message[]
   tokenUsage TokenUsage[]
   fragments  Fragment[]
@@ -272,6 +282,7 @@ model Job {
   @@index([projectId])
   @@index([status])
   @@index([status, lastHeartbeatAt])
+  @@index([queuedAt])
 }
 
 enum JobStatus {

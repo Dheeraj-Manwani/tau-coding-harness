@@ -2,6 +2,7 @@ import { SandboxNotFoundError } from "e2b";
 import { provisionSandbox, SANDBOX_IDLE_TIMEOUT_MS } from "@/lib/sandbox";
 import { isTemplateKey } from "@/templates/registry";
 import { publish } from "@/lib/publish";
+import { log } from "@/lib/log";
 import { bus } from "@/lib/bus";
 import type { SandboxRef } from "../loop";
 import type { Tool } from "./tools";
@@ -64,7 +65,8 @@ export async function executeTool(
   model: string,
   effort: Effort,
 ): Promise<unknown> {
-  console.log("tool call :: ", name, input);
+  log.debug("job.tool", { jobId, projectId, tool: name });
+  if (name === "ask_user") bus.setPhase(jobId, "waiting_user");
 
   switch (name) {
     case "ask_user": {
@@ -152,7 +154,7 @@ export async function executeTool(
   }
 
   sandbox.setTimeout(SANDBOX_IDLE_TIMEOUT_MS).catch((err) => {
-    console.warn("[executor] failed to refresh sandbox keep-alive:", err);
+    log.warn("sandbox.keepalive.failed", { jobId, error: String(err) });
   });
 
   try {

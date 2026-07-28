@@ -2,6 +2,7 @@ import { clientForModel } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { publish, publishTerminal } from "@/lib/publish";
+import { captureException, log } from "@/lib/log";
 import { meter, type MeterResult } from "@/lib/credits";
 import { toCredits } from "@/lib/pricing";
 import type Sandbox from "e2b";
@@ -71,7 +72,7 @@ export const executeSubAgentLoop = async (
   // The last prompt is the actual task (personas are seeded before it).
   const task = prompts[prompts.length - 1] ?? "";
   const tag = `[sub-agent:${label}]`;
-  console.log(`\n${tag} ▶ start — ${preview(task)}`);
+  log.info("subagent.start", { jobId, projectId, label, model, effort });
   let turn = 0;
   let truncationRetries = 0;
   let intentNudges = 0;
@@ -80,7 +81,12 @@ export const executeSubAgentLoop = async (
 
   while (true) {
     if (turn >= maxSubagentTurns) {
-      console.log(`${tag} ⏹ stopped — exceeded ${maxSubagentTurns} turns\n`);
+      log.warn("subagent.finish", {
+        jobId,
+        label,
+        turns: turn,
+        reason: "turn_cap",
+      });
       return lastContent || `Stopped: exceeded ${maxSubagentTurns} turns.`;
     }
 
@@ -108,7 +114,7 @@ export const executeSubAgentLoop = async (
     turn++;
     if (assistant.content?.trim()) {
       lastContent = assistant.content;
-      console.log(`${tag} turn ${turn} 💭 ${preview(assistant.content)}`);
+      log.debug("subagent.turn", { jobId, label, turn });
     }
 
     const inputTokens = completion.usage?.prompt_tokens ?? 0;
@@ -151,7 +157,12 @@ export const executeSubAgentLoop = async (
         });
       }
     } catch (err) {
-      console.error(`[worker] sub-agent meter failed for job ${jobId}`, err);
+      captureException(err, {
+        jobId,
+        userId,
+        label,
+        detail: "sub-agent meter failed",
+      });
       // Fail-closed once metering has failed repeatedly (see constant).
       if (
         env.CREDITS_ENFORCE &&
@@ -162,7 +173,12 @@ export const executeSubAgentLoop = async (
     }
 
     if (env.CREDITS_ENFORCE && holdExhausted) {
-      console.log(`${tag} ⏹ stopped early — out of credits (turn ${turn})`);
+      log.warn("subagent.finish", {
+        jobId,
+        label,
+        turns: turn,
+        reason: "insufficient_credits",
+      });
       // Terminal — and deduped: the main loop's own meter will reach the same
       // conclusion within a turn or two and try to publish it again.
       await publishTerminal(jobId, { type: "insufficient_credits" });
@@ -173,9 +189,12 @@ export const executeSubAgentLoop = async (
     // in smaller pieces, giving up after a few consecutive truncations.
     if (isTruncated) {
       if (++truncationRetries > MAX_TRUNCATION_RETRIES) {
-        console.log(
-          `${tag} ⏹ stopped — truncated ${MAX_TRUNCATION_RETRIES}x\n`,
-        );
+        log.warn("subagent.finish", {
+          jobId,
+          label,
+          turns: turn,
+          reason: "truncation_cap",
+        });
         return (
           lastContent || "Stopped: response repeatedly hit the token limit."
         );
@@ -210,7 +229,12 @@ export const executeSubAgentLoop = async (
     }
 
     if (!isToolTurn) {
-      console.log(`${tag} ✓ done — ${preview(assistant.content)}\n`);
+      log.info("subagent.finish", {
+        jobId,
+        label,
+        turns: turn,
+        reason: "done",
+      });
       return assistant.content ?? "";
     }
 
@@ -230,7 +254,7 @@ export const executeSubAgentLoop = async (
         input = { _raw: tc.function.arguments };
       }
 
-      console.log(`${tag}   ⚙ ${tc.function.name} ${preview(input, 160)}`);
+      log.debug("subagent.tool", { jobId, label, tool: tc.function.name });
 
       let output: unknown;
       try {
@@ -247,7 +271,11 @@ export const executeSubAgentLoop = async (
         output = { error: err instanceof Error ? err.message : String(err) };
       }
 
-      console.log(`${tag}   ↳ ${preview(output, 160)}`);
+      log.debug("subagent.tool.done", {
+        jobId,
+        label,
+        tool: tc.function.name,
+      });
 
       messages.push({
         role: "tool",

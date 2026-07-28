@@ -24,6 +24,7 @@ import { webSearch } from "./functions/web-search";
 import { searchImages } from "./functions/search-images";
 import { imageDimensions } from "./functions/image-dimensions";
 import { downloadAsset } from "./functions/download-asset";
+import { enableAi } from "./functions/enable-ai";
 import {
   pushProjectToGithub,
   createGithubIssue,
@@ -192,6 +193,8 @@ export async function executeTool(
           userId,
           indexer,
         );
+      case "enable_ai":
+        return await enableAi(input, sandbox, jobId, projectId, userId, indexer);
       case "run_command":
         return await runCommand(input, sandbox);
       case "tail_command_output":

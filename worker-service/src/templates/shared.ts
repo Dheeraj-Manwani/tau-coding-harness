@@ -601,8 +601,16 @@ export function buildContextMd({
     "- Tooltips: `<TooltipProvider>` wraps the app in `src/main.tsx` — use `<Tooltip>` without re-wrapping",
     "- `src/App.tsx` has a catch-all `*` 404 route — keep it last when adding routes",
     '- Theme: **Spotify-inspired**, **dark by default** (`<html class="dark">`). Both themes live in `src/index.css`: `:root` = light, `.dark` = dark (Spotify green `#1DB954` primary; dark surfaces step `#121212` -> `#181818` -> `#282828`, muted text `#b3b3b3`). Style with shadcn tokens (`bg-background`, `text-foreground`, `bg-primary`, `bg-card`, `text-muted-foreground`, `border-border`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the `dark` class on `<html>` (persist the choice in `localStorage`); for light-only, default to no `dark` class. Edit the palettes in `index.css` rather than introducing parallel color systems.',
-    "- Secrets go in `.env` (gitignored); never commit them",
+    "- Secrets go in `.env` (gitignored); never commit them. `.env` is NOT saved with the project — tau rewrites it each run",
   );
+  if (hasServer) {
+    // Deliberately one line. The full recipe is the `enable_ai` tool's return
+    // value, because that ships with a normal deploy — changing this file means
+    // rebuilding and republishing the E2B image.
+    conventions.push(
+      "- AI features: call the `enable_ai` tool first, then `fetch` `${process.env.TAU_AI_URL}/chat` from `server/index.ts` with an `Authorization: Bearer ${process.env.TAU_API_KEY}` header. Nothing to install. Never put the key in frontend code",
+    );
+  }
 
   const honoSection = hasServer
     ? `

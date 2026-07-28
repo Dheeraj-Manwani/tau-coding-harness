@@ -25,6 +25,21 @@ const envSchema = z.object({
   // ── E2B sandbox ──
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
 
+  // ── AI gateway (/v1) ────────────────────────────────────────────────────────
+  // Must match api/src/lib/env.ts — the worker decrypts the same rows the api
+  // encrypted. Optional here for the same reason it is there: an unset secret
+  // disables `enable_ai` rather than stopping the service from booting.
+  TAU_KEY_ENC_SECRET: z.string().optional(),
+  // Base URL a generated app `fetch`es for AI — `${TAU_AI_URL}/chat`. This is
+  // the one the agent is told to use.
+  //
+  // MUST be publicly reachable: an E2B sandbox cannot resolve a localhost on the
+  // machine running the worker.
+  TAU_AI_URL: z.string().url().default("http://localhost:8080/ai"),
+  // The OpenAI-compatible base, injected alongside it for apps that would rather
+  // use the SDK.
+  TAU_API_URL: z.string().url().default("http://localhost:8080/v1"),
+
   // ── R2
   R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),
   R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID is required"),

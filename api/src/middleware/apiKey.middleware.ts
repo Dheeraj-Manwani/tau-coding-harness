@@ -27,51 +27,82 @@ function extractKey(req: Request): string | null {
   return token.length > 0 ? token : null;
 }
 
-export async function requireApiKey(
-  req: Request,
+/**
+ * The two surfaces report errors differently — `/v1` in OpenAI's envelope so the
+ * SDK can type them, `/ai` flat so a `fetch` caller can read `data.error` as a
+ * string. Auth failures have to follow the same rule as every other error on
+ * their surface, or an app that handles `data.error` correctly everywhere else
+ * gets an object exactly when its key is wrong.
+ */
+export type ErrorDialect = "openai" | "simple";
+
+function deny(
   res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const presented = extractKey(req);
-  if (!presented) {
-    gatewayError(res, 401, {
-      message:
-        "No API key provided. Pass it as `Authorization: Bearer tau_sk_live_…`.",
-      type: "invalid_request_error",
-      code: "missing_api_key",
-    });
+  dialect: ErrorDialect,
+  status: number,
+  message: string,
+  code: string,
+  type: "invalid_request_error" | "api_error" = "invalid_request_error",
+): void {
+  if (dialect === "simple") {
+    res.status(status).json({ error: message, code });
     return;
   }
-
-  let verified;
-  try {
-    verified = await verifyApiKey(presented);
-  } catch (err) {
-    captureException(err, { detail: "gateway key verification failed" });
-    gatewayError(res, 500, {
-      message: "Could not verify the API key.",
-      type: "api_error",
-      code: "internal_error",
-    });
-    return;
-  }
-
-  if (!verified) {
-    // One message for unknown, revoked, and expired-grace keys alike: which of
-    // those a key is is not information an unauthenticated caller should get.
-    gatewayError(res, 401, {
-      message: "Invalid API key.",
-      type: "invalid_request_error",
-      code: "invalid_api_key",
-    });
-    return;
-  }
-
-  req.apiKey = verified.record;
-
-  // Best-effort and throttled — a profile timestamp is never worth failing a
-  // request over.
-  void touchApiKey(verified.record).catch(() => {});
-
-  next();
+  gatewayError(res, status, { message, type, code });
 }
+
+export function apiKeyAuth(dialect: ErrorDialect) {
+  return async function requireApiKeyMiddleware(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    const presented = extractKey(req);
+    if (!presented) {
+      deny(
+        res,
+        dialect,
+        401,
+        "No API key provided. Pass it as `Authorization: Bearer tau_sk_live_…`.",
+        "missing_api_key",
+      );
+      return;
+    }
+
+    let verified;
+    try {
+      verified = await verifyApiKey(presented);
+    } catch (err) {
+      captureException(err, { detail: "gateway key verification failed" });
+      deny(
+        res,
+        dialect,
+        500,
+        "Could not verify the API key.",
+        "internal_error",
+        "api_error",
+      );
+      return;
+    }
+
+    if (!verified) {
+      // One message for unknown, revoked, and expired-grace keys alike: which of
+      // those a key is is not information an unauthenticated caller should get.
+      deny(res, dialect, 401, "Invalid API key.", "invalid_api_key");
+      return;
+    }
+
+    req.apiKey = verified.record;
+
+    // Best-effort and throttled — a profile timestamp is never worth failing a
+    // request over.
+    void touchApiKey(verified.record).catch(() => {});
+
+    next();
+  };
+}
+
+/** `/v1` — OpenAI-shaped errors. */
+export const requireApiKey = apiKeyAuth("openai");
+/** `/ai` — flat `{ error, code }` errors. */
+export const requireApiKeySimple = apiKeyAuth("simple");

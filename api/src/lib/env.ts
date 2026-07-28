@@ -145,6 +145,15 @@ const envSchema = z.object({
     .default(20n * 1_000_000n),
   // Refuse to start a request below this available balance.
   GATEWAY_MIN_BALANCE_MICRO: z.coerce.bigint().default(100_000n),
+  // Wall-clock backstop on a single stream. Bun's http layer cannot tell us the
+  // client hung up (see gateway.controller.ts), so this is the only
+  // runtime-independent way to stop paying for a stream nobody is reading.
+  // Generous: a backstop, not a limit.
+  GATEWAY_STREAM_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 60_000),
 
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),

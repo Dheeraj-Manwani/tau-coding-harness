@@ -24,8 +24,15 @@ const { listModels, isModelAlias, MODEL_ALIASES } = await import(
   "../src/lib/gatewayModels"
 );
 
-const { validateChatRequest, dailyCapFor, __resetGatewayLimiters } =
-  await import("../src/services/gateway.service");
+const {
+  validateChatRequest,
+  dailyCapFor,
+  estimateTokensFromText,
+  extractDeltaText,
+  extractDisplayText,
+  toChatCompletionRequest,
+  __resetGatewayLimiters,
+} = await import("../src/services/gateway.service");
 
 const { GatewayRequestError } = await import("../src/lib/gatewayErrors");
 
@@ -136,22 +143,42 @@ describe("validateChatRequest", () => {
     }
   });
 
-  test("rejects streaming explicitly rather than silently ignoring it", () => {
-    // Silently returning a non-streamed body would hand the OpenAI SDK a shape
-    // it is not expecting, which fails much further from the cause.
-    try {
-      validateChatRequest({ model: "tau-fast", messages, stream: true });
-      throw new Error("should have thrown");
-    } catch (err) {
-      const e = err as InstanceType<typeof GatewayRequestError>;
-      expect(e.body.code).toBe("stream_not_supported");
-    }
+  test("flags a streaming request without changing the base body", () => {
+    const { stream, body } = validateChatRequest({
+      model: "tau-fast",
+      messages,
+      stream: true,
+    });
+    expect(stream).toBe(true);
+    // The streaming path overlays `stream`/`stream_options` itself; the shared
+    // validated body stays non-streaming so both paths agree on everything else.
+    expect(body.stream).toBe(false);
   });
 
-  test("stream: false is fine", () => {
-    expect(() =>
-      validateChatRequest({ model: "tau-fast", messages, stream: false }),
-    ).not.toThrow();
+  test("stream: false and omitted both mean non-streaming", () => {
+    expect(validateChatRequest({ model: "tau-fast", messages }).stream).toBe(
+      false,
+    );
+    expect(
+      validateChatRequest({ model: "tau-fast", messages, stream: false }).stream,
+    ).toBe(false);
+  });
+
+  test("rejects a non-boolean stream rather than coercing it", () => {
+    // `stream: "true"` is a real mistake to make from an untyped client, and
+    // coercing it would silently pick a wire format the caller didn't ask for.
+    try {
+      validateChatRequest({
+        model: "tau-fast",
+        messages,
+        stream: "true" as unknown as boolean,
+      });
+      throw new Error("should have thrown");
+    } catch (err) {
+      expect((err as InstanceType<typeof GatewayRequestError>).body.code).toBe(
+        "invalid_stream",
+      );
+    }
   });
 
   test("requires a non-empty messages array", () => {
@@ -242,6 +269,213 @@ describe("validateChatRequest", () => {
     });
     expect("user" in body).toBe(false);
     expect("logit_bias" in body).toBe(false);
+  });
+});
+
+describe("extractDeltaText", () => {
+  // Regression: this counted only `delta.content`, so for Deepseek — which
+  // streams into `reasoning_content` and leaves `content` null for most of a
+  // response — the disconnect estimate came out as 0 tokens. A live 183-frame
+  // stream billed as input-only until this was fixed.
+  test("counts reasoning_content, which reasoning models bill as output", () => {
+    expect(
+      extractDeltaText({
+        choices: [{ delta: { content: null, reasoning_content: "We" } }],
+      }),
+    ).toBe("We");
+  });
+
+  test("counts ordinary content", () => {
+    expect(
+      extractDeltaText({
+        choices: [{ delta: { content: "hello", reasoning_content: null } }],
+      }),
+    ).toBe("hello");
+  });
+
+  test("counts both when a chunk carries both", () => {
+    expect(
+      extractDeltaText({
+        choices: [{ delta: { content: "ab", reasoning_content: "cd" } }],
+      }),
+    ).toBe("abcd");
+  });
+
+  test("survives the shapes a real stream actually sends", () => {
+    // Role-only opener, the terminal empty delta, and the usage chunk (which
+    // has no choices at all) must all contribute nothing rather than throw.
+    expect(extractDeltaText({ choices: [{ delta: { role: "assistant" } }] })).toBe("");
+    expect(extractDeltaText({ choices: [] })).toBe("");
+    expect(extractDeltaText({})).toBe("");
+    expect(extractDeltaText({ choices: null })).toBe("");
+    expect(extractDeltaText({ choices: [{}] })).toBe("");
+  });
+
+  test("ignores non-string deltas rather than stringifying them", () => {
+    expect(
+      extractDeltaText({
+        choices: [{ delta: { content: 42, reasoning_content: { a: 1 } } }],
+      }),
+    ).toBe("");
+  });
+});
+
+describe("extractDisplayText", () => {
+  // The billing/display split. `tau-*` are reasoning models: they stream their
+  // working into reasoning_content before the answer lands in content. Billing
+  // must count both; a chat bubble must show only the answer, or the end user
+  // of a generated app watches the model think out loud.
+  const chunk = (delta: unknown) => ({ choices: [{ delta }] });
+
+  test("excludes reasoning_content that extractDeltaText includes", () => {
+    const c = chunk({ content: null, reasoning_content: "We need to..." });
+    expect(extractDeltaText(c)).toBe("We need to...");
+    expect(extractDisplayText(c)).toBe("");
+  });
+
+  test("returns the answer once content arrives", () => {
+    const c = chunk({ content: "1 2 3", reasoning_content: null });
+    expect(extractDisplayText(c)).toBe("1 2 3");
+    expect(extractDeltaText(c)).toBe("1 2 3");
+  });
+
+  test("takes only content when a chunk carries both", () => {
+    expect(
+      extractDisplayText(chunk({ content: "answer", reasoning_content: "think" })),
+    ).toBe("answer");
+  });
+
+  test("tolerates the empty shapes a real stream sends", () => {
+    expect(extractDisplayText({ choices: [] })).toBe("");
+    expect(extractDisplayText({})).toBe("");
+    expect(extractDisplayText({ choices: null })).toBe("");
+    expect(extractDisplayText(chunk({ role: "assistant" }))).toBe("");
+  });
+});
+
+describe("toChatCompletionRequest", () => {
+  // Maps the plain-fetch surface onto the OpenAI one, so both dialects converge
+  // on a single validated body and one place decides what is billed.
+  const msgs = (r: ReturnType<typeof toChatCompletionRequest>) =>
+    r.messages as { role: string; content: string }[];
+
+  test("turns a prompt into a single user message", () => {
+    const r = toChatCompletionRequest({ prompt: "hi" }, false);
+    expect(msgs(r)).toEqual([{ role: "user", content: "hi" }]);
+    expect(r.stream).toBe(false);
+  });
+
+  test("puts system before the prompt", () => {
+    const r = toChatCompletionRequest({ prompt: "hi", system: "Be terse." }, false);
+    expect(msgs(r)).toEqual([
+      { role: "system", content: "Be terse." },
+      { role: "user", content: "hi" },
+    ]);
+  });
+
+  test("passes a messages array through for multi-turn", () => {
+    const conversation = [
+      { role: "user", content: "My name is Ada." },
+      { role: "assistant", content: "Hello Ada!" },
+      { role: "user", content: "What is my name?" },
+    ];
+    expect(msgs(toChatCompletionRequest({ messages: conversation }, false))).toEqual(
+      conversation,
+    );
+  });
+
+  test("prepends system to a messages array too", () => {
+    const r = toChatCompletionRequest(
+      { messages: [{ role: "user", content: "hi" }], system: "Be terse." },
+      false,
+    );
+    expect(msgs(r)[0]).toEqual({ role: "system", content: "Be terse." });
+  });
+
+  test("requires exactly one of prompt or messages", () => {
+    const codes: string[] = [];
+    for (const input of [
+      {},
+      { prompt: "" },
+      { messages: [] },
+      { prompt: "a", messages: [{ role: "user", content: "b" }] },
+    ]) {
+      try {
+        toChatCompletionRequest(input, false);
+        throw new Error(`should have thrown for ${JSON.stringify(input)}`);
+      } catch (err) {
+        codes.push((err as InstanceType<typeof GatewayRequestError>).body.code);
+      }
+    }
+    expect(codes).toEqual([
+      "missing_prompt",
+      "missing_prompt",
+      "missing_prompt",
+      "ambiguous_prompt",
+    ]);
+  });
+
+  test("rejects a non-string system", () => {
+    try {
+      toChatCompletionRequest({ prompt: "hi", system: 42 }, false);
+      throw new Error("should have thrown");
+    } catch (err) {
+      expect((err as InstanceType<typeof GatewayRequestError>).body.code).toBe(
+        "invalid_system",
+      );
+    }
+  });
+
+  test("`json: true` becomes OpenAI's response_format", () => {
+    // So an app never has to know the nested vendor shape.
+    expect(
+      toChatCompletionRequest({ prompt: "hi", json: true }, false).response_format,
+    ).toEqual({ type: "json_object" });
+    expect(
+      toChatCompletionRequest({ prompt: "hi" }, false).response_format,
+    ).toBeUndefined();
+  });
+
+  test("floors maxTokens so a reasoning model still reaches an answer", () => {
+    // Regression: maxTokens 30 returned finishReason "length" and text "" —
+    // the whole budget went on reasoning_content before any answer was written.
+    expect(toChatCompletionRequest({ prompt: "hi", maxTokens: 30 }, false).max_tokens).toBe(256);
+    // A caller asking for more than the floor keeps their value.
+    expect(toChatCompletionRequest({ prompt: "hi", maxTokens: 1000 }, false).max_tokens).toBe(1000);
+  });
+
+  test("carries the stream flag through", () => {
+    expect(toChatCompletionRequest({ prompt: "hi" }, true).stream).toBe(true);
+  });
+});
+
+describe("estimateTokensFromText", () => {
+  // Only reached when a stream ends with no usage chunk — a client that hung up,
+  // or an upstream that ignored stream_options. Billing zero there would make
+  // "disconnect early" a free-inference exploit, so an approximate charge beats
+  // no charge.
+  test("approximates chars/4, rounding up", () => {
+    expect(estimateTokensFromText("")).toBe(0);
+    expect(estimateTokensFromText("abcd")).toBe(1);
+    expect(estimateTokensFromText("abcde")).toBe(2);
+    expect(estimateTokensFromText("a".repeat(400))).toBe(100);
+  });
+
+  test("never returns a negative or fractional count", () => {
+    for (const s of ["", "a", "ab", "abc", "abcd", "hello world"]) {
+      const n = estimateTokensFromText(s);
+      expect(Number.isInteger(n)).toBe(true);
+      expect(n).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  test("is monotonic in length, so a longer stream never bills less", () => {
+    let prev = -1;
+    for (let i = 0; i < 50; i += 1) {
+      const n = estimateTokensFromText("x".repeat(i));
+      expect(n).toBeGreaterThanOrEqual(prev);
+      prev = n;
+    }
   });
 });
 

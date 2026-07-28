@@ -29,6 +29,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
+import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -583,6 +584,9 @@ export default function BillingPage() {
           </div>
           <div className="sm:col-span-2">
             <RedeemSection />
+          </div>
+          <div className="sm:col-span-2">
+            <ApiKeyCard />
           </div>
         </div>
 

@@ -74,6 +74,11 @@ model Project {
 
   templateKey String @default("fullstack")
 
+  /// Set by the `enable_ai` tool. Drives re-injection of TAU_API_KEY into the
+  /// sandbox on every provision — the key lives in a `.env` that is deliberately
+  /// never persisted to the manifest, so it has to be rewritten each rebuild.
+  aiEnabled Boolean @default(false)
+
   previewImageKey       String?
   previewImageUpdatedAt DateTime?
 

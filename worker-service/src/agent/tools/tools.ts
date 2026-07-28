@@ -450,6 +450,26 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "enable_ai",
+      description:
+        "Turn on AI features for the app you are building, so it can call a language model at runtime (chatbots, summarizing, classifying, generating text, answering questions about the user's data). Call this BEFORE writing any code that talks to a model. It provisions the user's tau API key, injects it into the running app as environment variables, and returns the exact code recipe to follow — you never handle or see the key itself. The app calls tau's own AI endpoint and it is billed to the user's existing credits, so no API key or account of their own is needed. Requires a provisioned sandbox WITH a backend (the `fullstack` or `fullstack-db` template): a frontend-only app has nowhere safe to keep a key, and this returns an error there. Safe to call more than once.",
+      parameters: {
+        type: "object",
+        properties: {
+          purpose: {
+            type: "string",
+            description:
+              "One short phrase describing what the app will use AI for, e.g. 'summarize meeting notes' or 'answer questions about uploaded recipes'. Recorded for the user's reference.",
+          },
+        },
+        required: ["purpose"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "push_to_github",
       description:
         "Push the project's current files to the user's connected GitHub account. Creates the repository automatically on the first push. Use this when the user asks to push, save, publish, or commit the project to GitHub, or to open a pull request. Does not require a sandbox — it commits the stored project files. If it returns a 'not connected' error, tell the user to click the GitHub button on the project page to connect their account first. The returned link is shown to the user.",

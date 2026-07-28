@@ -11,20 +11,21 @@
 import { randomUUID } from "crypto";
 import type OpenAI from "openai";
 import { env } from "../lib/env";
-import { log } from "../lib/log";
+import { captureException, log } from "../lib/log";
 import {
   gatewaySpentToday,
   getBalance,
   meterGateway,
   ensureBillingAccount,
 } from "../lib/credits";
-import { toCredits } from "../lib/pricing";
+import { costMicro, toCredits } from "../lib/pricing";
 import { GatewayRequestError } from "../lib/gatewayErrors";
 import {
   DEFAULT_ALIAS,
   isModelAlias,
   MODEL_ALIASES,
   resolveModel,
+  type ModelAlias,
   type ResolvedModel,
 } from "../lib/gatewayModels";
 import type { ApiKey } from "../generated/prisma/client";
@@ -64,6 +65,9 @@ export interface ChatCompletionRequest {
 interface ValidatedRequest {
   resolved: ResolvedModel;
   body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
+  /** Whether the caller asked for SSE. The upstream body is built non-streaming
+   *  either way; the streaming path overlays `stream` + `stream_options`. */
+  stream: boolean;
 }
 
 /**
@@ -77,13 +81,10 @@ interface ValidatedRequest {
 export function validateChatRequest(
   input: ChatCompletionRequest,
 ): ValidatedRequest {
-  if (input.stream === true) {
-    throw bad(
-      "Streaming is not supported yet on the tau gateway. Omit `stream` or set it to false.",
-      "stream_not_supported",
-      "stream",
-    );
+  if (input.stream !== undefined && typeof input.stream !== "boolean") {
+    throw bad("`stream` must be a boolean.", "invalid_stream", "stream");
   }
+  const stream = input.stream === true;
 
   const requested = input.model ?? DEFAULT_ALIAS;
   if (!isModelAlias(requested)) {
@@ -153,7 +154,7 @@ export function validateChatRequest(
     ...(typeof input.seed === "number" ? { seed: input.seed } : {}),
   } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
 
-  return { resolved, body };
+  return { resolved, body, stream };
 }
 
 /** The per-key daily ceiling, falling back to the global default. */
@@ -290,8 +291,375 @@ export async function chatCompletion(
   };
 }
 
+// ── Simple fetch surface (/ai) ───────────────────────────────────────────────
+
+/**
+ * The request shape a generated app posts with plain `fetch`.
+ *
+ * `/v1` mirrors OpenAI so the SDK works; this exists so an app doesn't need the
+ * SDK at all. That matters more than it sounds: `bun add openai` is an install
+ * step that can fail, a dependency to keep current, and ~10 lines of client
+ * setup the agent has to get right. A `fetch` the model can write from memory
+ * has none of those failure modes.
+ *
+ * Field names are camelCase and task-shaped (`prompt`, `maxTokens`) rather than
+ * OpenAI's — this surface is not pretending to be OpenAI, and half-matching it
+ * would be worse than not matching at all.
+ */
+export interface SimpleChatRequest {
+  prompt?: unknown;
+  system?: unknown;
+  messages?: unknown;
+  model?: unknown;
+  temperature?: unknown;
+  maxTokens?: unknown;
+  json?: unknown;
+}
+
+/**
+ * Floor on `maxTokens` for the simple surface.
+ *
+ * The models behind `tau-*` are reasoning models: they emit into
+ * `reasoning_content` first and only then produce the actual answer in
+ * `content`. Ask for 30 tokens and the whole budget goes on reasoning, so the
+ * response comes back `finish_reason: "length"` with `text: ""` — the caller
+ * paid for tokens and got an empty string, which looks like a bug in their app.
+ *
+ * Raising a caller's explicit value is a real liberty, taken deliberately: it is
+ * the same kind of adjustment as clamping the ceiling, and 256 output tokens is
+ * a fraction of a credit. Getting an answer is what they asked for.
+ */
+const MIN_SIMPLE_MAX_TOKENS = 256;
+
+export interface SimpleChatResponse {
+  text: string;
+  model: string;
+  finishReason: string | null;
+  /** True when the model ran out of room before finishing its answer. */
+  truncated: boolean;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    creditsSpent: number;
+    creditsRemaining: number;
+  };
+  requestId: string;
+}
+
+type OpenAIMessages =
+  OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["messages"];
+
+/**
+ * Map the simple shape onto the OpenAI one, so both surfaces converge on a
+ * single validated body and there is exactly one place that decides what is
+ * allowed, what gets clamped, and what gets billed.
+ */
+export function toChatCompletionRequest(
+  input: SimpleChatRequest,
+  stream: boolean,
+): ChatCompletionRequest {
+  const hasPrompt = typeof input.prompt === "string" && input.prompt.length > 0;
+  const hasMessages = Array.isArray(input.messages) && input.messages.length > 0;
+
+  if (!hasPrompt && !hasMessages) {
+    throw bad(
+      "Provide either `prompt` (a string) or `messages` (a non-empty array).",
+      "missing_prompt",
+      "prompt",
+    );
+  }
+  if (hasPrompt && hasMessages) {
+    throw bad(
+      "Provide `prompt` or `messages`, not both.",
+      "ambiguous_prompt",
+      "prompt",
+    );
+  }
+  if (input.system !== undefined && typeof input.system !== "string") {
+    throw bad("`system` must be a string.", "invalid_system", "system");
+  }
+
+  const messages: OpenAIMessages = [];
+  if (typeof input.system === "string" && input.system.length > 0) {
+    messages.push({ role: "system", content: input.system });
+  }
+  if (hasPrompt) {
+    messages.push({ role: "user", content: input.prompt as string });
+  } else {
+    messages.push(...(input.messages as OpenAIMessages));
+  }
+
+  return {
+    model: input.model,
+    messages,
+    stream,
+    ...(typeof input.maxTokens === "number"
+      ? { max_tokens: Math.max(input.maxTokens, MIN_SIMPLE_MAX_TOKENS) }
+      : {}),
+    ...(typeof input.temperature === "number"
+      ? { temperature: input.temperature }
+      : {}),
+    // A convenience flag rather than making apps know OpenAI's nested shape.
+    ...(input.json === true
+      ? { response_format: { type: "json_object" } }
+      : {}),
+  };
+}
+
+/** `POST /ai/chat` — one call, one string back. */
+export async function simpleChat(
+  key: ApiKey,
+  input: SimpleChatRequest,
+  projectId: string | null,
+): Promise<SimpleChatResponse> {
+  const outcome = await chatCompletion(
+    key,
+    toChatCompletionRequest(input, false),
+    projectId,
+  );
+
+  const choice = outcome.payload.choices[0];
+  const usage = outcome.payload.usage;
+  const inputTokens = usage?.prompt_tokens ?? 0;
+  const outputTokens = usage?.completion_tokens ?? 0;
+
+  return {
+    // Reasoning models leave `content` null and put their working in
+    // `reasoning_content`. The app asked for an answer, so hand back the answer
+    // and never the scratch work.
+    text: choice?.message?.content ?? "",
+    model: outcome.payload.model,
+    finishReason: choice?.finish_reason ?? null,
+    truncated: choice?.finish_reason === "length",
+    usage: {
+      inputTokens,
+      outputTokens,
+      creditsSpent: toCredits(
+        costMicro(
+          // The vendor id is the PRICING key; payload.model is the alias.
+          resolveModel(outcome.payload.model as ModelAlias)?.model ??
+            outcome.payload.model,
+          inputTokens,
+          outputTokens,
+        ),
+      ),
+      creditsRemaining: outcome.creditsRemaining,
+    },
+    requestId: outcome.requestId,
+  };
+}
+
+// ── Streaming ────────────────────────────────────────────────────────────────
+
+/**
+ * Fallback token estimate for a stream that ended without a usage chunk.
+ *
+ * Same chars/4 heuristic the worker's context manager uses. It is only ever
+ * reached on the abnormal path (client hung up, or an upstream that ignores
+ * `stream_options`), and the alternative is billing zero — which would make
+ * "disconnect early" a free-inference exploit.
+ */
+const CHARS_PER_TOKEN = 4;
+
+export function estimateTokensFromText(text: string): number {
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
+
+/**
+ * All billable text a chunk contributed, for the fallback estimate.
+ *
+ * Must include `reasoning_content`. Reasoning models (Deepseek, Kimi) stream
+ * their tokens there and leave `content` null for most of a response, but they
+ * bill every one of them as a completion token. Counting only `content` made
+ * the estimate 0 for precisely the requests that need it — long ones that got
+ * abandoned partway.
+ */
+export function extractDeltaText(chunk: {
+  choices?: { delta?: unknown }[] | null;
+}): string {
+  let out = "";
+  for (const choice of chunk.choices ?? []) {
+    const delta = choice.delta as
+      | { content?: unknown; reasoning_content?: unknown }
+      | undefined;
+    if (typeof delta?.content === "string") out += delta.content;
+    if (typeof delta?.reasoning_content === "string") {
+      out += delta.reasoning_content;
+    }
+  }
+  return out;
+}
+
+/**
+ * Only the text meant for a human — the answer, never the reasoning.
+ *
+ * The counterpart to {@link extractDeltaText}, and the distinction is not
+ * cosmetic. `tau-*` are reasoning models: they stream their working into
+ * `reasoning_content` before writing the answer into `content`. Billing must
+ * count both (the provider charges for both). A chat bubble must show only
+ * `content`, or the end user of a generated app watches the model think out
+ * loud — "We need to count from 1 to 5…" — instead of seeing the answer.
+ *
+ * Mirrors the non-streaming path, which returns `message.content` alone.
+ */
+export function extractDisplayText(chunk: {
+  choices?: { delta?: unknown }[] | null;
+}): string {
+  let out = "";
+  for (const choice of chunk.choices ?? []) {
+    const delta = choice.delta as { content?: unknown } | undefined;
+    if (typeof delta?.content === "string") out += delta.content;
+  }
+  return out;
+}
+
+function estimatePromptTokens(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+): number {
+  let chars = 0;
+  for (const m of messages) {
+    chars +=
+      typeof m.content === "string"
+        ? m.content.length
+        : JSON.stringify(m.content ?? "").length;
+    chars += 16; // per-message framing
+  }
+  return Math.ceil(chars / CHARS_PER_TOKEN);
+}
+
+/** Status recorded on `GatewayUsage` when the client hung up mid-stream.
+ *  499 is nginx's "client closed request" — it keeps those rows distinguishable
+ *  from clean 200s when someone asks why a bill looks odd. */
+const STATUS_CLIENT_CLOSED = 499;
+
+export interface StreamHandle {
+  requestId: string;
+  alias: string;
+  /** Yields chunks ready to serialize, with the vendor model id swapped out. */
+  chunks: AsyncGenerator<OpenAI.Chat.Completions.ChatCompletionChunk>;
+  /** Abort the upstream call — the generator's `finally` still meters. */
+  abort: () => void;
+}
+
+/**
+ * Start a streaming completion.
+ *
+ * Metering lives in the generator's `finally`, so it runs on every exit path:
+ * clean completion, upstream error, and — the one that matters — the client
+ * disconnecting mid-stream. A disconnected stream still cost real money
+ * upstream, so dropping the charge would be a hole rather than a kindness.
+ *
+ * The caller drives the generator and owns the HTTP response; keeping `res` out
+ * of here is what lets the whole path be tested without a socket.
+ */
+export async function streamChatCompletion(
+  key: ApiKey,
+  input: ChatCompletionRequest,
+  projectId: string | null,
+): Promise<StreamHandle> {
+  const { resolved, body } = validateChatRequest(input);
+  await preflight(key);
+
+  const requestId = randomUUID();
+  const controller = new AbortController();
+
+  // Ask for the usage chunk. Without this the stream ends with no token counts
+  // at all and every request would fall back to the estimate.
+  const upstream = await resolved.client.chat.completions.create(
+    {
+      ...body,
+      stream: true,
+      stream_options: { include_usage: true },
+    },
+    { signal: controller.signal },
+  );
+
+  inFlight.set(key.id, (inFlight.get(key.id) ?? 0) + 1);
+
+  async function* run(): AsyncGenerator<OpenAI.Chat.Completions.ChatCompletionChunk> {
+    let promptTokens: number | null = null;
+    let completionTokens: number | null = null;
+    let emitted = "";
+    let clean = false;
+
+    try {
+      for await (const chunk of upstream) {
+        // The final `include_usage` chunk carries real counts and an empty
+        // `choices` array. Prefer it over any estimate.
+        if (chunk.usage) {
+          promptTokens = chunk.usage.prompt_tokens;
+          completionTokens = chunk.usage.completion_tokens;
+        }
+        emitted += extractDeltaText(chunk);
+        // Echo the alias, never the vendor model id — same contract as the
+        // non-streaming path, and it has to hold on every single chunk.
+        yield { ...chunk, model: resolved.alias };
+      }
+      // Aborting the upstream fetch can end its iterator gracefully rather than
+      // throwing, so "the loop finished" is not the same as "the stream
+      // completed". Ask the controller, or an aborted run gets recorded as a
+      // clean 200 and becomes invisible in the usage table.
+      clean = !controller.signal.aborted;
+    } finally {
+      const n = (inFlight.get(key.id) ?? 1) - 1;
+      if (n <= 0) inFlight.delete(key.id);
+      else inFlight.set(key.id, n);
+
+      const estimated = promptTokens === null || completionTokens === null;
+      const inputTokens =
+        promptTokens ?? estimatePromptTokens(body.messages ?? []);
+      const outputTokens = completionTokens ?? estimateTokensFromText(emitted);
+
+      if (estimated) {
+        log.warn("gateway.stream_estimated", {
+          requestId,
+          userId: key.userId,
+          alias: resolved.alias,
+          clean,
+          emittedChars: emitted.length,
+          inputTokens,
+          outputTokens,
+        });
+      }
+
+      try {
+        await meterGateway({
+          userId: key.userId,
+          apiKeyId: key.id,
+          projectId,
+          alias: resolved.alias,
+          model: resolved.model,
+          inputTokens,
+          outputTokens,
+          requestId,
+          status: clean ? 200 : STATUS_CLIENT_CLOSED,
+        });
+      } catch (err) {
+        // Never let a metering failure surface as a stream error — the user
+        // already has their tokens. Loud, because it is money going unbilled.
+        captureException(err, {
+          detail: "gateway stream metering failed",
+          requestId,
+        });
+      }
+    }
+  }
+
+  return {
+    requestId,
+    alias: resolved.alias,
+    chunks: run(),
+    abort: () => controller.abort(),
+  };
+}
+
 /** Test seam: the in-memory limiter state is per-process and sticky. */
 export function __resetGatewayLimiters(): void {
   inFlight.clear();
   recentRequests.clear();
+}
+
+/** Test seam: current in-flight count for a key. */
+export function __inFlightFor(keyId: string): number {
+  return inFlight.get(keyId) ?? 0;
 }

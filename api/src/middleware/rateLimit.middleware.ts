@@ -25,3 +25,19 @@ export const attachmentRateLimiter = rateLimit({
     error: "Too many attachments uploaded. Please try again in a little while.",
   },
 });
+
+// Revealing or rotating hands out a live spend credential in plaintext. Neither
+// is something a legitimate user does more than a handful of times, so the limit
+// is tight enough to make scripted extraction pointless without ever being felt.
+export const revealRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many key reveals. Please try again in a little while.",
+  },
+});

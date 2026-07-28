@@ -11,6 +11,8 @@ import adminRoutes from "./routes/admin.routes";
 import billingRoutes from "./routes/billing.routes";
 import webhookRoutes from "./routes/webhook.routes";
 import gatewayRoutes from "./routes/gateway.routes";
+import aiRoutes from "./routes/ai.routes";
+import accountRoutes from "./routes/account.routes";
 import { keyEncryptionConfigured } from "./lib/apiKeys";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
@@ -150,7 +152,11 @@ export function buildApp(
       reason: "GATEWAY_ENFORCE=false in production would serve unbilled inference",
     });
   } else {
+    // Two dialects over one credential and one billing path:
+    //   /v1  — OpenAI-compatible, for the SDK
+    //   /ai  — small JSON shape, for plain `fetch` (what generated apps use)
     app.use("/v1", gatewayRoutes);
+    app.use("/ai", aiRoutes);
     log.info("gateway.ready", { enforce: env.GATEWAY_ENFORCE });
   }
 
@@ -162,6 +168,7 @@ export function buildApp(
   app.use(requireAuth);
 
   app.use("/project", projectRoutes);
+  app.use("/account", accountRoutes);
   app.use("/attachments", attachmentRoutes);
   app.use("/credits", creditsRoutes);
   app.use("/billing", billingRoutes);

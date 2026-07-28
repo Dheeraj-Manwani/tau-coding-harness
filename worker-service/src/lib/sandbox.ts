@@ -9,6 +9,8 @@ import {
   isSecretPath,
   toRelativePath,
 } from "../agent/tools/functions/utils";
+import { buildAiEnv, isAiEnabled, reinjectAiEnv } from "./aiEnv";
+import { keyEncryptionConfigured } from "./apiKeys";
 import { publish } from "./publish";
 import { log } from "./log";
 import { allocateHeadSequence } from "./headSequence";
@@ -200,8 +202,20 @@ async function createFreshSandbox(
   allowRetry = true,
 ): Promise<Sandbox> {
   const e2bName = e2bNameFor(templateKey);
+
+  // Sandbox-level envs do NOT reach the process `setStartCmd` boots (measured —
+  // see lib/aiEnv.ts), so these are not what gets the key to the Hono server.
+  // They are still worth setting: every command the agent runs afterwards
+  // (`bun run build`, curl smoke tests) does inherit them.
+  const aiEnabled = await isAiEnabled(projectId);
+  const envs =
+    aiEnabled && keyEncryptionConfigured()
+      ? await buildAiEnv(userId, projectId).catch(() => undefined)
+      : undefined;
+
   const sandbox = await Sandbox.create(e2bName, {
     timeoutMs: SANDBOX_IDLE_TIMEOUT_MS,
+    ...(envs ? { envs } : {}),
   });
   log.info("sandbox.provision", {
     jobId,
@@ -222,6 +236,14 @@ async function createFreshSandbox(
       error: String(err),
     });
     return createFreshSandbox(projectId, userId, jobId, templateKey, false);
+  }
+
+  // The `.env` is not in the manifest (isSecretPath), so rehydration cannot
+  // restore it — write it back here or an AI-enabled app boots keyless after
+  // every rebuild. No restart: `bun --watch` already reboots the server when
+  // rehydration rewrites server/index.ts, and .env is on disk by then.
+  if (aiEnabled) {
+    await reinjectAiEnv(sandbox, projectId, userId, jobId, { restart: false });
   }
 
   await prisma.project.update({
@@ -258,6 +280,13 @@ export async function provisionSandbox(
       });
       const sandbox = await getSandbox(project.sandboxId);
       await verifySandboxAlive(sandbox);
+      // Reconnecting to a live sandbox: the server is already up, so it needs
+      // an explicit restart to pick up the .env we are about to (re)write.
+      if (project.aiEnabled) {
+        await reinjectAiEnv(sandbox, projectId, userId, jobId, {
+          restart: true,
+        });
+      }
       return sandbox;
     } catch (err) {
       log.warn("sandbox.reconnect.failed", {

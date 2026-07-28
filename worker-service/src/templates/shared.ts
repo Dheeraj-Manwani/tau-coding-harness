@@ -608,7 +608,7 @@ export function buildContextMd({
     // value, because that ships with a normal deploy — changing this file means
     // rebuilding and republishing the E2B image.
     conventions.push(
-      "- AI features: call the `enable_ai` tool first, then `fetch` `${process.env.TAU_AI_URL}/chat` from `server/index.ts` with an `Authorization: Bearer ${process.env.TAU_API_KEY}` header. Nothing to install. Never put the key in frontend code",
+      "- AI features: call the `enable_ai` tool first, then `fetch` `${process.env.TAU_AI_URL}/chat` from `server/index.ts` with `Authorization: Bearer ${process.env.TAU_API_KEY}` and `X-Tau-Project: ${process.env.TAU_PROJECT_ID}` headers. Nothing to install. Never put the key in frontend code",
     );
   }
 

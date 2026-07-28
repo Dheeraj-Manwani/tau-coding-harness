@@ -30,6 +30,181 @@ import { ensureApiKey, keyEncryptionConfigured } from "./apiKeys";
 
 export const WORK_DIR = "/home/user/app";
 
+// ── Gateway reachability ─────────────────────────────────────────────────────
+
+/**
+ * Can a sandbox actually reach the gateway we are about to hand it?
+ *
+ * An E2B sandbox is a remote VM. `localhost:8080` inside it is *its own*
+ * loopback, not the machine running the worker, so a loopback or RFC1918 URL is
+ * guaranteed to connect-refuse — and it does so from inside a generated app,
+ * where the failure surfaces as a 502 on some route the user just asked for and
+ * nothing points back at the config that caused it.
+ *
+ * Checking the string is enough. We are not asking "is the gateway up" (that
+ * changes minute to minute and a probe here would just be a slower guess); we
+ * are asking "is this address the kind of address that can never work", which is
+ * a property of the URL alone and is worth refusing before we mint a key.
+ */
+export type GatewayReachability =
+  | { ok: true; aiUrl: string; apiUrl: string }
+  | {
+      ok: false;
+      reason: "unset" | "loopback" | "private" | "malformed";
+      detail: string;
+    };
+
+type HostClass = "loopback" | "private" | "public";
+
+/** Four dotted decimal octets and nothing else. */
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+/**
+ * The octet ranges must be applied to IPv4 *literals* only.
+ *
+ * A prefix match on the raw host string looks equivalent and is not:
+ * `10.example.com` and `172.16.acme.io` are ordinary public hostnames that a
+ * naive `/^10\./` classifies as RFC1918 and refuses. Parse first, then judge.
+ */
+function classifyIpv4(octets: number[]): HostClass {
+  const [a, b] = octets as [number, number, number, number];
+  if (a === 127 || (a === 0 && octets.every((o) => o === 0))) return "loopback";
+  if (a === 10) return "private";
+  if (a === 192 && b === 168) return "private";
+  if (a === 172 && b >= 16 && b <= 31) return "private";
+  if (a === 169 && b === 254) return "private"; // link-local
+  return "public";
+}
+
+function classifyHost(rawHost: string): HostClass {
+  // URL.hostname keeps IPv6 in brackets; strip them before matching.
+  const h = rawHost.toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
+
+  const v4 = IPV4.exec(h);
+  if (v4) {
+    const octets = v4.slice(1).map(Number);
+    // Out-of-range octets are not an IPv4 address at all; fall through to the
+    // hostname rules rather than pretending to have classified it.
+    if (octets.every((o) => o <= 255)) return classifyIpv4(octets);
+  }
+
+  if (h === "localhost" || h.endsWith(".localhost")) return "loopback";
+  if (h === "::" || h === "::1" || h === "0:0:0:0:0:0:0:1") return "loopback";
+
+  if (
+    /^(fc|fd)[0-9a-f]{2}:/.test(h) || // IPv6 unique-local
+    /^fe80:/.test(h) || // IPv6 link-local
+    h.endsWith(".local") || // mDNS
+    h.endsWith(".internal")
+  ) {
+    return "private";
+  }
+
+  return "public";
+}
+
+/**
+ * @param urls Overridable for tests — `env` is a frozen module-level const, so
+ * there is no other way to exercise the classification table.
+ */
+export function checkGatewayReachability(urls?: {
+  aiUrl?: string;
+  apiUrl?: string;
+}): GatewayReachability {
+  const aiUrl = urls ? urls.aiUrl : env.TAU_AI_URL;
+  const apiUrl = urls ? urls.apiUrl : env.TAU_API_URL;
+
+  if (!aiUrl || !apiUrl) {
+    return {
+      reason: "unset",
+      ok: false,
+      detail:
+        "TAU_AI_URL and TAU_API_URL are not set. A generated app has no address to call.",
+    };
+  }
+
+  for (const [name, value] of [
+    ["TAU_AI_URL", aiUrl],
+    ["TAU_API_URL", apiUrl],
+  ] as const) {
+    let host: string;
+    try {
+      host = new URL(value).hostname;
+    } catch {
+      // Unreachable for env-sourced values (zod `.url()` ran at boot), but the
+      // override seam means this function no longer gets to assume that.
+      return {
+        ok: false,
+        reason: "malformed",
+        detail: `${name} is not a valid URL: ${value}`,
+      };
+    }
+
+    const cls = classifyHost(host);
+    if (cls !== "public") {
+      return {
+        ok: false,
+        reason: cls,
+        detail: `${name} is ${value}, a ${cls} address. An E2B sandbox is a remote VM and cannot reach it — set it to a publicly reachable origin (a tunnel in dev).`,
+      };
+    }
+  }
+
+  return { ok: true, aiUrl, apiUrl };
+}
+
+/**
+ * The reachability verdict, with `TAU_GATEWAY_ALLOW_UNREACHABLE` applied.
+ *
+ * The override covers loopback/private only. An unset URL stays fatal no matter
+ * what the flag says — there is no string to write into `.env`, so "carry on
+ * anyway" is not a thing that can happen.
+ */
+export function gatewayUsable(): GatewayReachability {
+  const verdict = checkGatewayReachability();
+  if (verdict.ok || verdict.reason === "unset") return verdict;
+  if (!env.TAU_GATEWAY_ALLOW_UNREACHABLE) return verdict;
+
+  log.warn("ai.gateway_unreachable_allowed", { detail: verdict.detail });
+  return {
+    ok: true,
+    aiUrl: env.TAU_AI_URL as string,
+    apiUrl: env.TAU_API_URL as string,
+  };
+}
+
+export class GatewayUnreachableError extends Error {
+  constructor(readonly detail: string) {
+    super(detail);
+    this.name = "GatewayUnreachableError";
+  }
+}
+
+/**
+ * One error line at startup for a misconfiguration that would otherwise only
+ * show up as a broken generated app, hours later, in someone else's logs.
+ *
+ * Silent when key encryption is off — that instance has AI disabled entirely and
+ * an unset gateway URL is the correct state, not a problem.
+ */
+export function logGatewayReachability(): void {
+  if (!keyEncryptionConfigured()) return;
+
+  const verdict = checkGatewayReachability();
+  if (verdict.ok) {
+    log.info("ai.gateway_ready", { aiUrl: verdict.aiUrl });
+    return;
+  }
+  log[env.TAU_GATEWAY_ALLOW_UNREACHABLE ? "warn" : "error"](
+    "ai.unreachable_gateway",
+    {
+      reason: verdict.reason,
+      detail: verdict.detail,
+      allowedByOverride: env.TAU_GATEWAY_ALLOW_UNREACHABLE,
+    },
+  );
+}
+
 /** Env vars a generated app reads to reach the tau gateway. The index signature
  *  is what lets this be handed straight to E2B's `envs`. */
 export interface AiEnv extends Record<string, string> {
@@ -45,11 +220,17 @@ export async function buildAiEnv(
   userId: string,
   projectId: string,
 ): Promise<AiEnv> {
+  // Before minting anything. A key handed to an app that cannot reach the
+  // gateway is worse than no key: the app looks wired up, the user is told AI
+  // works, and every call 502s.
+  const verdict = gatewayUsable();
+  if (!verdict.ok) throw new GatewayUnreachableError(verdict.detail);
+
   const { key } = await ensureApiKey(userId);
   return {
     TAU_API_KEY: key,
-    TAU_AI_URL: env.TAU_AI_URL,
-    TAU_API_URL: env.TAU_API_URL,
+    TAU_AI_URL: verdict.aiUrl,
+    TAU_API_URL: verdict.apiUrl,
     TAU_PROJECT_ID: projectId,
   };
 }
@@ -165,6 +346,19 @@ export async function reinjectAiEnv(
 ): Promise<void> {
   if (!keyEncryptionConfigured()) {
     log.warn("ai.reinject_skipped", { jobId, projectId, reason: "no enc key" });
+    return;
+  }
+  // Distinguished from a generic failure below: this one is a config problem on
+  // tau's side, not a transient sandbox error, and it will recur on every
+  // provision until someone fixes the URL.
+  const verdict = gatewayUsable();
+  if (!verdict.ok) {
+    log.error("ai.reinject_skipped", {
+      jobId,
+      projectId,
+      reason: "unreachable gateway",
+      detail: verdict.detail,
+    });
     return;
   }
   try {

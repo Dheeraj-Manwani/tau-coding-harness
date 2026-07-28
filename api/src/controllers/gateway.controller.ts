@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import {
   chatCompletion,
+  projectIdFromHeader,
   streamChatCompletion,
 } from "../services/gateway.service";
 import { listModels } from "../lib/gatewayModels";
@@ -153,11 +154,7 @@ export async function chatCompletions(
 
   // Attribution only, and spoofable — but only by the key's owner, whose own
   // credits are being spent either way.
-  const projectHeader = req.headers["x-tau-project"];
-  const projectId =
-    typeof projectHeader === "string" && projectHeader.length > 0
-      ? projectHeader
-      : null;
+  const projectId = projectIdFromHeader(req.headers["x-tau-project"]);
 
   try {
     if (req.body?.stream === true) {

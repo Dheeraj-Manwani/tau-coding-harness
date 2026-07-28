@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { log } from "@/lib/log";
 import {
   buildAiEnv,
+  gatewayUsable,
   restartAppServer,
   writeAiEnvFile,
 } from "@/lib/aiEnv";
@@ -102,6 +103,7 @@ function recipe(): string {
     "      headers: {",
     "        'Content-Type': 'application/json',",
     "        Authorization: `Bearer ${process.env.TAU_API_KEY}`,",
+    "        'X-Tau-Project': process.env.TAU_PROJECT_ID ?? '',",
     "      },",
     "      body: JSON.stringify({",
     "        prompt: question,",
@@ -116,6 +118,10 @@ function recipe(): string {
     "",
     "The frontend calls YOUR route (`fetch('/api/ask', …)`) — never tau directly,",
     "and never with the key.",
+    "",
+    "Keep the `X-Tau-Project` header on every call. It is what attributes this",
+    "app's AI spend to this project on the user's billing page; without it their",
+    "usage shows up unattributed. It carries no secret — copy it as written.",
     "",
     "REQUEST fields (only `prompt` is required):",
     "  prompt       string  the question / instruction",
@@ -181,6 +187,24 @@ export async function enableAi(
     };
   }
 
+  // Checked before anything is minted or written. The failure this prevents is
+  // the expensive one: an app that looks wired up, that the user is told works,
+  // and that 502s on every AI call because the address it was given is not
+  // reachable from the sandbox it runs in.
+  const reachable = gatewayUsable();
+  if (!reachable.ok) {
+    log.error("ai.enable_refused", {
+      jobId,
+      projectId,
+      reason: reachable.reason,
+      detail: reachable.detail,
+    });
+    return {
+      error:
+        "The tau AI gateway is not reachable from this sandbox, so AI features cannot be turned on right now. This is a configuration problem on tau's side, not something you or the user can work around — do NOT try another provider, do NOT ask the user for an API key, and do NOT write code that calls a model. Tell the user plainly that AI is unavailable on this instance, then build the rest of what they asked for without it.",
+    };
+  }
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { templateKey: true, aiEnabled: true },
@@ -222,7 +246,7 @@ export async function enableAi(
     success: true,
     // Named so the agent can talk about them; the VALUES are never returned —
     // the model has no reason to see the key and every reason not to.
-    envVars: ["TAU_API_KEY", "TAU_AI_URL"],
+    envVars: ["TAU_API_KEY", "TAU_AI_URL", "TAU_PROJECT_ID"],
     endpoint: "POST ${TAU_AI_URL}/chat",
     models: ["tau-fast", "tau-smart", "tau-max"],
     recipe: recipe(),

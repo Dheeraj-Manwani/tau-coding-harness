@@ -12,6 +12,7 @@ import {
   streamChatCompletion,
   toChatCompletionRequest,
   extractDisplayText,
+  projectIdFromHeader,
 } from "../services/gateway.service";
 import { listModels } from "../lib/gatewayModels";
 import { GatewayRequestError } from "../lib/gatewayErrors";
@@ -29,8 +30,7 @@ function fail(res: Response, status: number, message: string, code: string): voi
 }
 
 function projectOf(req: Request): string | null {
-  const h = req.headers["x-tau-project"];
-  return typeof h === "string" && h.length > 0 ? h : null;
+  return projectIdFromHeader(req.headers["x-tau-project"]);
 }
 
 function handleError(res: Response, err: unknown, where: string): void {

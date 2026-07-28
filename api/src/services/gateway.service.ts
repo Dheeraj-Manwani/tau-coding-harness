@@ -157,6 +157,32 @@ export function validateChatRequest(
   return { resolved, body, stream };
 }
 
+/**
+ * Longest `X-Tau-Project` value we will record.
+ *
+ * Project ids are uuids (36 chars). This is not validation — the column has no
+ * FK and the value is attribution only — it is a bound on something written to
+ * the database on every single request.
+ */
+const MAX_PROJECT_HEADER_LENGTH = 64;
+
+/**
+ * Read the project attribution header.
+ *
+ * Spoofable, and deliberately not checked against the database: verifying it
+ * would cost a lookup on the hot path to prevent the key's owner from
+ * mis-labelling their own spend. Both surfaces share this so the two cannot
+ * drift into disagreeing about what counts as attributed.
+ */
+export function projectIdFromHeader(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  if (value.length === 0 || value.length > MAX_PROJECT_HEADER_LENGTH) {
+    return null;
+  }
+  return value;
+}
+
 /** The per-key daily ceiling, falling back to the global default. */
 export function dailyCapFor(key: ApiKey): bigint {
   return key.dailyCapMicro ?? env.GATEWAY_DEFAULT_DAILY_CAP_MICRO;

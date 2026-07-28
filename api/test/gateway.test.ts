@@ -31,6 +31,7 @@ const {
   extractDeltaText,
   extractDisplayText,
   toChatCompletionRequest,
+  projectIdFromHeader,
   __resetGatewayLimiters,
 } = await import("../src/services/gateway.service");
 
@@ -495,5 +496,39 @@ describe("dailyCapFor", () => {
     // ?? not ||, or a user setting the cap to 0 to pause a runaway app would
     // silently get the default instead.
     expect(dailyCapFor(key(0n))).toBe(0n);
+  });
+});
+
+describe("projectIdFromHeader", () => {
+  // Shared by /ai and /v1 so the two surfaces cannot drift into disagreeing
+  // about what counts as attributed spend. See AI_FOR_GENERATED_APPS.md §8.15.
+
+  test("takes a project id through", () => {
+    const id = "3f1b0c9e-7a2d-4f6b-9c8e-1d2a3b4c5d6e";
+    expect(projectIdFromHeader(id)).toBe(id);
+  });
+
+  test("treats a missing or non-string header as unattributed", () => {
+    expect(projectIdFromHeader(undefined)).toBeNull();
+    expect(projectIdFromHeader(null)).toBeNull();
+    // Express hands back an array when a header is sent more than once.
+    expect(projectIdFromHeader(["a", "b"])).toBeNull();
+  });
+
+  test("treats empty and whitespace-only as unattributed, not as a project", () => {
+    // The generated recipe sends `process.env.TAU_PROJECT_ID ?? ''`, so an app
+    // deployed without the var set posts an empty string on every request. That
+    // must land as null rather than as a project literally named "".
+    expect(projectIdFromHeader("")).toBeNull();
+    expect(projectIdFromHeader("   ")).toBeNull();
+  });
+
+  test("trims incidental whitespace", () => {
+    expect(projectIdFromHeader("  proj-1  ")).toBe("proj-1");
+  });
+
+  test("refuses an over-long value rather than writing it to the row", () => {
+    expect(projectIdFromHeader("x".repeat(64))).toBe("x".repeat(64));
+    expect(projectIdFromHeader("x".repeat(65))).toBeNull();
   });
 });

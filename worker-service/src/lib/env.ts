@@ -33,12 +33,24 @@ const envSchema = z.object({
   // Base URL a generated app `fetch`es for AI — `${TAU_AI_URL}/chat`. This is
   // the one the agent is told to use.
   //
-  // MUST be publicly reachable: an E2B sandbox cannot resolve a localhost on the
-  // machine running the worker.
-  TAU_AI_URL: z.string().url().default("http://localhost:8080/ai"),
-  // The OpenAI-compatible base, injected alongside it for apps that would rather
-  // use the SDK.
-  TAU_API_URL: z.string().url().default("http://localhost:8080/v1"),
+  // **Deliberately no default.** These are consumed inside an E2B sandbox — a
+  // remote VM — so a `localhost` value is not merely wrong, it is the sandbox's
+  // own loopback and every AI call connect-refuses. A default made that failure
+  // silent and invisible until someone read the generated app's logs. Unset now
+  // fails loudly at `enable_ai` instead (see `checkGatewayReachability`).
+  TAU_AI_URL: z.string().url().optional(),
+  // The OpenAI-compatible base, injected alongside it for anyone pointing an SDK
+  // at tau from outside the sandbox.
+  TAU_API_URL: z.string().url().optional(),
+  // Escape hatch for testing the injection mechanics (does `.env` land, does the
+  // Hono restart work) without standing up a tunnel first — which is exactly how
+  // §4's live verification was done. Downgrades an unreachable URL from a
+  // refusal to a warning. It does NOT make an unset URL usable: there is still
+  // nothing to inject.
+  TAU_GATEWAY_ALLOW_UNREACHABLE: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 
   // ── R2
   R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),

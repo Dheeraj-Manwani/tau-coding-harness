@@ -4,6 +4,7 @@ import { prisma } from "./lib/prisma";
 import { publish, publishTerminal } from "./lib/publish";
 import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
+import { logGatewayReachability } from "./lib/aiEnv";
 import { AgentStopError, runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
 import { finalizeJobRollups } from "./lib/jobRollups";
@@ -253,6 +254,12 @@ async function markFailed(
  */
 export function startRunner(): void {
   bus.clearDispatchHandlers();
+
+  // One line at boot for a misconfiguration whose only other symptom is a
+  // generated app that 502s on every AI call, hours later, in logs nobody is
+  // watching. Does not stop the runner: a tau instance with a broken gateway
+  // URL still builds every non-AI app perfectly well.
+  logGatewayReachability();
 
   const MAX_ATTEMPTS = 2; // mirror BullMQ attempts: 2 (initial + 1 retry)
   const queue: DispatchPayload[] = [];

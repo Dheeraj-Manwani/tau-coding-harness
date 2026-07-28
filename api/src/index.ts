@@ -10,6 +10,8 @@ import creditsRoutes from "./routes/credits.routes";
 import adminRoutes from "./routes/admin.routes";
 import billingRoutes from "./routes/billing.routes";
 import webhookRoutes from "./routes/webhook.routes";
+import gatewayRoutes from "./routes/gateway.routes";
+import { keyEncryptionConfigured } from "./lib/apiKeys";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
@@ -128,6 +130,29 @@ export function buildApp(
 
   // Note: the dev-only BullMQ dashboard is removed in the economy build —
   // there is no BullMQ queue (jobs run through the in-process runner).
+
+  // The AI gateway authenticates with a `tau_sk_*` key rather than a session
+  // JWT, so like the admin routes it must sit above the global requireAuth.
+  //
+  // Two conditions gate mounting it at all, and both fail CLOSED — an
+  // unmounted route 404s, which is strictly better than serving inference we
+  // cannot encrypt keys for or cannot bill:
+  //   - no TAU_KEY_ENC_SECRET  → no key could have been stored in the first place
+  //   - GATEWAY_ENFORCE=false in production → would be an open, unbilled proxy
+  //
+  // Note this is NOT wired to CREDITS_ENFORCE, which defaults to false. Shadow
+  // mode is right for the build path (it costs tau one job) and catastrophic
+  // here (it costs tau every token anyone cares to spend).
+  if (!keyEncryptionConfigured()) {
+    log.warn("gateway.disabled", { reason: "TAU_KEY_ENC_SECRET is not set" });
+  } else if (env.NODE_ENV === "production" && !env.GATEWAY_ENFORCE) {
+    log.error("gateway.disabled", {
+      reason: "GATEWAY_ENFORCE=false in production would serve unbilled inference",
+    });
+  } else {
+    app.use("/v1", gatewayRoutes);
+    log.info("gateway.ready", { enforce: env.GATEWAY_ENFORCE });
+  }
 
   // Economy: mount extra self-authenticating routes (the SSE event stream +
   // job cancel) BEFORE the global requireAuth so they can do their own token

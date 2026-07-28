@@ -77,6 +77,10 @@ const LEDGER_LABELS: Record<string, string> = {
   PROMO_REDEEM: "Promo code",
   PURCHASE: "Purchase",
   DEBIT: "Generation",
+  // Runtime inference from a deployed app, as opposed to DEBIT's "tau built
+  // something for you". Different enough that one label for both would be
+  // actively misleading on a bill.
+  GATEWAY_DEBIT: "App AI usage",
   REFUND: "Refund",
   EXPIRE: "Expired credits",
   ADJUSTMENT: "Adjustment",

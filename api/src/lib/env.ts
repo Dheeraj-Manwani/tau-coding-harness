@@ -30,10 +30,14 @@ const envSchema = z.object({
   DEEPSEEK_API_KEY: z.string(),
   DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   DEEPSEEK_MODEL: z.string().default("deepseek-v4-pro"),
+  // Mirrors worker-service/src/lib/env.ts — the /v1 gateway serves the same
+  // models the build path does, so the two must agree on their ids.
+  DEEPSEEK_MODEL_FLASH: z.string().default("deepseek-v4-flash"),
 
   KIMI_API_KEY: z.string().optional(),
   KIMI_BASE_URL: z.string().url().default("https://api.moonshot.ai/v1"),
   KIMI_EXTRACT_MODEL: z.string().default("kimi-k2.6"),
+  KIMI_MODEL_MAX: z.string().default("kimi-k2.7-code"),
 
   ATTACHMENTS_ENABLED: z
     .string()
@@ -107,6 +111,40 @@ const envSchema = z.object({
   ALERT_WEBHOOK_URL: z.string().url().optional(),
   // Maximum simultaneous active jobs per user enforced at reserve time (0 = no cap).
   CREDITS_MAX_CONCURRENT_JOBS: z.coerce.number().int().nonnegative().default(1),
+
+  // ── AI gateway (/v1) ────────────────────────────────────────────────────────
+  // Encrypts stored API keys at rest (AES-256-GCM). 32 bytes, hex-encoded:
+  //   openssl rand -hex 32
+  // Optional at the schema level ONLY so an existing deployment still boots
+  // without it — it is not optional in effect. `apiKeys.ts` throws on first use
+  // and `/v1` refuses to mount, so the feature cannot silently ship with no
+  // encryption; it just doesn't ship.
+  TAU_KEY_ENC_SECRET: z.string().optional(),
+
+  // Enforcement is SEPARATE from CREDITS_ENFORCE and defaults to TRUE, because
+  // the failure modes are opposite: a build metered in shadow mode costs tau one
+  // job, while a gateway in shadow mode is an open, unbilled LLM proxy.
+  // `meterGateway()` has no shadow path at all — this only gates mounting.
+  GATEWAY_ENFORCE: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+
+  // Caps the cost of any single request, which is what bounds the check-then-
+  // charge overshoot window (see gateway.service.ts).
+  GATEWAY_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
+  // Per-key in-flight ceiling. The other half of the overshoot bound.
+  GATEWAY_MAX_CONCURRENT: z.coerce.number().int().positive().default(8),
+  // Requests per minute per key.
+  GATEWAY_RPM: z.coerce.number().int().positive().default(60),
+  // Default daily spend ceiling per key, in micro-credits (20 credits). A
+  // deployed app's endpoints are public and unauthenticated by default, so this
+  // is the backstop against one draining the owner's balance overnight.
+  GATEWAY_DEFAULT_DAILY_CAP_MICRO: z.coerce
+    .bigint()
+    .default(20n * 1_000_000n),
+  // Refuse to start a request below this available balance.
+  GATEWAY_MIN_BALANCE_MICRO: z.coerce.bigint().default(100_000n),
 
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),

@@ -375,6 +375,145 @@ export async function meter(
   });
 }
 
+// ── Gateway metering (/v1 runtime inference) ─────────────────────────────────
+
+export interface MeterGatewayArgs {
+  userId: string;
+  apiKeyId: string;
+  /** Attribution only, from the X-Tau-Project header. */
+  projectId?: string | null;
+  /** What the app asked for ("tau-fast"). */
+  alias: string;
+  /** What we actually called — the PRICING key. */
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  /** Our uuid, echoed as `x-tau-request-id`. Drives idempotency. */
+  requestId: string;
+  /** Upstream HTTP status, so a failed proxy attempt is still recorded. */
+  status: number;
+}
+
+export interface MeterGatewayResult {
+  debited: bigint;
+  available: bigint;
+  costMicro: bigint;
+}
+
+/**
+ * Debit one gateway request against the buckets.
+ *
+ * Sibling of {@link meter}, not a variant of it: `meter` requires a jobId, a
+ * turn sequence and a `CreditHold`, and a runtime request from a deployed app
+ * has none of those. It also writes `TokenUsage`, whose `jobId`/`projectId` FKs
+ * are non-null with `onDelete: Restrict` — widening those to nullable would
+ * silently change `reconcileJob()` and every admin rollup that joins on them.
+ * Hence a separate `GatewayUsage` table and this function.
+ *
+ * There is deliberately **no `enforce` option**. `meter()` has one for
+ * calibration; here a shadow mode would be an open, unbilled LLM proxy, so it
+ * is not expressible rather than merely discouraged.
+ *
+ * The usage row and the ledger row are written in the same transaction as the
+ * balance mutation. If those could diverge, the ledger would stop being the
+ * money record and `reconcileAccount()` would start drifting.
+ */
+export async function meterGateway(
+  args: MeterGatewayArgs,
+): Promise<MeterGatewayResult> {
+  const { userId, requestId, model, inputTokens, outputTokens } = args;
+  const cost = costMicro(model, inputTokens, outputTokens);
+  const idempotencyKey = `gw:${requestId}`;
+
+  return prisma.$transaction(async (tx) => {
+    const acc = await lockAccount(tx, userId);
+
+    const dup = await tx.creditLedger.findUnique({ where: { idempotencyKey } });
+    if (dup) {
+      return { debited: 0n, available: gross(acc), costMicro: cost };
+    }
+
+    // Floors at zero: a request that overshoots the balance (see the
+    // check-then-charge window in gateway.service.ts) is absorbed rather than
+    // driving the account negative.
+    const spent = spendBuckets(
+      {
+        free: acc.freeBalance,
+        plan: acc.planBalance,
+        bonus: acc.bonusBalance,
+      },
+      cost,
+    );
+    const newGross =
+      spent.buckets.free + spent.buckets.plan + spent.buckets.bonus;
+
+    await tx.billingAccount.update({
+      where: { userId },
+      data: {
+        freeBalance: spent.buckets.free,
+        planBalance: spent.buckets.plan,
+        bonusBalance: spent.buckets.bonus,
+      },
+    });
+
+    await tx.gatewayUsage.create({
+      data: {
+        userId,
+        apiKeyId: args.apiKeyId,
+        projectId: args.projectId ?? null,
+        alias: args.alias,
+        model,
+        inputTokens,
+        outputTokens,
+        costMicro: cost,
+        requestId,
+        status: args.status,
+      },
+    });
+
+    await tx.creditLedger.create({
+      data: {
+        userId,
+        type: LedgerType.GATEWAY_DEBIT,
+        amount: -spent.debited,
+        balanceAfter: newGross,
+        idempotencyKey,
+        reason: `gateway ${args.alias} (${model})`,
+      },
+    });
+
+    creditLog("credits.gateway_meter", {
+      userId,
+      apiKeyId: args.apiKeyId,
+      projectId: args.projectId ?? null,
+      alias: args.alias,
+      model,
+      requestId,
+      costMicro: cost.toString(),
+      debitedMicro: spent.debited.toString(),
+      unbilledMicro: spent.remaining.toString(),
+    });
+
+    return { debited: spent.debited, available: newGross, costMicro: cost };
+  });
+}
+
+/**
+ * Micro-credits spent through one key since UTC midnight — the daily cap's
+ * left-hand side. Reads the `(apiKeyId, recordedAt)` index; a rollup table would
+ * only be worth it if this ever shows up as a slow query.
+ */
+export async function gatewaySpentToday(apiKeyId: string): Promise<bigint> {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+
+  const agg = await prisma.gatewayUsage.aggregate({
+    where: { apiKeyId, recordedAt: { gte: since } },
+    _sum: { costMicro: true },
+  });
+  return agg._sum.costMicro ?? 0n;
+}
+
 /**
  * Close a job's per-job spend counter on terminal status. Pay-as-you-go: real
  * consumption already left the buckets via meter(), and we never reserved

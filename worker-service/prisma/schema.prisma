@@ -23,6 +23,7 @@ model User {
   promoRedeems  PromoRedemption[]
   subscriptions Subscription[]
   attachments   Attachment[]
+  apiKeys       ApiKey[]
 }
 
 model OAuthAccount {
@@ -455,6 +456,10 @@ enum LedgerType {
   REFUND
   EXPIRE
   ADJUSTMENT
+  /// Runtime inference through the /v1 gateway, spent by a generated app rather
+  /// than by a build. Distinct from DEBIT so /billing and the admin views can
+  /// split "building" from "app usage" with a `where`, not a string match.
+  GATEWAY_DEBIT
 }
 
 // Append-only money record. Invariant (gross balance) == Σ amount per account.
@@ -565,6 +570,96 @@ model Subscription {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+// ───────────────────────────── AI gateway (/v1) ──────────────────────────────
+
+enum ApiKeyStatus {
+  ACTIVE
+  /// Superseded by a rotation but still honored until `revokeAfter`. Without
+  /// the overlap, rotating a key breaks every deployed app the instant it
+  /// happens, with no window to redeploy.
+  ROTATING
+  REVOKED
+}
+
+/// A user's key for the OpenAI-compatible `/v1` gateway, which generated apps
+/// use to call an LLM on the owner's credits. See doc/AI_FOR_GENERATED_APPS.md.
+///
+/// `userId` is deliberately NOT unique: the rotation grace window means a user
+/// briefly holds an ACTIVE key and a ROTATING one. "Exactly one usable key" is
+/// enforced in the service layer instead.
+model ApiKey {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// sha256(rawKey), hex. The auth lookup index — we never scan and compare, so
+  /// there is no timing side channel and no table scan per request.
+  lookupHash String @unique
+  /// "v1:{iv}:{tag}:{ciphertext}", AES-256-GCM under TAU_KEY_ENC_SECRET.
+  /// Reversible because tau must inject the plaintext into sandboxes and
+  /// deploys. Versioned so the encryption key itself can be rotated later.
+  ciphertext String
+  /// "tau_sk_live_ab12cd34" — safe to render anywhere, including logs.
+  prefix String
+
+  status ApiKeyStatus @default(ACTIVE)
+
+  /// Per-key daily ceiling in micro-credits. Null = the global default. This is
+  /// the backstop against a deployed app draining the owner's balance: its
+  /// endpoints are public and unauthenticated by default.
+  dailyCapMicro BigInt?
+
+  /// Throttled to at most one write a minute — this is for the profile UI, not
+  /// an audit log.
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  /// Set on rotate: the moment this key stops being honored.
+  revokeAfter DateTime?
+  revokedAt   DateTime?
+
+  usage GatewayUsage[]
+
+  @@index([userId, status])
+}
+
+/// One row per gateway request.
+///
+/// Deliberately NOT TokenUsage: that table's jobId/projectId FKs are non-null
+/// with onDelete: Restrict, and reconcileJob() plus every admin rollup joins on
+/// jobId. Runtime inference has no job, so widening TokenUsage to nullable would
+/// silently change all of those.
+model GatewayUsage {
+  id       String @id @default(uuid())
+  userId   String
+  apiKeyId String
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  /// From the X-Tau-Project header. Null when the caller didn't send it.
+  /// Spoofable by the key owner, which is fine — they're their own credits.
+  projectId String?
+
+  /// What the app asked for ("tau-fast") vs what we actually called
+  /// ("deepseek-v4-flash"). `model` is the costMicro() key; `alias` is what the
+  /// user's code says, so a provider swap stays legible in the ledger.
+  alias String
+  model String
+
+  inputTokens  Int
+  outputTokens Int
+  costMicro    BigInt
+
+  /// Echoed to the caller as `x-tau-request-id`. Drives DEBIT idempotency.
+  requestId String @unique
+  /// Upstream HTTP status, so a failed proxy attempt is still recorded.
+  status Int
+
+  recordedAt DateTime @default(now())
+
+  @@index([userId, recordedAt])
+  @@index([apiKeyId, recordedAt])
+  @@index([projectId])
 }
 
 // Idempotent webhook processing (Razorpay can redeliver events).

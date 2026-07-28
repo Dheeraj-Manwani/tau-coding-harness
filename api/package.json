@@ -41,6 +41,7 @@
     "e2b": "^2.30.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "ignore": "^7.0.6",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.0",

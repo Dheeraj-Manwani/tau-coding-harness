@@ -27,6 +27,7 @@ import {
   sha256Hex,
   toWorkdirPath,
   isBinaryPath,
+  isSecretPath,
 } from "../lib/projectFiles";
 import { bus } from "../lib/bus";
 import { terminateStrandedJob } from "../lib/jobs";
@@ -680,6 +681,15 @@ export async function getProjectFile(
     return { binary: true as const, url, contentHash: record.contentHash };
   }
 
+  // Gate on the manifest before the sandbox-first read below. Without this the
+  // handler hands `sandbox.files.read()` an arbitrary caller-supplied path, and
+  // `toWorkdirPath` passes absolute paths through unchanged — so `?path=.env`
+  // (or any absolute path in the VM) is served even though no such row exists.
+  // The editor only ever opens paths from the manifest-built file tree, and
+  // saveProjectFile already requires the row, so this costs nothing.
+  const record = await projectRepo.findProjectFileRecord(project.id, filePath);
+  if (!record) throw Errors.notFound("File not found");
+
   return readProjectFileContent(project, userId, filePath);
 }
 
@@ -723,6 +733,15 @@ export async function saveProjectFile(
   }
   if (content.includes("\0")) {
     throw Errors.badRequest("Binary files can't be edited");
+  }
+  // A credentials file can't be persisted (see `isSecretPath`), so saving one
+  // would clear the editor's dirty state while storing nothing. Reject instead
+  // of lying. Only reachable for rows written before the deny-list existed —
+  // scripts/remediate-leaked-secrets.ts clears those out.
+  if (isSecretPath(filePath)) {
+    throw Errors.badRequest(
+      "This file holds credentials and is not stored with the project.",
+    );
   }
 
   const before = await readProjectFileContent(project, userId, filePath);

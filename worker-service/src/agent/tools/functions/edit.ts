@@ -4,6 +4,7 @@ import {
   CHUNK_SIZE,
   chunkString,
   persistFile,
+  SECRET_NOT_PERSISTED_WARNING,
   toRelativePath,
   toWorkdirPath,
 } from "./utils";
@@ -54,6 +55,18 @@ export async function editFile(
     await publish(jobId, { type: "file_chunk", path: relPath, content: chunk });
   }
 
-  await persistFile(jobId, projectId, userId, relPath, updated, indexer);
-  return { success: true, path: p, replacements: replaceAll ? occurrences : 1 };
+  const { persisted } = await persistFile(
+    jobId,
+    projectId,
+    userId,
+    relPath,
+    updated,
+    indexer,
+  );
+  return {
+    success: true,
+    path: p,
+    replacements: replaceAll ? occurrences : 1,
+    ...(persisted ? {} : { persisted, warning: SECRET_NOT_PERSISTED_WARNING }),
+  };
 }

@@ -4,6 +4,7 @@ import {
   CHUNK_SIZE,
   chunkString,
   persistFile,
+  SECRET_NOT_PERSISTED_WARNING,
   toRelativePath,
   toWorkdirPath,
 } from "./utils";
@@ -30,6 +31,17 @@ export async function createFile(
     await publish(jobId, { type: "file_chunk", path: relPath, content: chunk });
   }
 
-  await persistFile(jobId, projectId, userId, relPath, c, indexer);
-  return { success: true, path: p };
+  const { persisted } = await persistFile(
+    jobId,
+    projectId,
+    userId,
+    relPath,
+    c,
+    indexer,
+  );
+  return {
+    success: true,
+    path: p,
+    ...(persisted ? {} : { persisted, warning: SECRET_NOT_PERSISTED_WARNING }),
+  };
 }

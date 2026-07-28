@@ -62,12 +62,66 @@ export function isBinaryPath(path: string): boolean {
   return BINARY_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
 }
 
+// ── Secret paths ────────────────────────────────────────────────────────────
+
+/**
+ * Paths that must never enter the `ProjectFile` manifest.
+ *
+ * The manifest is the input to the GitHub push (`buildProjectTree`), so a row
+ * here is a row in the user's repository. Secrets therefore have to be stopped
+ * at persist time, not filtered at push time — by then the bytes are already in
+ * R2 and one missed call site publishes them.
+ *
+ * This is the unconditional floor. The push path *also* honors the project's
+ * `.gitignore` (see `filterPushableFiles` in `lib/github.ts`), but a user who
+ * deletes their `.gitignore` must not thereby start publishing keys.
+ *
+ * Matched against the basename except where the pattern contains a `/`.
+ * Kept in sync with the worker's copy
+ * (`worker-service/src/agent/tools/functions/utils.ts`), the same way
+ * `isBinaryPath` is.
+ */
+const SECRET_PATTERNS: RegExp[] = [
+  // Every dotenv flavor, including `.env.example`. Placeholder files are a real
+  // convention, but the template's own .gitignore already excludes `.env.*`, so
+  // allowing them here would buy nothing and require judging which are safe.
+  /^\.env(\..*)?$/i,
+  // Private keys, certs and keystores.
+  /\.(pem|key|p12|pfx|jks|keystore|asc|gpg)$/i,
+  /^id_(rsa|dsa|ecdsa|ed25519)(\..*)?$/i,
+  // Credential files for the tools an agent might plausibly run.
+  /^\.(npmrc|netrc|pypirc|dockercfg)$/i,
+  /^\.?docker\/config\.json$/i,
+];
+
+/** Directory prefixes whose entire subtree is excluded. */
+const SECRET_DIR_PREFIXES = [".git/", ".ssh/", ".aws/", ".gnupg/"];
+
+/**
+ * True when `path` (project-relative) is credential-shaped and must never be
+ * persisted, served from the manifest, or pushed.
+ */
+export function isSecretPath(path: string): boolean {
+  const rel = path.replace(/^\/+/, "");
+  if (SECRET_DIR_PREFIXES.some((d) => rel === d.slice(0, -1) || rel.startsWith(d)))
+    return true;
+  // A nested `server/.env` is exactly as dangerous as a root one.
+  const base = rel.slice(rel.lastIndexOf("/") + 1);
+  return SECRET_PATTERNS.some((re) => re.test(base) || re.test(rel));
+}
+
 export interface WriteProjectFileResult {
   contentHash: string;
   sizeBytes: number;
   /** null when the content was unchanged and no sequence was allocated. */
   headSequence: number | null;
   changed: boolean;
+  /**
+   * False when the path is credential-shaped (`isSecretPath`) and was
+   * deliberately kept out of the manifest. The caller has still written the
+   * sandbox; the bytes just don't survive a rebuild and never reach GitHub.
+   */
+  persisted: boolean;
 }
 
 /**
@@ -100,13 +154,31 @@ export async function writeProjectFile(
   const contentHash = sha256Hex(content);
   const sizeBytes = Buffer.byteLength(content, "utf-8");
 
+  // Credential-shaped paths never enter the manifest — see `isSecretPath`. We
+  // return before `putBlob` so the bytes don't reach R2 either.
+  if (isSecretPath(path)) {
+    return {
+      contentHash,
+      sizeBytes,
+      headSequence: null,
+      changed: false,
+      persisted: false,
+    };
+  }
+
   const existing = await prisma.projectFile.findUnique({
     where: { projectId_path: { projectId, path } },
     select: { contentHash: true },
   });
 
   if (existing?.contentHash === contentHash) {
-    return { contentHash, sizeBytes, headSequence: null, changed: false };
+    return {
+      contentHash,
+      sizeBytes,
+      headSequence: null,
+      changed: false,
+      persisted: true,
+    };
   }
 
   await putBlob(userId, projectId, contentHash, content);
@@ -122,7 +194,7 @@ export async function writeProjectFile(
     return seq;
   });
 
-  return { contentHash, sizeBytes, headSequence, changed: true };
+  return { contentHash, sizeBytes, headSequence, changed: true, persisted: true };
 }
 
 // ── Diff summary for the hidden USER_EDIT message ───────────────────────────

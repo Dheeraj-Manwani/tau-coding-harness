@@ -4,7 +4,11 @@ import { prisma } from "./prisma";
 import { bus } from "./bus";
 import { env } from "./env";
 import { getBlob, getBlobText, putBlob } from "./s3";
-import { isBinaryPath } from "../agent/tools/functions/utils";
+import {
+  isBinaryPath,
+  isSecretPath,
+  toRelativePath,
+} from "../agent/tools/functions/utils";
 import { publish } from "./publish";
 import { log } from "./log";
 import { allocateHeadSequence } from "./headSequence";
@@ -47,7 +51,15 @@ async function seedTemplateFiles(
     `find ${WORK_DIR} -type f -not -path '*/node_modules/*' -not -path '*/.git/*'`,
   );
 
-  const absPaths = stdout.trim().split("\n").filter(Boolean);
+  // This path writes ProjectFile rows directly rather than going through
+  // `persistFile`, so it has to apply the secret deny-list itself. Nothing in
+  // the templates writes a credentials file today, but the seed is a `find` over
+  // whatever the image happens to contain — belt and braces.
+  const absPaths = stdout
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .filter((p) => !isSecretPath(toRelativePath(p)));
   if (absPaths.length === 0) return;
 
   log.info("sandbox.seed.start", { jobId, projectId, files: absPaths.length });

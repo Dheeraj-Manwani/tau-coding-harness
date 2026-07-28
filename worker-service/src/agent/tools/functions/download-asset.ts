@@ -6,6 +6,7 @@ import {
   isBinaryPath,
   persistBinaryFile,
   persistFile,
+  SECRET_NOT_PERSISTED_WARNING,
   toRelativePath,
   toWorkdirPath,
 } from "./utils";
@@ -68,9 +69,17 @@ export async function downloadAsset(
 
     // Persist through the matching pipeline: bytes for binary assets (the common
     // case), UTF-8 text for a text asset saved with a text extension (e.g. .svg).
+    let persisted: boolean;
     if (isBinaryPath(relPath)) {
       // No content stream — binary isn't rendered in the text editor.
-      await persistBinaryFile(jobId, projectId, userId, relPath, buf, indexer);
+      ({ persisted } = await persistBinaryFile(
+        jobId,
+        projectId,
+        userId,
+        relPath,
+        buf,
+        indexer,
+      ));
     } else {
       const text = new TextDecoder().decode(buf);
       // Stream the text so it shows in the editor this session, like create_file.
@@ -81,7 +90,14 @@ export async function downloadAsset(
           content: chunk,
         });
       }
-      await persistFile(jobId, projectId, userId, relPath, text, indexer);
+      ({ persisted } = await persistFile(
+        jobId,
+        projectId,
+        userId,
+        relPath,
+        text,
+        indexer,
+      ));
     }
 
     return {
@@ -89,6 +105,7 @@ export async function downloadAsset(
       path: dest,
       bytes: buf.byteLength,
       contentType: res.headers.get("content-type") ?? null,
+      ...(persisted ? {} : { persisted, warning: SECRET_NOT_PERSISTED_WARNING }),
     };
   } catch (err) {
     const message =

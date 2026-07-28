@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { buildEditDiff, sha256Hex, toWorkdirPath } from "../src/lib/projectFiles.ts";
+import {
+  buildEditDiff,
+  sha256Hex,
+  toWorkdirPath,
+} from "../src/lib/projectFiles.ts";
 
 // The diff is what the model sees when a user hand-edits a file
 // (doc/USER_CODE_EDITING.md). It has to convey the change and its intent while

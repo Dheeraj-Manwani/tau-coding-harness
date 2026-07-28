@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { bus, type JobEvent } from "../api/src/lib/bus";
 import { verifyAccessToken } from "../api/src/lib/tokens";
+import { terminateStrandedJob } from "../api/src/lib/jobs";
+import { FinishReason, JobStatus } from "../api/src/generated/prisma/enums";
 
 const HEARTBEAT_MS = 30_000;
 
@@ -68,7 +70,28 @@ export function mountSse(app: Express): void {
       res.status(401).end();
       return;
     }
-    bus.requestCancel(req.params.jobId);
+    const { jobId } = req.params;
+
+    // A resident job tears itself down: the runner's cancel handler flips the
+    // row, settles the hold and emits `cancelled`.
+    if (bus.isResident(jobId)) {
+      bus.requestCancel(jobId);
+      res.sendStatus(202);
+      return;
+    }
+
+    // Nobody is running it. That used to make cancel a no-op returning 202 —
+    // precisely useless for a job stranded by a restart, which is the only kind
+    // a user ever needs to force-stop. Terminate the row here instead, recorded
+    // as CANCELLED/CANCELLED: the user asked for this, so it is not a failure
+    // and not an abandonment, even though the row was stranded when they did.
+    void terminateStrandedJob(jobId, {
+      status: JobStatus.CANCELLED,
+      reason: FinishReason.CANCELLED,
+      message: "This run was stopped because it was no longer running.",
+    }).catch((err) =>
+      console.error(`[sse] cancel of stranded job ${jobId} failed:`, err),
+    );
     res.sendStatus(202);
   });
 }

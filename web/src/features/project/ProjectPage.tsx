@@ -22,6 +22,16 @@ import {
   hasFreshBuild,
 } from "@/src/features/project/revealSession";
 
+/**
+ * How long an "active" job may send nothing before the UI calls it stalled.
+ *
+ * Generously above the quietest legitimate gap: a single agent turn is bounded
+ * by the LLM request timeout (4 min) and streams `llm_chunk` frames throughout,
+ * and long tool calls publish `tool_req`/`tool_res` around themselves. Silence
+ * past this is a wedged or orphaned run, not a slow one.
+ */
+const STALL_AFTER_MS = 5 * 60_000;
+
 function useProjectBootstrap() {
   const { id: projectId } = useParams<{ id: string }>();
   const location = useLocation();
@@ -32,6 +42,7 @@ function useProjectBootstrap() {
   const hydrate = useProjectStore((s) => s.hydrate);
   const hydrateTree = useProjectStore((s) => s.hydrateTree);
   const resyncFromDetail = useProjectStore((s) => s.resyncFromDetail);
+  const setStalled = useProjectStore((s) => s.setStalled);
   const status = useProjectStore((s) => s.status);
   const qc = useQueryClient();
 
@@ -76,10 +87,25 @@ function useProjectBootstrap() {
   // event never arrives (worker crash, dropped terminal frame, dedup edge). If
   // the poll finds the job is no longer active, `resyncFromDetail` finalizes
   // locally so the shimmer can't hang forever.
+  //
+  // When the server *does* still call the job active, that used to be the end of
+  // it — the poll simply re-confirmed the shimmer every 6s, forever, which is
+  // what made a stranded job look like an eternally-thinking project. Now a job
+  // that has sent nothing for STALL_AFTER_MS is flagged as stalled so the UI can
+  // say so and offer the stop button, rather than shimmering indefinitely.
   useEffect(() => {
     if (!projectId || status !== "streaming") return;
     let cancelled = false;
     const timer = setInterval(() => {
+      const { lastEventAt, isStalled } = useProjectStore.getState();
+      if (
+        !isStalled &&
+        lastEventAt !== null &&
+        Date.now() - lastEventAt > STALL_AFTER_MS
+      ) {
+        setStalled(true);
+      }
+
       void api
         .get<ProjectDetail>(`/project/${projectId}`)
         .then((r) => {
@@ -95,7 +121,7 @@ function useProjectBootstrap() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [status, projectId, resyncFromDetail]);
+  }, [status, projectId, resyncFromDetail, setStalled]);
 
   useJobStream();
 }

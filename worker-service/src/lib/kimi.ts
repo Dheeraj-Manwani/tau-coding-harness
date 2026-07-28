@@ -1,9 +1,14 @@
 import OpenAI from "openai";
 import { env } from "./env";
-import { deepseek } from "./deepseek";
+import { deepseek, LLM_MAX_RETRIES, LLM_REQUEST_TIMEOUT_MS } from "./deepseek";
 
 export const kimi = env.KIMI_API_KEY
-  ? new OpenAI({ apiKey: env.KIMI_API_KEY, baseURL: env.KIMI_BASE_URL })
+  ? new OpenAI({
+      apiKey: env.KIMI_API_KEY,
+      baseURL: env.KIMI_BASE_URL,
+      timeout: LLM_REQUEST_TIMEOUT_MS,
+      maxRetries: LLM_MAX_RETRIES,
+    })
   : null;
 
 export function isKimiModel(model: string): boolean {

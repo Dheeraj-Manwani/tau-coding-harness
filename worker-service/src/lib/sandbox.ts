@@ -105,8 +105,7 @@ async function seedTemplateFiles(
   );
 
   // Tell the frontend to refetch the tree
-  const idx = bus.length(jobId);
-  await publish(jobId, { type: "resync" }, idx);
+  await publish(jobId, { type: "resync" });
 }
 
 async function rehydrateSandbox(

@@ -255,12 +255,23 @@ model Job {
   attemptNumber Int     @default(1)
   maxAttempts   Int     @default(2)
 
+  // Liveness. The runner is in-process with no durability, so a crash/redeploy
+  // can strand a row at RUNNING forever. The agent loop bumps this every turn;
+  // the reaper (api/src/lib/jobs.ts) terminates rows whose heartbeat went cold.
+  lastHeartbeatAt DateTime?
+  currentTurn     Int       @default(0)
+
+  // How the run ended. Distinct from `status`: a job can be COMPLETED because
+  // it finished, or because it ran out of budget mid-task.
+  finishReason FinishReason?
+
   messages   Message[]
   tokenUsage TokenUsage[]
   fragments  Fragment[]
 
   @@index([projectId])
   @@index([status])
+  @@index([status, lastHeartbeatAt])
 }
 
 enum JobStatus {
@@ -269,6 +280,32 @@ enum JobStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+/// Why a run ended, recorded alongside `Job.status`. `status` says whether the
+/// job succeeded; this says what actually stopped it — the distinction an
+/// operator needs to tell a model that loops (TURN_CAP) from one that overruns
+/// its response limit (TRUNCATION_CAP) from one that hangs (WALL_CLOCK), all of
+/// which otherwise collapse into a single FAILED row.
+enum FinishReason {
+  /// The agent finished the task and sent its final message.
+  DONE
+  /// Hit the per-request credit ceiling mid-task.
+  BUDGET
+  /// The account ran out of credits mid-task.
+  INSUFFICIENT_CREDITS
+  /// Stopped by the user.
+  CANCELLED
+  /// Exceeded `EffortBudget.maxAgentTurns` without finishing.
+  TURN_CAP
+  /// Response truncated at the token limit `MAX_TRUNCATION_RETRIES` times.
+  TRUNCATION_CAP
+  /// Exceeded `EffortBudget.maxWallClockMs` — wedged rather than working.
+  WALL_CLOCK
+  /// Any other failure; see `Job.error` for the message.
+  ERROR
+  /// The owning process died and the reaper cleaned the row up.
+  ABANDONED
 }
 
 enum JobType {

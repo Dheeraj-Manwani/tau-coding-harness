@@ -15,9 +15,37 @@ import { requireAuth } from "./middleware/auth.middleware";
 import { requireAdminKey } from "./middleware/admin.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
 import { sweepStuckHolds } from "./lib/credits";
+import { reapStaleJobs } from "./lib/jobs";
 import { sweepAttachments } from "./services/attachment.service";
 
-async function runSweep(): Promise<void> {
+/**
+ * Terminate jobs whose owning process is gone, then settle the holds left behind
+ * by terminal jobs. Order matters: reaping flips stranded rows to FAILED, and
+ * `sweepStuckHolds` only settles holds whose job is already terminal — so
+ * reaping first lets one pass clean up both halves of the same wreckage.
+ *
+ * @param onBoot nothing can legitimately be running yet, so skip the grace
+ *               periods and reap every non-terminal row.
+ */
+async function runSweep(onBoot = false): Promise<void> {
+  try {
+    const { reaped, jobIds, errors } = await reapStaleJobs(onBoot);
+    if (reaped > 0 || errors.length > 0) {
+      console.log(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "jobs.reap",
+          onBoot,
+          reaped,
+          jobIds,
+          errors,
+        }),
+      );
+    }
+  } catch (err) {
+    console.error("[jobs] stale-job reap failed:", err);
+  }
+
   try {
     const { swept, errors } = await sweepStuckHolds();
     if (swept > 0 || errors.length > 0) {
@@ -55,12 +83,17 @@ async function runAttachmentSweep(): Promise<void> {
 }
 
 /**
- * Reclaim stuck credit holds on startup and every hour thereafter. Extracted
- * from top-level so combined (economy) mode can start it explicitly after
- * building the app.
+ * Reap stranded jobs and reclaim stuck credit holds on startup, then every hour.
+ * Extracted from top-level so combined (economy) mode can start it explicitly
+ * after building the app.
+ *
+ * The boot pass is the one that matters: the in-process runner has no
+ * durability, so any job still marked QUEUED/RUNNING when this process starts
+ * was orphaned by whatever killed the last one. Left alone it would pin its
+ * project's shimmer and 409 every future prompt on it, forever.
  */
 export function startApiBackground(): void {
-  void runSweep();
+  void runSweep(true);
   setInterval(() => void runSweep(), 60 * 60 * 1000);
 
   void runAttachmentSweep();

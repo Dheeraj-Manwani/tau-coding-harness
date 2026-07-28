@@ -16,6 +16,6 @@ export async function addTodos(
   const planError = await requirePlanCreated(jobId);
   if (planError) return { error: planError };
 
-  await publish(jobId, { type: "todos_added", todos: todoList }, indexer());
+  await publish(jobId, { type: "todos_added", todos: todoList });
   return { success: true };
 }

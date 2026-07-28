@@ -63,7 +63,7 @@ export async function downloadAsset(
 
     // Surface the write in the file tree immediately. e2b's write takes an
     // ArrayBuffer.
-    await publish(jobId, { type: "file_start", path: relPath }, indexer());
+    await publish(jobId, { type: "file_start", path: relPath });
     await sandbox.files.write(toWorkdirPath(dest), arrayBuf);
 
     // Persist through the matching pipeline: bytes for binary assets (the common
@@ -75,11 +75,11 @@ export async function downloadAsset(
       const text = new TextDecoder().decode(buf);
       // Stream the text so it shows in the editor this session, like create_file.
       for (const chunk of chunkString(text, CHUNK_SIZE)) {
-        await publish(
-          jobId,
-          { type: "file_chunk", path: relPath, content: chunk },
-          indexer(),
-        );
+        await publish(jobId, {
+          type: "file_chunk",
+          path: relPath,
+          content: chunk,
+        });
       }
       await persistFile(jobId, projectId, userId, relPath, text, indexer);
     }

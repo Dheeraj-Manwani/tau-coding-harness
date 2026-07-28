@@ -18,15 +18,11 @@ export async function createPlan(
 
   await markPlanCreated(jobId);
 
-  await publish(
-    jobId,
-    {
-      type: "plan_created",
-      name: planName,
-      description: planDescription,
-      todos: todoList,
-    },
-    indexer(),
-  );
+  await publish(jobId, {
+    type: "plan_created",
+    name: planName,
+    description: planDescription,
+    todos: todoList,
+  });
   return { success: true };
 }

@@ -77,11 +77,7 @@ export async function executeTool(
         ? (options as unknown[]).map((o) => asString(o, "options[]"))
         : [];
 
-      await publish(
-        jobId,
-        { type: "ask_user", question: q, options: opts },
-        indexer(),
-      );
+      await publish(jobId, { type: "ask_user", question: q, options: opts });
 
       // Block for the user's answer (10 min), delivered in-process by the api
       // via bus.pushUserResponse (replaces the Redis lpush ↔ blpop rendezvous).

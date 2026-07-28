@@ -128,7 +128,7 @@ export async function persistBinaryFile(
   });
 
   if (existing?.contentHash === hash) {
-    await publish(jobId, { type: "file_done", path }, indexer());
+    await publish(jobId, { type: "file_done", path });
     return;
   }
 
@@ -150,11 +150,7 @@ export async function persistBinaryFile(
     return s;
   });
 
-  await publish(
-    jobId,
-    { type: "file_done", path, headSequence: seq },
-    indexer(),
-  );
+  await publish(jobId, { type: "file_done", path, headSequence: seq });
 }
 
 export function isLongRunning(command: string): boolean {
@@ -185,7 +181,7 @@ export async function persistFile(
   });
 
   if (existing?.contentHash === hash) {
-    await publish(jobId, { type: "file_done", path }, indexer());
+    await publish(jobId, { type: "file_done", path });
     return;
   }
 
@@ -207,9 +203,5 @@ export async function persistFile(
     return s;
   });
 
-  await publish(
-    jobId,
-    { type: "file_done", path, headSequence: seq },
-    indexer(),
-  );
+  await publish(jobId, { type: "file_done", path, headSequence: seq });
 }

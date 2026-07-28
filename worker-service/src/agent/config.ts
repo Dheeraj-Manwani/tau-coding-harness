@@ -64,12 +64,37 @@ export interface EffortBudget {
   maxAgentTurns: number;
   maxSubagentTurns: number;
   maxParallelSubagents: number;
+  /**
+   * Wall-clock ceiling for the whole run. `maxAgentTurns` only bounds a loop
+   * that is *making turns*; it can't stop one wedged inside a single turn (a
+   * model stream that stalls after headers, a sandbox command that never
+   * returns). Without this a job holds RUNNING — and the user's shimmer —
+   * until the process dies. Generous by design: this is a backstop, not a SLA.
+   */
+  maxWallClockMs: number;
 }
 
+const MINUTES = 60_000;
+
 const EFFORT_BUDGETS: Record<Effort, EffortBudget> = {
-  LOW: { maxAgentTurns: 80, maxSubagentTurns: 20, maxParallelSubagents: 1 },
-  HIGH: { maxAgentTurns: 200, maxSubagentTurns: 40, maxParallelSubagents: 3 },
-  MAX: { maxAgentTurns: 300, maxSubagentTurns: 60, maxParallelSubagents: 5 },
+  LOW: {
+    maxAgentTurns: 80,
+    maxSubagentTurns: 20,
+    maxParallelSubagents: 1,
+    maxWallClockMs: 20 * MINUTES,
+  },
+  HIGH: {
+    maxAgentTurns: 200,
+    maxSubagentTurns: 40,
+    maxParallelSubagents: 3,
+    maxWallClockMs: 45 * MINUTES,
+  },
+  MAX: {
+    maxAgentTurns: 300,
+    maxSubagentTurns: 60,
+    maxParallelSubagents: 5,
+    maxWallClockMs: 90 * MINUTES,
+  },
 };
 
 export function budgetForEffort(effort: Effort): EffortBudget {

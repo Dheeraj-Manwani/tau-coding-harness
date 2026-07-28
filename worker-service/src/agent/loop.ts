@@ -6,7 +6,7 @@ import { getNextSequence } from "../lib/sequence";
 import { meter, type MeterResult } from "../lib/credits";
 import { toCredits, MIN_SPEND_TO_START_MICRO } from "../lib/pricing";
 import { bus } from "../lib/bus";
-import { publish, makeIndexer } from "../lib/publish";
+import { publish, publishTerminal, makeIndexer } from "../lib/publish";
 import { captureAppScreenshot } from "../lib/screenshot";
 import { putScreenshot } from "../lib/s3";
 import type { Sandbox } from "../lib/sandbox";
@@ -15,6 +15,7 @@ import { TOOL_DEFINITIONS } from "./tools/tools";
 export type SandboxRef = { current: Sandbox | null };
 import { executeTool } from "./tools/executor";
 import {
+  FinishReason,
   MessageRole,
   MessageType,
   ToolCallStatus,
@@ -199,13 +200,40 @@ function userEditPrompt(edit: StoredUserEdit): string {
   return `[The user manually edited ${edit.path} in the code editor (${stat} lines). This is not a request — the change is already applied to the file. Unified diff:]\n\n${edit.diff}`;
 }
 
-function balanceToolResults(entries: Entry[]): Entry[] {
+/**
+ * Make a reloaded history legal for the completions API, in both directions:
+ *
+ *  - every `tool_calls` entry gets an answer (a run that died mid-tool-turn
+ *    persisted the assistant row but never the results), and
+ *  - every `tool` message has a preceding assistant that actually asked for it
+ *    (an orphan is just as fatal, and can survive a partial delete or a
+ *    hand-edited history).
+ *
+ * Without the second half the array looks balanced right up until the request
+ * 400s, which surfaces to the user as "the next prompt is broken forever".
+ */
+export function balanceToolResults(entries: Entry[]): Entry[] {
+  // Ids the immediately-preceding assistant actually requested. Reset at every
+  // non-tool entry, so a `tool` message stranded after a user turn is dropped.
+  let requested = new Set<string>();
   const out: Entry[] = [];
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]!;
+
+    if (entry.param.role === "tool") {
+      if (!requested.has(entry.param.tool_call_id)) continue; // orphan
+      out.push(entry);
+      continue;
+    }
+
     out.push(entry);
 
     const param = entry.param;
+    requested =
+      param.role === "assistant" && param.tool_calls
+        ? new Set(param.tool_calls.map((tc) => tc.id))
+        : new Set();
+
     if (param.role !== "assistant") continue;
     const toolCalls = param.tool_calls;
     if (!toolCalls || toolCalls.length === 0) continue;
@@ -319,21 +347,45 @@ async function loadHistory(projectId: string): Promise<Entry[]> {
   return balanceToolResults(entries);
 }
 
+/**
+ * A run stopped by one of the agent's own guard rails rather than by an
+ * underlying failure. Carries the specific {@link FinishReason} so the runner
+ * records *why* the job died instead of flattening every guard rail into
+ * `ERROR` — the whole point of the column is telling a model that loops
+ * (`TURN_CAP`) from one that overruns its response limit (`TRUNCATION_CAP`)
+ * from one that hangs (`WALL_CLOCK`).
+ */
+export class AgentStopError extends Error {
+  constructor(
+    readonly finishReason: FinishReason,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AgentStopError";
+  }
+}
+
+/** The reasons a run can end *without* throwing — see `Job.finishReason`. */
+export type CleanFinishReason = Extract<
+  FinishReason,
+  "DONE" | "BUDGET" | "INSUFFICIENT_CREDITS" | "CANCELLED"
+>;
+
 export async function runAgentLoop(
   jobId: string,
   projectId: string,
   userId: string,
   prompt: string,
   effort: Effort,
-  startIndex = 1,
   initialSandbox?: Sandbox,
-): Promise<void> {
+): Promise<CleanFinishReason> {
   void prompt;
   const sandboxRef: SandboxRef = { current: initialSandbox ?? null };
-  const nextIndex = makeIndexer(startIndex);
+  const nextIndex = makeIndexer(jobId);
   const model = modelForEffort(effort);
   const budget = budgetForEffort(effort);
   const tools = toolsForEffort(effort);
+  const deadline = Date.now() + budget.maxWallClockMs;
 
   try {
     // Determine which template the agent is (or will be) working in. A template
@@ -368,14 +420,14 @@ export async function runAgentLoop(
     let maxVerifyForced = false;
     const calibration = createCalibration();
 
-    type StopReason = "insufficient_credits" | "budget" | "cancelled";
+    type StopReason = Exclude<CleanFinishReason, "DONE">;
     let stopReason: StopReason | null = null;
 
     const finishRun = async (reason: StopReason): Promise<void> => {
       const notice =
-        reason === "cancelled"
+        reason === FinishReason.CANCELLED
           ? "⏹️ Stopped. This run was halted before the task finished — send another message to continue."
-          : reason === "budget"
+          : reason === FinishReason.BUDGET
             ? "⚠️ This run reached its per-request credit budget and was stopped before finishing. Send another message to continue where it left off."
             : "⚠️ Out of credits — this run was stopped before the task finished. Add credits, then send another message to continue.";
 
@@ -393,20 +445,47 @@ export async function runAgentLoop(
         });
       });
 
-      if (reason !== "cancelled") {
-        await publish(jobId, { type: "insufficient_credits" }, nextIndex());
+      if (reason !== FinishReason.CANCELLED) {
+        // Terminal: the client finalizes on this and stops the shimmer. The
+        // `cancelled` frame is owned by the runner's cancel handler instead.
+        await publishTerminal(jobId, { type: "insufficient_credits" });
       }
     };
 
     while (true) {
-      if (!stopReason && bus.isCancelled(jobId)) stopReason = "cancelled";
+      if (!stopReason && bus.isCancelled(jobId)) {
+        stopReason = FinishReason.CANCELLED;
+      }
       if (stopReason) break;
 
       if (turn++ >= budget.maxAgentTurns) {
-        const message = `Agent exceeded ${budget.maxAgentTurns} turns without finishing`;
-        await publish(jobId, { type: "error", message }, nextIndex());
-        throw new Error(`${message} for job ${jobId}`);
+        throw new AgentStopError(
+          FinishReason.TURN_CAP,
+          `Agent exceeded ${budget.maxAgentTurns} turns without finishing`,
+        );
       }
+
+      // Wall-clock backstop. `maxAgentTurns` bounds a *progressing* loop; it
+      // does nothing for one wedged inside a single turn (a stalled model
+      // stream, a sandbox command that never returns). Without this a job can
+      // hold RUNNING — and the user's shimmer — indefinitely.
+      if (Date.now() > deadline) {
+        throw new AgentStopError(
+          FinishReason.WALL_CLOCK,
+          `Agent exceeded its ${Math.round(budget.maxWallClockMs / 60_000)}-minute time budget`,
+        );
+      }
+
+      // Liveness. Bumped before the expensive part of the turn so the reaper can
+      // tell "still working" from "the process that owned this job is gone".
+      await prisma.job
+        .update({
+          where: { id: jobId },
+          data: { lastHeartbeatAt: new Date(), currentTurn: turn },
+        })
+        .catch((err) =>
+          console.error(`[worker] heartbeat failed for job ${jobId}`, err),
+        );
 
       const mgmt = await manageContext(entries, { model, calibration });
       entries = mgmt.entries;
@@ -454,15 +533,11 @@ export async function runAgentLoop(
             { enforce: env.CREDITS_ENFORCE },
           );
           if (env.CREDITS_ENFORCE) {
-            await publish(
-              jobId,
-              {
-                type: "credits_update",
-                available: toCredits(mr.available),
-                availableMicro: mr.available.toString(),
-              },
-              nextIndex(),
-            );
+            await publish(jobId, {
+              type: "credits_update",
+              available: toCredits(mr.available),
+              availableMicro: mr.available.toString(),
+            });
           }
         } catch (err) {
           console.error(
@@ -470,28 +545,20 @@ export async function runAgentLoop(
             err,
           );
         }
-        await publish(
-          jobId,
-          {
-            type: "context_summarized",
-            upToSequence: s.upToSequence,
-            tokensBefore: s.tokensBefore,
-            tokensAfter: s.tokensAfter,
-          },
-          nextIndex(),
-        );
+        await publish(jobId, {
+          type: "context_summarized",
+          upToSequence: s.upToSequence,
+          tokensBefore: s.tokensBefore,
+          tokensAfter: s.tokensAfter,
+        });
       }
 
       if (mgmt.compacted) {
-        await publish(
-          jobId,
-          {
-            type: "context_compacted",
-            tokensBefore: mgmt.compacted.tokensBefore,
-            tokensAfter: mgmt.compacted.tokensAfter,
-          },
-          nextIndex(),
-        );
+        await publish(jobId, {
+          type: "context_compacted",
+          tokensBefore: mgmt.compacted.tokensBefore,
+          tokensAfter: mgmt.compacted.tokensAfter,
+        });
       }
 
       const contextTokens =
@@ -513,11 +580,7 @@ export async function runAgentLoop(
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
-          await publish(
-            jobId,
-            { type: "llm_chunk", content: delta },
-            nextIndex(),
-          );
+          await publish(jobId, { type: "llm_chunk", content: delta });
           process.stdout.write(delta);
         }
       }
@@ -558,10 +621,14 @@ export async function runAgentLoop(
               type: isToolTurn ? MessageType.TOOL_REQ : MessageType.RESULT,
               content: {
                 content: assistant.content,
-                // Never persist a truncated/partial tool call — on a recovery
-                // reload it would be an assistant tool_call with no tool result,
-                // which the completions API rejects.
-                tool_calls: isToolTurn ? (assistant.tool_calls ?? null) : null,
+                // Persist the *filtered* calls — the ones we actually answer
+                // below. Storing the raw list would replay a tool_call with no
+                // matching tool result for any non-function call, which the
+                // completions API rejects outright.
+                //
+                // Never persist a truncated/partial tool call either: on a
+                // recovery reload it is an assistant tool_call with no result.
+                tool_calls: isToolTurn ? toolCalls : null,
               } as unknown as Prisma.InputJsonValue,
               sequence: seq,
               inputTokens,
@@ -602,15 +669,11 @@ export async function runAgentLoop(
         // Live balance tick: let the UI's CreditsWidget count down turn by turn
         // instead of waiting for its 60s poll.
         if (env.CREDITS_ENFORCE) {
-          await publish(
-            jobId,
-            {
-              type: "credits_update",
-              available: toCredits(meterResult.available),
-              availableMicro: meterResult.available.toString(),
-            },
-            nextIndex(),
-          );
+          await publish(jobId, {
+            type: "credits_update",
+            available: toCredits(meterResult.available),
+            availableMicro: meterResult.available.toString(),
+          });
         }
       } catch (err) {
         console.error(
@@ -628,12 +691,12 @@ export async function runAgentLoop(
 
       if (env.CREDITS_ENFORCE && isToolTurn && !stopReason) {
         if (holdExhausted) {
-          stopReason = "budget";
+          stopReason = FinishReason.BUDGET;
         } else if (
           meterAvailable !== null &&
           meterAvailable < MIN_SPEND_TO_START_MICRO
         ) {
-          stopReason = "insufficient_credits";
+          stopReason = FinishReason.INSUFFICIENT_CREDITS;
         }
       }
 
@@ -642,9 +705,10 @@ export async function runAgentLoop(
       // in smaller pieces. Give up after a few consecutive truncations.
       if (isTruncated) {
         if (++truncationRetries > MAX_TRUNCATION_RETRIES) {
-          const message = `Response truncated at the token limit ${MAX_TRUNCATION_RETRIES} times in a row`;
-          await publish(jobId, { type: "error", message }, nextIndex());
-          throw new Error(`${message} for job ${jobId}`);
+          throw new AgentStopError(
+            FinishReason.TRUNCATION_CAP,
+            `Response truncated at the token limit ${MAX_TRUNCATION_RETRIES} times in a row`,
+          );
         }
         if (assistant.content?.trim()) {
           entries.push({
@@ -720,11 +784,7 @@ export async function runAgentLoop(
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
           previewUrl = `https://${host}`;
-          await publish(
-            jobId,
-            { type: "preview_ready", url: previewUrl },
-            nextIndex(),
-          );
+          await publish(jobId, { type: "preview_ready", url: previewUrl });
 
           await prisma.fragment.create({
             data: {
@@ -736,7 +796,7 @@ export async function runAgentLoop(
           });
         }
 
-        await publish(jobId, { type: "done" }, nextIndex());
+        await publishTerminal(jobId, { type: "done" });
 
         if (previewUrl && filesChanged && env.SCREENSHOT_ENABLED) {
           await captureAndStore(projectId, userId, previewUrl).catch((err) =>
@@ -749,11 +809,14 @@ export async function runAgentLoop(
         break;
       }
 
+      // Push the filtered calls, not `assistant.tool_calls`: only these get a
+      // `tool` reply below, and every tool_call in the array must be answered
+      // before the next request or the API 400s the whole turn.
       entries.push({
         param: {
           role: "assistant",
           content: assistant.content,
-          tool_calls: assistant.tool_calls,
+          tool_calls: toolCalls,
         },
         seq: sequence,
       });
@@ -789,11 +852,7 @@ export async function runAgentLoop(
           },
         });
 
-        await publish(
-          jobId,
-          { type: "tool_req", toolName, toolCallId, input },
-          nextIndex(),
-        );
+        await publish(jobId, { type: "tool_req", toolName, toolCallId, input });
 
         let output: unknown;
         try {
@@ -829,11 +888,7 @@ export async function runAgentLoop(
           });
         }
 
-        await publish(
-          jobId,
-          { type: "tool_res", toolCallId, output },
-          nextIndex(),
-        );
+        await publish(jobId, { type: "tool_res", toolCallId, output });
         return { tool_call_id: toolCallId, content: JSON.stringify(output) };
       };
 
@@ -890,11 +945,17 @@ export async function runAgentLoop(
       }
     }
 
-    if (stopReason) await finishRun(stopReason);
+    if (stopReason) {
+      await finishRun(stopReason);
+      return stopReason;
+    }
+    return FinishReason.DONE;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // Deliberately no terminal frame here. The runner owns that decision: it
+    // may still retry this job, and a frame emitted now would close the
+    // client's stream and orphan the retry (§2.4). `markFailed` publishes once
+    // the runner has actually given up.
     console.error(`[worker] agent loop failed for job ${jobId}`, err);
-    await publish(jobId, { type: "error", message }, nextIndex());
     throw err;
   }
 }

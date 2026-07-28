@@ -29,6 +29,7 @@ import {
   isBinaryPath,
 } from "../lib/projectFiles";
 import { bus } from "../lib/bus";
+import { terminateStrandedJob } from "../lib/jobs";
 import {
   attachmentBlock,
   waitForExtraction,
@@ -37,6 +38,7 @@ import {
 import {
   MessageRole,
   MessageType,
+  FinishReason,
   JobType,
   JobStatus,
   HoldStatus,
@@ -575,14 +577,35 @@ export async function cancelAllActiveJobs(userId: string): Promise<number> {
 
   for (const { jobId } of holds) {
     const status = statusByJobId.get(jobId);
-    if (status === JobStatus.QUEUED || status === JobStatus.RUNNING) {
+    const nonTerminal =
+      status === JobStatus.QUEUED || status === JobStatus.RUNNING;
+
+    // A non-terminal row is only genuinely cancellable if this process is
+    // actually running it. After a restart the row survives but the run doesn't,
+    // so `requestCancel` signals nobody, nothing settles the hold, and the slot
+    // stays locked forever — the exact gap that made this escape hatch useless
+    // for the jobs that most needed it (doc/STUCK_THINKING_AND_TOOL_MESSAGES.md §3.1).
+    if (nonTerminal && bus.isResident(jobId)) {
       // Live job — the worker settles the hold as it tears the run down.
       bus.requestCancel(jobId);
-    } else {
-      // Stuck hold (terminal or missing job) — settle directly. Idempotent, and
-      // pay-as-you-go means this only clears the concurrency slot, never refunds.
-      await settle(jobId);
+      continue;
     }
+
+    if (nonTerminal) {
+      // Stranded row: terminate it here, exactly as the reaper would. This also
+      // settles the hold and emits the terminal frame.
+      await terminateStrandedJob(jobId, {
+        status: JobStatus.CANCELLED,
+        reason: FinishReason.CANCELLED,
+        message: "This run was stopped because it was no longer running.",
+      }).catch(() => {});
+      continue;
+    }
+
+    // Stuck hold behind an already-terminal job — settle directly. Idempotent,
+    // and pay-as-you-go means this only clears the concurrency slot, never
+    // refunds.
+    await settle(jobId);
   }
   return holds.length;
 }

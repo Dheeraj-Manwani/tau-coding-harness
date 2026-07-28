@@ -35,6 +35,17 @@ export interface DispatchPayload {
 interface JobBuffer {
   events: JobEvent[];
   lastTouched: number;
+  /**
+   * Next event index to hand out for this job. Monotonic and never derived from
+   * `events.length` — the ring is capped (and a retried job reuses the buffer),
+   * so length is not monotonic. Every index in the system comes from here; two
+   * generators writing into one index space silently lost frames, because the
+   * client dedups on `index <= watermark` (see doc/STUCK_THINKING_AND_TOOL_MESSAGES.md §2.5).
+   */
+  nextIndex: number;
+  /** Set once a terminal frame (done/error/cancelled/insufficient_credits) has
+   *  been emitted, so a late loser in a race can't append a second one. */
+  terminal: boolean;
 }
 
 const RING_TTL_MS = 60 * 60 * 1000; // role 3: mirror Redis expire(events, 3600)
@@ -51,6 +62,7 @@ class InProcessBus {
   private readonly waiters = new Map<string, Array<(v: string) => void>>(); // role 6
   private readonly pendingAnswers = new Map<string, string[]>(); // role 6
   private readonly plans = new Map<string, number>(); // role 7: jobId -> expiresAt
+  private readonly resident = new Map<string, number>(); // jobId -> startedAt
 
   constructor() {
     // Many concurrent SSE subscribers / jobs — disable the listener-leak warning.
@@ -85,18 +97,58 @@ class InProcessBus {
   }
 
   // ── roles 2 + 3: live events + replay buffer ──────────────────────────────
-  emit(jobId: string, event: JobEvent): void {
+  private bufferFor(jobId: string): JobBuffer {
     let buf = this.buffers.get(jobId);
     if (!buf) {
-      buf = { events: [], lastTouched: Date.now() };
+      buf = {
+        events: [],
+        lastTouched: Date.now(),
+        nextIndex: 0,
+        terminal: false,
+      };
       this.buffers.set(jobId, buf);
     }
+    return buf;
+  }
+
+  /**
+   * Allocate the next event index for a job. The single source of indices —
+   * `publish()` calls this, and it is also threaded through the agent loop as
+   * the `nextIndex` callback. Callers must never compute an index themselves.
+   */
+  nextIndex(jobId: string): number {
+    const buf = this.bufferFor(jobId);
+    buf.lastTouched = Date.now();
+    return buf.nextIndex++;
+  }
+
+  emit(jobId: string, event: JobEvent): void {
+    const buf = this.bufferFor(jobId);
     buf.events.push(event);
     buf.lastTouched = Date.now();
+    // An index handed out elsewhere (or replayed) must not let the counter go
+    // backwards; keep it strictly ahead of everything emitted.
+    if (event.index >= buf.nextIndex) buf.nextIndex = event.index + 1;
     if (buf.events.length > RING_MAX) {
       buf.events.splice(0, buf.events.length - RING_MAX);
     }
     this.events.emit(jobId, event);
+  }
+
+  /**
+   * Claim the right to emit this job's one terminal frame. Returns false if a
+   * terminal frame was already emitted.
+   *
+   * Several places can legitimately end a job at once — a cancel arriving while
+   * the loop is wrapping up, the reaper firing on a job that recovers — and the
+   * client finalizes on the *first* one it sees. Without this claim the loser
+   * appends a second, contradictory frame (a ⚠️ bubble after a clean finish).
+   */
+  claimTerminal(jobId: string): boolean {
+    const buf = this.bufferFor(jobId);
+    if (buf.terminal) return false;
+    buf.terminal = true;
+    return true;
   }
 
   /** Number of buffered events for a job (replaces `redis.llen`). */
@@ -131,6 +183,34 @@ class InProcessBus {
     const listener = (e: JobEvent): void => onEvent(e);
     this.events.on(jobId, listener);
     return () => void this.events.off(jobId, listener);
+  }
+
+  // ── job residency ─────────────────────────────────────────────────────────
+  /**
+   * Which jobs this process is actually executing right now.
+   *
+   * The stale-job reaper reads this: a `Job` row can look abandoned (no recent
+   * heartbeat) while the run is perfectly alive but stuck in one long turn, and
+   * reaping it would mark FAILED a job that then keeps writing messages. Held in
+   * memory on purpose — the whole point is that it vanishes when the process
+   * does, which is exactly when the rows it was protecting become reapable.
+   */
+  markResident(jobId: string): void {
+    this.resident.set(jobId, Date.now());
+  }
+
+  clearResident(jobId: string): void {
+    this.resident.delete(jobId);
+  }
+
+  isResident(jobId: string): boolean {
+    return this.resident.has(jobId);
+  }
+
+  /** How long this job has been executing here, or null if it isn't. */
+  residentForMs(jobId: string): number | null {
+    const since = this.resident.get(jobId);
+    return since === undefined ? null : Date.now() - since;
   }
 
   // ── role 4: cancellation ──────────────────────────────────────────────────
@@ -214,6 +294,11 @@ class InProcessBus {
   private sweep(): void {
     const now = Date.now();
     for (const [jobId, buf] of this.buffers) {
+      // Never evict a job this process is still executing. Dropping its buffer
+      // would reset `nextIndex` to 0, and the next frame it emitted would land
+      // at an index the client has already seen — silently discarded by the
+      // `index <= watermark` dedup, terminal frames included.
+      if (this.resident.has(jobId)) continue;
       if (now - buf.lastTouched > RING_TTL_MS) {
         this.buffers.delete(jobId);
         this.cancelled.delete(jobId);

@@ -570,10 +570,38 @@ function ChatBubble({
 function TypingBubble({
   activity,
   max = false,
+  stalled = false,
+  onStop,
 }: {
   activity: string | null;
   max?: boolean;
+  /** The run has gone quiet past the stall threshold — say so instead of
+   *  shimmering indefinitely at a job that may never speak again. */
+  stalled?: boolean;
+  onStop?: (() => void) | null;
 }) {
+  if (stalled) {
+    return (
+      <motion.div
+        initial={ENTRANCE.initial}
+        animate={ENTRANCE.animate}
+        exit={{ opacity: 0 }}
+        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+      >
+        <span>This run has gone quiet — it may have stopped responding.</span>
+        {onStop && (
+          <button
+            type="button"
+            onClick={onStop}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Stop it
+          </button>
+        )}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={ENTRANCE.initial}
@@ -806,6 +834,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const messages = useProjectStore((s) => s.chatMessages);
   const isAiTyping = useProjectStore((s) => s.isAiTyping);
   const activity = useProjectStore((s) => s.activity);
+  const isStalled = useProjectStore((s) => s.isStalled);
   const status = useProjectStore((s) => s.status);
   const appendUserMessage = useProjectStore((s) => s.appendUserMessage);
   const removeChatMessage = useProjectStore((s) => s.removeChatMessage);
@@ -1053,7 +1082,12 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
           )}
           <AnimatePresence>
             {isAiTyping && (
-              <TypingBubble activity={activity} max={effort === "MAX"} />
+              <TypingBubble
+                activity={activity}
+                max={effort === "MAX"}
+                stalled={isStalled}
+                onStop={cancelStream}
+              />
             )}
           </AnimatePresence>
         </div>

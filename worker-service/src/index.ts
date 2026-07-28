@@ -1,13 +1,14 @@
 import { env } from "./lib/env";
 import { bus, type DispatchPayload } from "./lib/bus";
 import { prisma } from "./lib/prisma";
-import { publish } from "./lib/publish";
+import { publish, publishTerminal } from "./lib/publish";
 import { provisionSandbox } from "./lib/sandbox";
-import { runAgentLoop } from "./agent/loop";
+import { AgentStopError, runAgentLoop } from "./agent/loop";
 import { settle } from "./lib/credits";
 import { getNextSequence } from "./lib/sequence";
 import { PREVIEW_PORT } from "./agent/config";
 import {
+  FinishReason,
   JobStatus,
   JobType,
   MessageRole,
@@ -23,18 +24,14 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
     where: { id: jobId },
     data: { status: JobStatus.RUNNING, startedAt: new Date() },
   });
-  await publish(jobId, { type: "thinking", message: "Starting preview" }, 0);
+  await publish(jobId, { type: "thinking", message: "Starting preview" });
 
   // Reconnect-or-rebuild + rehydrate from R2. The template's start command
   // auto-runs Vite on PREVIEW_PORT, so the returned sandbox is serving the app.
   const sandbox = await provisionSandbox(projectId, userId, jobId);
   const previewUrl = `https://${sandbox.getHost(PREVIEW_PORT)}`;
 
-  await publish(
-    jobId,
-    { type: "preview_ready", url: previewUrl },
-    bus.length(jobId),
-  );
+  await publish(jobId, { type: "preview_ready", url: previewUrl });
 
   // Persist the new URL as the project's latest fragment so a page reload
   // hydrates the live sandbox, not the stale one. Fragment requires a message,
@@ -64,7 +61,7 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
     },
   });
 
-  await publish(jobId, { type: "done" }, bus.length(jobId));
+  await publishTerminal(jobId, { type: "done" });
 }
 
 /**
@@ -74,6 +71,17 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
  * job short-circuits to {@link runPreviewJob} instead of the agent loop.
  */
 export async function processJob(payload: DispatchPayload): Promise<void> {
+  // Tell the reaper this process owns the job, so a stale heartbeat during one
+  // long turn isn't mistaken for an abandoned run (api/src/lib/jobs.ts).
+  bus.markResident(payload.jobId);
+  try {
+    await runJob(payload);
+  } finally {
+    bus.clearResident(payload.jobId);
+  }
+}
+
+async function runJob(payload: DispatchPayload): Promise<void> {
   const { jobId, projectId, userId, prompt, effort } = payload;
 
   if (payload.type === JobType.PREVIEW) {
@@ -81,16 +89,15 @@ export async function processJob(payload: DispatchPayload): Promise<void> {
       await runPreviewJob(payload);
       await prisma.job.update({
         where: { id: jobId },
-        data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+        data: {
+          status: JobStatus.COMPLETED,
+          completedAt: new Date(),
+          finishReason: FinishReason.DONE,
+        },
       });
     } catch (err) {
       console.error(`[runner] preview job ${jobId} failed`, err);
-      await publish(
-        jobId,
-        { type: "error", message: "Couldn't start the preview" },
-        bus.length(jobId),
-      );
-      await markFailed(jobId, err);
+      await markFailed(jobId, err, "Couldn't start the preview");
     }
     return;
   }
@@ -103,10 +110,14 @@ export async function processJob(payload: DispatchPayload): Promise<void> {
       try {
         await prisma.job.update({
           where: { id: jobId },
-          data: { status: JobStatus.CANCELLED, completedAt: new Date() },
+          data: {
+            status: JobStatus.CANCELLED,
+            completedAt: new Date(),
+            finishReason: FinishReason.CANCELLED,
+          },
         });
         await settle(jobId);
-        await publish(jobId, { type: "cancelled" }, bus.length(jobId));
+        await publishTerminal(jobId, { type: "cancelled" });
       } catch (err) {
         console.error(`[runner] cancel handling failed for ${jobId}`, err);
       }
@@ -116,32 +127,40 @@ export async function processJob(payload: DispatchPayload): Promise<void> {
   try {
     await prisma.job.update({
       where: { id: jobId },
-      data: { status: JobStatus.RUNNING, startedAt: new Date() },
+      data: {
+        status: JobStatus.RUNNING,
+        startedAt: new Date(),
+        // Start the heartbeat here: provisioning a sandbox can take a while and
+        // must not look like a stalled job to the reaper.
+        lastHeartbeatAt: new Date(),
+      },
     });
 
-    await publish(jobId, { type: "thinking", message: "Thinking" }, 0);
+    await publish(jobId, { type: "thinking", message: "Thinking" });
 
-    const startIndex = bus.length(jobId);
     const hasFiles =
       (await prisma.projectFile.count({ where: { projectId } })) > 0;
     const initialSandbox = hasFiles
       ? await provisionSandbox(projectId, userId, jobId)
       : undefined;
 
-    await runAgentLoop(
+    const finishReason = await runAgentLoop(
       jobId,
       projectId,
       userId,
       prompt,
       effort as Effort,
-      startIndex,
       initialSandbox,
     );
 
     if (!cancelled) {
       await prisma.job.update({
         where: { id: jobId },
-        data: { status: JobStatus.COMPLETED, completedAt: new Date() },
+        data: {
+          status: JobStatus.COMPLETED,
+          completedAt: new Date(),
+          finishReason,
+        },
       });
       await settle(jobId).catch((err) =>
         console.error(`[runner] settle failed on complete for ${jobId}`, err),
@@ -152,18 +171,49 @@ export async function processJob(payload: DispatchPayload): Promise<void> {
   }
 }
 
-async function markFailed(jobId: string, err: unknown): Promise<void> {
+/**
+ * Terminate a job for good: mark it FAILED, release its hold, and — critically —
+ * emit the terminal frame.
+ *
+ * Every failure path funnels through here, including the ones that used to
+ * publish nothing at all (a `provisionSandbox` throw, a DB blip while flipping
+ * the row to RUNNING). Those left the browser shimmering with no explanation
+ * until a poll happened to notice (doc/STUCK_THINKING_AND_TOOL_MESSAGES.md §2.3).
+ *
+ * Deliberately called only when the runner has stopped retrying: a frame emitted
+ * on a non-final attempt tears the client's stream down, so the retry would run
+ * with nobody listening (§2.4).
+ */
+async function markFailed(
+  jobId: string,
+  err: unknown,
+  userMessage?: string,
+): Promise<void> {
   const message = err instanceof Error ? err.message : String(err);
+  // A guard rail that fired names itself; anything else is an opaque failure.
+  const finishReason =
+    err instanceof AgentStopError ? err.finishReason : FinishReason.ERROR;
   await prisma.job
     .update({
       where: { id: jobId },
-      data: { status: JobStatus.FAILED, error: message },
+      data: {
+        status: JobStatus.FAILED,
+        error: message,
+        completedAt: new Date(),
+        finishReason,
+      },
     })
     .catch((e) =>
       console.error(`[runner] failed-status update error for ${jobId}`, e),
     );
   await settle(jobId).catch((e) =>
     console.error(`[runner] settle failed on job failure for ${jobId}`, e),
+  );
+  await publishTerminal(jobId, {
+    type: "error",
+    message: userMessage ?? message,
+  }).catch((e) =>
+    console.error(`[runner] terminal publish failed for ${jobId}`, e),
   );
 }
 
@@ -205,12 +255,23 @@ export function startRunner(): void {
       attempts.delete(payload.jobId);
     } catch (err) {
       const n = (attempts.get(payload.jobId) ?? 0) + 1;
-      if (n < MAX_ATTEMPTS) {
+      // A cancelled job is already terminal — retrying it would resurrect a run
+      // the user explicitly stopped.
+      if (n < MAX_ATTEMPTS && !bus.isCancelled(payload.jobId)) {
         attempts.set(payload.jobId, n);
         console.error(
           `[runner] job ${payload.jobId} failed (attempt ${n}/${MAX_ATTEMPTS}), retrying`,
           err,
         );
+        // No terminal frame here on purpose: publishing one would make the
+        // client finalize and close its stream, so the retry would run with
+        // nobody listening (§2.4). The browser keeps shimmering through it.
+        await prisma.job
+          .update({
+            where: { id: payload.jobId },
+            data: { attemptNumber: n + 1, lastHeartbeatAt: new Date() },
+          })
+          .catch(() => {});
         queue.push(payload);
       } else {
         attempts.delete(payload.jobId);

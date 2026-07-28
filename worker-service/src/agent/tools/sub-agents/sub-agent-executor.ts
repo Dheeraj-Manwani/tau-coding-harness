@@ -1,7 +1,7 @@
 import { clientForModel } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { publish } from "@/lib/publish";
+import { publish, publishTerminal } from "@/lib/publish";
 import { meter, type MeterResult } from "@/lib/credits";
 import { toCredits } from "@/lib/pricing";
 import type Sandbox from "e2b";
@@ -38,8 +38,7 @@ async function meterWithRetry(
 
 /** Collapse whitespace and cap length so terminal logs stay one-line-ish. */
 function preview(value: unknown, max = 200): string {
-  const text =
-    typeof value === "string" ? value : JSON.stringify(value ?? "");
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
@@ -145,15 +144,11 @@ export const executeSubAgentLoop = async (
       meterFailures = 0;
       // Live balance tick (see main loop) — sub-agent turns spend too.
       if (env.CREDITS_ENFORCE) {
-        await publish(
-          jobId,
-          {
-            type: "credits_update",
-            available: toCredits(meterResult.available),
-            availableMicro: meterResult.available.toString(),
-          },
-          nextIndex(),
-        );
+        await publish(jobId, {
+          type: "credits_update",
+          available: toCredits(meterResult.available),
+          availableMicro: meterResult.available.toString(),
+        });
       }
     } catch (err) {
       console.error(`[worker] sub-agent meter failed for job ${jobId}`, err);
@@ -168,7 +163,9 @@ export const executeSubAgentLoop = async (
 
     if (env.CREDITS_ENFORCE && holdExhausted) {
       console.log(`${tag} ⏹ stopped early — out of credits (turn ${turn})`);
-      await publish(jobId, { type: "insufficient_credits" }, nextIndex());
+      // Terminal — and deduped: the main loop's own meter will reach the same
+      // conclusion within a turn or two and try to publish it again.
+      await publishTerminal(jobId, { type: "insufficient_credits" });
       return assistant.content ?? "Stopped early: ran out of credits.";
     }
 
@@ -176,8 +173,12 @@ export const executeSubAgentLoop = async (
     // in smaller pieces, giving up after a few consecutive truncations.
     if (isTruncated) {
       if (++truncationRetries > MAX_TRUNCATION_RETRIES) {
-        console.log(`${tag} ⏹ stopped — truncated ${MAX_TRUNCATION_RETRIES}x\n`);
-        return lastContent || "Stopped: response repeatedly hit the token limit.";
+        console.log(
+          `${tag} ⏹ stopped — truncated ${MAX_TRUNCATION_RETRIES}x\n`,
+        );
+        return (
+          lastContent || "Stopped: response repeatedly hit the token limit."
+        );
       }
       if (assistant.content?.trim()) {
         messages.push({ role: "assistant", content: assistant.content });
@@ -213,18 +214,18 @@ export const executeSubAgentLoop = async (
       return assistant.content ?? "";
     }
 
+    // The filtered calls, not the raw list — only these get a `tool` reply
+    // below, and an unanswered tool_call 400s the next request.
     messages.push({
       role: "assistant",
       content: assistant.content,
-      tool_calls: assistant.tool_calls,
+      tool_calls: toolCalls,
     });
 
     for (const tc of toolCalls) {
       let input: unknown;
       try {
-        input = tc.function.arguments
-          ? JSON.parse(tc.function.arguments)
-          : {};
+        input = tc.function.arguments ? JSON.parse(tc.function.arguments) : {};
       } catch {
         input = { _raw: tc.function.arguments };
       }

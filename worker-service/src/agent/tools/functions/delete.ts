@@ -28,11 +28,11 @@ export async function deleteFile(
       });
       return allocateHeadSequence(tx, projectId);
     });
-    await publish(
-      jobId,
-      { type: "file_delete", path: relPath, headSequence: seq },
-      indexer(),
-    );
+    await publish(jobId, {
+      type: "file_delete",
+      path: relPath,
+      headSequence: seq,
+    });
   }
 
   return { success: true, path: p };

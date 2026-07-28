@@ -22,16 +22,12 @@ export async function createFile(
   const c = asString(content, "content");
 
   const relPath = toRelativePath(p);
-  await publish(jobId, { type: "file_start", path: relPath }, indexer());
+  await publish(jobId, { type: "file_start", path: relPath });
 
   await sandbox.files.write(toWorkdirPath(p), c);
 
   for (const chunk of chunkString(c, CHUNK_SIZE)) {
-    await publish(
-      jobId,
-      { type: "file_chunk", path: relPath, content: chunk },
-      indexer(),
-    );
+    await publish(jobId, { type: "file_chunk", path: relPath, content: chunk });
   }
 
   await persistFile(jobId, projectId, userId, relPath, c, indexer);

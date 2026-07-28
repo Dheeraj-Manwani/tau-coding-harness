@@ -15,10 +15,6 @@ export async function updateTodo(
   const planError = await requirePlanCreated(jobId);
   if (planError) return { error: planError };
 
-  await publish(
-    jobId,
-    { type: "todo_updated", sno, status: todoStatus },
-    indexer(),
-  );
+  await publish(jobId, { type: "todo_updated", sno, status: todoStatus });
   return { success: true };
 }

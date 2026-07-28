@@ -702,6 +702,14 @@ interface ProjectState {
   /** Short human label of what the agent is doing right now (tool/shell). */
   activity: string | null;
   hydrated: boolean;
+  /** `Date.now()` of the last event applied from the job stream. The stall
+   *  detector in ProjectPage compares this against the wall clock: a job the
+   *  server still calls active but that has sent nothing in minutes is wedged,
+   *  not working, and the user deserves to be told rather than shimmered at. */
+  lastEventAt: number | null;
+  /** True once the active job has gone quiet past the stall threshold. Purely a
+   *  presentation flag — the job is untouched and may still recover. */
+  isStalled: boolean;
   /** Flips true once the agent starts writing files (or a preview exists). Drives
    *  the home→workspace reveal: chat is centered until this is true, then it docks
    *  left and the preview/code panel slides in from the right. */
@@ -797,6 +805,8 @@ interface ProjectState {
   ) => void;
   /** Apply one live event from the ws-gateway stream. */
   applyEvent: (event: JobEvent) => void;
+  /** Flag/clear the "this run has gone quiet" presentation state. */
+  setStalled: (stalled: boolean) => void;
   setCanceller: (fn: (() => void) | null) => void;
   answerPendingQuestion: (answer: string) => void;
 
@@ -826,6 +836,8 @@ const FRESH = {
   status: "idle" as JobStatus,
   activity: null,
   hydrated: false,
+  lastEventAt: null as number | null,
+  isStalled: false,
   buildStarted: false,
   chatMessages: [] as Message[],
   isAiTyping: false,
@@ -929,6 +941,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
                 : s.status) as JobStatus,
               isAiTyping: false,
               isPreviewJob: false,
+              isStalled: false,
               streamingId: null,
               currentJobId: null,
               activity: null,
@@ -1024,6 +1037,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         isPreviewJob: false,
         activity: "Thinking",
         currentPlan: null,
+        lastEventAt: Date.now(),
+        isStalled: false,
         chatMessages:
           prompt && !alreadyShown
             ? [...s.chatMessages, userMessage(prompt)]
@@ -1036,6 +1051,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       currentJobId: jobId,
       status: "streaming",
       isPreviewJob: true,
+      lastEventAt: Date.now(),
+      isStalled: false,
       // No chat turn: the preview pane shows its own "Starting…" state, so we
       // deliberately leave `isAiTyping` false and append no user bubble.
       currentPlan: null,
@@ -1062,7 +1079,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       };
     }),
 
-  applyEvent: (event) => applyEvent(set, get, event),
+  applyEvent: (event) => {
+    // Any frame at all is proof of life: clear a stall the moment one lands.
+    set({ lastEventAt: Date.now(), isStalled: false });
+    applyEvent(set, get, event);
+  },
+
+  setStalled: (stalled) => set({ isStalled: stalled }),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
   answerPendingQuestion: (answer) =>

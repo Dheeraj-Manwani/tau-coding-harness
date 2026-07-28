@@ -178,15 +178,38 @@ async function rehydrateSandbox(
     }
   }
 
-  // Restore node_modules for any deps added or changed beyond the template baseline.
+  // Restore node_modules for any deps added or changed beyond the template
+  // baseline. Frozen first: it is fast and it catches a lockfile that no longer
+  // matches package.json, which is usually a real problem worth knowing about.
   try {
     await sandbox.commands.run(
       `cd ${WORK_DIR} && bun install --frozen-lockfile`,
       { timeoutMs: 2 * 60_000 },
     );
     log.info("sandbox.rehydrate.done", { jobId, projectId });
+    return;
   } catch (err) {
-    log.warn("sandbox.rehydrate.install_failed", {
+    log.warn("sandbox.rehydrate.frozen_install_failed", {
+      jobId,
+      projectId,
+      error: String(err),
+    });
+  }
+
+  // ...but sometimes it is expected. `migrateTemplate` adds `hono` to
+  // package.json and deletes the stored lockfile precisely so this resolves
+  // fresh, and an agent that edited package.json by hand lands here too.
+  //
+  // This retry used to not exist: the frozen failure was caught, logged, and
+  // dropped, so the sandbox carried on with node_modules missing whatever had
+  // been added — the app then failed at import time, a long way from the cause.
+  try {
+    await sandbox.commands.run(`cd ${WORK_DIR} && bun install`, {
+      timeoutMs: 3 * 60_000,
+    });
+    log.info("sandbox.rehydrate.done", { jobId, projectId, resolved: true });
+  } catch (err) {
+    log.error("sandbox.rehydrate.install_failed", {
       jobId,
       projectId,
       error: String(err),

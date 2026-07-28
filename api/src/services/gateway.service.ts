@@ -33,9 +33,72 @@ import type { ApiKey } from "../generated/prisma/client";
 /** Per-key in-flight counter. One of the two bounds on the overshoot window. */
 const inFlight = new Map<string, number>();
 
+/** Process-wide in-flight count, across every key. See
+ *  `GATEWAY_MAX_CONCURRENT_GLOBAL` — the per-key limit does not bound total load. */
+let inFlightGlobal = 0;
+
 /** Per-key request timestamps for the RPM limit. In-memory, matching the rest
  *  of the economy build's single-process rate limiting. */
 const recentRequests = new Map<string, number[]>();
+
+/**
+ * Take an in-flight slot, or refuse.
+ *
+ * Check and increment in one synchronous step, deliberately. `preflight` also
+ * checks the ceilings, but it does so before several `await`s — so by the time
+ * it returns, an arbitrary number of other requests may have passed the same
+ * check. That is fine as an early, cheap rejection with a good error message;
+ * it is not an enforcement point. This is.
+ */
+function acquireSlot(keyId: string): boolean {
+  if (inFlightGlobal >= env.GATEWAY_MAX_CONCURRENT_GLOBAL) return false;
+  const forKey = inFlight.get(keyId) ?? 0;
+  if (forKey >= env.GATEWAY_MAX_CONCURRENT) return false;
+
+  inFlight.set(keyId, forKey + 1);
+  inFlightGlobal += 1;
+  return true;
+}
+
+function releaseSlot(keyId: string): void {
+  const n = (inFlight.get(keyId) ?? 1) - 1;
+  if (n <= 0) inFlight.delete(keyId);
+  else inFlight.set(keyId, n);
+  inFlightGlobal = Math.max(0, inFlightGlobal - 1);
+}
+
+const RPM_WINDOW_MS = 60_000;
+
+/**
+ * Drop keys with no requests inside the RPM window.
+ *
+ * Without this the map gains an entry per distinct API key seen since process
+ * start and never loses one — the timestamp arrays are filtered on read, but the
+ * keys themselves accumulate forever in a process that is meant to run for
+ * months. Swept on a timer rather than per request: walking the map is cheap,
+ * doing it on every call is pointless.
+ */
+let lastSweep = 0;
+
+function sweepRecentRequests(): void {
+  const now = Date.now();
+  if (now - lastSweep < RPM_WINDOW_MS) return;
+  lastSweep = now;
+
+  const cutoff = now - RPM_WINDOW_MS;
+  for (const [keyId, stamps] of recentRequests) {
+    // Timestamps only ever grow, so the last one is the newest.
+    if ((stamps[stamps.length - 1] ?? 0) <= cutoff) recentRequests.delete(keyId);
+  }
+}
+
+function slotUnavailable(): GatewayRequestError {
+  return new GatewayRequestError(429, {
+    message: "The tau AI service is busy. Retry shortly.",
+    type: "rate_limit_error",
+    code: "concurrency_limit_exceeded",
+  });
+}
 
 function bad(message: string, code: string, param?: string): GatewayRequestError {
   return new GatewayRequestError(400, {
@@ -200,7 +263,9 @@ export function dailyCapFor(key: ApiKey): bigint {
  * than it saves at this scale.
  */
 export async function preflight(key: ApiKey): Promise<void> {
-  const rpmWindow = Date.now() - 60_000;
+  sweepRecentRequests();
+
+  const rpmWindow = Date.now() - RPM_WINDOW_MS;
   const stamps = (recentRequests.get(key.id) ?? []).filter((t) => t > rpmWindow);
   if (stamps.length >= env.GATEWAY_RPM) {
     throw new GatewayRequestError(429, {
@@ -218,6 +283,17 @@ export async function preflight(key: ApiKey): Promise<void> {
       type: "rate_limit_error",
       code: "concurrency_limit_exceeded",
     });
+  }
+
+  if (inFlightGlobal >= env.GATEWAY_MAX_CONCURRENT_GLOBAL) {
+    // Deliberately vague: this is a tau-side capacity limit, and telling a
+    // generated app's users the exact global figure invites nothing useful.
+    log.warn("gateway.global_concurrency_hit", {
+      userId: key.userId,
+      inFlightGlobal,
+      limit: env.GATEWAY_MAX_CONCURRENT_GLOBAL,
+    });
+    throw slotUnavailable();
   }
 
   await ensureBillingAccount(key.userId);
@@ -247,6 +323,11 @@ export interface CompletionOutcome {
   /** The upstream response, passed through with the alias swapped back in. */
   payload: OpenAI.Chat.Completions.ChatCompletion;
   creditsRemaining: number;
+  /** What was actually taken from the buckets, in micro-credits. Not always the
+   *  same as `costMicro(...)`: `spendBuckets` floors at zero, so a request that
+   *  overshoots a nearly-empty balance is partly absorbed by tau. Reporting the
+   *  computed cost instead would overstate the charge in exactly that case. */
+  debitedMicro: bigint;
 }
 
 /**
@@ -265,7 +346,7 @@ export async function chatCompletion(
   await preflight(key);
 
   const requestId = randomUUID();
-  inFlight.set(key.id, (inFlight.get(key.id) ?? 0) + 1);
+  if (!acquireSlot(key.id)) throw slotUnavailable();
 
   let completion: OpenAI.Chat.Completions.ChatCompletion;
   try {
@@ -289,13 +370,11 @@ export async function chatCompletion(
       code: "upstream_error",
     });
   } finally {
-    const n = (inFlight.get(key.id) ?? 1) - 1;
-    if (n <= 0) inFlight.delete(key.id);
-    else inFlight.set(key.id, n);
+    releaseSlot(key.id);
   }
 
   const usage = completion.usage;
-  const { available } = await meterGateway({
+  const { available, debited } = await meterGateway({
     userId: key.userId,
     apiKeyId: key.id,
     projectId,
@@ -314,6 +393,7 @@ export async function chatCompletion(
     // pointless if the real id leaks back out here.
     payload: { ...completion, model: resolved.alias },
     creditsRemaining: toCredits(available),
+    debitedMicro: debited,
   };
 }
 
@@ -460,15 +540,12 @@ export async function simpleChat(
     usage: {
       inputTokens,
       outputTokens,
-      creditsSpent: toCredits(
-        costMicro(
-          // The vendor id is the PRICING key; payload.model is the alias.
-          resolveModel(outcome.payload.model as ModelAlias)?.model ??
-            outcome.payload.model,
-          inputTokens,
-          outputTokens,
-        ),
-      ),
+      // What was actually taken, reported by the transaction that took it —
+      // not `costMicro()` run a second time out here. The two agree on a healthy
+      // account and diverge on a nearly-empty one, where `spendBuckets` floors
+      // at zero and tau absorbs the rest. Recomputing would bill the app's UI
+      // for credits the user was never charged.
+      creditsSpent: toCredits(outcome.debitedMicro),
       creditsRemaining: outcome.creditsRemaining,
     },
     requestId: outcome.requestId,
@@ -589,18 +666,29 @@ export async function streamChatCompletion(
   const requestId = randomUUID();
   const controller = new AbortController();
 
-  // Ask for the usage chunk. Without this the stream ends with no token counts
-  // at all and every request would fall back to the estimate.
-  const upstream = await resolved.client.chat.completions.create(
-    {
-      ...body,
-      stream: true,
-      stream_options: { include_usage: true },
-    },
-    { signal: controller.signal },
-  );
+  // Taken BEFORE the upstream connect, not after. Establishing a stream is the
+  // slow part, so counting it only once it succeeded left the connect phase
+  // entirely unbounded — the exact window where a burst piles up.
+  if (!acquireSlot(key.id)) throw slotUnavailable();
 
-  inFlight.set(key.id, (inFlight.get(key.id) ?? 0) + 1);
+  let upstream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+  try {
+    // Ask for the usage chunk. Without this the stream ends with no token counts
+    // at all and every request would fall back to the estimate.
+    upstream = await resolved.client.chat.completions.create(
+      {
+        ...body,
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      { signal: controller.signal },
+    );
+  } catch (err) {
+    // The generator's `finally` is what normally releases the slot, and there is
+    // no generator yet.
+    releaseSlot(key.id);
+    throw err;
+  }
 
   async function* run(): AsyncGenerator<OpenAI.Chat.Completions.ChatCompletionChunk> {
     let promptTokens: number | null = null;
@@ -627,9 +715,7 @@ export async function streamChatCompletion(
       // clean 200 and becomes invisible in the usage table.
       clean = !controller.signal.aborted;
     } finally {
-      const n = (inFlight.get(key.id) ?? 1) - 1;
-      if (n <= 0) inFlight.delete(key.id);
-      else inFlight.set(key.id, n);
+      releaseSlot(key.id);
 
       const estimated = promptTokens === null || completionTokens === null;
       const inputTokens =
@@ -683,7 +769,22 @@ export async function streamChatCompletion(
 export function __resetGatewayLimiters(): void {
   inFlight.clear();
   recentRequests.clear();
+  inFlightGlobal = 0;
+  lastSweep = 0;
 }
+
+/** Test seams for the concurrency ceilings and the RPM window. */
+export const __slots = {
+  acquire: acquireSlot,
+  release: releaseSlot,
+  global: () => inFlightGlobal,
+  trackedKeys: () => recentRequests.size,
+  sweep: sweepRecentRequests,
+  /** Seed the RPM map directly — `preflight` is the only real writer and it
+   *  needs a database. */
+  trackForTest: (keyId: string, atMs: number) =>
+    recentRequests.set(keyId, [atMs]),
+};
 
 /** Test seam: current in-flight count for a key. */
 export function __inFlightFor(keyId: string): number {

@@ -93,6 +93,14 @@ export const projectDetail = handler((req) =>
   admin.getProjectDetail(String(req.params.id)),
 );
 
+/** Gateway traffic across every key — the abuse-triage view. `?hours=` (default 24). */
+export const gatewayOverview = handler((req) => {
+  const raw = Number(req.query.hours);
+  return admin.getGatewayOverview(
+    Number.isFinite(raw) && raw > 0 ? { hours: raw } : {},
+  );
+});
+
 /**
  * SSE firehose of live registry transitions across every job — the "what is the
  * box doing right now" view. Reuses the same event plumbing as the user stream.

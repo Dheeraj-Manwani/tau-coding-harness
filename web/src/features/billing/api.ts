@@ -4,6 +4,7 @@ import { api } from "@/src/lib/api-client";
 export const billingKeys = {
   balance: ["billing", "balance"] as const,
   history: (cursor?: string) => ["billing", "history", cursor ?? ""] as const,
+  spend: ["billing", "spend"] as const,
   subscription: ["billing", "subscription"] as const,
   creditPacks: ["billing", "credit-packs"] as const,
 };
@@ -81,6 +82,36 @@ export function useBalance() {
       api.get<BalanceSummary>("/credits/balance").then((r) => r.data),
     staleTime: 30_000,
     refetchInterval: 60_000,
+  });
+}
+
+/**
+ * Where the credits went: building, versus apps calling AI at runtime.
+ *
+ * Two different things draw on one balance, and until this existed only one of
+ * them was visible anywhere — a deployed app burning credits showed up as a
+ * balance that dropped for no stated reason.
+ */
+export interface SpendSummary {
+  windowDays: number;
+  since: string;
+  build: { credits: number; microCredits: string };
+  runtime: {
+    credits: number;
+    microCredits: string;
+    requests: number;
+    inputTokens: number;
+    outputTokens: number;
+    byModel: { alias: string; requests: number; credits: number }[];
+  };
+  total: { credits: number; microCredits: string };
+}
+
+export function useSpend() {
+  return useQuery({
+    queryKey: billingKeys.spend,
+    queryFn: () => api.get<SpendSummary>("/credits/spend").then((r) => r.data),
+    staleTime: 30_000,
   });
 }
 

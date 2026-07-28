@@ -41,3 +41,22 @@ export const revealRateLimiter = rateLimit({
     error: "Too many key reveals. Please try again in a little while.",
   },
 });
+
+// The re-auth exchange takes a password or a 6-digit emailed code. The code is
+// stateless (an HMAC over a ten-minute window, see reauth.service.ts), so it is
+// not consumed on use and nothing else bounds guessing — a million codes at a
+// few thousand tries a minute would fall in an afternoon. This limit is what
+// makes that arithmetic not work. Deliberately separate from
+// `revealRateLimiter`: failing to confirm must not burn a user's reveal budget.
+export const reauthRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many confirmation attempts. Please try again in a little while.",
+  },
+});

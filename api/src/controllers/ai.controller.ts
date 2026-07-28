@@ -102,9 +102,11 @@ export async function chatStream(req: Request, res: Response): Promise<void> {
   res.flushHeaders();
 
   let aborted = false;
+  let abortReason: string | null = null;
   const stop = (why: string): void => {
     if (aborted || res.writableEnded) return;
     aborted = true;
+    abortReason = why;
     log.info("ai.stream_aborting", { requestId: handle.requestId, why });
     handle.abort();
   };
@@ -140,6 +142,21 @@ export async function chatStream(req: Request, res: Response): Promise<void> {
           usage: { inputTokens, outputTokens },
         })}\n\n`,
       );
+    } else if (abortReason === "wall_clock") {
+      // A silent socket close is the one thing this contract must not do: the
+      // recipe tells generated apps to read frames until `done`, so a client
+      // that trusts it waits for a frame that never comes. `res_close` and
+      // `socket_destroyed` are skipped on purpose — nobody is listening.
+      res.write(
+        `data: ${JSON.stringify({
+          error: `The response took longer than ${Math.round(
+            env.GATEWAY_STREAM_TIMEOUT_MS / 1000,
+          )}s and was stopped.`,
+          code: "stream_timeout",
+          done: true,
+          usage: { inputTokens, outputTokens },
+        })}\n\n`,
+      );
     }
   } catch (err) {
     if (!aborted) {
@@ -147,10 +164,14 @@ export async function chatStream(req: Request, res: Response): Promise<void> {
         detail: "ai stream failed mid-flight",
         requestId: handle.requestId,
       });
+      // `done: true` here as well, so "read frames until done" is a rule a
+      // generated client can follow on every exit path rather than most of them.
       res.write(
         `data: ${JSON.stringify({
           error: "The stream ended early.",
           code: "upstream_error",
+          done: true,
+          usage: { inputTokens, outputTokens },
         })}\n\n`,
       );
     }

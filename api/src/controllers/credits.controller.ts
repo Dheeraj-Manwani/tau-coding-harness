@@ -37,6 +37,20 @@ export const getHistory = async (
   }
 };
 
+/** GET /credits/spend — building vs deployed-app AI, over the last 30 days. */
+export const getSpend = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await creditsService.getSpendSummary(requireUserId(req));
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const redeemCode = async (
   req: Request,
   res: Response,

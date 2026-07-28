@@ -10,6 +10,7 @@ import {
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { persistFile } from "./utils";
 import { toTemplateKey, TEMPLATES } from "@/templates/registry";
+import { migrateTemplate, type MigrateOutcome } from "@/lib/migrateTemplate";
 
 /** The env vars a deployed app will need, declared for the deploy flow. */
 const DEPLOY_MANIFEST_PATH = ".tau/deploy.json";
@@ -150,8 +151,10 @@ function recipe(): string {
     "STREAMING (only if the UI needs text to appear progressively): POST the same",
     "body to `${process.env.TAU_AI_URL}/chat/stream`. It returns server-sent",
     "events, one JSON object per `data:` line: {\"text\":\"…\"} for each piece, then",
-    "a final {\"done\":true,\"usage\":{…}}. Prefer the plain /chat endpoint unless",
-    "streaming genuinely improves the experience — it is much simpler to get right.",
+    "a final frame carrying \"done\":true. Read frames until you see `done` — that",
+    "frame also carries `error`/`code` if the stream ended badly, so handle both",
+    "on the same frame. Prefer the plain /chat endpoint unless streaming genuinely",
+    "improves the experience — it is much simpler to get right.",
     "",
     "RULES:",
     "- NEVER put TAU_API_KEY in frontend code, in a file, or in a log line. It is",
@@ -212,13 +215,35 @@ export async function enableAi(
   if (!project) return { error: `Project ${projectId} not found` };
 
   // The key has to live somewhere only the server can read it. A frontend-only
-  // app has no server, so there is nowhere safe to put it.
+  // app has no server — so give it one, rather than refusing. This is a real
+  // sandbox rebuild, which is why the tool reports it loudly instead of doing it
+  // silently (doc/AI_FOR_GENERATED_APPS.md §7.3).
   const template = TEMPLATES[toTemplateKey(project.templateKey)];
+  let migrated: MigrateOutcome | null = null;
+
   if (!template.hasServer) {
-    return {
-      error:
-        "This app is frontend-only, so there is nowhere safe to keep an AI key — anything in the browser bundle is public. Tell the user plainly that AI features need a backend, which this app was not built with, and that starting a new project would be the way to get one. Do not try to work around this.",
-    };
+    migrated = await migrateTemplate(projectId, userId);
+
+    if (!migrated.migrated && migrated.reason === "hand_rolled_server") {
+      return {
+        error: `This app is frontend-only but already has its own \`server/\` directory, so tau cannot safely add the standard backend on top of it. ${migrated.detail} Tell the user what you found and ask whether to remove it first — do not merge or overwrite it yourself.`,
+      };
+    }
+
+    if (migrated.migrated) {
+      // The sandbox is now marked DEAD and the manifest has changed underneath
+      // us, so the currently-connected sandbox is stale. Everything below —
+      // writing .env, restarting Hono — would land on a sandbox that is about to
+      // be replaced. Stop here and make the agent come back after a reprovision.
+      return {
+        migrated: true,
+        needsReprovision: true,
+        changed: migrated.changed,
+        ...(migrated.notes.length > 0 ? { warnings: migrated.notes } : {}),
+        message:
+          "This app was frontend-only, so it is being given a backend (a Hono server) — that is the only place an AI key can live safely. TELL THE USER this is happening and that their app is being rebuilt; it takes a moment and the preview will reload. Then call `provision_sandbox` to boot the new stack, and call `enable_ai` again to finish turning AI on. The existing UI and all their files are preserved.",
+      };
+    }
   }
 
   const vars = await buildAiEnv(userId, projectId);

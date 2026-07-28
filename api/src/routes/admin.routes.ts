@@ -13,6 +13,7 @@ import {
   sandboxes,
   userDetail,
   projectDetail,
+  gatewayOverview,
   stream,
   killJob,
   reconcileStuckJobs,
@@ -40,6 +41,9 @@ router.get("/jobs", listJobs); // ?status=&userId=&projectId=&since=&limit=
 router.get("/jobs/:id", jobDetail);
 router.get("/jobs/:id/events", jobEvents); // replay what the browser received
 router.get("/users/:id", userDetail);
+
+// Runtime inference across every key — who is spending, on what. `?hours=`.
+router.get("/gateway", gatewayOverview);
 router.get("/projects/:id", projectDetail);
 
 // ── incident tools ───────────────────────────────────────────────────────────

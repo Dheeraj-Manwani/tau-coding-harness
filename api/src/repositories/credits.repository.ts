@@ -141,6 +141,69 @@ export async function listActivity(
   return { entries, nextCursor };
 }
 
+// ── Spend rollups (build vs runtime AI) ──────────────────────────────────────
+
+/**
+ * Debit totals by ledger type, as positive micro-credit amounts.
+ *
+ * Ledger debits are stored negative, so the sums come back negative and are
+ * flipped here — a caller asking "how much was spent" should not have to know
+ * the sign convention of a column it never sees.
+ */
+export async function sumSpendByType(
+  userId: string,
+  since: Date,
+): Promise<Map<string, bigint>> {
+  const rows = await prisma.creditLedger.groupBy({
+    by: ["type"],
+    where: {
+      userId,
+      createdAt: { gte: since },
+      type: { in: ["DEBIT", "GATEWAY_DEBIT"] },
+    },
+    _sum: { amount: true },
+  });
+
+  return new Map(
+    rows.map((r) => {
+      const sum = r._sum.amount ?? 0n;
+      return [r.type, sum < 0n ? -sum : sum];
+    }),
+  );
+}
+
+export async function gatewayUsageTotals(userId: string, since: Date) {
+  const agg = await prisma.gatewayUsage.aggregate({
+    where: { userId, recordedAt: { gte: since } },
+    _sum: { inputTokens: true, outputTokens: true },
+    _count: true,
+  });
+  return {
+    requests: agg._count,
+    inputTokens: agg._sum.inputTokens ?? 0,
+    outputTokens: agg._sum.outputTokens ?? 0,
+  };
+}
+
+/** Grouped by the alias the app asked for, not the vendor model it resolved to
+ *  — the alias is the only name a user has ever seen. */
+export async function gatewayUsageByAlias(userId: string, since: Date) {
+  const rows = await prisma.gatewayUsage.groupBy({
+    by: ["alias"],
+    where: { userId, recordedAt: { gte: since } },
+    _sum: { costMicro: true },
+    _count: true,
+  });
+
+  return rows
+    .map((r) => ({
+      alias: r.alias,
+      requests: r._count,
+      costMicro: r._sum.costMicro ?? 0n,
+    }))
+    .sort((a, b) => (b.costMicro > a.costMicro ? 1 : -1));
+}
+
 export interface CreatePromoCodeInput {
   code: string;
   credits: number;

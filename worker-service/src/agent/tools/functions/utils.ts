@@ -57,7 +57,10 @@ export function asStringArray(value: unknown, field: string): string[] {
     .filter(Boolean);
 }
 
-function sha256Hex(content: string): string {
+/** Content address for a blob. Exported so `migrateTemplate` writes manifest
+ *  rows the same way `persistFile` does — two hash functions would mean two
+ *  different keys for identical bytes. */
+export function sha256Hex(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
 

@@ -47,6 +47,57 @@ export async function getBalanceSummary(userId: string) {
   };
 }
 
+/**
+ * Where the credits went: building, versus apps calling AI at runtime.
+ *
+ * Read from `CreditLedger`, not by summing `TokenUsage` and `GatewayUsage`.
+ * The ledger is the money record — it is what `reconcileAccount()` checks the
+ * gross against — and `LedgerType.GATEWAY_DEBIT` exists precisely so this split
+ * is a `where` rather than a string match on `reason`. The usage tables are
+ * token counts, which is a different question and answered separately below.
+ *
+ * Runtime spend was previously invisible here: every rollup read `TokenUsage`
+ * only, so a user whose deployed app burned credits saw the balance drop with
+ * nothing explaining it.
+ */
+export async function getSpendSummary(userId: string) {
+  const since = new Date(Date.now() - 30 * 86_400_000);
+
+  const [byType, gateway, byAlias] = await Promise.all([
+    creditsRepo.sumSpendByType(userId, since),
+    creditsRepo.gatewayUsageTotals(userId, since),
+    creditsRepo.gatewayUsageByAlias(userId, since),
+  ]);
+
+  const build = byType.get("DEBIT") ?? 0n;
+  const runtime = byType.get("GATEWAY_DEBIT") ?? 0n;
+
+  return {
+    windowDays: 30,
+    since: since.toISOString(),
+    build: {
+      credits: toCredits(build),
+      microCredits: build.toString(),
+    },
+    runtime: {
+      credits: toCredits(runtime),
+      microCredits: runtime.toString(),
+      requests: gateway.requests,
+      inputTokens: gateway.inputTokens,
+      outputTokens: gateway.outputTokens,
+      byModel: byAlias.map((row) => ({
+        alias: row.alias,
+        requests: row.requests,
+        credits: toCredits(row.costMicro),
+      })),
+    },
+    total: {
+      credits: toCredits(build + runtime),
+      microCredits: (build + runtime).toString(),
+    },
+  };
+}
+
 export async function redeemCode(userId: string, rawCode: string) {
   let result;
   try {

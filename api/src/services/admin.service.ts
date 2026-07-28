@@ -512,7 +512,8 @@ export async function getUserDetail(userId: string) {
   });
   if (!user) throw Errors.notFound("User not found");
 
-  const [billing, holds, jobs, projects, spend] = await Promise.all([
+  const [billing, holds, jobs, projects, spend, gatewaySpend, apiKeys] =
+    await Promise.all([
     prisma.billingAccount.findUnique({ where: { userId } }),
     prisma.creditHold.findMany({
       where: { userId, status: HoldStatus.ACTIVE },
@@ -539,6 +540,28 @@ export async function getUserDetail(userId: string) {
       by: ["model"],
       where: { userId, recordedAt: { gte: new Date(Date.now() - 604_800_000) } },
       _sum: { inputTokens: true, outputTokens: true },
+    }),
+    // The runtime half. `TokenUsage` covers builds only, so without this a user
+    // whose deployed app is burning credits looks idle here while their balance
+    // drops — the exact support question this page exists to answer.
+    prisma.gatewayUsage.groupBy({
+      by: ["alias"],
+      where: { userId, recordedAt: { gte: new Date(Date.now() - 604_800_000) } },
+      _sum: { inputTokens: true, outputTokens: true, costMicro: true },
+      _count: true,
+    }),
+    prisma.apiKey.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        prefix: true,
+        status: true,
+        createdAt: true,
+        lastUsedAt: true,
+        revokeAfter: true,
+        dailyCapMicro: true,
+      },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -578,6 +601,95 @@ export async function getUserDetail(userId: string) {
       inputTokens: s._sum.inputTokens ?? 0,
       outputTokens: s._sum.outputTokens ?? 0,
     })),
+    gatewaySpend7dByAlias: gatewaySpend.map((s) => ({
+      alias: s.alias,
+      requests: s._count,
+      inputTokens: s._sum.inputTokens ?? 0,
+      outputTokens: s._sum.outputTokens ?? 0,
+      credits: toCredits(s._sum.costMicro ?? 0n),
+    })),
+    // Never the key itself and never the ciphertext — an operator browsing user
+    // data is already a privacy question (ADMIN_ALLOW_CONTENT), and a
+    // decryptable spend credential would be strictly worse. Prefix and status
+    // are enough to answer "is their key working" and "should we revoke it".
+    apiKeys: apiKeys.map((k) => ({
+      id: k.id,
+      prefix: k.prefix,
+      status: k.status,
+      createdAt: k.createdAt,
+      lastUsedAt: k.lastUsedAt,
+      revokeAfter: k.revokeAfter,
+      dailyCapCredits:
+        k.dailyCapMicro === null ? null : toCredits(k.dailyCapMicro),
+    })),
+  };
+}
+
+/**
+ * Gateway traffic across every key, newest window first.
+ *
+ * The abuse-triage view: `GatewayUsage` is the only place runtime inference is
+ * recorded, and until this existed the only way to ask "who is hammering the
+ * gateway" was a hand-written query. Ordered by spend rather than request count
+ * — a thousand `tau-fast` calls matter less than fifty `tau-max` ones.
+ */
+export async function getGatewayOverview(opts: { hours?: number } = {}) {
+  const hours = Math.min(Math.max(opts.hours ?? 24, 1), 24 * 30);
+  const since = new Date(Date.now() - hours * 3_600_000);
+
+  const [byKey, byAlias, totals] = await Promise.all([
+    prisma.gatewayUsage.groupBy({
+      by: ["apiKeyId", "userId"],
+      where: { recordedAt: { gte: since } },
+      _sum: { costMicro: true, inputTokens: true, outputTokens: true },
+      _count: true,
+    }),
+    prisma.gatewayUsage.groupBy({
+      by: ["alias"],
+      where: { recordedAt: { gte: since } },
+      _sum: { costMicro: true },
+      _count: true,
+    }),
+    prisma.gatewayUsage.aggregate({
+      where: { recordedAt: { gte: since } },
+      _sum: { costMicro: true },
+      _count: true,
+    }),
+  ]);
+
+  const keys = await prisma.apiKey.findMany({
+    where: { id: { in: byKey.map((k) => k.apiKeyId) } },
+    select: { id: true, prefix: true, status: true },
+  });
+  const keyById = new Map(keys.map((k) => [k.id, k]));
+
+  return {
+    windowHours: hours,
+    since,
+    totals: {
+      requests: totals._count,
+      credits: toCredits(totals._sum.costMicro ?? 0n),
+    },
+    byAlias: byAlias.map((a) => ({
+      alias: a.alias,
+      requests: a._count,
+      credits: toCredits(a._sum.costMicro ?? 0n),
+    })),
+    topKeys: byKey
+      .map((k) => ({
+        apiKeyId: k.apiKeyId,
+        userId: k.userId,
+        // Prefix only. An operator needs to identify a key to revoke it, not to
+        // use it.
+        prefix: keyById.get(k.apiKeyId)?.prefix ?? null,
+        status: keyById.get(k.apiKeyId)?.status ?? null,
+        requests: k._count,
+        credits: toCredits(k._sum.costMicro ?? 0n),
+        inputTokens: k._sum.inputTokens ?? 0,
+        outputTokens: k._sum.outputTokens ?? 0,
+      }))
+      .sort((a, b) => b.credits - a.credits)
+      .slice(0, 50),
   };
 }
 

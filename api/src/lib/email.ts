@@ -100,6 +100,64 @@ export async function sendVerificationEmail(input: {
   });
 }
 
+/**
+ * The code that lets an OAuth-only user reveal or rotate their API key.
+ *
+ * Deliberately not a link. A link in an email is a thing that can be clicked
+ * from anywhere, including by whoever is reading the mailbox over someone's
+ * shoulder; a code has to be typed back into the session that asked for it.
+ */
+function reauthCodeEmailHtml(code: string, minutes: number): string {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+    <body style="margin:0;padding:0;background-color:${BRAND.void};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.void};padding:40px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;">
+              <tr>
+                <td style="padding:32px 40px 8px;">
+                  <h1 style="margin:0;font-size:18px;color:${BRAND.text};">Confirm it's you</h1>
+                  <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:${BRAND.muted};">
+                    Someone asked to reveal or rotate the tau API key on your account. Enter this code to continue:
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:24px 40px;">
+                  <div style="font-size:32px;letter-spacing:8px;font-weight:600;color:${BRAND.text};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${code}</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 40px 32px;">
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">
+                    This code expires in ${minutes} minutes. If you didn't ask for it, someone may have access to your account — change your sign-in method and revoke your API key from the billing page.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+}
+
+export async function sendReauthCodeEmail(input: {
+  email: string;
+  code: string;
+  minutes: number;
+}): Promise<void> {
+  await resend.emails.send({
+    from: FROM,
+    to: input.email,
+    subject: `Your tau confirmation code: ${input.code}`,
+    html: reauthCodeEmailHtml(input.code, input.minutes),
+  });
+}
+
 /** Verify an email-verification JWT and return the user id it was issued for. */
 export function verifyEmailToken(token: string): { userId: string } {
   try {

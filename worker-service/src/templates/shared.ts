@@ -89,14 +89,27 @@ EOF`,
  */
 export function writeViteConfig(
   t: TemplateBuilder,
-  { proxyApi }: { proxyApi: boolean },
+  opts: { proxyApi: boolean },
 ): TemplateBuilder {
-  const proxyLine = proxyApi
-    ? `\n    proxy: { '/api': 'http://localhost:3000' }, // forward API calls to Hono`
-    : "";
   return t.runCmd(
-    `cat > vite.config.ts <<'EOF'
-import path from 'path'
+    `cat > vite.config.ts <<'EOF'\n${writeViteConfigContent(opts)}EOF`,
+  );
+}
+
+/**
+ * The same file as a value.
+ *
+ * `migrateTemplate` needs these bytes when a project's `vite.config.ts` has
+ * been rewritten badly enough that the proxy line can't be inserted into it
+ * (doc/AI_FOR_GENERATED_APPS.md §7.3 step 2). One definition, two consumers.
+ */
+export function writeViteConfigContent({
+  proxyApi,
+}: {
+  proxyApi: boolean;
+}): string {
+  const proxyLine = proxyApi ? `\n${VITE_API_PROXY_LINE}` : "";
+  return `import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -110,11 +123,10 @@ export default defineConfig({
     // Vite blocks requests whose Host header isn't whitelisted. The E2B preview
     // domain is dynamic (5173-<sandboxId>.e2b.app), so allow the whole suffix —
     // without this you get a 403 'host not allowed' page even though Vite is up.
-    allowedHosts: ['.e2b.app'],${proxyLine}
+${VITE_ALLOWED_HOSTS_LINE}${proxyLine}
   },
 })
-EOF`,
-  );
+`;
 }
 
 /**
@@ -394,13 +406,15 @@ EOF`,
 }
 
 /**
- * Install Hono and seed a minimal `server/index.ts`. Bun serves the default
- * export natively — no adapter, no app.listen.
+ * The scaffolded `server/index.ts`, as a value.
+ *
+ * Exported because two things need these exact bytes and they must not drift:
+ * the template build below bakes it into the E2B image, and `migrateTemplate`
+ * writes it into the manifest when a `frontend` project grows a backend
+ * (doc/AI_FOR_GENERATED_APPS.md §7.3 step 4). A second copy in the migration
+ * would be a copy that silently ages.
  */
-export function writeHonoApi(t: TemplateBuilder): TemplateBuilder {
-  return t.runCmd("bun add hono").runCmd(
-    `mkdir -p server && cat > server/index.ts <<'EOF'
-import { Hono } from 'hono'
+export const HONO_SERVER_INDEX = `import { Hono } from 'hono'
 
 const app = new Hono()
 
@@ -428,8 +442,27 @@ app.post('/api/echo', async (c) => {
 // directory out into its own deployment without touching the frontend.
 
 export default { port: 3000, fetch: app.fetch }
-EOF`,
-  );
+`;
+
+/** The Vite dev-server proxy line that makes \`/api/*\` reach Hono on :3000. */
+export const VITE_API_PROXY_LINE =
+  `    proxy: { '/api': 'http://localhost:3000' }, // forward API calls to Hono`;
+
+/** The anchor the proxy line is inserted after when migrating an existing app. */
+export const VITE_ALLOWED_HOSTS_LINE = `    allowedHosts: ['.e2b.app'],`;
+
+/**
+ * Install Hono and seed a minimal `server/index.ts`. Bun serves the default
+ * export natively — no adapter, no app.listen.
+ */
+export function writeHonoApi(t: TemplateBuilder): TemplateBuilder {
+  // `<<'EOF'` (quoted delimiter) means the shell expands nothing, so the
+  // backticks and `${}` inside the constant land verbatim.
+  return t
+    .runCmd("bun add hono")
+    .runCmd(
+      `mkdir -p server && cat > server/index.ts <<'EOF'\n${HONO_SERVER_INDEX}EOF`,
+    );
 }
 
 /**

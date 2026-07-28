@@ -35,27 +35,77 @@ export function useCreateApiKey() {
   });
 }
 
+// ── Re-auth ──────────────────────────────────────────────────────────────────
+// Revealing or rotating hands out a live spend credential, so a session alone
+// isn't enough. Password accounts re-enter their password; Google-only accounts
+// get a code by email, because there is no password to re-enter.
+
+export type ReauthMethod = "password" | "email_code";
+
+export interface ReauthChallenge {
+  method: ReauthMethod;
+  /** Masked destination for the emailed code. Null for the password method. */
+  sentTo: string | null;
+}
+
+export function useReauthMethod(enabled: boolean) {
+  return useQuery({
+    queryKey: ["account", "reauth-method"] as const,
+    queryFn: async () =>
+      (await api.get<{ method: ReauthMethod }>("/account/reauth")).data.method,
+    enabled,
+  });
+}
+
+export function useReauthChallenge() {
+  return useMutation({
+    mutationFn: async () =>
+      (await api.post<ReauthChallenge>("/account/reauth/challenge")).data,
+  });
+}
+
+export function useReauth() {
+  return useMutation({
+    mutationFn: async (input: { password?: string; code?: string }) =>
+      (await api.post<{ token: string; expiresInSeconds: number }>(
+        "/account/reauth",
+        input,
+      )).data,
+  });
+}
+
+/** The header the two credential-returning endpoints check. */
+function reauthHeader(token: string) {
+  return { headers: { "X-Tau-Reauth": token } };
+}
+
 /**
  * Deliberately a mutation, not a query: revealing decrypts a live credential
  * server-side and is rate-limited, so it must never fire on render or refetch.
  */
 export function useRevealApiKey() {
   return useMutation({
-    mutationFn: async () =>
-      (await api.post<{ key: string }>("/account/api-key/reveal")).data,
+    mutationFn: async (reauthToken: string) =>
+      (
+        await api.post<{ key: string }>(
+          "/account/api-key/reveal",
+          {},
+          reauthHeader(reauthToken),
+        )
+      ).data,
   });
 }
 
 export function useRotateApiKey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
+    mutationFn: async (reauthToken: string) =>
       (
         await api.post<{
           key: string;
           previousKeyExpiresAt: string | null;
           view: ApiKeyView;
-        }>("/account/api-key/rotate")
+        }>("/account/api-key/rotate", {}, reauthHeader(reauthToken))
       ).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.apiKey }),
   });

@@ -135,6 +135,19 @@ const envSchema = z.object({
   GATEWAY_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
   // Per-key in-flight ceiling. The other half of the overshoot bound.
   GATEWAY_MAX_CONCURRENT: z.coerce.number().int().positive().default(8),
+  // Process-wide in-flight ceiling, across every key.
+  //
+  // The per-key limit does not bound total load: N popular deployed apps are N
+  // keys, and `deploy/combined.ts` runs the api, the SSE stream and the job
+  // runner in one Bun process. Without this, runtime inference from generated
+  // apps can starve the builds that paying users are waiting on. Sized well
+  // below the runner's headroom on purpose — shedding gateway load with a 429 is
+  // recoverable, a stalled build queue is not.
+  GATEWAY_MAX_CONCURRENT_GLOBAL: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(32),
   // Requests per minute per key.
   GATEWAY_RPM: z.coerce.number().int().positive().default(60),
   // Default daily spend ceiling per key, in micro-credits (20 credits). A

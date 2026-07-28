@@ -30,6 +30,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
+import { SpendSplitCard } from "@/src/features/billing/SpendSplitCard";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -587,6 +588,11 @@ export default function BillingPage() {
           </div>
           <div className="sm:col-span-2">
             <ApiKeyCard />
+          </div>
+          {/* Below the key card on purpose: the runtime half of this split is
+              spend by apps using that key. */}
+          <div className="sm:col-span-2">
+            <SpendSplitCard />
           </div>
         </div>
 

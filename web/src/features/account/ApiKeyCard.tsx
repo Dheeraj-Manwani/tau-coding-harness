@@ -12,6 +12,7 @@ import {
   useRotateApiKey,
   useSetDailyCap,
 } from "./api";
+import { ReauthPrompt } from "./ReauthPrompt";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "never";
@@ -53,6 +54,31 @@ export function ApiKeyCard() {
   const [shown, setShown] = useState<string | null>(null);
   const [capDraft, setCapDraft] = useState<string>("");
   const [confirmRotate, setConfirmRotate] = useState(false);
+
+  // Which action is waiting on a re-auth token. The token itself is never kept:
+  // it is handed straight to the request that needed it and then dropped, so
+  // there is no window where a stale one is sitting in state to be reused.
+  const [pending, setPending] = useState<"reveal" | "rotate" | null>(null);
+
+  const doReveal = (token: string) => {
+    setPending(null);
+    reveal.mutate(token, {
+      onSuccess: (r) => setShown(r.key),
+      onError: (e) => toast.error(errMessage(e, "Could not reveal the key")),
+    });
+  };
+
+  const doRotate = (token: string) => {
+    setPending(null);
+    rotate.mutate(token, {
+      onSuccess: (r) => {
+        setShown(r.key);
+        setConfirmRotate(false);
+        toast.success("New key issued");
+      },
+      onError: (e) => toast.error(errMessage(e, "Could not rotate the key")),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -121,19 +147,23 @@ export function ApiKeyCard() {
           <Button
             variant="outline"
             size="sm"
-            disabled={reveal.isPending}
-            onClick={() =>
-              reveal.mutate(undefined, {
-                onSuccess: (r) => setShown(r.key),
-                onError: (e) =>
-                  toast.error(errMessage(e, "Could not reveal the key")),
-              })
-            }
+            disabled={reveal.isPending || pending === "reveal"}
+            onClick={() => setPending("reveal")}
           >
             {reveal.isPending ? "…" : "Reveal"}
           </Button>
         )}
       </div>
+
+      {pending === "reveal" && (
+        <div className="mt-3">
+          <ReauthPrompt
+            action="reveal your key"
+            onConfirmed={doReveal}
+            onCancel={() => setPending(null)}
+          />
+        </div>
+      )}
 
       {rotating && data.revokeAfter && (
         <p className="mt-2 text-xs text-amber-500">
@@ -193,33 +223,34 @@ export function ApiKeyCard() {
               app you have deployed will stop working unless you redeploy it with
               the new key first.
             </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={rotate.isPending}
-                onClick={() =>
-                  rotate.mutate(undefined, {
-                    onSuccess: (r) => {
-                      setShown(r.key);
-                      setConfirmRotate(false);
-                      toast.success("New key issued");
-                    },
-                    onError: (e) =>
-                      toast.error(errMessage(e, "Could not rotate the key")),
-                  })
-                }
-              >
-                {rotate.isPending ? "Rotating…" : "Yes, rotate"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmRotate(false)}
-              >
-                Cancel
-              </Button>
-            </div>
+            {pending === "rotate" ? (
+              <ReauthPrompt
+                action="rotate your key"
+                onConfirmed={doRotate}
+                onCancel={() => setPending(null)}
+              />
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={rotate.isPending}
+                  onClick={() => setPending("rotate")}
+                >
+                  {rotate.isPending ? "Rotating…" : "Yes, rotate"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPending(null);
+                    setConfirmRotate(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <button

@@ -9,6 +9,7 @@ process.env.TAU_KEY_ENC_SECRET =
 process.env.GATEWAY_MAX_OUTPUT_TOKENS = "4096";
 process.env.GATEWAY_RPM = "60";
 process.env.GATEWAY_MAX_CONCURRENT = "8";
+process.env.GATEWAY_MAX_CONCURRENT_GLOBAL = "12";
 
 const {
   decryptKey,
@@ -33,6 +34,7 @@ const {
   toChatCompletionRequest,
   projectIdFromHeader,
   __resetGatewayLimiters,
+  __slots,
 } = await import("../src/services/gateway.service");
 
 const { GatewayRequestError } = await import("../src/lib/gatewayErrors");
@@ -496,6 +498,76 @@ describe("dailyCapFor", () => {
     // ?? not ||, or a user setting the cap to 0 to pause a runaway app would
     // silently get the default instead.
     expect(dailyCapFor(key(0n))).toBe(0n);
+  });
+});
+
+describe("concurrency slots", () => {
+  // GATEWAY_MAX_CONCURRENT=8 per key, GATEWAY_MAX_CONCURRENT_GLOBAL=12 above.
+
+  test("holds the per-key ceiling", () => {
+    for (let i = 0; i < 8; i++) expect(__slots.acquire("k1")).toBe(true);
+    expect(__slots.acquire("k1")).toBe(false);
+  });
+
+  test("releasing frees the slot back up", () => {
+    for (let i = 0; i < 8; i++) __slots.acquire("k1");
+    expect(__slots.acquire("k1")).toBe(false);
+    __slots.release("k1");
+    expect(__slots.acquire("k1")).toBe(true);
+  });
+
+  test("the global ceiling binds across keys the per-key one cannot see", () => {
+    // The whole point of §8.6: two keys at 8 each is 16 in flight, and the api,
+    // the SSE stream and the job runner share one Bun process. Without a global
+    // ceiling, runtime inference starves the builds users are waiting on.
+    for (let i = 0; i < 8; i++) expect(__slots.acquire("k1")).toBe(true);
+    for (let i = 0; i < 4; i++) expect(__slots.acquire("k2")).toBe(true);
+    expect(__slots.global()).toBe(12);
+
+    // k2 is only at 4 of its own 8, but the process is full.
+    expect(__slots.acquire("k2")).toBe(false);
+    expect(__slots.acquire("k3")).toBe(false);
+
+    __slots.release("k1");
+    expect(__slots.acquire("k3")).toBe(true);
+  });
+
+  test("release on an unknown key cannot drive the global count negative", () => {
+    __slots.release("never-acquired");
+    expect(__slots.global()).toBe(0);
+  });
+});
+
+describe("RPM window eviction", () => {
+  // Filtering the timestamp arrays on read is not enough: the map itself gains
+  // an entry per distinct key seen since boot and never loses one, in a process
+  // meant to run for months. See §8.18.
+
+  test("drops keys with nothing left in the window", () => {
+    __slots.trackForTest("stale", Date.now() - 120_000);
+    expect(__slots.trackedKeys()).toBe(1);
+
+    __slots.sweep();
+    expect(__slots.trackedKeys()).toBe(0);
+  });
+
+  test("keeps keys that are still active", () => {
+    __slots.trackForTest("fresh", Date.now());
+    __slots.trackForTest("stale", Date.now() - 120_000);
+    expect(__slots.trackedKeys()).toBe(2);
+
+    __slots.sweep();
+    expect(__slots.trackedKeys()).toBe(1);
+  });
+
+  test("does not walk the map on every call", () => {
+    // The sweep is cheap but pointless per-request; it is rate-limited to once
+    // per window. A second sweep straight after the first must be a no-op even
+    // with a stale entry sitting there.
+    __slots.sweep();
+    __slots.trackForTest("stale", Date.now() - 120_000);
+    __slots.sweep();
+    expect(__slots.trackedKeys()).toBe(1);
   });
 });
 

@@ -5,6 +5,7 @@ import { MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
 import { useMe } from "@/src/features/auth/queries";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
+import { APP_HOME, projectPath } from "@/src/lib/routes";
 import { useProjects } from "./api";
 import type { ProjectListItem } from "./types";
 
@@ -40,7 +41,7 @@ function ProjectCard({
   return (
     <div className="group relative">
       <Link
-        to={`/project/${project.id}`}
+        to={projectPath(project.id)}
         className="flex flex-col overflow-hidden rounded-lg border border-silver-400/30 bg-space-surface text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
       >
         <div className="aspect-video w-full overflow-hidden bg-space-overlay">
@@ -128,7 +129,7 @@ export function MyProjects() {
         open={pendingDelete !== null}
         onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
         onDeleted={(id) => {
-          if (currentProjectId === id) navigate("/");
+          if (currentProjectId === id) navigate(APP_HOME);
         }}
       />
     </>

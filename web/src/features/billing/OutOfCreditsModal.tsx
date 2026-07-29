@@ -15,6 +15,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_BILLING } from "@/src/lib/routes";
 
 export function OutOfCreditsModal() {
   const open = useBillingStore((s) => s.outOfCreditsOpen);
@@ -40,7 +41,7 @@ export function OutOfCreditsModal() {
 
   const handleUpgrade = () => {
     close();
-    navigate("/billing");
+    navigate(APP_BILLING);
   };
 
   return (

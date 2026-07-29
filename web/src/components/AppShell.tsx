@@ -5,14 +5,20 @@ import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
 import { UpgradeModal } from "@/src/features/billing/UpgradeModal";
 import { SettingsModal } from "@/src/features/settings/SettingsModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
+import { APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
-function App() {
+/**
+ * The authenticated product shell (everything under `/app`). Extracted from the
+ * former `App.tsx` when the router grew a public half; `MarketingShell` and
+ * `DocsShell` are its siblings.
+ */
+export function AppShell() {
   const { pathname } = useLocation();
   const outlet = useOutlet();
   // The project editor is a full-screen workspace — it hides the app navbar.
-  const isProject = pathname.startsWith("/project/");
-  const isHome = pathname === "/";
+  const isProject = pathname.startsWith("/app/project/");
+  const isHome = pathname === APP_HOME;
 
   return (
     <div className="flex h-[100svh] flex-col">
@@ -20,7 +26,7 @@ function App() {
         <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             <Link
-              to="/"
+              to={APP_HOME}
               className={cn(
                 "logo-mark pointer-events-auto size-6",
                 isHome && "logo-mark--white",
@@ -44,4 +50,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppShell;

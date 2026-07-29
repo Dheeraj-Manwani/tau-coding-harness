@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangleIcon, ZapIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { APP_BILLING } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
 
 const LOW_CREDITS = 10;
@@ -18,7 +19,7 @@ export function CreditsWidget() {
   return (
     <button
       type="button"
-      onClick={() => navigate("/billing")}
+      onClick={() => navigate(APP_BILLING)}
       className={cn(
         "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
         isLow

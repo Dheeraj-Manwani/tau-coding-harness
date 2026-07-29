@@ -5,12 +5,22 @@ import { env } from "../lib/env";
 import { mobileDeepLink, withParam } from "../lib/mobileLink";
 
 /**
+ * Where a web GitHub round-trip lands when we have no usable `return_to`.
+ *
+ * Not bare APP_URL: `/` is the public marketing page, and a signed-in visitor
+ * there is immediately redirected to `/app` — which would drop the
+ * `?github=connected|denied|error` flag before the app ever read it, so the
+ * user would get no feedback at all about what just happened.
+ */
+const WEB_FALLBACK_RETURN = `${env.APP_URL.replace(/\/+$/, "")}/app`;
+
+/**
  * Only allow post-OAuth redirects back into our own app, so `return_to` can't be
- * turned into an open redirect. Falls back to APP_URL when absent/foreign.
+ * turned into an open redirect. Falls back to the builder when absent/foreign.
  */
 function safeReturnTo(raw: unknown): string {
   if (typeof raw === "string" && raw.startsWith(env.APP_URL)) return raw;
-  return env.APP_URL;
+  return WEB_FALLBACK_RETURN;
 }
 
 /**
@@ -58,7 +68,7 @@ export async function callback(
 
   // Resolve the target first so we can bounce the browser back with an error
   // flag instead of dumping a JSON error page on a top-level navigation.
-  let returnTo = env.APP_URL;
+  let returnTo = WEB_FALLBACK_RETURN;
   try {
     if (typeof state !== "string") throw Errors.badRequest("Missing state");
     const resolved = githubService.verifyState(state);

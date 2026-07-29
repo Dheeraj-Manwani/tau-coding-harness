@@ -260,6 +260,59 @@ code {
     0 0 32px #60a5fa44;
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+ * Marketing / docs surfaces (features/marketing, features/docs).
+ * No new colours — everything below resolves to tokens declared above.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Headline words that should glow. Pairs with .logo-glow. */
+.text-cosmic {
+  background-image: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    var(--silver-900) 55%,
+    var(--blue-300) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* NebulaDrift: three counter-rotating clouds. Durations and direction are set
+   per-blob in NebulaDrift.tsx; everything constant lives here. */
+.nebula-blob {
+  opacity: 0.06;
+  filter: blur(90px);
+  mix-blend-mode: screen;
+  will-change: transform;
+  animation-name: nebula-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes nebula-drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate3d(6%, -4%, 0) rotate(120deg) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-5%, 5%, 0) rotate(240deg) scale(0.95);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+  }
+}
+
+/* Belt and braces: the OS setting stops the clouds even if a component forgets
+   to pass `animationPlayState`. */
+@media (prefers-reduced-motion: reduce) {
+  .nebula-blob {
+    animation-play-state: paused !important;
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--silver-400) transparent;

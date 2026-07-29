@@ -14,6 +14,7 @@ import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
+import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
 const LOW_CREDITS = 10;
@@ -87,7 +88,7 @@ export function UserMenu() {
                     <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
                     <button
                       type="button"
-                      onClick={() => navigate("/billing")}
+                      onClick={() => navigate(APP_BILLING)}
                       className={cn(
                         "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
                         isLow

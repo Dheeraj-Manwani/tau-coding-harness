@@ -10,6 +10,7 @@ import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { GoogleButton } from "@/src/features/auth/GoogleButton";
 import { useLogin } from "@/src/features/auth/mutations";
 import { loginSchema, type LoginValues } from "@/src/features/auth/schemas";
@@ -33,7 +34,7 @@ function Login() {
       const { user } = await login.mutateAsync(values);
       toast.success(`Welcome back, ${user.email}`);
       const from = (location.state as { from?: Location } | null)?.from;
-      navigate(from?.pathname ?? "/", { replace: true });
+      navigate(from?.pathname ?? APP_HOME, { replace: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Something went wrong",

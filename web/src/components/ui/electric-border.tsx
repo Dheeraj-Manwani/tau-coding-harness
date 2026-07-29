@@ -6,6 +6,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { octavedNoise } from "@/src/features/marketing/motion/noise";
+
 // Adapted from BalintFerenczy's "ElectricBorder" pen. Two changes vs. the
 // original: (1) the default stroke is our brand blue instead of violet, and
 // (2) on top of the always-on "idle hum" perimeter we render a bright bolt that
@@ -69,68 +71,6 @@ export function ElectricBorder({
   const pulseStartRef = useRef(0);
 
   const showCanvas = active && !reducedMotion;
-
-  const random = useCallback((x: number): number => {
-    return (Math.sin(x * 12.9898) * 43758.5453) % 1;
-  }, []);
-
-  const noise2D = useCallback(
-    (x: number, y: number): number => {
-      const i = Math.floor(x);
-      const j = Math.floor(y);
-      const fx = x - i;
-      const fy = y - j;
-
-      const a = random(i + j * 57);
-      const b = random(i + 1 + j * 57);
-      const c = random(i + (j + 1) * 57);
-      const d = random(i + 1 + (j + 1) * 57);
-
-      const ux = fx * fx * (3.0 - 2.0 * fx);
-      const uy = fy * fy * (3.0 - 2.0 * fy);
-
-      return (
-        a * (1 - ux) * (1 - uy) +
-        b * ux * (1 - uy) +
-        c * (1 - ux) * uy +
-        d * ux * uy
-      );
-    },
-    [random],
-  );
-
-  const octavedNoise = useCallback(
-    (
-      x: number,
-      octaves: number,
-      lacunarity: number,
-      gain: number,
-      baseAmplitude: number,
-      baseFrequency: number,
-      time: number,
-      seed: number,
-      baseFlatness: number,
-    ): number => {
-      let y = 0;
-      let amplitude = baseAmplitude;
-      let frequency = baseFrequency;
-
-      for (let i = 0; i < octaves; i++) {
-        let octaveAmplitude = amplitude;
-        if (i === 0) {
-          octaveAmplitude *= baseFlatness;
-        }
-        y +=
-          octaveAmplitude *
-          noise2D(frequency * x + seed * 100, time * frequency * 0.3);
-        frequency *= lacunarity;
-        amplitude *= gain;
-      }
-
-      return y;
-    },
-    [noise2D],
-  );
 
   const getCornerPoint = useCallback(
     (
@@ -400,7 +340,7 @@ export function ElectricBorder({
       if (pulseTimeout) clearTimeout(pulseTimeout);
       resizeObserver.disconnect();
     };
-  }, [showCanvas, color, speed, chaos, borderRadius, octavedNoise, getRoundedRectPoint]);
+  }, [showCanvas, color, speed, chaos, borderRadius, getRoundedRectPoint]);
 
   return (
     <div

@@ -16,6 +16,7 @@ import { markFreshBuild } from "@/src/features/project/revealSession";
 import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
 import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
+import { projectPath } from "@/src/lib/routes";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
@@ -117,7 +118,7 @@ function Home() {
           attachments.clear();
           // Flag this project so its page plays the centered → split reveal once.
           markFreshBuild(projectId);
-          navigate(`/project/${projectId}`, {
+          navigate(projectPath(projectId), {
             state: { jobId, prompt: message },
           });
         },

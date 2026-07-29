@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { APP_BILLING } from "@/src/lib/routes";
+
 const CONTACT_EMAIL = "support@usetau.dev";
 const EFFECTIVE_DATE = "June 29, 2025";
 const PRO_PRICE = "₹999";
@@ -122,7 +124,7 @@ export default function TermsPage() {
         </p>
         <p className="mt-2">
           <b>How to cancel:</b> Sign in → go to{" "}
-          <Link to="/billing" className="text-indigo-400 hover:underline">
+          <Link to={APP_BILLING} className="text-indigo-400 hover:underline">
             Credits &amp; Billing
           </Link>{" "}
           → click "Cancel subscription". Your plan remains active until the

@@ -10,6 +10,7 @@ import {
 } from "@/src/components/ui/dialog";
 import { UpgradeProButton } from "./UpgradeProButton";
 import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
+import { APP_BILLING } from "@/src/lib/routes";
 
 const PRO_FEATURES = [
   "5,000 credits per month",
@@ -39,7 +40,7 @@ export function UpgradeModal() {
 
   const handleUpgrade = () => {
     close();
-    navigate("/billing");
+    navigate(APP_BILLING);
   };
 
   return (

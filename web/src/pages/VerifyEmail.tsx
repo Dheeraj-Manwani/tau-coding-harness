@@ -5,6 +5,7 @@ import { Loader2Icon, XCircleIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { SplashScreen } from "@/src/components/SplashScreen";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { useMe } from "@/src/features/auth/queries";
 import { useVerifyEmail } from "@/src/features/auth/mutations";
 
@@ -26,12 +27,12 @@ function VerifyEmail() {
     if (firedRef.current || !token || user?.emailVerifiedAt) return;
     firedRef.current = true;
     verify.mutate(token, {
-      onSuccess: () => navigate("/", { replace: true }),
+      onSuccess: () => navigate(APP_HOME, { replace: true }),
     });
   }, [token, user, verify, navigate]);
 
   // Already verified (reload / verified session) → home.
-  if (user?.emailVerifiedAt) return <Navigate to="/" replace />;
+  if (user?.emailVerifiedAt) return <Navigate to={APP_HOME} replace />;
 
   // Don't flash an error while we're still resolving auth state.
   if (!token && isLoading) return <SplashScreen />;

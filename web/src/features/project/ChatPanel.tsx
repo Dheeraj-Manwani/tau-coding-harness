@@ -77,6 +77,7 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
@@ -711,7 +712,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
             className="z-50 w-44 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
           >
             <DropdownMenu.Item
-              onSelect={() => navigate("/")}
+              onSelect={() => navigate(APP_HOME)}
               className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
             >
               <HomeIcon className="size-3.5 shrink-0" />
@@ -735,7 +736,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
         project={projectAsListItem}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onDeleted={() => navigate("/")}
+        onDeleted={() => navigate(APP_HOME)}
       />
     </>
   );

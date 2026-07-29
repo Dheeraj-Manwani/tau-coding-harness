@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { SplashScreen } from "@/src/components/SplashScreen";
 import { setAccessToken } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { authKeys } from "@/src/features/auth/queries";
 
 /**
@@ -26,7 +27,7 @@ function OAuthCallback() {
     setAccessToken(token);
     window.history.replaceState(null, "", "/auth/callback"); // drop token from URL
     qc.invalidateQueries({ queryKey: authKeys.me }).finally(() =>
-      navigate("/", { replace: true }),
+      navigate(APP_HOME, { replace: true }),
     );
   }, [navigate, qc]);
 

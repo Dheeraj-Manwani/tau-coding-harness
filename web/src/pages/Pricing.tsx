@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { CheckCircleIcon, ZapIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
 const FREE_FEATURES = [
@@ -119,7 +120,7 @@ export default function PricingPage() {
             description="For power users who build frequently."
             features={PRO_FEATURES}
             cta="Upgrade to PRO"
-            ctaHref="/billing"
+            ctaHref={APP_BILLING}
             highlight
           />
         </div>

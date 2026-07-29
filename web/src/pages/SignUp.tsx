@@ -10,6 +10,7 @@ import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { GoogleButton } from "@/src/features/auth/GoogleButton";
 import { useRegister } from "@/src/features/auth/mutations";
 import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
@@ -33,7 +34,7 @@ function SignUp() {
         password: values.password,
       });
       toast.success(`Welcome to tau, ${user.email}`);
-      navigate("/", { replace: true });
+      navigate(APP_HOME, { replace: true });
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Something went wrong",

@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PrivacyPage from "./pages/Privacy.tsx";
 import TermsPage from "./pages/Terms.tsx";
 import PricingPage from "./pages/Pricing.tsx";
+import CheckoutPage from "./pages/Checkout.tsx";
 
 const router = createBrowserRouter([
   {
@@ -54,6 +55,9 @@ const router = createBrowserRouter([
   { path: "/privacy", element: <PrivacyPage /> },
   { path: "/terms", element: <TermsPage /> },
   { path: "/pricing", element: <PricingPage /> },
+  // Intentionally unguarded: this is the mobile app's credit-pack checkout,
+  // opened in an in-app browser tab that carries no session. See Checkout.tsx.
+  { path: "/checkout", element: <CheckoutPage /> },
   { path: "*", element: <NotFound /> },
 ]);
 

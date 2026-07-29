@@ -42,6 +42,24 @@ export const revealRateLimiter = rateLimit({
   },
 });
 
+// A GitHub handoff token is a 60-second bearer credential that rides in a query
+// string, so it lands in access logs. It is single-use, which is the real
+// defence, but nothing should be able to mint a stream of them: each one is a
+// fresh window in which a log reader could act. Sits with the other credential
+// endpoints on purpose.
+export const handoffRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many connection attempts. Please try again in a little while.",
+  },
+});
+
 // The re-auth exchange takes a password or a 6-digit emailed code. The code is
 // stateless (an HMAC over a ten-minute window, see reauth.service.ts), so it is
 // not consumed on use and nothing else bounds guessing — a million codes at a

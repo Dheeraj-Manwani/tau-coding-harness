@@ -17,6 +17,13 @@ const envSchema = z.object({
 
   // App / client URLs
   APP_URL: z.string().url().default("http://localhost:5173"),
+  /**
+   * Deep-link base for the native app. Where `GET /auth/github/callback` sends
+   * the browser when the flow was started from mobile — an in-app browser tab
+   * cannot be returned to APP_URL, which would strand the user in a web page.
+   * Not a `url()`: a custom scheme is not a valid URL to zod.
+   */
+  MOBILE_APP_URL: z.string().default("tau://"),
   OAUTH_SUCCESS_REDIRECT: z
     .string()
     .url()

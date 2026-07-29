@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import * as githubService from "../services/github.service";
 import { Errors } from "../lib/errors";
 import { env } from "../lib/env";
+import { mobileDeepLink, withParam } from "../lib/mobileLink";
 
 /**
  * Only allow post-OAuth redirects back into our own app, so `return_to` can't be
@@ -12,12 +13,34 @@ function safeReturnTo(raw: unknown): string {
   return env.APP_URL;
 }
 
-/** GET /auth/github — start consent (gated by the refresh-cookie middleware). */
+/**
+ * POST /auth/github/prepare — mint a one-shot token an in-app browser tab can
+ * present in place of the refresh cookie it does not have. Bearer-authenticated
+ * and rate-limited; see github.service.ts `signHandoff`.
+ */
+export function prepare(req: Request, res: Response, next: NextFunction): void {
+  try {
+    if (!req.user) throw Errors.unauthorized("Authentication required");
+    res.status(201).json(githubService.signHandoff(req.user.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /auth/github — start consent.
+ *
+ * Gated by `requireNavAuth`: the refresh cookie for web, a spent `?handoff=`
+ * token for mobile. Which one got us here decides where `callback` returns the
+ * browser, so it is recorded in the signed state now — that is the last point
+ * at which it is known.
+ */
 export function start(req: Request, res: Response, next: NextFunction): void {
   try {
     if (!req.user) throw Errors.unauthorized("Authentication required");
+    const client = req.query["handoff"] === undefined ? "web" : "mobile";
     const returnTo = safeReturnTo(req.query["return_to"]);
-    const state = githubService.signState(req.user.id, returnTo);
+    const state = githubService.signState(req.user.id, returnTo, client);
     res.redirect(githubService.buildAuthorizeUrl(state));
   } catch (err) {
     next(err);
@@ -39,7 +62,16 @@ export async function callback(
   try {
     if (typeof state !== "string") throw Errors.badRequest("Missing state");
     const resolved = githubService.verifyState(state);
-    if (resolved.returnTo) returnTo = safeReturnTo(resolved.returnTo);
+    // Mobile started this in an in-app browser tab; sending it to APP_URL would
+    // strand the user in a web page with no way back into the app. The deep
+    // link is derived from the signed state, never from a query param — a
+    // caller-supplied scheme here would be an open redirect.
+    returnTo =
+      resolved.client === "mobile"
+        ? mobileDeepLink("account")
+        : resolved.returnTo
+          ? safeReturnTo(resolved.returnTo)
+          : returnTo;
 
     if (typeof code !== "string") {
       // User denied consent, or GitHub returned an error.
@@ -83,16 +115,5 @@ export async function disconnect(
     res.status(204).send();
   } catch (err) {
     next(err);
-  }
-}
-
-/** Append/replace a single query param on an absolute URL. */
-function withParam(url: string, key: string, value: string): string {
-  try {
-    const u = new URL(url);
-    u.searchParams.set(key, value);
-    return u.toString();
-  } catch {
-    return url;
   }
 }

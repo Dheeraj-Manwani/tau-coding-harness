@@ -6,6 +6,7 @@
     "start:economy": "bun run deploy/combined.ts",
     "dev:economy": "bun run --hot deploy/combined.ts",
     "reset": "bun run scripts/reset-all.ts",
-    "reset:confirm": "bun run scripts/reset-all.ts --confirm"
+    "reset:confirm": "bun run scripts/reset-all.ts --confirm",
+    "check:mobile": "bun run mobile/scripts/check-parity.ts"
   }
 }

@@ -8,10 +8,14 @@ import {
 import * as authController from "../controllers/auth.controller";
 import * as githubController from "../controllers/github.controller";
 import * as authService from "../services/auth.service";
-import { requireAuth, requireRefreshAuth } from "../middleware/auth.middleware";
-import { authRateLimiter } from "../middleware/rateLimit.middleware";
+import { requireAuth, requireNavAuth } from "../middleware/auth.middleware";
+import {
+  authRateLimiter,
+  handoffRateLimiter,
+} from "../middleware/rateLimit.middleware";
 import { Errors } from "../lib/errors";
 import { env } from "../lib/env";
+import { signMobileOAuthState } from "../lib/mobileLink";
 
 passport.use(
   new GoogleStrategy(
@@ -53,13 +57,26 @@ router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
 router.post("/logout-all", requireAuth, authController.logoutAll);
 
+// `?client=mobile` marks the round trip so `googleCallback` returns a one-shot
+// code on a `tau://` deep link instead of a cookie + URL fragment, neither of
+// which an in-app browser tab can hand back to the app. The marker is signed
+// (see lib/mobileLink.ts) because the callback picks a redirect scheme from it.
+// Without the param this is byte-for-byte the previous behaviour.
 router.get(
   "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-  }),
+  (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      session: false,
+      ...(req.query["client"] === "mobile"
+        ? { state: signMobileOAuthState() }
+        : {}),
+    })(req, res, next);
+  },
 );
+
+// The mobile tail: trade the deep-linked code for a real token pair.
+router.post("/google/exchange", authRateLimiter, authController.googleExchange);
 
 router.get(
   "/google/callback",
@@ -82,9 +99,17 @@ router.get("/me", requireAuth, authController.me);
 
 // ── GitHub account linking (Connect GitHub) ──
 // `start` runs on a full-page navigation, so it authenticates via the refresh
-// cookie; `callback` authenticates via the signed state it issued. status +
-// disconnect are called from the app over XHR, so they use Bearer auth.
-router.get("/github", requireRefreshAuth, githubController.start);
+// cookie — or, for mobile, a one-shot handoff token, since an in-app browser
+// tab carries no cookie (see requireNavAuth). `callback` authenticates via the
+// signed state it issued. status + disconnect are called from the app over XHR,
+// so they use Bearer auth.
+router.post(
+  "/github/prepare",
+  requireAuth,
+  handoffRateLimiter,
+  githubController.prepare,
+);
+router.get("/github", requireNavAuth, githubController.start);
 router.get("/github/callback", githubController.callback);
 router.get("/github/status", requireAuth, githubController.status);
 router.delete("/github", requireAuth, githubController.disconnect);

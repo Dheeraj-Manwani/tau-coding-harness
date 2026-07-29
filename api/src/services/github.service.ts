@@ -2,6 +2,10 @@ import jwt from "jsonwebtoken";
 import * as authRepository from "../repositories/auth.repository";
 import { env } from "../lib/env";
 import { Errors } from "../lib/errors";
+import {
+  consumeHandoff as consumeHandoffToken,
+  signHandoff as signHandoffToken,
+} from "../lib/handoff";
 
 /**
  * GitHub "Connect account" flow — implemented directly over GitHub's OAuth Web
@@ -23,10 +27,40 @@ const USER_AGENT = "tau-app";
 const STATE_TTL_SECONDS = 600; // 10 minutes to complete consent
 const STATE_PURPOSE = "github_link";
 
+/** Which app started the flow — decides where `callback` sends the browser. */
+export type OAuthClient = "web" | "mobile";
+
 interface StatePayload {
   sub: string; // userId
   purpose: typeof STATE_PURPOSE;
   returnTo?: string;
+  client?: OAuthClient;
+}
+
+// ── Mobile handoff ───────────────────────────────────────────────────────────
+
+/**
+ * Mint a one-shot credential that lets an in-app browser tab start the GitHub
+ * consent flow.
+ *
+ * `GET /auth/github` runs on a top-level navigation and so authenticates by
+ * refresh cookie. Mobile has no cookie jar — it sends the refresh token in the
+ * request body (`clientType: "mobile"`, see mobile/src/api/client.ts) — so the
+ * cookie path is not available to it. This token is the substitute: obtained
+ * over ordinary Bearer auth, then handed to the tab in the URL it opens.
+ *
+ * Single-use and 60 seconds; see lib/handoff.ts for why.
+ */
+export function signHandoff(userId: string): {
+  token: string;
+  expiresInSeconds: number;
+} {
+  return signHandoffToken("github_handoff", userId);
+}
+
+/** Verify and burn a GitHub handoff token, returning the user it belongs to. */
+export function consumeHandoff(token: unknown): string {
+  return consumeHandoffToken("github_handoff", token);
 }
 
 export function isConfigured(): boolean {
@@ -44,11 +78,20 @@ function requireConfigured(): { clientId: string; clientSecret: string } {
 }
 
 /** Sign a short-lived state that binds the consent round-trip to this user. */
-export function signState(userId: string, returnTo?: string): string {
+export function signState(
+  userId: string,
+  returnTo?: string,
+  client: OAuthClient = "web",
+): string {
   const payload: StatePayload = {
     sub: userId,
     purpose: STATE_PURPOSE,
     ...(returnTo ? { returnTo } : {}),
+    // Carried in the signed state rather than re-derived in `callback`, which
+    // GitHub calls with only `code` and `state` — there is nothing else there
+    // to tell a phone from a browser, and a client-supplied hint at that point
+    // would be an open redirect into any scheme.
+    ...(client === "mobile" ? { client } : {}),
   };
   return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
     algorithm: "HS256",
@@ -60,6 +103,7 @@ export function signState(userId: string, returnTo?: string): string {
 export function verifyState(state: string): {
   userId: string;
   returnTo?: string;
+  client: OAuthClient;
 } {
   let decoded: StatePayload;
   try {
@@ -72,7 +116,11 @@ export function verifyState(state: string): {
   if (decoded.purpose !== STATE_PURPOSE || !decoded.sub) {
     throw Errors.badRequest("Invalid GitHub authorization state");
   }
-  return { userId: decoded.sub, returnTo: decoded.returnTo };
+  return {
+    userId: decoded.sub,
+    returnTo: decoded.returnTo,
+    client: decoded.client === "mobile" ? "mobile" : "web",
+  };
 }
 
 /** The GitHub consent URL to redirect the browser to. */

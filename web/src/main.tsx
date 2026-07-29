@@ -103,6 +103,27 @@ const router = createBrowserRouter([
                   () => import("./features/docs/DocsIndex.tsx"),
                 ),
               },
+              {
+                // A section is a grouping, not a page — bounce to its first.
+                path: "/docs/:section",
+                lazy: lazyComponent(
+                  () => import("./features/docs/DocsSectionRedirect.tsx"),
+                ),
+              },
+              {
+                path: "/docs/:section/:slug",
+                lazy: lazyComponent(
+                  () => import("./features/docs/DocsPage.tsx"),
+                ),
+              },
+              {
+                // Anything else under /docs keeps the shell, so a dead link
+                // still leaves you looking at the map.
+                path: "/docs/*",
+                lazy: lazyComponent(
+                  () => import("./features/docs/DocsNotFound.tsx"),
+                ),
+              },
             ],
           },
         ],

@@ -344,6 +344,46 @@ a:hover > .logo-shimmer {
   }
 }
 
+/* ── Docs ─────────────────────────────────────────────────────────────────── */
+
+/* Shiki ships its own background and padding on the <pre> it generates; the
+   CodeBlock frame already provides both, so strip them and keep only the
+   colours. */
+.docs-shiki pre {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
+.docs-shiki code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  display: block;
+}
+
+/* Jumping to an anchor flashes the heading, so it is obvious which one of a
+   dozen similar headings you actually landed on. */
+.docs-body :is(h2, h3):target {
+  animation: anchor-flash 900ms ease-out;
+}
+
+@keyframes anchor-flash {
+  0% {
+    background-color: rgba(96, 165, 250, 0.16);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-body :is(h2, h3):target {
+    animation: none;
+  }
+}
+
 /* FAQ: Radix reports the measured content height as a custom property, so the
    open/close is one CSS transition rather than a JS-measured animation. */
 .accordion-content[data-state="open"] {

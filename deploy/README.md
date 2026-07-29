@@ -2,8 +2,10 @@
 
 Runs `api` + `worker-service` + the SSE event stream in **one Bun process on one
 port**, backed only by **Postgres**. No Redis, no separate ws-gateway. See
-`doc/economy-deployment.md` for the design and `doc/economy-implementation-plan.md`
-for the build log.
+`doc/archive/economy-deployment.md` for the design and
+`doc/archive/economy-implementation-plan.md` for the build log.
+
+Serves both clients: `web/` (SPA, hosted separately) and `mobile/` (Expo).
 
 ## Local run
 
@@ -55,7 +57,39 @@ Live streaming now rides the api origin over SSE, so **`VITE_WS_URL` is gone**.
 - **`KIMI_API_KEY` degrades silently, it doesn't fail loudly.** Without it, MAX
   effort quietly falls back to `DEEPSEEK_MODEL` and image/document attachments
   record a per-attachment extraction failure. Both services read the same key
-  in combined mode. See `doc/PROMPT_ATTACHMENTS.md` and `doc/OVERVIEW.md`.
+  in combined mode. See `doc/interview_prep/12-attachments.md` and
+  `doc/OVERVIEW.md`.
+- **`TAU_KEY_ENC_SECRET` is required once the AI gateway is in use.** It is the
+  AES-256-GCM key that `tau_sk_*` API keys are encrypted under at rest. Losing
+  or changing it makes every existing key undecryptable — every deployed
+  generated app breaks and every user must rotate. Back it up separately from
+  the database; the two together are what an attacker needs.
+- **`TAU_AI_URL` must be publicly reachable from inside an E2B sandbox**, not
+  just from your laptop. It is injected into generated apps as the gateway
+  origin. A `localhost` or LAN value makes `enable_ai` produce apps that fail at
+  runtime — the reachability check refuses loudly rather than shipping a broken
+  app, but only if the value is wrong in a way it can detect. See
+  `doc/AI_FOR_GENERATED_APPS.md` §9.
+- **Mobile OAuth needs the `tau://` deep link registered** and the one-shot
+  handoff endpoints reachable (`POST /auth/github/prepare`,
+  `POST /auth/google/exchange`). Refresh tokens are never put in a URL; see
+  `api/src/lib/handoff.ts`.
+
+## Migrations
+
+The Docker image does **not** run migrations. Apply them explicitly before the
+first boot of a new deploy and after every schema change:
+
+```sh
+docker compose run --rm app sh -c "cd api && bunx prisma migrate deploy"
+```
+
+## Admin
+
+`GET /admin/ui` is a server-rendered operations console behind `ADMIN_API_KEY`:
+health, 1h/24h/7d metrics, an SSE firehose of live job phases, job/user/project/
+sandbox drill-down, and kill-job / reconcile-stuck / release-holds actions.
+Start here when a job looks wedged.
 - **Attachments need an R2 CORS rule** allowing `PUT` from `APP_URL` — uploads
   go browser → R2 directly via presigned PUT. Without it the preflight 403s and
   every upload fails. Apply `deploy/r2-cors.json` (edit the origins first):

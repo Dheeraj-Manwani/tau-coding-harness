@@ -15,6 +15,12 @@ interface PromptComposerProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   placeholder?: string;
+  /**
+   * Accessible name for the textarea. Worth setting wherever the surrounding
+   * heading doesn't already name the field — an animated placeholder is not an
+   * accessible name, and neither is a placeholder that is about to change.
+   */
+  ariaLabel?: string;
   /** Custom node rendered over the textarea (e.g. animated suggestions). */
   overlay?: ReactNode;
   isSubmitting?: boolean;
@@ -44,6 +50,7 @@ export function PromptComposer({
   onChange,
   onSubmit,
   placeholder,
+  ariaLabel,
   overlay,
   isSubmitting = false,
   disabled = false,
@@ -130,6 +137,7 @@ export function PromptComposer({
       <div className="relative">
         <TextareaAutosize
           value={value}
+          aria-label={ariaLabel}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {

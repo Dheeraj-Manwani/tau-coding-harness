@@ -60,9 +60,19 @@ export const CosmosRegistryContext = createContext<{
 export interface CosmosScene {
   density: number;
   parallax: boolean;
+  /**
+   * Occasional meteors across the upper viewport. Marketing only — a streak
+   * crossing the page while someone is reading a reference table is exactly the
+   * kind of thing §6 rules out.
+   */
+  shootingStars: boolean;
 }
 
-export const DEFAULT_SCENE: CosmosScene = { density: 1, parallax: true };
+export const DEFAULT_SCENE: CosmosScene = {
+  density: 1,
+  parallax: true,
+  shootingStars: true,
+};
 
 export const CosmosSceneContext = createContext<{
   scene: CosmosScene;
@@ -75,11 +85,14 @@ export const CosmosSceneContext = createContext<{
  */
 export function useCosmosScene(scene: Partial<CosmosScene>): void {
   const { setScene } = useContext(CosmosSceneContext);
-  const { density = DEFAULT_SCENE.density, parallax = DEFAULT_SCENE.parallax } =
-    scene;
+  const {
+    density = DEFAULT_SCENE.density,
+    parallax = DEFAULT_SCENE.parallax,
+    shootingStars = DEFAULT_SCENE.shootingStars,
+  } = scene;
 
   useEffect(() => {
-    setScene({ density, parallax });
+    setScene({ density, parallax, shootingStars });
     return () => setScene(DEFAULT_SCENE);
-  }, [setScene, density, parallax]);
+  }, [setScene, density, parallax, shootingStars]);
 }

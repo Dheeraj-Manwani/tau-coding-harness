@@ -84,6 +84,29 @@ const BURST_PARTICLES = 12;
 const BURST_LIFE_MS = 600;
 const BURST_COLOR = "rgb(96, 165, 250)"; // --blue-500
 
+/**
+ * Five preset meteor tracks, as fractions of the viewport. Fixed tracks rather
+ * than fully random ones because random angles produce the occasional streak
+ * that reads as a rendering glitch — heading straight up, or crawling along the
+ * horizontal. All five run down-and-across, which is what a meteor looks like.
+ *
+ * `startY` stays inside the top 60vh (§4.1): a meteor at eye level while you're
+ * reading the composer is a distraction, not atmosphere.
+ */
+const SHOOTING_TRACKS: Array<{ startX: number; startY: number; angleDeg: number }> = [
+  { startX: -0.05, startY: 0.08, angleDeg: 22 },
+  { startX: 0.25, startY: 0.02, angleDeg: 35 },
+  { startX: 0.6, startY: 0.05, angleDeg: 28 },
+  { startX: 0.95, startY: 0.14, angleDeg: 152 },
+  { startX: 0.45, startY: 0.2, angleDeg: 18 },
+];
+
+const SHOOTING_MIN_GAP_MS = 4000;
+const SHOOTING_MAX_GAP_MS = 9000;
+const SHOOTING_SPEED_PX_S = 780;
+const SHOOTING_TAIL_PX = 140;
+const SHOOTING_LIFE_MS = 1100;
+
 // ── Provider ────────────────────────────────────────────────────────────────
 
 export function CosmosProvider({ children }: { children: ReactNode }) {
@@ -133,6 +156,15 @@ interface Layer {
 }
 
 interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Remaining life in ms. */
+  life: number;
+}
+
+interface Meteor {
   x: number;
   y: number;
   vx: number;
@@ -199,7 +231,7 @@ export function CosmosBackdrop({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const registryRef = useContext(CosmosRegistryContext);
   const { scene } = useContext(CosmosSceneContext);
-  const { density, parallax } = scene;
+  const { density, parallax, shootingStars } = scene;
   const reduceMotion = useReduceMotion();
 
   const layersRef = useRef<Layer[]>([]);
@@ -213,6 +245,8 @@ export function CosmosBackdrop({ className }: { className?: string }) {
   const warpDurationRef = useRef(0);
 
   const particlesRef = useRef<Particle[]>([]);
+  const meteorsRef = useRef<Meteor[]>([]);
+  const nextMeteorRef = useRef(0);
 
   // Cursor parallax target vs. current, so the field eases toward the pointer
   // instead of tracking it rigidly. Disabled on touch (no hover, no pointer).
@@ -339,6 +373,62 @@ export function CosmosBackdrop({ className }: { className?: string }) {
         }
       }
 
+      // ── Shooting stars ─────────────────────────────────────────────────────
+      const meteors = meteorsRef.current;
+      if (shootingStars) {
+        if (nextMeteorRef.current === 0) {
+          nextMeteorRef.current =
+            now + SHOOTING_MIN_GAP_MS + Math.random() * SHOOTING_MAX_GAP_MS;
+        } else if (now >= nextMeteorRef.current) {
+          const track =
+            SHOOTING_TRACKS[Math.floor(Math.random() * SHOOTING_TRACKS.length)]!;
+          const radians = (track.angleDeg * Math.PI) / 180;
+          meteors.push({
+            x: track.startX * width,
+            y: track.startY * height,
+            vx: Math.cos(radians) * SHOOTING_SPEED_PX_S,
+            vy: Math.sin(radians) * SHOOTING_SPEED_PX_S,
+            life: SHOOTING_LIFE_MS,
+          });
+          nextMeteorRef.current =
+            now +
+            SHOOTING_MIN_GAP_MS +
+            Math.random() * (SHOOTING_MAX_GAP_MS - SHOOTING_MIN_GAP_MS);
+        }
+      }
+
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i]!;
+        m.life -= deltaMs;
+        if (m.life <= 0) {
+          meteors.splice(i, 1);
+          continue;
+        }
+        m.x += (m.vx * deltaMs) / 1000;
+        m.y += (m.vy * deltaMs) / 1000;
+
+        // Fade in over the first 15% of the life and out over the rest, so a
+        // meteor never pops into existence mid-screen.
+        const t = 1 - m.life / SHOOTING_LIFE_MS;
+        const fade = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+
+        const speed = Math.hypot(m.vx, m.vy) || 1;
+        const tailX = m.x - (m.vx / speed) * SHOOTING_TAIL_PX;
+        const tailY = m.y - (m.vy / speed) * SHOOTING_TAIL_PX;
+
+        const gradient = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+        gradient.addColorStop(0, "rgba(226, 232, 240, 0)");
+        gradient.addColorStop(1, "rgba(255, 255, 255, 0.9)");
+
+        ctx.globalAlpha = clamp01(fade);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(m.x, m.y);
+        ctx.stroke();
+      }
+
       // ── Burst particles ────────────────────────────────────────────────────
       const particles = particlesRef.current;
       if (particles.length > 0) {
@@ -362,7 +452,7 @@ export function CosmosBackdrop({ className }: { className?: string }) {
 
       ctx.globalAlpha = 1;
     },
-    [density, parallax],
+    [density, parallax, shootingStars],
   );
 
   // Under reduced motion the field is a composed static frame: seeded, drawn

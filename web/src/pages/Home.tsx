@@ -17,6 +17,7 @@ import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyT
 import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { projectPath } from "@/src/lib/routes";
+import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
@@ -50,7 +51,10 @@ function Home() {
   const openOutOfCredits = useBillingStore((s) => s.open);
   const { data: projects } = useProjects();
   const { data: balance } = useBalance();
-  const [prompt, setPrompt] = useState("");
+  // If they described their idea on the landing page before signing up, it is
+  // waiting for them here. Read without consuming (StrictMode may run this
+  // initializer twice); the effect below retires it once we're mounted.
+  const [prompt, setPrompt] = useState(() => peekPendingPrompt() ?? "");
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
   const attachments = useAttachments();
@@ -84,6 +88,9 @@ function Home() {
     setEffort(next);
     setLastEffort(next);
   };
+
+  // A prefilled prompt is a one-time welcome, not a sticky draft.
+  useEffect(() => clearPendingPrompt(), []);
 
   // Cycle through suggestions while the input is empty.
   useEffect(() => {

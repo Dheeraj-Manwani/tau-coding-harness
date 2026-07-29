@@ -17,7 +17,7 @@ import { useCosmosScene } from "@/src/features/marketing/motion/cosmos";
  * contents, breadcrumbs, prev/next — is Phase 4.
  */
 export function DocsShell() {
-  useCosmosScene({ density: 0.4, parallax: false });
+  useCosmosScene({ density: 0.4, parallax: false, shootingStars: false });
 
   return (
     <div className="flex min-h-[100svh] flex-col">

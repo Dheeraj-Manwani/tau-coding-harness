@@ -53,7 +53,8 @@ const outPath = resolve(
   args.out ?? "web/src/features/marketing/data/replay.json",
 );
 
-if (!args.job || !args.token) {
+const { job: jobId, token } = args;
+if (!jobId || !token) {
   console.error(
     "Usage: bun run scripts/capture-replay.ts --job <jobId> --token <accessToken>",
   );
@@ -95,18 +96,19 @@ const recorded: Recorded[] = [];
 const startedAt = Date.now();
 
 const url =
-  `${apiUrl}/jobs/${encodeURIComponent(args.job)}/stream` +
-  `?token=${encodeURIComponent(args.token)}&lastEventIndex=-1`;
+  `${apiUrl}/jobs/${encodeURIComponent(jobId)}/stream` +
+  `?token=${encodeURIComponent(token)}&lastEventIndex=-1`;
 
-console.error(`[capture] connecting to ${apiUrl}/jobs/${args.job}/stream`);
+console.error(`[capture] connecting to ${apiUrl}/jobs/${jobId}/stream`);
 
 const response = await fetch(url, { headers: { accept: "text/event-stream" } });
-if (!response.ok || !response.body) {
+const body = response.body;
+if (!response.ok || !body) {
   console.error(`[capture] stream failed: ${response.status} ${response.statusText}`);
   process.exit(1);
 }
 
-const reader = response.body.getReader();
+const reader = body.getReader();
 const decoder = new TextDecoder();
 let buffer = "";
 let finished = false;

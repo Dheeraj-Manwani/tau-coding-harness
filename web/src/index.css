@@ -344,6 +344,31 @@ a:hover > .logo-shimmer {
   }
 }
 
+/* CredibilityStrip: one row scrolls a full copy's width, then snaps back. The
+   snap is invisible because the second copy is identical and adjacent. */
+.marquee {
+  animation: marquee-scroll 60s linear infinite;
+}
+
+.marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
 /* The footer's "planet you're orbiting": a wide, very faint blue radial clipped
    to the bottom edge of the page. */
 .horizon-glow::before {

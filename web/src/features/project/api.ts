@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/src/lib/api-client";
 import { projectGithubKeys } from "@/src/features/project/github";
+import {
+  locToPath,
+  type VisualEditOpInput,
+} from "@/src/stores/useProjectStore";
 import type {
   AddMessageResponse,
   Effort,
@@ -195,6 +199,64 @@ export function useProjectFile(
  * cache — with `staleTime: Infinity` it would otherwise never refetch and a tab
  * round-trip would show pre-save content.
  */
+/** Why a visual edit couldn't be applied without the agent. */
+export type VisualEditRefusal =
+  | "dynamic_children"
+  | "empty_value"
+  | "multiline_value"
+  | "bad_loc"
+  | "dynamic_classname"
+  | "invalid_class";
+
+export type { VisualEditOpInput } from "@/src/stores/useProjectStore";
+
+export type VisualEditResponse =
+  | {
+      applied: true;
+      contentHash: string;
+      headSequence: number;
+      /** Authoritative post-merge class list, for `classes` ops. */
+      className?: string;
+    }
+  | { applied: false; reason: VisualEditRefusal };
+
+/**
+ * Apply a change made by clicking an element in the preview.
+ *
+ * Costs no credits and starts no job — the server rewrites the one JSX node
+ * deterministically. A successful edit writes the sandbox, so Vite hot-reloads
+ * and the preview updates on its own; there is nothing to refetch for it.
+ *
+ * `applied: false` is a normal response, not an error: it means the element
+ * isn't safe to edit deterministically and the change needs the agent.
+ */
+export function useVisualEdit(projectId: string | undefined) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: {
+      loc: string;
+      expectTag: string;
+      baseHash?: string;
+      op: VisualEditOpInput;
+    }) =>
+      api
+        .post<VisualEditResponse>(`/project/${projectId}/visual-edit`, vars)
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      if (!data.applied) return;
+      // The file's cached body is now stale — the edit happened server-side, so
+      // unlike useSaveProjectFile we don't have the new content to write in.
+      void qc.invalidateQueries({
+        queryKey: projectKeys.file(projectId ?? "", locToPath(vars.loc)),
+      });
+      void qc.invalidateQueries({
+        queryKey: projectGithubKeys.info(projectId ?? ""),
+      });
+    },
+  });
+}
+
 export function useSaveProjectFile(projectId: string | undefined) {
   const qc = useQueryClient();
 

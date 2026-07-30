@@ -29,6 +29,11 @@ import {
   isBinaryPath,
   isSecretPath,
 } from "../lib/projectFiles";
+import {
+  applyVisualEdit,
+  parseLoc,
+  type VisualEditOp,
+} from "../lib/visualEdit";
 import { bus } from "../lib/bus";
 import { terminateStrandedJob } from "../lib/jobs";
 import {
@@ -792,6 +797,96 @@ export async function saveProjectFile(
     contentHash: result.contentHash,
     headSequence: result.headSequence ?? project.headSequence,
   };
+}
+
+/**
+ * Apply one visual edit — a change the user made by clicking an element in the
+ * preview rather than by typing in the editor or the chat.
+ *
+ * Costs nothing: no model call, no credits, no job. The whole point of the
+ * feature is that "make this heading say X" should be instant and free.
+ *
+ * Everything after the AST splice is `saveProjectFile`, so a visual edit gets
+ * the sandbox write (and therefore Vite's hot reload), the R2 + manifest write,
+ * the `USER_EDIT` message that tells the agent what changed, the running-job
+ * guard and the stale-file guard — all for free, and all identical to what a
+ * hand edit in the code pane does.
+ *
+ * Returns `applied: false` with a reason rather than throwing when the element
+ * simply isn't safe to edit deterministically (an expression child, a mapped
+ * list). That is a normal outcome the UI turns into a chat fallback, not an
+ * error. Genuine problems — a moved file, a missing one — still throw.
+ *
+ * See doc/VISUAL_EDIT_PLAN.md §5.3.
+ */
+export async function applyVisualEditToProject(
+  projectId: string,
+  userId: string,
+  args: { loc: string; expectTag: string; op: VisualEditOp; baseHash?: string },
+) {
+  const parsed = parseLoc(args.loc);
+  if (!parsed) throw Errors.badRequest("Malformed element location");
+
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  // Checked here as well as in saveProjectFile so the user gets the "tau is
+  // building" message before we spend a read and a parse on work we'd discard.
+  const active = await projectRepo.findActiveJob(projectId);
+  if (active) throw Errors.conflict("generation in progress");
+
+  const record = await projectRepo.findProjectFileRecord(projectId, parsed.path);
+  if (!record) throw Errors.notFound("File not found");
+
+  const before = await readProjectFileContent(project, userId, parsed.path);
+
+  // The element was selected against a specific version of the file. If the
+  // agent has rewritten it since, the line/column now point somewhere else
+  // entirely — fail loudly instead of editing a random line.
+  if (args.baseHash && args.baseHash !== before.contentHash) {
+    throw Errors.conflict("file changed since it was opened");
+  }
+
+  const result = applyVisualEdit({
+    content: before.content,
+    fileName: parsed.path,
+    line: parsed.line,
+    column: parsed.column,
+    expectTag: args.expectTag,
+    op: args.op,
+  });
+
+  if (!result.ok) {
+    // `not_found` / `tag_mismatch` mean the source moved under the selection —
+    // that is the same class of problem as a hash mismatch, so it is a conflict
+    // the user resolves by reselecting, not a "can't do that" refusal.
+    if (result.reason === "not_found" || result.reason === "tag_mismatch") {
+      throw Errors.conflict("element moved since it was selected");
+    }
+    return { applied: false as const, reason: result.reason };
+  }
+
+  if (result.content === before.content) {
+    return {
+      applied: true as const,
+      contentHash: before.contentHash,
+      headSequence: project.headSequence,
+      className: result.className,
+    };
+  }
+
+  const saved = await saveProjectFile(
+    projectId,
+    userId,
+    parsed.path,
+    result.content,
+    before.contentHash,
+  );
+
+  return { applied: true as const, ...saved, className: result.className };
 }
 
 /**

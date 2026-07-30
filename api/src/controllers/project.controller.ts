@@ -7,6 +7,7 @@ import {
   listProjectsQuerySchema,
   projectFileQuerySchema,
   projectFileSaveSchema,
+  visualEditSchema,
   jobIdParamSchema,
   jobAnswerSchema,
 } from "../schemas/project.schema";
@@ -196,6 +197,26 @@ export const saveProjectFile = async (
       path,
       content,
       baseHash,
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const applyVisualEdit = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { loc, expectTag, baseHash, op } = parse(visualEditSchema, req.body);
+    const result = await projectService.applyVisualEditToProject(
+      projectId,
+      userId,
+      { loc, expectTag, baseHash, op },
     );
     res.status(200).json(result);
   } catch (err) {

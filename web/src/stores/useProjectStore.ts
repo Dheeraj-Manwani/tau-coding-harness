@@ -120,6 +120,40 @@ export function locToPath(loc: string): string {
   return loc.replace(/:\d+:\d+$/, "");
 }
 
+/** `src/App.tsx:42:7` → `42`. */
+export function locToLine(loc: string): string {
+  return /:(\d+):\d+$/.exec(loc)?.[1] ?? "?";
+}
+
+/**
+ * A visual edit request body. Mirrors `VisualEditOp` in
+ * `api/src/lib/visualEdit.ts`. Declared here rather than in `api.ts` because
+ * the undo stack below stores these, and `api.ts` already imports from this
+ * module — putting it there would make the two files circular.
+ */
+export type VisualEditOpInput =
+  | { kind: "text"; value: string }
+  | { kind: "classes"; add?: string[]; remove?: string[] };
+
+/**
+ * One reversible visual edit, stored as the operation that *undoes* it.
+ *
+ * Keeping the inverse op rather than the previous file contents means undo runs
+ * through exactly the same deterministic path as the original edit — same AST
+ * lookup, same guards, same `USER_EDIT` record — instead of blindly restoring
+ * bytes that may no longer be current.
+ */
+export interface VisualUndoEntry {
+  loc: string;
+  expectTag: string;
+  op: VisualEditOpInput;
+  /** Shown in the "undone" toast, e.g. `text`. */
+  label: string;
+}
+
+/** Cap so a long styling session can't grow without bound. */
+const MAX_VISUAL_UNDO = 20;
+
 /** A file in the generated app, keyed by its sandbox-relative path.
  *  `content` is absent for manifest-only entries; lazy-loaded on click. */
 export interface ProjectFile {
@@ -789,6 +823,11 @@ interface ProjectState {
   visualEditEnabled: boolean;
   visualEditReady: boolean;
   visualSelection: VisualSelection | null;
+  visualUndo: VisualUndoEntry[];
+
+  /** Text staged into the chat composer by something outside it (today: a
+   *  visual edit that needs the agent). Consumed and cleared by ChatPanel. */
+  composerPrefill: string | null;
 
   // ── Actions ──
   /** Reset everything when entering (or switching to) a project. */
@@ -865,6 +904,15 @@ interface ProjectState {
   setVisualEditReady: (ready: boolean) => void;
   /** Record (or clear) the element the user picked. */
   setVisualSelection: (selection: VisualSelection | null) => void;
+  /** Remember how to undo the edit that was just applied. */
+  pushVisualUndo: (entry: VisualUndoEntry) => void;
+  /** Take the most recent undo entry off the stack. */
+  popVisualUndo: () => VisualUndoEntry | null;
+  clearVisualUndo: () => void;
+
+  /** Stage text into the chat composer, opening the chat if it's collapsed. */
+  prefillComposer: (text: string) => void;
+  clearComposerPrefill: () => void;
 }
 
 /** State reset whenever we enter a project (UI prefs below are preserved). */
@@ -900,6 +948,8 @@ const FRESH = {
   visualEditEnabled: false,
   visualEditReady: false,
   visualSelection: null as VisualSelection | null,
+  visualUndo: [] as VisualUndoEntry[],
+  composerPrefill: null as string | null,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -1199,6 +1249,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set(visualEditReady ? { visualEditReady } : { visualEditReady, visualSelection: null }),
 
   setVisualSelection: (visualSelection) => set({ visualSelection }),
+
+  pushVisualUndo: (entry) =>
+    set((s) => ({
+      visualUndo: [...s.visualUndo, entry].slice(-MAX_VISUAL_UNDO),
+    })),
+
+  popVisualUndo: () => {
+    const stack = get().visualUndo;
+    const entry = stack[stack.length - 1];
+    if (!entry) return null;
+    set({ visualUndo: stack.slice(0, -1) });
+    return entry;
+  },
+
+  clearVisualUndo: () => set({ visualUndo: [] }),
+
+  prefillComposer: (composerPrefill) =>
+    set({ composerPrefill, isChatOpen: true }),
+
+  clearComposerPrefill: () => set({ composerPrefill: null }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
 

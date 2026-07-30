@@ -56,6 +56,38 @@ export const projectFileSaveSchema = z.object({
   baseHash: z.string().min(1).optional(),
 });
 
+/** Max length of text set through the preview's element picker. Deliberately
+ *  small: this edits one text node, not a document. */
+const MAX_VISUAL_TEXT = 2_000;
+
+export const visualEditSchema = z.object({
+  /** `src/App.tsx:42:7`, straight from the element's `data-tau-loc`. */
+  loc: z.string().min(3).max(1_000),
+  /** Tag the client believes it clicked — guards a stale selection. */
+  expectTag: z
+    .string()
+    .min(1)
+    .max(64)
+    // Host elements only; the tagger never labels components.
+    .regex(/^[a-z][a-z0-9-]*$/, "Invalid element tag"),
+  /** Hash of the file the element was selected against. */
+  baseHash: z.string().min(1).optional(),
+  op: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("text"),
+      value: z.string().max(MAX_VISUAL_TEXT),
+    }),
+    z.object({
+      kind: z.literal("classes"),
+      // Bounded because these are spliced into a source file. The real
+      // character-level guard is CLASS_TOKEN in lib/visualEdit.ts; this just
+      // stops an absurd payload reaching it.
+      add: z.array(z.string().min(1).max(64)).max(16).optional(),
+      remove: z.array(z.string().min(1).max(64)).max(16).optional(),
+    }),
+  ]),
+});
+
 export const jobIdParamSchema = z.object({
   projectId: z.uuid("Invalid project id"),
   jobId: z.uuid("Invalid job id"),

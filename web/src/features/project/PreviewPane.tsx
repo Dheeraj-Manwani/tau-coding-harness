@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { CodeIcon, LayersIcon, PlayIcon, PowerOffIcon, XIcon } from "lucide-react";
+import {
+  CodeIcon,
+  LayersIcon,
+  PaletteIcon,
+  PlayIcon,
+  PowerOffIcon,
+  XIcon,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
+import { cn } from "@/src/lib/utils";
 import BorderGlow from "@/src/components/ui/glow-loader";
+import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
+import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
 import {
   locToPath,
   useProjectStore,
@@ -12,8 +22,11 @@ import {
 import {
   usePreviewStatus,
   useRestartPreview,
+  useVisualEdit,
+  type VisualEditRefusal,
 } from "@/src/features/project/api";
 import { previewSrc } from "@/src/features/project/previewUrl";
+import { ApiError } from "@/src/lib/api-client";
 
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
@@ -156,14 +169,278 @@ function useVisualEditBridge(
       origin,
     );
   }, [enabled, ready, origin, iframeRef]);
+
+  /**
+   * Re-highlight an element after our own edit.
+   *
+   * Editing writes the sandbox, Vite pushes an HMR update, and React replaces
+   * the DOM node — taking the highlight with it. The element's source position
+   * is unchanged (only its text child moved), so the runtime can find it again
+   * by `loc`.
+   *
+   * Retried on a short ladder because we can't know when the new DOM lands:
+   * HMR is asynchronous and there is no signal for it across the origin
+   * boundary. A `tau:reselect` for an element that isn't there yet is a no-op,
+   * so over-sending is harmless.
+   */
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(
+    () => () => {
+      for (const t of timers.current) clearTimeout(t);
+      timers.current = [];
+    },
+    [],
+  );
+
+  const reselect = useCallback(
+    (loc: string) => {
+      if (!origin) return;
+      for (const delay of [150, 400, 900]) {
+        timers.current.push(
+          setTimeout(() => {
+            iframeRef.current?.contentWindow?.postMessage(
+              { source: "tau-parent", type: "tau:reselect", loc },
+              origin,
+            );
+          }, delay),
+        );
+      }
+    },
+    [origin, iframeRef],
+  );
+
+  return { reselect };
 }
 
-/** Read-only detail strip for the picked element (Phase 1 — nothing writes). */
-function VisualInspector({ selection }: { selection: VisualSelection }) {
+/**
+ * Ctrl+Z / Cmd+Z reverts the last visual edit.
+ *
+ * The stack holds inverse *operations*, not file contents, so an undo runs
+ * through the same endpoint and the same guards as the edit it reverses. If the
+ * source has moved since (the agent rewrote the file), the server's tag check
+ * rejects it — at which point the rest of the stack is stale too, so we drop it
+ * rather than let a later undo apply somewhere unintended.
+ */
+function useVisualUndo(onReselect: (loc: string) => void) {
+  const projectId = useProjectStore((s) => s.projectId);
+  const visualEdit = useVisualEdit(projectId ?? undefined);
+  const popUndo = useProjectStore((s) => s.popVisualUndo);
+  const clearUndo = useProjectStore((s) => s.clearVisualUndo);
+  const setSelection = useProjectStore((s) => s.setVisualSelection);
+
+  // Read via getState inside the handler so the listener never closes over a
+  // stale mutation or a stale stack.
+  const pending = visualEdit.isPending;
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "z" || !(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+
+      // Never steal undo from a real text field — the inspector's own text box
+      // included; there Ctrl+Z should undo typing.
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
+
+      if (pending) return;
+      const entry = useProjectStore.getState().visualUndo.at(-1);
+      if (!entry) return;
+
+      e.preventDefault();
+      popUndo();
+
+      visualEdit.mutate(
+        { loc: entry.loc, expectTag: entry.expectTag, op: entry.op },
+        {
+          onSuccess: (data) => {
+            if (!data.applied) {
+              toast.error("Couldn't undo that change.");
+              return;
+            }
+            toast.success(`Undid ${entry.label} change`);
+            onReselect(entry.loc);
+
+            // The inspector is now showing pre-undo values. Both are known
+            // exactly — a text undo restores `op.value`, and the server returns
+            // the merged class list — so correct them in place rather than
+            // dropping the selection and leaving the iframe highlighting an
+            // element the inspector no longer describes.
+            const sel = useProjectStore.getState().visualSelection;
+            if (!sel || sel.loc !== entry.loc) return;
+            setSelection(
+              entry.op.kind === "text"
+                ? { ...sel, text: entry.op.value }
+                : { ...sel, className: data.className ?? sel.className },
+            );
+          },
+          onError: () => {
+            clearUndo();
+            toast.error("Can't undo — the file has changed since.");
+          },
+        },
+      );
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [pending, popUndo, clearUndo, setSelection, visualEdit, onReselect]);
+}
+
+/** Human copy for each reason the server can decline a deterministic edit. */
+const REFUSAL_COPY: Record<VisualEditRefusal, string> = {
+  dynamic_children:
+    "This text comes from code, not a fixed string — ask tau in the chat.",
+  empty_value: "Text can't be empty.",
+  multiline_value: "Keep it to a single line.",
+  bad_loc: "Couldn't locate this element — try selecting it again.",
+  dynamic_classname:
+    "This element's styles are set in code — ask tau in the chat.",
+  invalid_class: "That style isn't supported.",
+};
+
+/**
+ * Inline text editor for the selected element.
+ *
+ * Only rendered when the runtime reported `editableText`, so the box is never
+ * offered for content the server would refuse. Enter commits, Escape reverts.
+ */
+function TextEditor({
+  selection,
+  onReselect,
+}: {
+  selection: VisualSelection;
+  onReselect: (loc: string) => void;
+}) {
+  const projectId = useProjectStore((s) => s.projectId);
+  const visualEdit = useVisualEdit(projectId ?? undefined);
+  const setSelection = useProjectStore((s) => s.setVisualSelection);
+  const pushUndo = useProjectStore((s) => s.pushVisualUndo);
+  const prefillComposer = useProjectStore((s) => s.prefillComposer);
+
+  const [draft, setDraft] = useState(selection.text);
+
+  // A new element was picked — show its text, not the previous one's.
+  const [lastLoc, setLastLoc] = useState(selection.loc);
+  if (lastLoc !== selection.loc) {
+    setLastLoc(selection.loc);
+    setDraft(selection.text);
+  }
+
+  const dirty = draft !== selection.text;
+
+  const commit = () => {
+    if (!dirty || visualEdit.isPending) return;
+    visualEdit.mutate(
+      {
+        loc: selection.loc,
+        expectTag: selection.tagName,
+        op: { kind: "text", value: draft },
+      },
+      {
+        onSuccess: (data) => {
+          if (data.applied) {
+            // The sandbox write already happened, so Vite is hot-reloading the
+            // preview as this resolves. Keep the selection: the user usually
+            // wants another go at the same element.
+            setSelection({ ...selection, text: draft });
+            pushUndo({
+              loc: selection.loc,
+              expectTag: selection.tagName,
+              op: { kind: "text", value: selection.text },
+              label: "text",
+            });
+            // …and re-highlight it once HMR has swapped the DOM node.
+            onReselect(selection.loc);
+            return;
+          }
+
+          setDraft(selection.text);
+
+          // Not something we can do deterministically — hand it to the agent
+          // with the file, line and intent already filled in, rather than
+          // leaving the user at a dead end.
+          if (data.reason === "dynamic_children") {
+            prefillComposer(
+              buildFallbackPrompt(selection, { kind: "text", value: draft }),
+            );
+            toast("tau can edit this — the message is ready in the chat.", {
+              icon: "💬",
+            });
+            return;
+          }
+          toast.error(REFUSAL_COPY[data.reason]);
+        },
+        onError: (err) => {
+          const status = err instanceof ApiError ? err.status : 0;
+          if (status === 409) {
+            toast.error(
+              err instanceof ApiError && err.message === "generation in progress"
+                ? "Can't edit while tau is building."
+                : "This element moved — select it again.",
+            );
+            setSelection(null);
+          } else {
+            toast.error("Couldn't apply that change.");
+            setDraft(selection.text);
+          }
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+      <input
+        value={draft}
+        spellCheck={false}
+        disabled={visualEdit.isPending}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setDraft(selection.text);
+          }
+          // The runtime is listening for Escape too; don't let it also clear
+          // the selection out from under an edit in progress.
+          e.stopPropagation();
+        }}
+        onBlur={commit}
+        aria-label="Element text"
+        className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-2 py-1 text-xs text-[var(--silver-900)] outline-none focus:border-[var(--blue-500)] disabled:opacity-50"
+      />
+      {visualEdit.isPending ? (
+        <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
+      ) : (
+        dirty && (
+          <button
+            type="button"
+            onClick={commit}
+            className="shrink-0 rounded-[var(--radius-md)] bg-brand px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90"
+          >
+            Save
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Detail strip for the picked element, plus inline text editing. */
+function VisualInspector({
+  selection,
+  onReselect,
+}: {
+  selection: VisualSelection;
+  onReselect: (loc: string) => void;
+}) {
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const openFile = useProjectStore((s) => s.openFile);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const files = useProjectStore((s) => s.files);
+  const [showStyles, setShowStyles] = useState(false);
 
   const path = locToPath(selection.loc);
   // The tagger emits paths relative to the app root, which is the same key
@@ -172,33 +449,55 @@ function VisualInspector({ selection }: { selection: VisualSelection }) {
   const known = Boolean(files[path]);
 
   return (
-    <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2 text-xs">
+    <div className="absolute inset-x-0 bottom-0 bg-[var(--space-surface)]">
+      {/* One source line, many rendered nodes — say so plainly rather than
+          letting the user discover it by changing six cards at once. */}
+      {selection.siblingCount > 1 && (
+        <div className="flex items-center gap-1.5 border-t border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600">
+          <LayersIcon className="size-3 shrink-0" />
+          This element is rendered {selection.siblingCount} times from one place
+          in the code — an edit here changes all {selection.siblingCount}.
+        </div>
+      )}
+      {showStyles && (
+        <VisualStylePanel selection={selection} onReselect={onReselect} />
+      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-2 text-xs">
       <span className="font-mono font-semibold text-[var(--silver-900)]">
         &lt;{selection.tagName}&gt;
       </span>
 
       <span className="font-mono text-[var(--silver-600)]">{selection.loc}</span>
 
-      {selection.siblingCount > 1 && (
-        <span
-          className="flex items-center gap-1 rounded-[var(--radius-sm)] bg-amber-500/15 px-1.5 py-0.5 text-amber-600"
-          title="These elements all come from one line of source, so an edit here would change every one of them."
-        >
-          <LayersIcon className="size-3" />
-          {selection.siblingCount}×
-        </span>
-      )}
-
-      {selection.className && (
-        <span
-          className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
-          title={selection.className}
-        >
-          {selection.className}
-        </span>
+      {selection.editableText ? (
+        <TextEditor selection={selection} onReselect={onReselect} />
+      ) : (
+        selection.className && (
+          <span
+            className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
+            title={selection.className}
+          >
+            {selection.className}
+          </span>
+        )
       )}
 
       <div className="ml-auto flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setShowStyles((v) => !v)}
+          aria-pressed={showStyles}
+          title="Style this element"
+          className={cn(
+            "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
+            showStyles
+              ? "text-[var(--blue-500)]"
+              : "text-[var(--silver-900)]",
+          )}
+        >
+          <PaletteIcon className="size-3.5" />
+          Style
+        </button>
         <button
           type="button"
           disabled={!known}
@@ -221,6 +520,7 @@ function VisualInspector({ selection }: { selection: VisualSelection }) {
           <XIcon className="size-3.5" />
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -236,7 +536,8 @@ export function PreviewPane({ device }: { device: string }) {
 
   const visualSelection = useProjectStore((s) => s.visualSelection);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  useVisualEditBridge(iframeRef, previewUrl, previewNonce);
+  const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
+  useVisualUndo(reselect);
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
@@ -295,7 +596,12 @@ export function PreviewPane({ device }: { device: string }) {
               className="h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
-            {visualSelection && <VisualInspector selection={visualSelection} />}
+            {visualSelection && (
+              <VisualInspector
+                selection={visualSelection}
+                onReselect={reselect}
+              />
+            )}
           </>
         ) : (
           <PreviewPlaceholder />

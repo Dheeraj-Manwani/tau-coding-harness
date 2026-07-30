@@ -875,6 +875,28 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   };
 
   const [draft, setDraft] = useState("");
+
+  /**
+   * Adopt text staged by something outside the composer — today, a visual edit
+   * the deterministic path couldn't apply, which arrives as a ready-written
+   * prompt naming the file, line and intent.
+   *
+   * Driven by a store subscription rather than an effect on the value: the
+   * composer is uncontrolled from the store's point of view, and this is a
+   * one-shot handoff, not state to keep in sync. Appending (rather than
+   * replacing) protects a draft the user was already writing.
+   */
+  useEffect(
+    () =>
+      useProjectStore.subscribe((state, prev) => {
+        const text = state.composerPrefill;
+        if (!text || text === prev.composerPrefill) return;
+        setDraft((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
+        useProjectStore.getState().clearComposerPrefill();
+      }),
+    [],
+  );
+
   const attachments = useAttachments();
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);

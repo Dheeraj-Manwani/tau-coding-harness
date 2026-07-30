@@ -94,6 +94,32 @@ export interface Message {
 export type Tab = "preview" | "code";
 export type PreviewDevice = "mobile" | "tablet" | "desktop";
 
+/**
+ * One element picked in the preview, as reported by the in-iframe runtime
+ * (`worker-service/src/templates/visual-edit/runtime.js`).
+ *
+ * Phase 1 is read-only — this drives the inspector and "open in code" and
+ * nothing writes yet. See doc/VISUAL_EDIT_PLAN.md.
+ */
+export interface VisualSelection {
+  /** `src/App.tsx:42:7` — path, 1-based line, 1-based column. */
+  loc: string;
+  tagName: string;
+  className: string;
+  text: string;
+  /** True only when the element's content is a single static text node, so a
+   *  future text edit could be applied deterministically. */
+  editableText: boolean;
+  /** How many DOM nodes share this source position. >1 means a `.map()`, and
+   *  an edit here would change all of them. */
+  siblingCount: number;
+}
+
+/** `src/App.tsx:42:7` → `src/App.tsx`. */
+export function locToPath(loc: string): string {
+  return loc.replace(/:\d+:\d+$/, "");
+}
+
 /** A file in the generated app, keyed by its sandbox-relative path.
  *  `content` is absent for manifest-only entries; lazy-loaded on click. */
 export interface ProjectFile {
@@ -759,6 +785,11 @@ interface ProjectState {
   previewDevice: PreviewDevice;
   codeTreeWidth: number;
 
+  // Visual edit (preview element picker)
+  visualEditEnabled: boolean;
+  visualEditReady: boolean;
+  visualSelection: VisualSelection | null;
+
   // ── Actions ──
   /** Reset everything when entering (or switching to) a project. */
   initProject: (projectId: string) => void;
@@ -827,6 +858,13 @@ interface ProjectState {
   setActiveFile: (id: string) => void;
   setPreviewDevice: (device: PreviewDevice) => void;
   setCodeTreeWidth: (px: number) => void;
+
+  /** Turn element-picking on/off in the preview. */
+  setVisualEditEnabled: (enabled: boolean) => void;
+  /** The in-iframe runtime announced itself — the toggle is safe to offer. */
+  setVisualEditReady: (ready: boolean) => void;
+  /** Record (or clear) the element the user picked. */
+  setVisualSelection: (selection: VisualSelection | null) => void;
 }
 
 /** State reset whenever we enter a project (UI prefs below are preserved). */
@@ -857,6 +895,11 @@ const FRESH = {
   activeTab: "preview" as Tab,
   openFiles: [] as string[],
   activeFileId: "",
+  // Never carries across projects: the selection points into one project's
+  // source tree, and `ready` describes one specific iframe's runtime.
+  visualEditEnabled: false,
+  visualEditReady: false,
+  visualSelection: null as VisualSelection | null,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -1144,6 +1187,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveFile: (activeFileId) => set({ activeFileId }),
   setPreviewDevice: (previewDevice) => set({ previewDevice }),
+
+  setVisualEditEnabled: (visualEditEnabled) =>
+    // Leaving pick mode drops the selection: the inspector describes a live
+    // highlighted element, and the highlight goes away with the mode.
+    set(visualEditEnabled ? { visualEditEnabled } : { visualEditEnabled, visualSelection: null }),
+
+  // A remount (reload, path change, rebuilt sandbox) tears the runtime down, so
+  // `ready` going false must also invalidate whatever was selected.
+  setVisualEditReady: (visualEditReady) =>
+    set(visualEditReady ? { visualEditReady } : { visualEditReady, visualSelection: null }),
+
+  setVisualSelection: (visualSelection) => set({ visualSelection }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
 

@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { PlayIcon, PowerOffIcon } from "lucide-react";
+import { CodeIcon, LayersIcon, PlayIcon, PowerOffIcon, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import BorderGlow from "@/src/components/ui/glow-loader";
-import { useProjectStore } from "@/src/stores/useProjectStore";
+import {
+  locToPath,
+  useProjectStore,
+  type VisualSelection,
+} from "@/src/stores/useProjectStore";
 import {
   usePreviewStatus,
   useRestartPreview,
@@ -85,6 +89,142 @@ function PreviewStopped({
   );
 }
 
+/**
+ * The bridge to the visual-edit runtime inside the preview.
+ *
+ * The preview is served from `https://5173-<sandboxId>.e2b.app`, a different
+ * origin from this app, so there is no DOM access — postMessage is the whole
+ * channel. Every inbound frame is checked against the sandbox origin before it
+ * is trusted: without that, any page could post a fake selection carrying an
+ * arbitrary file path and we would happily open it.
+ *
+ * See doc/VISUAL_EDIT_PLAN.md §4.
+ */
+function useVisualEditBridge(
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  previewUrl: string | null,
+  previewNonce: number,
+) {
+  const enabled = useProjectStore((s) => s.visualEditEnabled);
+  const setReady = useProjectStore((s) => s.setVisualEditReady);
+  const setSelection = useProjectStore((s) => s.setVisualSelection);
+
+  const origin = previewUrl ? new URL(previewUrl).origin : null;
+
+  useEffect(() => {
+    if (!origin) return;
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== origin) return;
+      const d = e.data as Partial<VisualSelection> & {
+        source?: string;
+        type?: string;
+      };
+      if (!d || d.source !== "tau-visual-edit") return;
+
+      if (d.type === "tau:ready") setReady(true);
+      else if (d.type === "tau:deselect") setSelection(null);
+      else if (d.type === "tau:select" && d.loc) {
+        setSelection({
+          loc: d.loc,
+          tagName: d.tagName ?? "",
+          className: d.className ?? "",
+          text: d.text ?? "",
+          editableText: Boolean(d.editableText),
+          siblingCount: d.siblingCount ?? 1,
+        });
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [origin, setReady, setSelection]);
+
+  // A remount gives us a brand-new runtime that has never heard of us, so the
+  // old `ready` is meaningless. `previewNonce` is what remounts the iframe.
+  useEffect(() => {
+    setReady(false);
+  }, [previewUrl, previewNonce, setReady]);
+
+  // Drive the runtime. Re-sent whenever `ready` flips so a reload during pick
+  // mode comes back in pick mode rather than silently inert.
+  const ready = useProjectStore((s) => s.visualEditReady);
+  useEffect(() => {
+    if (!origin || !ready) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      { source: "tau-parent", type: enabled ? "tau:enable" : "tau:disable" },
+      origin,
+    );
+  }, [enabled, ready, origin, iframeRef]);
+}
+
+/** Read-only detail strip for the picked element (Phase 1 — nothing writes). */
+function VisualInspector({ selection }: { selection: VisualSelection }) {
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
+  const openFile = useProjectStore((s) => s.openFile);
+  const setSelection = useProjectStore((s) => s.setVisualSelection);
+  const files = useProjectStore((s) => s.files);
+
+  const path = locToPath(selection.loc);
+  // The tagger emits paths relative to the app root, which is the same key
+  // space the file manifest uses — but a file the agent has not persisted yet
+  // won't be there, and opening a tab for it would render an empty editor.
+  const known = Boolean(files[path]);
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2 text-xs">
+      <span className="font-mono font-semibold text-[var(--silver-900)]">
+        &lt;{selection.tagName}&gt;
+      </span>
+
+      <span className="font-mono text-[var(--silver-600)]">{selection.loc}</span>
+
+      {selection.siblingCount > 1 && (
+        <span
+          className="flex items-center gap-1 rounded-[var(--radius-sm)] bg-amber-500/15 px-1.5 py-0.5 text-amber-600"
+          title="These elements all come from one line of source, so an edit here would change every one of them."
+        >
+          <LayersIcon className="size-3" />
+          {selection.siblingCount}×
+        </span>
+      )}
+
+      {selection.className && (
+        <span
+          className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
+          title={selection.className}
+        >
+          {selection.className}
+        </span>
+      )}
+
+      <div className="ml-auto flex items-center gap-1">
+        <button
+          type="button"
+          disabled={!known}
+          onClick={() => {
+            openFile(path);
+            setActiveTab("code");
+          }}
+          title={known ? `Open ${path}` : `${path} isn't in the file tree yet`}
+          className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+        >
+          <CodeIcon className="size-3.5" />
+          Open in code
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelection(null)}
+          title="Clear selection"
+          className="rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PreviewPane({ device }: { device: string }) {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
@@ -93,6 +233,10 @@ export function PreviewPane({ device }: { device: string }) {
   const status = useProjectStore((s) => s.status);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
+
+  const visualSelection = useProjectStore((s) => s.visualSelection);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  useVisualEditBridge(iframeRef, previewUrl, previewNonce);
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
@@ -139,16 +283,20 @@ export function PreviewPane({ device }: { device: string }) {
         {starting || isDown ? (
           <PreviewStopped starting={starting} onStart={handleStart} />
         ) : src ? (
-          <iframe
-            // The nonce is bumped by both reload and any path change, so the
-            // frame remounts either way — re-entering the current path still
-            // re-navigates instead of being a no-op.
-            key={`${previewUrl}-${previewNonce}`}
-            src={src}
-            title="App preview"
-            className="h-full w-full border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          />
+          <>
+            <iframe
+              // The nonce is bumped by both reload and any path change, so the
+              // frame remounts either way — re-entering the current path still
+              // re-navigates instead of being a no-op.
+              key={`${previewUrl}-${previewNonce}`}
+              ref={iframeRef}
+              src={src}
+              title="App preview"
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            />
+            {visualSelection && <VisualInspector selection={visualSelection} />}
+          </>
         ) : (
           <PreviewPlaceholder />
         )}

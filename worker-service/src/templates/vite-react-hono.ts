@@ -1,8 +1,19 @@
 import { Template, waitForPort } from "e2b";
+import {
+  VISUAL_EDIT_IMPORT_LINE,
+  VISUAL_EDIT_PLUGIN_ENTRY,
+  writeVisualEdit,
+} from "./shared";
 
 const APP = "/home/user/app";
 
-export const template = Template()
+// NOTE: unlike vite-react.ts and vite-react-hono-db.ts, this template is
+// hand-rolled rather than composed from shared.ts's scaffold steps — it
+// predates that refactor and still inlines its own copies of the scaffold, the
+// tsconfig and the vite config. It is also DEFAULT_TEMPLATE_KEY, so it is the
+// most-used of the three. Anything touching the shared scaffold has to be
+// applied here by hand as well; see doc/OVERVIEW.md issue #7.
+const base = Template()
   .fromBunImage("1.3")
   .setWorkdir(APP)
 
@@ -60,9 +71,10 @@ import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+${VISUAL_EDIT_IMPORT_LINE}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), ${VISUAL_EDIT_PLUGIN_ENTRY}],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: {
     host: true,            // bind 0.0.0.0 so E2B can forward the preview port
@@ -469,9 +481,14 @@ notable decisions._
 EOF`,
   )
 
-  // 8) Start the API in the background, Vite in the foreground. Ready when
-  //    Vite's port is listening — more reliable than polling \`/\` for a 200.
-  .setStartCmd(
-    "bun --watch server/index.ts & bunx vite --host",
-    waitForPort(5173),
-  );
+  ;
+
+// 8) Visual edit: .tau/tagger.ts + .tau/runtime.js and their two dev deps.
+//    Imported from shared.ts so there is only ever one copy of the tagger,
+//    even though the rest of this file is a hand-rolled duplicate.
+// 9) Start the API in the background, Vite in the foreground. Ready when
+//    Vite's port is listening — more reliable than polling `/` for a 200.
+export const template = writeVisualEdit(base).setStartCmd(
+  "bun --watch server/index.ts & bunx vite --host",
+  waitForPort(5173),
+);

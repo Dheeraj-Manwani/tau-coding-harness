@@ -18,12 +18,14 @@ import {
   writeTheme,
   writeAppShell,
   writeContext,
+  writeVisualEdit,
 } from "./shared";
 
 let t: TemplateBuilder = Template().fromBunImage("1.3").setWorkdir(APP);
 
 t = scaffoldBase(t);
 t = writeViteConfig(t, { proxyApi: false }); // no API to proxy to
+t = writeVisualEdit(t); // .tau/tagger.ts + runtime.js for visual edit
 t = writeTsconfig(t);
 t = shadcnInit(t);
 t = writeTheme(t);

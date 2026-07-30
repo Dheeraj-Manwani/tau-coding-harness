@@ -8,6 +8,7 @@ import {
   PanelLeftOpenIcon,
   RotateCwIcon,
   SmartphoneIcon,
+  SquareMousePointerIcon,
   TabletIcon,
   TvMinimalIcon,
 } from "lucide-react";
@@ -115,6 +116,47 @@ function DeviceSwitcher() {
         </motion.button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Element picker toggle.
+ *
+ * Only offered once the in-iframe runtime has announced itself — an older
+ * project whose sandbox predates the tagger has no runtime, and a dead toggle
+ * is worse than no toggle. `visualEditReady` is reset on every iframe remount.
+ */
+function VisualEditToggle() {
+  const ready = useProjectStore((s) => s.visualEditReady);
+  const enabled = useProjectStore((s) => s.visualEditEnabled);
+  const setEnabled = useProjectStore((s) => s.setVisualEditEnabled);
+
+  if (!ready) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setEnabled(!enabled)}
+          aria-label="Select an element"
+          aria-pressed={enabled}
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            enabled
+              ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
+              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+          )}
+        >
+          <SquareMousePointerIcon className="size-4" />
+        </motion.button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {enabled ? "Stop selecting" : "Select an element"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -239,6 +281,7 @@ export function RightPanel() {
         </AnimatePresence>
 
         {activeTab !== "preview" && <div className="flex-1" />}
+        {activeTab === "preview" && <VisualEditToggle />}
         {activeTab === "preview" && <DeviceSwitcher />}
 
         <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />

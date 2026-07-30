@@ -30,5 +30,11 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     "types": ["node", "bun"]
-  }
+  },
+
+  // Assets shipped *into* generated apps, not compiled as part of this service.
+  // `visual-edit/tagger.ts` imports @babel/parser and magic-string, which are
+  // dependencies of the generated app; the worker only ever reads these two
+  // files as text (see templates/shared.ts readVisualEditAsset).
+  "exclude": ["src/templates/visual-edit"]
 }

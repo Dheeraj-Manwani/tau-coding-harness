@@ -16,6 +16,7 @@
  *   ...
  *   export const template = t.setStartCmd("bunx vite --host", waitForPort(5173));
  */
+import { readFileSync } from "node:fs";
 import type { TemplateBuilder } from "e2b";
 
 export const APP = "/home/user/app";
@@ -109,13 +110,18 @@ export function writeViteConfigContent({
   proxyApi: boolean;
 }): string {
   const proxyLine = proxyApi ? `\n${VITE_API_PROXY_LINE}` : "";
+  // tauTagger is listed last deliberately: it declares `enforce: 'pre'`, so
+  // Vite orders it ahead of the React plugin regardless of array position.
+  // Relying on `enforce` rather than position means an agent that reorders this
+  // array (or inserts a plugin in front) can't silently break visual edit.
   return `import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+${VISUAL_EDIT_IMPORT_LINE}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), ${VISUAL_EDIT_PLUGIN_ENTRY}],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: {
     host: true,            // bind 0.0.0.0 so E2B can forward the preview port
@@ -450,6 +456,69 @@ export const VITE_API_PROXY_LINE =
 
 /** The anchor the proxy line is inserted after when migrating an existing app. */
 export const VITE_ALLOWED_HOSTS_LINE = `    allowedHosts: ['.e2b.app'],`;
+
+// ── Visual edit (doc/VISUAL_EDIT_PLAN.md) ────────────────────────────────────
+
+/**
+ * Import + plugin entries that switch visual edit on in `vite.config.ts`.
+ *
+ * The `.js` extension is load-bearing and is NOT a typo. The Vite react-ts
+ * scaffold's `tsconfig.node.json` sets `"module": "nodenext"`, which rejects
+ * extensionless relative ESM imports (TS2835) — so a bare `'./.tau/tagger'`
+ * fails `tsc -b`, and therefore fails `bun run build`, for every app tau
+ * generates. `.js` is TypeScript's ESM convention for "the emitted name of
+ * `tagger.ts`", and Vite's esbuild config loader resolves it to the source too.
+ * Verified end to end by scripts/spike-visual-edit.ts.
+ */
+export const VISUAL_EDIT_IMPORT_LINE = `import { tauTagger } from './.tau/tagger.js'`;
+export const VISUAL_EDIT_PLUGIN_ENTRY = `tauTagger()`;
+
+/** devDependencies the tagger needs. Both are dev-only and tiny; neither
+ *  reaches the production bundle (`apply: 'serve'`). */
+export const VISUAL_EDIT_DEPS = "@babel/parser magic-string";
+
+/**
+ * Read one of the visual-edit assets off disk.
+ *
+ * Kept as real `.ts`/`.js` files under `templates/visual-edit/` rather than
+ * string constants so they stay lintable, syntax-checkable and diffable — they
+ * are ~400 lines of real code, not a snippet. Read lazily: this runs at
+ * template-build time (and, later, at migration time), never on the hot path.
+ *
+ * `templates/visual-edit/` is excluded from the worker's tsconfig — the tagger
+ * imports `@babel/parser`/`magic-string`, which are dependencies of the
+ * *generated app*, not of this service.
+ */
+export function readVisualEditAsset(name: "tagger.ts" | "runtime.js"): string {
+  const path = new URL(`./visual-edit/${name}`, import.meta.url);
+  return readFileSync(path, "utf8");
+}
+
+/**
+ * Install the visual-edit tagger into the app.
+ *
+ * Ships two files under `.tau/` (the established convention for tau-owned
+ * files, alongside `CONTEXT.md`, `logs/` and `deploy.json`) plus two dev
+ * dependencies. The Vite plugin is registered by `writeViteConfigContent`.
+ *
+ * The runtime is *not* written into the project as a script the app imports —
+ * the plugin injects it via `transformIndexHtml`, dev-server only. So it never
+ * enters the file manifest, never reaches the user's GitHub push, and never
+ * appears in the production build.
+ */
+export function writeVisualEdit(t: TemplateBuilder): TemplateBuilder {
+  // `<<'EOF'` (quoted delimiter) means the shell expands nothing, so the
+  // backticks and `${}` inside the tagger land verbatim.
+  return t
+    .runCmd(`bun add -d ${VISUAL_EDIT_DEPS}`)
+    .runCmd("mkdir -p .tau")
+    .runCmd(
+      `cat > .tau/tagger.ts <<'EOF'\n${readVisualEditAsset("tagger.ts")}EOF`,
+    )
+    .runCmd(
+      `cat > .tau/runtime.js <<'EOF'\n${readVisualEditAsset("runtime.js")}EOF`,
+    );
+}
 
 /**
  * Install Hono and seed a minimal `server/index.ts`. Bun serves the default

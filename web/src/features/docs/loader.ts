@@ -28,10 +28,17 @@ export interface LoadedDoc {
  * The same flat-scalar YAML subset the index builder parses, kept in step with
  * it deliberately. Pulling in `gray-matter` for this would drag Node polyfills
  * into the browser bundle to read four keys.
+ *
+ * Exposed untyped as well as through `parseFrontmatter` so other markdown
+ * surfaces — the changelog — can read their own keys without either duplicating
+ * this or widening `DocFrontmatter` with fields docs pages never use.
  */
-export function parseFrontmatter(source: string): LoadedDoc {
+export function parseFrontmatterFields(source: string): {
+  data: Record<string, string>;
+  body: string;
+} {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(source);
-  if (!match) return { frontmatter: { title: "" }, body: source };
+  if (!match) return { data: {}, body: source };
 
   const data: Record<string, string> = {};
   for (const line of match[1]!.split(/\r?\n/)) {
@@ -47,6 +54,11 @@ export function parseFrontmatter(source: string): LoadedDoc {
     data[pair[1]!] = value;
   }
 
+  return { data, body: source.slice(match[0].length) };
+}
+
+export function parseFrontmatter(source: string): LoadedDoc {
+  const { data, body } = parseFrontmatterFields(source);
   return {
     frontmatter: {
       title: data["title"] ?? "",
@@ -54,7 +66,7 @@ export function parseFrontmatter(source: string): LoadedDoc {
       updated: data["updated"],
       order: data["order"] ? Number(data["order"]) : undefined,
     },
-    body: source.slice(match[0].length),
+    body,
   };
 }
 

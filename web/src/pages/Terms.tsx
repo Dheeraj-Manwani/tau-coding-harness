@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { APP_BILLING } from "@/src/lib/routes";
 
 const CONTACT_EMAIL = "support@usetau.dev";
@@ -7,6 +8,13 @@ const EFFECTIVE_DATE = "June 29, 2025";
 const PRO_PRICE = "₹999";
 
 export default function TermsPage() {
+  useDocumentMeta({
+    title: "Terms & Cancellation Policy",
+    description:
+      "The terms of using tau, including subscriptions, credits, cancellation and refunds.",
+    canonical: "/terms",
+  });
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-foreground/90">
       <Link

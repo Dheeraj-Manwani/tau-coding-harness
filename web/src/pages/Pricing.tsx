@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { CheckCircleIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 import {
@@ -106,6 +107,14 @@ function PlanCard({
 }
 
 export default function PricingPage() {
+  useDocumentMeta({
+    title: "Pricing",
+    description:
+      `Start free with ${FREE_SIGNUP_CREDITS} credits — no card. PRO is ₹${PRO_PRICE_INR} a month for ` +
+      `${PRO_MONTHLY_CREDITS.toLocaleString()} credits, or top up with a credit pack any time.`,
+    canonical: "/pricing",
+  });
+
   return (
     <div className="min-h-[100svh] px-6 py-16">
       <div className="mx-auto max-w-4xl">

@@ -1,0 +1,26 @@
+# tau — https://usetau.dev
+#
+# The public surfaces are the landing page, /pricing, /changelog, /docs and the
+# legal pages. Everything under /app is the authenticated builder and returns a
+# redirect to /login for a crawler, so it is disallowed rather than left to be
+# discovered and skipped.
+
+User-agent: *
+Allow: /
+
+# The product. Nothing here is reachable without a session.
+Disallow: /app/
+
+# Auth and payment hand-offs. No content, and /checkout carries order state in
+# its query string.
+Disallow: /login
+Disallow: /signup
+Disallow: /auth/
+Disallow: /checkout
+Disallow: /verify-email
+Disallow: /verify-pending
+
+# Operator surface.
+Disallow: /admin/
+
+Sitemap: https://usetau.dev/sitemap.xml

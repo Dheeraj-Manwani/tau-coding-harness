@@ -42,6 +42,41 @@ VITE_API_URL=https://<host>
 
 Live streaming now rides the api origin over SSE, so **`VITE_WS_URL` is gone**.
 
+### Build order
+
+`vite build` alone ships a client-only SPA: the landing page and all 41 doc
+pages are an empty `<div id="root">` to any crawler that doesn't run JS. Two
+steps around it fix that.
+
+```bash
+# 1. Nav tree + ⌘K search index + public/sitemap.xml.
+#    Already wired into web/'s predev and prebuild — listed for completeness.
+bun run docs:index
+
+# 2. Build.
+cd web && pnpm build && cd ..
+
+# 3. Static HTML per public route, written over dist/<route>/index.html.
+#    Node, not bun: playwright's CDP pipe transport doesn't complete its
+#    handshake under bun on Windows (the browser launches, then times out).
+node scripts/prerender.ts
+```
+
+Notes:
+
+- **Set `SITE_ORIGIN`** for anything other than production. Both the sitemap and
+  the prerendered `<link rel="canonical">` / `og:url` are written against it, and
+  it defaults to `https://usetau.dev`.
+- **Prerender needs fresh build output.** It refuses to run over an already
+  prerendered `dist/` rather than rendering each route on top of the previous
+  run's markup. Rebuild between runs.
+- **A partial prerender exits non-zero.** Routes that failed still ship as empty
+  shells, so a half-prerendered deploy must fail the build rather than pass
+  quietly.
+- **Chromium must be installed**: `npx playwright install chromium`.
+- The public routes live in `scripts/public-routes.ts`; doc routes come from the
+  generated index, so neither list can drift from the content tree.
+
 ## Notes / tradeoffs
 
 - **No job durability:** the runner is pure in-memory; a process restart drops

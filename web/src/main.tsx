@@ -72,11 +72,9 @@ const router = createBrowserRouter([
         lazy: lazyComponent(() => import("./features/marketing/CosmosRoot.tsx")),
         children: [
           {
-            // Above MarketingShell on purpose — see RootGate. When /pricing and
-            // /changelog join the shell (Phases 3 and 7) they belong in a
-            // sibling MarketingShell branch outside this gate: a signed-in user
-            // is allowed to read those, they are just never sent to the landing
-            // page.
+            // Above MarketingShell on purpose — see RootGate. Only `/` is gated:
+            // a signed-in user must never land on the marketing page, but is
+            // free to read the changelog.
             element: <RootGate />,
             children: [
               {
@@ -91,6 +89,20 @@ const router = createBrowserRouter([
                     ),
                   },
                 ],
+              },
+            ],
+          },
+          {
+            // The marketing shell again, ungated — see above.
+            lazy: lazyComponent(
+              () => import("./features/marketing/MarketingShell.tsx"),
+            ),
+            children: [
+              {
+                path: "/changelog",
+                lazy: lazyComponent(
+                  () => import("./features/marketing/Changelog.tsx"),
+                ),
               },
             ],
           },

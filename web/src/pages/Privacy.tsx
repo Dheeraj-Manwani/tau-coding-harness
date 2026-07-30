@@ -1,9 +1,18 @@
 import { Link } from "react-router-dom";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
+
 const CONTACT_EMAIL = "support@usetau.dev";
 const EFFECTIVE_DATE = "June 29, 2025";
 
 export default function PrivacyPage() {
+  useDocumentMeta({
+    title: "Privacy Policy",
+    description:
+      "What data tau collects, who processes it, how long it is kept, and how to have it deleted.",
+    canonical: "/privacy",
+  });
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-foreground/90">
       <Link

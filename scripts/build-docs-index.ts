@@ -1,17 +1,20 @@
 /**
- * Builds the docs navigation tree and search index from the content directory.
+ * Builds the docs navigation tree, the search index, and `sitemap.xml`.
  *
  * Runs in `predev` and `prebuild`, so writing a doc is only ever adding a
  * markdown file — no code edit, no registry to keep in sync.
  *
- * Two things come out of one walk:
- *   • the nav tree (section → ordered pages), which the sidebar renders, and
+ * Three things come out of one walk:
+ *   • the nav tree (section → ordered pages), which the sidebar renders,
  *   • a flat search index of { path, title, description, headings, text },
  *     with body text truncated so the whole thing stays small enough to fetch
- *     lazily the first time someone presses ⌘K.
+ *     lazily the first time someone presses ⌘K, and
+ *   • `web/public/sitemap.xml`, covering the static public routes plus every
+ *     doc page — from the same walk, so a page can never exist without being
+ *     advertised or be advertised without existing (§7).
  *
- * The output is generated, and gitignored. It is a build artefact, not source:
- * committing it would guarantee a stale index in someone's branch.
+ * Both outputs are generated, and gitignored. They are build artefacts, not
+ * source: committing them would guarantee a stale copy in someone's branch.
  *
  *   bun run scripts/build-docs-index.ts
  */
@@ -21,6 +24,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DOCS_SECTIONS } from "../web/src/features/docs/sections.ts";
+import { STATIC_ROUTES, siteOrigin } from "./public-routes.ts";
 
 // Resolved from this file, not from the working directory: it is invoked from
 // `web/` by that package's predev/prebuild, and from the repo root by hand.
@@ -28,6 +32,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = resolve(HERE, "..", "web", "src", "content");
 const CONTENT_DIR = join(CONTENT_ROOT, "docs");
 const OUT_FILE = join(CONTENT_ROOT, "docs-index.json");
+const PUBLIC_DIR = resolve(HERE, "..", "web", "public");
+const SITEMAP_FILE = join(PUBLIC_DIR, "sitemap.xml");
 
 /** Body text kept per page. Enough to match on, small enough to ship. */
 const TEXT_BUDGET = 1500;
@@ -190,4 +196,59 @@ const bytes = readFileSync(OUT_FILE).byteLength;
 console.error(
   `[docs-index] ${pages.length} pages across ${tree.length} sections → ` +
     `${(bytes / 1024).toFixed(1)}KB (uncompressed)`,
+);
+
+// ── sitemap.xml ───────────────────────────────────────────────────────────────
+
+const ORIGIN = siteOrigin();
+const TODAY = new Date().toISOString().slice(0, 10);
+
+/**
+ * A doc page's `<lastmod>` is its frontmatter `updated`, not the file's mtime:
+ * mtime moves on a checkout or a reformat, and telling a crawler a page changed
+ * when its content didn't is how a sitemap stops being trusted.
+ */
+function lastmodOf(page: IndexedPage): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(page.updated) ? page.updated : TODAY;
+}
+
+function urlEntry(
+  path: string,
+  lastmod: string,
+  changefreq: string,
+  priority: number,
+): string {
+  return [
+    "  <url>",
+    `    <loc>${ORIGIN}${path}</loc>`,
+    `    <lastmod>${lastmod}</lastmod>`,
+    `    <changefreq>${changefreq}</changefreq>`,
+    `    <priority>${priority.toFixed(1)}</priority>`,
+    "  </url>",
+  ].join("\n");
+}
+
+const sitemapEntries = [
+  ...STATIC_ROUTES.map((route) =>
+    urlEntry(route.path, TODAY, route.changefreq, route.priority),
+  ),
+  // Docs are the long tail and the reason the sitemap exists at all — without it
+  // a client-rendered SPA's 41 doc pages are reachable only by crawling links.
+  ...pages.map((page) =>
+    urlEntry(page.path, lastmodOf(page), "monthly", 0.7),
+  ),
+];
+
+mkdirSync(PUBLIC_DIR, { recursive: true });
+writeFileSync(
+  SITEMAP_FILE,
+  `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapEntries.join("\n")}
+</urlset>
+`,
+);
+
+console.error(
+  `[sitemap] ${sitemapEntries.length} urls → web/public/sitemap.xml (${ORIGIN})`,
 );

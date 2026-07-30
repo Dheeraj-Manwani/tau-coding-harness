@@ -13,9 +13,6 @@ import { NAV_TREE, FLAT_PAGES } from "./navTree";
  * A card per section, each listing what it actually contains. Sections with no
  * pages yet do not appear at all: the tree is built from the content directory,
  * so this page can only ever advertise docs that exist.
- *
- * Still `noIndex` while Phase 5 writes the corpus — an near-empty docs root
- * getting crawled is worse than one that waits.
  */
 export function DocsIndex() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -26,7 +23,6 @@ export function DocsIndex() {
     title: "Documentation",
     description: "Guides and reference for building with tau.",
     canonical: "/docs",
-    noIndex: true,
   });
 
   const first = FLAT_PAGES[0];

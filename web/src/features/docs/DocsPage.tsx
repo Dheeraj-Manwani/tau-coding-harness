@@ -71,8 +71,6 @@ export function DocsPage() {
     title: title || "Documentation",
     description,
     canonical: `/docs/${section}/${slug}`,
-    // Lifted in Phase 5, when there is a corpus worth indexing.
-    noIndex: true,
   });
 
   if (missing) return <DocsNotFound />;

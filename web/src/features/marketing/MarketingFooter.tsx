@@ -44,16 +44,19 @@ const COLUMNS: FooterColumn[] = [
     title: "Docs",
     links: [
       { label: "Documentation", href: "/docs", ready: true },
-      { label: "Quickstart", href: "/docs/start/quickstart", ready: false },
-      { label: "Effort tiers", href: "/docs/build/effort-tiers", ready: false },
-      { label: "API reference", href: "/docs/reference/api", ready: false },
-      { label: "Troubleshooting", href: "/docs/help/troubleshooting", ready: false },
+      { label: "Quickstart", href: "/docs/start/quickstart", ready: true },
+      { label: "Effort tiers", href: "/docs/build/effort-tiers", ready: true },
+      { label: "API reference", href: "/docs/reference/api", ready: true },
+      { label: "Troubleshooting", href: "/docs/help/troubleshooting", ready: true },
     ],
   },
   {
     title: "Resources",
     links: [
-      { label: "Changelog", href: "/changelog", ready: false },
+      { label: "Changelog", href: "/changelog", ready: true },
+      { label: "FAQ", href: "/docs/help/faq", ready: true },
+      // No status page and no public roadmap yet. Listed so the map stays in
+      // one place; a footer full of 404s costs more trust than a short footer.
       { label: "Status", href: "/status", ready: false },
       { label: "Roadmap", href: "/roadmap", ready: false },
     ],

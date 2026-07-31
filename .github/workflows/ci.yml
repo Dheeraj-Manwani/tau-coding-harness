@@ -1,0 +1,119 @@
+# Phase 0 of doc/SERVICE_MERGE_PLAN.md — the repo's first CI.
+#
+# Runs what already exists and already passes: a typecheck and a test suite in
+# each service, plus the drift guard that keeps the duplicated api/ ↔
+# worker-service/ files from silently diverging.
+#
+# Verified green locally on 2026-08-01 @ 1733c5e:
+#   api    258 pass / 0 fail (15 files)   worker  77 pass / 0 fail (8 files)
+#   drift    7 pass / 0 fail
+name: CI
+
+on:
+  push:
+    branches: [economy]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ── Dummy values, not secrets ───────────────────────────────────────────────
+  # Both services validate their environment with zod at *import* time and call
+  # `process.exit(1)` when a required variable is missing, so the suites cannot
+  # even load without these. Nothing here reaches the network: no test opens a
+  # database connection or calls an external API.
+  #
+  # `RESEND_API_KEY` is the subtle one. zod marks it `.optional()`, but
+  # `api/src/lib/email.ts:6` constructs `new Resend(env.RESEND_API_KEY)` at
+  # module scope and the SDK throws on an empty key — so an api suite without it
+  # fails with `Missing API key`, not with a validation error. Same trap
+  # deploy/README.md documents under "boot-required env".
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+  ACCESS_TOKEN_SECRET: ci-access-token-secret-not-a-real-key
+  DEEPSEEK_API_KEY: ci-dummy
+  E2B_API_KEY: ci-dummy
+  TAVILY_API_KEY: ci-dummy
+  R2_ACCOUNT_ID: ci-dummy
+  R2_ACCESS_KEY_ID: ci-dummy
+  R2_SECRET_ACCESS_KEY: ci-dummy
+  R2_BUCKET: ci-dummy
+  MAX_AGENT_DEPTH: "3"
+  RESEND_API_KEY: re_ci_dummy
+  GOOGLE_CLIENT_ID: ci-dummy
+  GOOGLE_CLIENT_SECRET: ci-dummy
+
+jobs:
+  drift:
+    name: drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      # No `bun install`: test/drift.test.ts imports only node:fs by design, so
+      # this job stays fast and cannot be broken by a dependency problem in
+      # either service.
+      - run: bun run test:drift
+
+  api:
+    name: api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      - run: bun install --frozen-lockfile
+        working-directory: api
+      # `src/generated/prisma` is gitignored, so the client must be generated
+      # before tsc runs or every `../generated/prisma/client` import fails.
+      # `prisma generate` reads DATABASE_URL from prisma.config.ts but never
+      # connects, so the dummy above is enough.
+      - run: bun run generate
+        working-directory: api
+      - run: bun run typecheck
+        working-directory: api
+      - run: bun test
+        working-directory: api
+
+  worker:
+    name: worker-service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      - run: bun install --frozen-lockfile
+        working-directory: worker-service
+      - run: bun run generate
+        working-directory: worker-service
+      - run: bun run typecheck
+        working-directory: worker-service
+      - run: bun test
+        working-directory: worker-service
+
+  mobile-parity:
+    name: mobile API contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      # `mobile/` is currently in the root .gitignore, so it does not exist in a
+      # clean checkout and this step is skipped. Delete that .gitignore line
+      # (PLATFORM_COMPARISON.md §5.14 / §6.4) and the check starts running by
+      # itself — no workflow edit needed.
+      #
+      # UNVERIFIED: this is the one step that could not be tested before
+      # committing, precisely because mobile/ is untracked. Expect to fix it on
+      # the first run after mobile/ lands.
+      - name: check web ↔ mobile API parity
+        if: hashFiles('mobile/scripts/check-parity.ts') != ''
+        run: bun run check:mobile

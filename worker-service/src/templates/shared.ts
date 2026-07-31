@@ -117,11 +117,11 @@ export function writeViteConfigContent({
   return `import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+${VITE_TAILWIND_IMPORT_LINE}
 ${VISUAL_EDIT_IMPORT_LINE}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), ${VISUAL_EDIT_PLUGIN_ENTRY}],
+${VITE_PLUGINS_PREFIX}, ${VISUAL_EDIT_PLUGIN_ENTRY}],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: {
     host: true,            // bind 0.0.0.0 so E2B can forward the preview port
@@ -457,6 +457,16 @@ export const VITE_API_PROXY_LINE =
 /** The anchor the proxy line is inserted after when migrating an existing app. */
 export const VITE_ALLOWED_HOSTS_LINE = `    allowedHosts: ['.e2b.app'],`;
 
+/**
+ * The two anchors the Phase 5 visual-edit retrofit patches against
+ * (`lib/retrofitVisualEdit.ts`). They are interpolated into the config above
+ * rather than written inline so a retrofitted project's `vite.config.ts` comes
+ * out byte-identical to a freshly provisioned one — a test asserts exactly that,
+ * and it can only hold while there is one definition of each string.
+ */
+export const VITE_TAILWIND_IMPORT_LINE = `import tailwindcss from '@tailwindcss/vite'`;
+export const VITE_PLUGINS_PREFIX = `  plugins: [react(), tailwindcss()`;
+
 // ── Visual edit (doc/VISUAL_EDIT_PLAN.md) ────────────────────────────────────
 
 /**
@@ -473,9 +483,25 @@ export const VITE_ALLOWED_HOSTS_LINE = `    allowedHosts: ['.e2b.app'],`;
 export const VISUAL_EDIT_IMPORT_LINE = `import { tauTagger } from './.tau/tagger.js'`;
 export const VISUAL_EDIT_PLUGIN_ENTRY = `tauTagger()`;
 
-/** devDependencies the tagger needs. Both are dev-only and tiny; neither
- *  reaches the production bundle (`apply: 'serve'`). */
-export const VISUAL_EDIT_DEPS = "@babel/parser magic-string";
+/**
+ * devDependencies the tagger needs. Both are dev-only and tiny; neither reaches
+ * the production bundle (`apply: 'serve'`).
+ *
+ * Ranges are explicit rather than left to `bun add`'s "whatever is latest
+ * today", because the Phase 5 retrofit has to write these same entries straight
+ * into an existing `package.json` where there is no registry lookup to defer to.
+ * One definition, two consumers — a retrofitted project must end up with the
+ * package.json a freshly provisioned one has.
+ */
+export const VISUAL_EDIT_DEPS: Readonly<Record<string, string>> = {
+  "@babel/parser": "^7",
+  "magic-string": "^0.30",
+};
+
+/** The same set as a `bun add -d` argument list. */
+export const VISUAL_EDIT_DEPS_ARGS = Object.entries(VISUAL_EDIT_DEPS)
+  .map(([name, range]) => `${name}@${range}`)
+  .join(" ");
 
 /**
  * Read one of the visual-edit assets off disk.
@@ -510,7 +536,7 @@ export function writeVisualEdit(t: TemplateBuilder): TemplateBuilder {
   // `<<'EOF'` (quoted delimiter) means the shell expands nothing, so the
   // backticks and `${}` inside the tagger land verbatim.
   return t
-    .runCmd(`bun add -d ${VISUAL_EDIT_DEPS}`)
+    .runCmd(`bun add -d ${VISUAL_EDIT_DEPS_ARGS}`)
     .runCmd("mkdir -p .tau")
     .runCmd(
       `cat > .tau/tagger.ts <<'EOF'\n${readVisualEditAsset("tagger.ts")}EOF`,
@@ -704,6 +730,7 @@ export function buildContextMd({
     "- `src/App.tsx` has a catch-all `*` 404 route — keep it last when adding routes",
     '- Theme: **Spotify-inspired**, **dark by default** (`<html class="dark">`). Both themes live in `src/index.css`: `:root` = light, `.dark` = dark (Spotify green `#1DB954` primary; dark surfaces step `#121212` -> `#181818` -> `#282828`, muted text `#b3b3b3`). Style with shadcn tokens (`bg-background`, `text-foreground`, `bg-primary`, `bg-card`, `text-muted-foreground`, `border-border`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the `dark` class on `<html>` (persist the choice in `localStorage`); for light-only, default to no `dark` class. Edit the palettes in `index.css` rather than introducing parallel color systems.',
     "- Secrets go in `.env` (gitignored); never commit them. `.env` is NOT saved with the project — tau rewrites it each run",
+    "- `.tau/` is tau's own directory. The only thing you may edit in it is the `## Current app` section of `CONTEXT.md`. Leave `tagger.ts` and `runtime.js` alone, and leave the `tauTagger()` plugin in `vite.config.ts` alone — they power click-to-edit in the preview and are dev-only (`apply: 'serve'`), so they never reach a production build",
   );
   if (hasServer) {
     // Deliberately one line. The full recipe is the `enable_ai` tool's return

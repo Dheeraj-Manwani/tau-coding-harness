@@ -26,9 +26,7 @@
  */
 import { prisma } from "./prisma";
 import { log } from "./log";
-import { getBlobText, putBlob } from "./s3";
-import { allocateHeadSequence } from "./headSequence";
-import { sha256Hex } from "../agent/tools/functions/utils";
+import { readManifestFile, writeManifestFile } from "./manifestFiles";
 import { SandboxStatus } from "../generated/prisma/enums";
 import {
   HONO_SERVER_INDEX,
@@ -47,64 +45,6 @@ export type MigrateOutcome =
  *  app state. Everything from here down is the agent's and must survive. The
  *  full line carries trailing padding, so match the stable prefix. */
 const DYNAMIC_MARKER = "<!-- DYNAMIC";
-
-interface FileRow {
-  path: string;
-  contentHash: string;
-}
-
-async function readFile(
-  userId: string,
-  projectId: string,
-  row: FileRow,
-): Promise<string | null> {
-  try {
-    return await getBlobText(userId, projectId, row.contentHash);
-  } catch (err) {
-    log.warn("migrate.blob_read_failed", {
-      projectId,
-      path: row.path,
-      error: String(err),
-    });
-    return null;
-  }
-}
-
-/**
- * Write one file into the manifest.
- *
- * Deliberately not `persistFile`: that publishes `file_done` events to a job's
- * event stream, and this runs outside a turn — the agent is not watching, and a
- * burst of phantom file events would show up in the UI as edits nobody made.
- */
-async function writeFile(
-  userId: string,
-  projectId: string,
-  path: string,
-  content: string,
-): Promise<void> {
-  const hash = sha256Hex(content);
-  await putBlob(userId, projectId, hash, content);
-
-  await prisma.$transaction(async (tx) => {
-    const seq = await allocateHeadSequence(tx, projectId);
-    await tx.projectFile.upsert({
-      where: { projectId_path: { projectId, path } },
-      create: {
-        projectId,
-        path,
-        contentHash: hash,
-        sizeBytes: Buffer.byteLength(content, "utf-8"),
-        lastSequence: seq,
-      },
-      update: {
-        contentHash: hash,
-        sizeBytes: Buffer.byteLength(content, "utf-8"),
-        lastSequence: seq,
-      },
-    });
-  });
-}
 
 /**
  * Insert the `/api` proxy into an existing `vite.config.ts`.
@@ -202,13 +142,13 @@ export async function migrateTemplate(
   // 1) vite.config.ts — the /api proxy.
   const viteRow = byPath.get("vite.config.ts");
   const viteSource = viteRow
-    ? await readFile(userId, projectId, viteRow)
+    ? await readManifestFile(userId, projectId, viteRow)
     : null;
   const patchedVite = viteSource ? patchViteConfig(viteSource) : null;
   if (patchedVite) {
-    await writeFile(userId, projectId, "vite.config.ts", patchedVite);
+    await writeManifestFile(userId, projectId, "vite.config.ts", patchedVite);
   } else {
-    await writeFile(
+    await writeManifestFile(
       userId,
       projectId,
       "vite.config.ts",
@@ -222,10 +162,10 @@ export async function migrateTemplate(
 
   // 2) package.json — the hono dependency, and drop the now-stale lockfile.
   const pkgRow = byPath.get("package.json");
-  const pkgSource = pkgRow ? await readFile(userId, projectId, pkgRow) : null;
+  const pkgSource = pkgRow ? await readManifestFile(userId, projectId, pkgRow) : null;
   const patchedPkg = pkgSource ? patchPackageJson(pkgSource) : null;
   if (patchedPkg) {
-    await writeFile(userId, projectId, "package.json", patchedPkg);
+    await writeManifestFile(userId, projectId, "package.json", patchedPkg);
     changed.push("package.json");
   } else {
     notes.push(
@@ -241,13 +181,13 @@ export async function migrateTemplate(
   if (deletedLock.count > 0) changed.push("bun.lock (removed)");
 
   // 3) server/index.ts — the same bytes the template bakes in.
-  await writeFile(userId, projectId, "server/index.ts", HONO_SERVER_INDEX);
+  await writeManifestFile(userId, projectId, "server/index.ts", HONO_SERVER_INDEX);
   changed.push("server/index.ts");
 
   // 4) .tau/CONTEXT.md — regenerate the static half only.
   const ctxRow = byPath.get(".tau/CONTEXT.md");
-  const ctxSource = ctxRow ? await readFile(userId, projectId, ctxRow) : null;
-  await writeFile(
+  const ctxSource = ctxRow ? await readManifestFile(userId, projectId, ctxRow) : null;
+  await writeManifestFile(
     userId,
     projectId,
     ".tau/CONTEXT.md",

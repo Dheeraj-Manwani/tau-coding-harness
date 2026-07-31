@@ -13,6 +13,7 @@ import { buildAiEnv, isAiEnabled, reinjectAiEnv } from "./aiEnv";
 import { keyEncryptionConfigured } from "./apiKeys";
 import { publish } from "./publish";
 import { log } from "./log";
+import { retrofitVisualEdit } from "./retrofitVisualEdit";
 import { allocateHeadSequence } from "./headSequence";
 import { SandboxStatus } from "../generated/prisma/enums";
 import {
@@ -331,6 +332,36 @@ export async function provisionSandbox(
     !templateLocked && requestedTemplateKey
       ? requestedTemplateKey
       : toTemplateKey(project.templateKey);
+
+  // Visual edit (doc/VISUAL_EDIT_PLAN.md §6 Phase 5). Projects seeded before the
+  // tagger shipped carry a vite.config.ts that never loads it, and rehydration
+  // would faithfully write that old config onto the new sandbox. Patch the
+  // manifest first so the right bytes land once. Never fatal: a working boot is
+  // worth more than click-to-edit, so a failure here is logged and ignored.
+  if (templateLocked) {
+    try {
+      const outcome = await retrofitVisualEdit(projectId, userId);
+      if (outcome.retrofitted) {
+        log.info("visual_edit.retrofit.applied", {
+          jobId,
+          projectId,
+          changed: outcome.changed,
+        });
+      } else if (outcome.reason !== "up_to_date") {
+        log.warn("visual_edit.retrofit.skipped", {
+          jobId,
+          projectId,
+          reason: outcome.reason,
+        });
+      }
+    } catch (err) {
+      log.warn("visual_edit.retrofit.failed", {
+        jobId,
+        projectId,
+        error: String(err),
+      });
+    }
+  }
 
   return createFreshSandbox(projectId, userId, jobId, templateKey);
 }

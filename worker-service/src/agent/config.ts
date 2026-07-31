@@ -166,6 +166,7 @@ function provisionedStack(key: TemplateKey): string {
 - Runtime is **Bun**, not Node. Use \`bun\` and \`bunx\` — never \`npm\`, \`npx\`, or \`yarn\`.
 ${stackLine}
 - \`.tau/CONTEXT.md\` is the source of truth for this app. **Read it first** (e.g. \`run_command("cat .tau/CONTEXT.md")\`) before changing anything. Everything above its DYNAMIC marker is the read-only template manifest; the \`## Current app\` section below it is the live app state.
+- The rest of \`.tau/\` is tau's, not yours. Never edit or delete \`.tau/tagger.ts\` or \`.tau/runtime.js\`, and never remove the \`tauTagger()\` plugin from \`vite.config.ts\` — they power click-to-edit in the preview, and they are dev-only so they cost the user's build nothing.
 
 ## Already provided — don't reinstall or re-create
 - Routing (\`react-router-dom\`) and React Query are wired in \`src/main.tsx\`. Add pages as \`<Route>\`s in \`src/App.tsx\`; keep the catch-all \`*\` 404 route last.

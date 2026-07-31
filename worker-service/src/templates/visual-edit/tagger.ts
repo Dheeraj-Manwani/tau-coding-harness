@@ -8,9 +8,11 @@
  * That attribute is the entire bridge between "the user clicked this pixel" and
  * "this is the byte range to edit". Everything else in the feature is plumbing.
  *
- * PHASE 0 STATUS: this is the spike artifact. It is installed into a throwaway
- * sandbox by `scripts/spike-visual-edit.ts`. Phase 1 moves it into the E2B
- * templates as `.tau/tagger.ts` (see the plan §6).
+ * These are the real bytes, in three places at once: the template build bakes
+ * them into the E2B images as `.tau/tagger.ts` (`writeVisualEdit`),
+ * `retrofitVisualEdit` writes them into the manifest of projects that predate
+ * the feature, and `scripts/spike-visual-edit.ts` installs them into a throwaway
+ * sandbox to check them against a real browser. Edit here, nowhere else.
  *
  * Four properties that are not optional:
  *

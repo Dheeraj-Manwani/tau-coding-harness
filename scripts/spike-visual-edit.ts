@@ -33,7 +33,7 @@ import { resolve } from "node:path";
 import {
   readVisualEditAsset,
   writeViteConfigContent,
-  VISUAL_EDIT_DEPS,
+  VISUAL_EDIT_DEPS_ARGS,
 } from "../worker-service/src/templates/shared";
 
 const TEMPLATE = "vite-spa-app"; // frontend-only: fastest boot, enough to prove it
@@ -149,7 +149,7 @@ try {
   await sandbox.files.write(`${WORK_DIR}/src/App.tsx`, APP_TSX);
   await sandbox.files.write(`${WORK_DIR}/vite.config.ts`, VITE_CONFIG);
 
-  const add = await sandbox.commands.run(`bun add -d ${VISUAL_EDIT_DEPS}`, {
+  const add = await sandbox.commands.run(`bun add -d ${VISUAL_EDIT_DEPS_ARGS}`, {
     cwd: WORK_DIR,
     timeoutMs: 120_000,
   });

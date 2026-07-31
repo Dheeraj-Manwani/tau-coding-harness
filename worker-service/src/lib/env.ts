@@ -5,8 +5,7 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
 
-  // ── Shared infra (kept identical across api / ws-gateway / worker-service) ──
-  REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
+  // ── Shared infra (kept identical with api/src/lib/env.ts) ──
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
   // ── Deepseek (LLM) — via the OpenAI-compatible API ──
@@ -63,8 +62,7 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
 
-  // ── Worker / queue ──
-  QUEUE_NAME: z.string().default("code-generation"),
+  // ── Worker ──
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(3),
 
   CREDITS_ENFORCE: z

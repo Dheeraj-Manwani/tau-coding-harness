@@ -7,7 +7,6 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
 
   // Auth — ACCESS_TOKEN_SECRET signs/verifies JWTs and must be a real secret.
   ACCESS_TOKEN_SECRET: z

@@ -813,7 +813,7 @@ interface ProjectState {
   /** Bumped to force the preview iframe to remount (manual reload). */
   previewNonce: number;
 
-  // Cancellation hook, registered by the active WebSocket stream.
+  // Cancellation hook, registered by the active SSE stream.
   cancelStream: (() => void) | null;
 
   // UI (local, not server-derived)
@@ -881,7 +881,7 @@ interface ProjectState {
     hasMore: boolean,
     checkpoints?: ProjectCheckpoint[],
   ) => void;
-  /** Apply one live event from the ws-gateway stream. */
+  /** Apply one live event from the SSE stream. */
   applyEvent: (event: JobEvent) => void;
   /** Flag/clear the "this run has gone quiet" presentation state. */
   setStalled: (stalled: boolean) => void;

@@ -1,6 +1,6 @@
 /**
  * Wire types for the project flow: the REST shapes returned by `api` and the
- * live event union published by `worker-service` and relayed by `ws-gateway`.
+ * live event union published by `worker-service` and streamed over SSE.
  */
 
 // ── REST (api) ──────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ export interface SaveProjectFileResponse {
   headSequence: number;
 }
 
-// ── Live events (worker → Redis → ws-gateway) ───────────────────────────────
+// ── Live events (worker → in-process bus → SSE) ─────────────────────────────
 
 /** Every event carries the monotonic `index` used for replay/dedup. */
 interface BaseEvent {

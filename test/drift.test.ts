@@ -5,9 +5,9 @@ import { join, relative } from "node:path";
 // ── Drift guard for the duplicated api/ ↔ worker-service/ code ────────────────
 //
 // `api` and `worker-service` each keep their own Prisma schema and their own
-// copy of 14 files in `src/lib/`. They are kept in sync **by hand**, and the
-// duplication has been growing. This file makes that drift a failing build
-// instead of a silent bug.
+// copy of 13 files in `src/lib/` (14 before phase 1 deleted the dead
+// `redis.ts`). They are kept in sync **by hand**, and the duplication has been
+// growing. This file makes that drift a failing build instead of a silent bug.
 //
 // It deliberately imports nothing from either service — only `node:fs` — so it
 // runs from the repo root without either service's `node_modules` installed.
@@ -20,8 +20,9 @@ import { join, relative } from "node:path";
 //      available here, and the hardest to unwind.
 //   2. Files declared `identical` below still match byte-for-byte.
 //   3. THE FORWARD GUARD: the set of filenames duplicated across the two lib
-//      directories still equals DUPLICATED_LIBS. A 15th duplicated file fails
-//      CI the day it is added, rather than being noticed months later.
+//      directories still equals DUPLICATED_LIBS. A new duplicated file fails CI
+//      the day it is added, rather than being noticed months later — and a
+//      merged or deleted one fails too, as a reminder to update the manifest.
 //
 // See doc/SERVICE_MERGE_PLAN.md for the phased plan that deletes all of this.
 // As phase 3 merges each file, delete its entry here. When the manifest is
@@ -57,10 +58,9 @@ const DUPLICATED_LIBS: Record<
     kind: "drift",
     note: "svc tag differs (legitimate) + a half-copied typo in api's header",
   },
-  "redis.ts": {
-    kind: "drift",
-    note: "worker passes maxRetriesPerRequest:null, api does not — unintended",
-  },
+  // redis.ts was here (worker passed maxRetriesPerRequest:null, api did not).
+  // Phase 1 deleted both copies instead of merging them: nothing imported
+  // either one, and the economy build has no Redis at all.
   "headSequence.ts": {
     kind: "drift",
     note: "api has a 10-line doc comment the worker copy lost",

@@ -10,12 +10,19 @@ import {
   getProjectFile,
   saveProjectFile,
   applyVisualEdit,
+  getProjectTheme,
+  applyThemeEdit,
+  importVisualAsset,
   getPreviewStatus,
   restartPreview,
   submitJobAnswer,
   cancelAllJobs,
 } from "../controllers/project.controller";
 import * as github from "../controllers/githubProject.controller";
+import {
+  visualEditRateLimiter,
+  assetImportRateLimiter,
+} from "../middleware/rateLimit.middleware";
 
 const router = Router();
 
@@ -31,7 +38,15 @@ router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
 router.put("/:projectId/file", saveProjectFile);
-router.post("/:projectId/visual-edit", applyVisualEdit);
+// Visual edit — deterministic, zero-credit source edits driven by the preview.
+router.post("/:projectId/visual-edit", visualEditRateLimiter, applyVisualEdit);
+router.get("/:projectId/theme", getProjectTheme);
+router.post("/:projectId/theme", visualEditRateLimiter, applyThemeEdit);
+router.post(
+  "/:projectId/visual-asset",
+  assetImportRateLimiter,
+  importVisualAsset,
+);
 router.get("/:projectId/preview/status", getPreviewStatus);
 router.post("/:projectId/preview/restart", restartPreview);
 router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);

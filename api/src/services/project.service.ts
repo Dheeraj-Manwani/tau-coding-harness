@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Sandbox } from "e2b";
 import { prisma } from "../lib/prisma";
 import * as projectRepo from "../repositories/project.repository";
@@ -23,6 +24,7 @@ import {
 } from "../lib/s3";
 import {
   writeProjectFile,
+  writeProjectBinaryFile,
   buildEditDiff,
   sha256Hex,
   toWorkdirPath,
@@ -34,6 +36,12 @@ import {
   parseLoc,
   type VisualEditOp,
 } from "../lib/visualEdit";
+import {
+  applyThemeEdit,
+  readThemeTokens,
+  type ThemeScope,
+} from "../lib/themeEdit";
+import { fetchImageAsset, slugifyAssetName } from "../lib/assetImport";
 import { bus } from "../lib/bus";
 import { terminateStrandedJob } from "../lib/jobs";
 import {
@@ -887,6 +895,157 @@ export async function applyVisualEditToProject(
   );
 
   return { applied: true as const, ...saved, className: result.className };
+}
+
+/** Where every template's theme lives (`writeTheme` in the worker templates). */
+const THEME_FILE = "src/index.css";
+
+/**
+ * The current theme palettes, for the global style panel.
+ *
+ * Read rather than assumed: the agent is told to edit these palettes in place
+ * (`.tau/CONTEXT.md`), so the file is the only authority on what the colours
+ * are. `contentHash` comes back so the panel can send it as `baseHash` and get
+ * the same stale-file protection every other visual edit has.
+ */
+export async function getProjectTheme(projectId: string, userId: string) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const record = await projectRepo.findProjectFileRecord(projectId, THEME_FILE);
+  if (!record) throw Errors.notFound("This project has no theme file");
+
+  const file = await readProjectFileContent(project, userId, THEME_FILE);
+  return {
+    path: THEME_FILE,
+    contentHash: file.contentHash,
+    ...readThemeTokens(file.content),
+  };
+}
+
+/**
+ * Set one theme variable and let hot reload restyle the whole app.
+ *
+ * Structurally identical to `applyVisualEditToProject` — same ownership check,
+ * same running-job guard, same `baseHash` conflict, same `saveProjectFile` — and
+ * deliberately so: this is the same feature pointed at a different file, and the
+ * guarantees users get from it should not depend on which panel they used.
+ */
+export async function applyThemeEditToProject(
+  projectId: string,
+  userId: string,
+  args: { name: string; value: string; scope: ThemeScope; baseHash?: string },
+) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const active = await projectRepo.findActiveJob(projectId);
+  if (active) throw Errors.conflict("generation in progress");
+
+  const record = await projectRepo.findProjectFileRecord(projectId, THEME_FILE);
+  if (!record) throw Errors.notFound("This project has no theme file");
+
+  const before = await readProjectFileContent(project, userId, THEME_FILE);
+  if (args.baseHash && args.baseHash !== before.contentHash) {
+    throw Errors.conflict("file changed since it was opened");
+  }
+
+  const result = applyThemeEdit({
+    content: before.content,
+    name: args.name,
+    value: args.value,
+    scope: args.scope,
+  });
+
+  if (!result.ok) return { applied: false as const, reason: result.reason };
+
+  if (result.content === before.content) {
+    return {
+      applied: true as const,
+      contentHash: before.contentHash,
+      headSequence: project.headSequence,
+      scope: result.scope,
+    };
+  }
+
+  const saved = await saveProjectFile(
+    projectId,
+    userId,
+    THEME_FILE,
+    result.content,
+    before.contentHash,
+  );
+
+  return { applied: true as const, ...saved, scope: result.scope };
+}
+
+/**
+ * Import a remote image into `public/` and return the path to point a `src` at.
+ *
+ * Two steps rather than one on purpose: this call only puts the bytes in the
+ * project, and the client then issues a normal `attr` visual edit to point the
+ * element at them. That keeps the source rewrite on the one audited path — with
+ * its tag check, its stale-file check and its undo entry — instead of growing a
+ * second way to edit JSX that would have to reimplement all three.
+ */
+export async function importVisualAsset(
+  projectId: string,
+  userId: string,
+  url: string,
+) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const active = await projectRepo.findActiveJob(projectId);
+  if (active) throw Errors.conflict("generation in progress");
+
+  const asset = await fetchImageAsset(url);
+  if (!asset.ok) return { imported: false as const, reason: asset.reason };
+
+  // Content-addressed name: re-importing the same image twice reuses the same
+  // file instead of littering `public/` with `hero-1`, `hero-2`, `hero-3`.
+  const stem = slugifyAssetName(url);
+  const digest = createHash("sha256")
+    .update(asset.bytes)
+    .digest("hex")
+    .slice(0, 8);
+  const path = `public/${stem}-${digest}.${asset.ext}`;
+
+  // Sandbox first, same as saveProjectFile: it is what the preview serves, so
+  // writing it before the manifest means the `src` edit that follows can never
+  // point at a file the running app hasn't got yet.
+  if (project.sandboxId && project.sandboxStatus === SandboxStatus.READY) {
+    try {
+      const sandbox = await Sandbox.connect(project.sandboxId);
+      const buf = asset.bytes.buffer.slice(
+        asset.bytes.byteOffset,
+        asset.bytes.byteOffset + asset.bytes.byteLength,
+      ) as ArrayBuffer;
+      await sandbox.files.write(toWorkdirPath(path), buf);
+    } catch (err) {
+      console.warn("[visual-asset] sandbox write failed", err);
+    }
+  }
+
+  const saved = await writeProjectBinaryFile(projectId, userId, path, asset.bytes);
+
+  return {
+    imported: true as const,
+    path,
+    // Vite serves `public/` from the root, so this — not the file path — is what
+    // belongs in the `src` attribute.
+    src: `/${path.slice("public/".length)}`,
+    sizeBytes: saved.sizeBytes,
+  };
 }
 
 /**

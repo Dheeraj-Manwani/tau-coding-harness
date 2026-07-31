@@ -142,7 +142,72 @@ export const STYLE_GROUPS: StyleGroup[] = [
 export function activeOption(
   group: StyleGroup,
   className: string,
+  variant = "",
 ): StyleOption | undefined {
   const present = new Set(className.split(/\s+/).filter(Boolean));
-  return group.options.find((o) => present.has(o.className));
+  return group.options.find((o) => present.has(variant + o.className));
+}
+
+// ── Responsive variants (doc/VISUAL_EDIT_PLAN.md §6 Phase 6) ─────────────────
+
+/**
+ * The Tailwind variant each preview frame writes.
+ *
+ * The frames in `PreviewPane` are 375 / 768 / unconstrained, and these three
+ * variants partition exactly that: `max-md:` is `< 768px`, `md:` is `>= 768px`,
+ * and an unprefixed class applies everywhere.
+ *
+ * Desktop maps to the *base* class rather than `lg:` deliberately. The device
+ * toggle defaults to desktop, so anything else would silently turn every
+ * ordinary styling click into a breakpoint-scoped one — an element restyled at
+ * the default view would then look unstyled on a phone. Base is also what the
+ * panel wrote before this existed, so the common path is unchanged.
+ *
+ * One consequence worth stating in the UI: because `md:` has no upper bound,
+ * editing the tablet frame also changes desktop. That is Tailwind's mobile-first
+ * model, not a quirk of this mapping.
+ */
+export const DEVICE_VARIANT: Record<string, string> = {
+  mobile: "max-md:",
+  tablet: "md:",
+  desktop: "",
+};
+
+/** How each frame's variant is described to the user. */
+export const VARIANT_SCOPE: Record<string, string> = {
+  "max-md:": "phone widths only (under 768px)",
+  "md:": "768px and up — tablet and desktop",
+};
+
+export interface ResolvedOption {
+  option: StyleOption | undefined;
+  /**
+   * True when the shown option comes from the base class rather than a class
+   * written for this breakpoint.
+   *
+   * The distinction is the whole feature. At `md:` an element with only `p-4`
+   * really is padded 4 — but that is inherited, and changing it must add
+   * `md:p-6` rather than rewrite `p-4` and silently move the phone layout too.
+   */
+  inherited: boolean;
+}
+
+/**
+ * What the panel should show for a group at the current breakpoint.
+ *
+ * The breakpoint's own class wins if there is one; otherwise the base class
+ * shows through, flagged as inherited. On mobile (no variant) nothing can be
+ * inherited, because the base class *is* the value being edited.
+ */
+export function resolveOption(
+  group: StyleGroup,
+  className: string,
+  variant: string,
+): ResolvedOption {
+  if (!variant) {
+    return { option: activeOption(group, className), inherited: false };
+  }
+  const own = activeOption(group, className, variant);
+  if (own) return { option: own, inherited: false };
+  return { option: activeOption(group, className), inherited: true };
 }

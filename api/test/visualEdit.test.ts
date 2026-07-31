@@ -539,3 +539,196 @@ describe("applyVisualEdit — the result still parses", () => {
     expect(res.content.match(/<div/g)).toEqual(APP.match(/<div/g));
   });
 });
+
+// ── Attribute edits (image swap, plan §6 Phase 6) ────────────────────────────
+// The op that makes "click the picture, change the picture" work. Its whole
+// safety story is the allow-list plus `SRC_VALUE`: `src` and `alt` are inert
+// data, and everything that could turn a value into markup or a scheme is
+// refused rather than escaped.
+
+function attrEdit(
+  tag: string,
+  name: "src" | "alt",
+  value: string,
+  overrides: Partial<{ expectTag: string; content: string }> = {},
+): VisualEditResult {
+  const content = overrides.content ?? STYLED;
+  const lines = content.split("\n");
+  const i = lines.findIndex((l) => l.trim().startsWith(`<${tag}`));
+  if (i === -1) throw new Error(`no <${tag}> in fixture`);
+  return applyVisualEdit({
+    content,
+    fileName: "src/Styled.tsx",
+    line: i + 1,
+    column: (lines[i] as string).indexOf("<") + 1,
+    expectTag: overrides.expectTag ?? tag,
+    op: { kind: "attr", name, value },
+  });
+}
+
+describe("applyVisualEdit — attr op", () => {
+  it("swaps an image src in place", () => {
+    const res = attrEdit("img", "src", "/hero-ab12cd34.png");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.content).toContain('<img src="/hero-ab12cd34.png"');
+    // Everything else on the element survives — this is a splice, not a rewrite.
+    expect(res.content).toContain('className="w-4"');
+  });
+
+  it("changes exactly one line", () => {
+    // The same invariant the text and class ops hold: the diff goes to the
+    // user's GitHub commit and to the agent as a USER_EDIT.
+    const res = attrEdit("img", "src", "https://cdn.example.com/a.png");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const before = STYLED.split("\n");
+    const after = res.content.split("\n");
+    expect(after.length).toBe(before.length);
+    expect(after.filter((l, i) => l !== before[i])).toHaveLength(1);
+  });
+
+  it("accepts absolute https and root-relative paths", () => {
+    for (const src of [
+      "https://cdn.example.com/a.png?v=2&w=800",
+      "http://example.com/a.png",
+      "/logo.svg",
+    ]) {
+      expect(attrEdit("img", "src", src).ok).toBe(true);
+    }
+  });
+
+  it("refuses schemes and shapes that aren't an image path", () => {
+    // `javascript:` is the reason this is an allow-list of shapes rather than a
+    // deny-list of characters — it matters the moment `href` is ever added.
+    for (const src of [
+      "javascript:alert(1)",
+      "data:image/png;base64,AAAA",
+      "//evil.example.com/a.png",
+      "a.png",
+      "/a.png onerror=alert(1)",
+      '/a.png" onerror="alert(1)',
+      "",
+    ]) {
+      expect(attrEdit("img", "src", src)).toEqual({
+        ok: false,
+        reason: "invalid_attr_value",
+      });
+    }
+  });
+
+  it("escapes alt text instead of letting it close the attribute", () => {
+    const res = attrEdit("img", "alt", 'A "quoted" <thing> & more');
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.content).toContain(
+      'alt="A &quot;quoted&quot; &lt;thing&gt; &amp; more"',
+    );
+    // The element still has exactly the attributes it started with, plus alt.
+    expect(res.content).toContain('src="/a.png"');
+    expect(res.content.match(/<img/g)).toHaveLength(1);
+  });
+
+  it("inserts the attribute when the element has none", () => {
+    const res = attrEdit("img", "alt", "A landscape");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.content).toContain('<img alt="A landscape" src="/a.png"');
+  });
+
+  it("allows an empty alt but never an empty src", () => {
+    // `alt=""` marks a decorative image; `src=""` is just broken.
+    expect(attrEdit("img", "alt", "").ok).toBe(true);
+    expect(attrEdit("img", "src", "")).toEqual({
+      ok: false,
+      reason: "invalid_attr_value",
+    });
+  });
+
+  it("refuses a computed src rather than guessing where it is built", () => {
+    const dynamic = `export function D() {
+  return (
+    <div>
+      <img src={hero} />
+      <img src={\`/img/\${id}.png\`} className="x" />
+    </div>
+  )
+}
+`;
+    expect(attrEdit("img", "src", "/a.png", { content: dynamic })).toEqual({
+      ok: false,
+      reason: "dynamic_attribute",
+    });
+  });
+
+  it("is a no-op when the value is already set", () => {
+    const res = attrEdit("img", "src", "/a.png");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.content).toBe(STYLED);
+  });
+
+  it("still honours the tag guard", () => {
+    expect(attrEdit("img", "src", "/a.png", { expectTag: "div" })).toEqual({
+      ok: false,
+      reason: "tag_mismatch",
+    });
+  });
+
+  it("rejects newlines in either attribute", () => {
+    expect(attrEdit("img", "alt", "one\ntwo").ok).toBe(false);
+  });
+});
+
+// ── Responsive variants (plan §6 Phase 6) ───────────────────────────────────
+// The whole feature is a class prefix, so it needs no server change at all —
+// which is exactly why it needs tests here. It rests entirely on tailwind-merge
+// treating `max-md:`, `md:` and unprefixed as three independent conflict groups.
+// If an upgrade collapsed any two of them, editing one breakpoint would silently
+// wipe another and the only symptom would be "my phone layout changed by itself".
+
+describe("mergeClasses — responsive variants", () => {
+  it("keeps a breakpoint class alongside the base it overrides", () => {
+    expect(mergeClasses("p-4", ["md:p-8"])).toBe("p-4 md:p-8");
+    expect(mergeClasses("p-8", ["max-md:p-2"])).toBe("p-8 max-md:p-2");
+  });
+
+  it("treats the three widths as independent", () => {
+    expect(mergeClasses("text-3xl", ["max-md:text-lg", "md:text-2xl"])).toBe(
+      "text-3xl max-md:text-lg md:text-2xl",
+    );
+  });
+
+  it("resolves conflicts within one breakpoint only", () => {
+    // `md:p-8` supersedes `md:p-6` and leaves the base `p-4` untouched — the
+    // property that lets the panel edit tablet without moving the phone layout.
+    expect(mergeClasses("p-4 md:p-6", ["md:p-8"], ["md:p-6"])).toBe(
+      "p-4 md:p-8",
+    );
+  });
+
+  it("collapses shorthand within a breakpoint, as it does at base", () => {
+    expect(mergeClasses("md:px-4 md:py-2", ["md:p-6"])).toBe("md:p-6");
+  });
+
+  it("dropping a breakpoint class lets the base show through again", () => {
+    // What clicking the active option does at a breakpoint: remove the variant,
+    // never the base.
+    expect(mergeClasses("p-4 md:p-6", [], ["md:p-6"])).toBe("p-4");
+  });
+
+  it("still changes only one line, with untouched classes in place", () => {
+    expect(
+      mergeClasses("spike-card p-4 md:p-6 font-bold", ["md:p-8"], ["md:p-6"]),
+    ).toBe("spike-card p-4 font-bold md:p-8");
+  });
+
+  it("accepts variant class names through the character guard", () => {
+    // CLASS_TOKEN has to permit `:` and `-` for any of the above to reach the
+    // file. A refusal here would surface as "that style isn't supported".
+    const res = classEdit("h1", { add: ["md:text-4xl", "max-md:text-base"] });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.className).toBe("text-2xl font-bold md:text-4xl max-md:text-base");
+  });
+});

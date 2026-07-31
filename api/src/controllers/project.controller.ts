@@ -8,6 +8,8 @@ import {
   projectFileQuerySchema,
   projectFileSaveSchema,
   visualEditSchema,
+  themeEditSchema,
+  visualAssetSchema,
   jobIdParamSchema,
   jobAnswerSchema,
 } from "../schemas/project.schema";
@@ -217,6 +219,61 @@ export const applyVisualEdit = async (
       projectId,
       userId,
       { loc, expectTag, baseHash, op },
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getProjectTheme = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const result = await projectService.getProjectTheme(projectId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const applyThemeEdit = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const input = parse(themeEditSchema, req.body);
+    const result = await projectService.applyThemeEditToProject(
+      projectId,
+      userId,
+      input,
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const importVisualAsset = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { url } = parse(visualAssetSchema, req.body);
+    const result = await projectService.importVisualAsset(
+      projectId,
+      userId,
+      url,
     );
     res.status(200).json(result);
   } catch (err) {

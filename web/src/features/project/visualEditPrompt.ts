@@ -59,6 +59,18 @@ export function buildFallbackPrompt(
     return `${where}: change its text to "${op.value}".${shared}`;
   }
 
+  if (op.kind === "attr") {
+    // The attribute is computed — `src={hero}`. Naming the current value is what
+    // lets the agent find where it is built rather than adding a literal.
+    const current = op.name === "src" ? selection.src : selection.alt;
+    const currently = current ? ` It currently resolves to \`${current}\`.` : "";
+    return (
+      `${where}: set its \`${op.name}\` to "${op.value}".` +
+      ` That attribute is set from code, so change it wherever the value comes` +
+      ` from rather than hardcoding it on the element.${currently}${shared}`
+    );
+  }
+
   const add = op.add ?? [];
   const remove = op.remove ?? [];
   const bits: string[] = [];

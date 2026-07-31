@@ -162,7 +162,7 @@
 
     var r = el.getBoundingClientRect();
 
-    return {
+    var out = {
       loc: loc,
       tagName: el.tagName.toLowerCase(),
       className: el.getAttribute("class") || "",
@@ -171,6 +171,17 @@
       siblingCount: siblingCount,
       rect: { top: r.top, left: r.left, width: r.width, height: r.height },
     };
+
+    // Images carry their current source so the parent can show a thumbnail of
+    // what is about to be replaced. `el.src` is the browser-resolved absolute
+    // URL, which is what makes a preview work for `/hero.png` too — the parent
+    // treats it as display-only and never sends it back as a new value.
+    if (out.tagName === "img") {
+      out.src = el.src || "";
+      out.alt = el.getAttribute("alt") || "";
+    }
+
+    return out;
   }
 
   // ── Input handling ─────────────────────────────────────────────────────────

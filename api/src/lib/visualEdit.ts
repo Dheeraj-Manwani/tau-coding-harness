@@ -24,10 +24,24 @@
 import ts from "typescript";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Attributes a visual edit may set.
+ *
+ * An allow-list, not a general attribute editor. `src` and `alt` are inert data
+ * — the two things "swap this image" needs. Opening this up to arbitrary names
+ * would let a click in the preview write `onClick` or
+ * `dangerouslySetInnerHTML`, which is a code-execution primitive rather than a
+ * styling one. Anything beyond these belongs in a chat turn where the agent (and
+ * the user reading the diff) can see what is being asked for.
+ */
+export const EDITABLE_ATTRS = ["src", "alt"] as const;
+export type EditableAttr = (typeof EDITABLE_ATTRS)[number];
+
 /** The change requested. */
 export type VisualEditOp =
   | { kind: "text"; value: string }
-  | { kind: "classes"; add?: string[]; remove?: string[] };
+  | { kind: "classes"; add?: string[]; remove?: string[] }
+  | { kind: "attr"; name: EditableAttr; value: string };
 
 /** Why an edit could not be applied deterministically. */
 export type VisualEditFailure =
@@ -46,7 +60,11 @@ export type VisualEditFailure =
   /** `className` is computed — `cn(...)`, a template literal, a conditional. */
   | "dynamic_classname"
   /** A class name contained characters that can't be spliced into a string. */
-  | "invalid_class";
+  | "invalid_class"
+  /** The attribute's value is computed — `src={hero}`, `src={`/img/${id}`}`. */
+  | "dynamic_attribute"
+  /** The attribute value isn't a shape we can safely write. */
+  | "invalid_attr_value";
 
 export type VisualEditResult =
   | {
@@ -160,29 +178,43 @@ export function mergeClasses(
   return out.join(" ");
 }
 
-/** The element's `className` attribute, if it has one. */
-function classNameAttribute(
+/** The named attribute on the element's opening tag, if it has one. */
+function attributeNamed(
   el: ts.JsxElement | ts.JsxSelfClosingElement,
   sf: ts.SourceFile,
+  name: string,
 ): ts.JsxAttribute | undefined {
   const opening = ts.isJsxElement(el) ? el.openingElement : el;
   for (const prop of opening.attributes.properties) {
-    if (ts.isJsxAttribute(prop) && prop.name.getText(sf) === "className") {
+    if (ts.isJsxAttribute(prop) && prop.name.getText(sf) === name) {
       return prop;
     }
   }
   return undefined;
 }
 
+/** Insert a new attribute immediately after the tag name — correct for
+ *  `<div>`, `<div id="x">` and `<img />` alike. */
+function insertAttribute(
+  content: string,
+  el: ts.JsxElement | ts.JsxSelfClosingElement,
+  name: string,
+  value: string,
+): string {
+  const opening = ts.isJsxElement(el) ? el.openingElement : el;
+  const at = opening.tagName.getEnd();
+  return `${content.slice(0, at)} ${name}="${value}"${content.slice(at)}`;
+}
+
 /**
- * The string literal holding the class list, and the byte range of its
+ * The string literal holding an attribute's value, and the byte range of its
  * *contents* (inside the quotes).
  *
- * Handles `className="a b"` and `className={"a b"}`. Anything else — `cn(...)`,
- * a template literal with substitutions, a ternary — is computed at runtime and
- * has no single literal to edit, so the caller must fall back to the agent.
+ * Handles `x="a b"` and `x={"a b"}`. Anything else — `cn(...)`, a template
+ * literal with substitutions, a ternary, an identifier — is computed at runtime
+ * and has no single literal to edit, so the caller must fall back to the agent.
  */
-function classLiteralRange(
+function stringLiteralRange(
   attr: ts.JsxAttribute,
 ): { start: number; end: number; text: string } | null {
   const init = attr.initializer;
@@ -289,9 +321,83 @@ export function applyVisualEdit(args: {
   if (!el) return { ok: false, reason: "not_found" };
   if (tagNameOf(el, sf) !== expectTag) return { ok: false, reason: "tag_mismatch" };
 
-  return op.kind === "text"
-    ? applyTextOp(content, sf, el, op.value)
-    : applyClassesOp(content, sf, el, op.add ?? [], op.remove ?? []);
+  switch (op.kind) {
+    case "text":
+      return applyTextOp(content, sf, el, op.value);
+    case "classes":
+      return applyClassesOp(content, sf, el, op.add ?? [], op.remove ?? []);
+    case "attr":
+      return applyAttrOp(content, sf, el, op.name, op.value);
+  }
+}
+
+/**
+ * Escape a value so it is safe inside a double-quoted JSX attribute.
+ *
+ * JSX decodes HTML entities inside attribute strings, so these five round-trip
+ * exactly. `"` is the one that matters: without it a value could close the
+ * string early and start writing new attributes. Braces need no escaping here —
+ * inside quotes JSX does not parse expressions — but `&` must go first or it
+ * would double-escape the entities the later rules introduce.
+ */
+export function escapeJsxAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Values `src` may be set to: an absolute http(s) URL, or a root-relative path
+ * into the app's own `public/`.
+ *
+ * Deliberately no `data:` (megabytes of base64 in a source file nobody can
+ * diff), no protocol-relative `//host` and no bare relative paths — and by
+ * construction no `javascript:`, which is the one that would turn "swap this
+ * image" into script execution on an `<a href>` if the allow-list ever grew.
+ */
+const SRC_VALUE =
+  /^(?:https?:\/\/[^\s"'<>{}\\]*|\/(?![/\\])[^\s"'<>{}\\]*)$/;
+
+/** Set `src` or `alt` on the selected element. */
+function applyAttrOp(
+  content: string,
+  sf: ts.SourceFile,
+  el: ts.JsxElement | ts.JsxSelfClosingElement,
+  name: EditableAttr,
+  value: string,
+): VisualEditResult {
+  if (/[\r\n]/.test(value)) return { ok: false, reason: "invalid_attr_value" };
+  if (name === "src" && !SRC_VALUE.test(value)) {
+    return { ok: false, reason: "invalid_attr_value" };
+  }
+  // `alt=""` is meaningful — it marks a decorative image — so an empty value is
+  // allowed there and only there. An `<img>` with no `src` is just broken.
+  if (name === "src" && !value) {
+    return { ok: false, reason: "invalid_attr_value" };
+  }
+
+  const escaped = escapeJsxAttr(value);
+  const attr = attributeNamed(el, sf, name);
+
+  if (!attr) return { ok: true, content: insertAttribute(content, el, name, escaped) };
+
+  const existing = stringLiteralRange(attr);
+  // `src={hero}` / `src={`/img/${id}`}` — computed, so there is no literal to
+  // rewrite and guessing at where the value is built would be a different edit
+  // to the one the user asked for.
+  if (!existing) return { ok: false, reason: "dynamic_attribute" };
+
+  if (escaped === content.slice(existing.start, existing.end)) {
+    return { ok: true, content };
+  }
+
+  return {
+    ok: true,
+    content:
+      content.slice(0, existing.start) + escaped + content.slice(existing.end),
+  };
 }
 
 /** Replace an element's single static text child. */
@@ -354,8 +460,8 @@ function applyClassesOp(
   for (const c of [...add, ...remove]) {
     if (!CLASS_TOKEN.test(c)) return { ok: false, reason: "invalid_class" };
   }
-  const attr = classNameAttribute(el, sf);
-  const existing = attr ? classLiteralRange(attr) : null;
+  const attr = attributeNamed(el, sf, "className");
+  const existing = attr ? stringLiteralRange(attr) : null;
 
   // An element whose className is computed can't be edited at all — say so
   // before checking whether the op is a no-op, so the UI gets the real reason.
@@ -365,15 +471,12 @@ function applyClassesOp(
   const merged = mergeClasses(before, add, remove);
   if (merged === before) return { ok: true, content, className: merged };
 
-  // No className yet: synthesise one immediately after the tag name, which is
-  // correct for `<div>`, `<div id="x">` and `<div />` alike.
+  // No className yet: synthesise one immediately after the tag name.
   if (!attr || !existing) {
-    const opening = ts.isJsxElement(el) ? el.openingElement : el;
-    const at = opening.tagName.getEnd();
     return {
       ok: true,
       className: merged,
-      content: `${content.slice(0, at)} className="${merged}"${content.slice(at)}`,
+      content: insertAttribute(content, el, "className", merged),
     };
   }
 

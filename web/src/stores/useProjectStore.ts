@@ -98,8 +98,7 @@ export type PreviewDevice = "mobile" | "tablet" | "desktop";
  * One element picked in the preview, as reported by the in-iframe runtime
  * (`worker-service/src/templates/visual-edit/runtime.js`).
  *
- * Phase 1 is read-only — this drives the inspector and "open in code" and
- * nothing writes yet. See doc/VISUAL_EDIT_PLAN.md.
+ * See doc/VISUAL_EDIT_PLAN.md.
  */
 export interface VisualSelection {
   /** `src/App.tsx:42:7` — path, 1-based line, 1-based column. */
@@ -113,6 +112,11 @@ export interface VisualSelection {
   /** How many DOM nodes share this source position. >1 means a `.map()`, and
    *  an edit here would change all of them. */
   siblingCount: number;
+  /** Current `src`/`alt`, for `<img>` only. Read off the DOM, so `src` is the
+   *  browser-resolved absolute URL rather than what the source literally says —
+   *  fine for previewing, never sent back as the new value. */
+  src?: string;
+  alt?: string;
 }
 
 /** `src/App.tsx:42:7` → `src/App.tsx`. */
@@ -133,7 +137,8 @@ export function locToLine(loc: string): string {
  */
 export type VisualEditOpInput =
   | { kind: "text"; value: string }
-  | { kind: "classes"; add?: string[]; remove?: string[] };
+  | { kind: "classes"; add?: string[]; remove?: string[] }
+  | { kind: "attr"; name: "src" | "alt"; value: string };
 
 /**
  * One reversible visual edit, stored as the operation that *undoes* it.
@@ -824,6 +829,9 @@ interface ProjectState {
   visualEditReady: boolean;
   visualSelection: VisualSelection | null;
   visualUndo: VisualUndoEntry[];
+  /** The global theme panel. Not element-scoped, so it lives beside the picker
+   *  rather than inside the inspector. */
+  themePanelOpen: boolean;
 
   /** Text staged into the chat composer by something outside it (today: a
    *  visual edit that needs the agent). Consumed and cleared by ChatPanel. */
@@ -909,6 +917,8 @@ interface ProjectState {
   /** Take the most recent undo entry off the stack. */
   popVisualUndo: () => VisualUndoEntry | null;
   clearVisualUndo: () => void;
+  /** Open/close the global theme panel. */
+  setThemePanelOpen: (open: boolean) => void;
 
   /** Stage text into the chat composer, opening the chat if it's collapsed. */
   prefillComposer: (text: string) => void;
@@ -949,6 +959,7 @@ const FRESH = {
   visualEditReady: false,
   visualSelection: null as VisualSelection | null,
   visualUndo: [] as VisualUndoEntry[],
+  themePanelOpen: false,
   composerPrefill: null as string | null,
 };
 
@@ -1264,6 +1275,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   clearVisualUndo: () => set({ visualUndo: [] }),
+
+  setThemePanelOpen: (themePanelOpen) => set({ themePanelOpen }),
 
   prefillComposer: (composerPrefill) =>
     set({ composerPrefill, isChatOpen: true }),

@@ -197,6 +197,64 @@ export async function writeProjectFile(
   return { contentHash, sizeBytes, headSequence, changed: true, persisted: true };
 }
 
+/**
+ * The binary sibling of `writeProjectFile`.
+ *
+ * A separate function rather than a `string | Uint8Array` parameter because the
+ * two differ in more than the argument type: the hash and the size come from the
+ * raw bytes (a UTF-8 `Buffer.byteLength` of an image is meaningless), and there
+ * is no `inTransaction` hook — a binary asset has no diff, so there is no
+ * `USER_EDIT` message to attach to it. The agent learns about a swapped image
+ * from the JSX change that points at it, which does carry a diff.
+ */
+export async function writeProjectBinaryFile(
+  projectId: string,
+  userId: string,
+  path: string,
+  bytes: Uint8Array,
+): Promise<WriteProjectFileResult> {
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
+  const sizeBytes = bytes.byteLength;
+
+  if (isSecretPath(path)) {
+    return {
+      contentHash,
+      sizeBytes,
+      headSequence: null,
+      changed: false,
+      persisted: false,
+    };
+  }
+
+  const existing = await prisma.projectFile.findUnique({
+    where: { projectId_path: { projectId, path } },
+    select: { contentHash: true },
+  });
+  if (existing?.contentHash === contentHash) {
+    return {
+      contentHash,
+      sizeBytes,
+      headSequence: null,
+      changed: false,
+      persisted: true,
+    };
+  }
+
+  await putBlob(userId, projectId, contentHash, bytes);
+
+  const headSequence = await prisma.$transaction(async (tx) => {
+    const seq = await allocateHeadSequence(tx, projectId);
+    await tx.projectFile.upsert({
+      where: { projectId_path: { projectId, path } },
+      create: { projectId, path, contentHash, sizeBytes, lastSequence: seq },
+      update: { contentHash, sizeBytes, lastSequence: seq },
+    });
+    return seq;
+  });
+
+  return { contentHash, sizeBytes, headSequence, changed: true, persisted: true };
+}
+
 // ── Diff summary for the hidden USER_EDIT message ───────────────────────────
 
 /** Keep the diff small enough not to fight the model's context budget —

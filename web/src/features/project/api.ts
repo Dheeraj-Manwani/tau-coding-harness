@@ -27,6 +27,7 @@ export const projectKeys = {
   tree: (id: string) => ["project", id, "tree"] as const,
   file: (id: string, path: string) => ["project", id, "file", path] as const,
   previewStatus: (id: string) => ["project", id, "preview-status"] as const,
+  theme: (id: string) => ["project", id, "theme"] as const,
 };
 
 /** `GET /project` — the signed-in user's projects, newest first. */
@@ -206,7 +207,9 @@ export type VisualEditRefusal =
   | "multiline_value"
   | "bad_loc"
   | "dynamic_classname"
-  | "invalid_class";
+  | "invalid_class"
+  | "dynamic_attribute"
+  | "invalid_attr_value";
 
 export type { VisualEditOpInput } from "@/src/stores/useProjectStore";
 
@@ -253,6 +256,121 @@ export function useVisualEdit(projectId: string | undefined) {
       void qc.invalidateQueries({
         queryKey: projectGithubKeys.info(projectId ?? ""),
       });
+    },
+  });
+}
+
+// ── Theme editing (doc/VISUAL_EDIT_PLAN.md §6 Phase 6) ───────────────────────
+
+/** Which palette a token belongs to: `:root` is light, `.dark` is dark. */
+export type ThemeScope = "root" | "dark";
+
+export interface ProjectThemeResponse {
+  path: string;
+  contentHash: string;
+  root: Record<string, string>;
+  dark: Record<string, string>;
+}
+
+export type ThemeEditRefusal =
+  | "no_theme_block"
+  | "token_not_found"
+  | "invalid_value";
+
+export type ThemeEditResponse =
+  | {
+      applied: true;
+      contentHash: string;
+      headSequence: number;
+      /** Which palette actually got written — not always the one asked for, see
+       *  `applyThemeEdit`. */
+      scope: ThemeScope;
+    }
+  | { applied: false; reason: ThemeEditRefusal };
+
+/**
+ * The project's current theme variables, read from `src/index.css`.
+ *
+ * Not cached for long: the agent edits this file too, and a stale palette would
+ * show the user colours their app no longer has.
+ */
+export function useProjectTheme(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectKeys.theme(projectId ?? ""),
+    queryFn: () =>
+      api
+        .get<ProjectThemeResponse>(`/project/${projectId}/theme`)
+        .then((r) => r.data),
+    enabled: Boolean(projectId),
+    retry: false,
+    staleTime: 5_000,
+  });
+}
+
+/**
+ * Set one theme variable — the cheapest big change in the product.
+ *
+ * Like `useVisualEdit`: no credits, no job, and the sandbox write means Vite
+ * hot-reloads the preview on its own. Unlike it, one request restyles every
+ * element that uses the token rather than one node.
+ */
+export function useThemeEdit(projectId: string | undefined) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: {
+      name: string;
+      value: string;
+      scope: ThemeScope;
+      baseHash?: string;
+    }) =>
+      api
+        .post<ThemeEditResponse>(`/project/${projectId}/theme`, vars)
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      if (!data.applied) return;
+      void qc.invalidateQueries({ queryKey: projectKeys.theme(projectId ?? "") });
+      void qc.invalidateQueries({
+        queryKey: projectKeys.file(projectId ?? "", "src/index.css"),
+      });
+      void qc.invalidateQueries({
+        queryKey: projectGithubKeys.info(projectId ?? ""),
+      });
+    },
+  });
+}
+
+export type AssetImportRefusal =
+  | "bad_url"
+  | "blocked_host"
+  | "fetch_failed"
+  | "not_an_image"
+  | "too_large"
+  | "empty";
+
+export type VisualAssetResponse =
+  | { imported: true; path: string; src: string; sizeBytes: number }
+  | { imported: false; reason: AssetImportRefusal };
+
+/**
+ * Copy a remote image into the project's `public/`.
+ *
+ * Deliberately does not touch the source — it returns a `src` the caller then
+ * applies with a normal `attr` visual edit, so the JSX rewrite keeps going
+ * through the one path that has the tag check, the stale-file check and undo.
+ */
+export function useImportVisualAsset(projectId: string | undefined) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: { url: string }) =>
+      api
+        .post<VisualAssetResponse>(`/project/${projectId}/visual-asset`, vars)
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      if (!data.imported) return;
+      // A new file exists — the tree is stale.
+      void qc.invalidateQueries({ queryKey: projectKeys.tree(projectId ?? "") });
     },
   });
 }

@@ -9,6 +9,7 @@ import {
   RotateCwIcon,
   SmartphoneIcon,
   SquareMousePointerIcon,
+  SwatchBookIcon,
   TabletIcon,
   TvMinimalIcon,
 } from "lucide-react";
@@ -160,6 +161,46 @@ function VisualEditToggle() {
   );
 }
 
+/**
+ * Global theme editing. Sits beside the element picker because it is the same
+ * feature at a different scale: one click here restyles every element that uses
+ * a theme token, rather than the one element under the cursor.
+ *
+ * Unlike the picker this needs no in-iframe runtime — it edits `src/index.css`
+ * directly — so it is offered whenever there is a preview at all.
+ */
+function ThemeToggle() {
+  const open = useProjectStore((s) => s.themePanelOpen);
+  const setOpen = useProjectStore((s) => s.setThemePanelOpen);
+  const previewUrl = useProjectStore((s) => s.previewUrl);
+
+  if (!previewUrl) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setOpen(!open)}
+          aria-label="Edit theme"
+          aria-pressed={open}
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            open
+              ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
+              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+          )}
+        >
+          <SwatchBookIcon className="size-4" />
+        </motion.button>
+      </TooltipTrigger>
+      <TooltipContent>{open ? "Close theme" : "Edit theme"}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function UrlBar() {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
@@ -282,6 +323,7 @@ export function RightPanel() {
 
         {activeTab !== "preview" && <div className="flex-1" />}
         {activeTab === "preview" && <VisualEditToggle />}
+        {activeTab === "preview" && <ThemeToggle />}
         {activeTab === "preview" && <DeviceSwitcher />}
 
         <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />

@@ -26,6 +26,40 @@ export const attachmentRateLimiter = rateLimit({
   },
 });
 
+// Visual edits are free to the user — no model call, no credits — so nothing
+// else bounds them, and each one is a parse plus three writes. The limit is set
+// far above real use: clicking through the style panel is a handful of requests
+// a minute, and the ceiling only bites on a script.
+export const visualEditRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many edits at once. Please try again in a moment.",
+  },
+});
+
+// Importing an image makes the API fetch a URL the user chose, which is both
+// slower and more abusable than the source edits above — it is bandwidth in and
+// storage out. Tighter, and separate so a burst of imports can't spend the
+// allowance that ordinary styling needs.
+export const assetImportRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many image imports. Please try again in a little while.",
+  },
+});
+
 // Revealing or rotating hands out a live spend credential in plaintext. Neither
 // is something a legitimate user does more than a handful of times, so the limit
 // is tight enough to make scripted extraction pointless without ever being felt.

@@ -5,8 +5,10 @@ import { ApiError } from "@/src/lib/api-client";
 import { useVisualEdit } from "@/src/features/project/api";
 import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
 import {
+  DEVICE_VARIANT,
   STYLE_GROUPS,
-  activeOption,
+  VARIANT_SCOPE,
+  resolveOption,
   type StyleGroup,
   type StyleOption,
 } from "@/src/features/project/visualStyleVocabulary";
@@ -25,6 +27,11 @@ import {
  * The selection's `className` is updated optimistically from the server's own
  * merge rules being predictable: clicking an option adds its class, and the
  * server drops whatever conflicts. If the request fails we restore.
+ *
+ * The panel follows the preview's device toggle. On the phone frame it edits
+ * base classes; on tablet and desktop it writes `md:` / `lg:` variants, so
+ * "make this bigger on desktop" is one click rather than a chat turn. See
+ * `DEVICE_VARIANT`.
  */
 export function VisualStylePanel({
   selection,
@@ -37,21 +44,38 @@ export function VisualStylePanel({
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const pushUndo = useProjectStore((s) => s.pushVisualUndo);
   const prefillComposer = useProjectStore((s) => s.prefillComposer);
+  const previewDevice = useProjectStore((s) => s.previewDevice);
   const visualEdit = useVisualEdit(projectId ?? undefined);
+
+  const variant = DEVICE_VARIANT[previewDevice] ?? "";
 
   const apply = (group: StyleGroup, option: StyleOption) => {
     if (visualEdit.isPending) return;
 
-    const current = activeOption(group, selection.className);
+    const { option: current, inherited } = resolveOption(
+      group,
+      selection.className,
+      variant,
+    );
     const isActive = current?.className === option.className;
 
-    // Clicking the active option turns it off rather than re-applying it.
-    const add = isActive ? [] : [option.className];
-    const remove = isActive
-      ? [option.className]
-      : current
-        ? [current.className]
-        : [];
+    // Clicking the value this breakpoint inherits from the base is a no-op:
+    // there is nothing here to turn off, and writing `md:p-4` next to an
+    // existing `p-4` would add a class that changes nothing.
+    if (isActive && inherited) return;
+
+    // Clicking the active option turns it off rather than re-applying it. At a
+    // breakpoint that means dropping the variant class and letting the base
+    // show through again.
+    const add = isActive ? [] : [variant + option.className];
+
+    // Only ever remove a class from *this* breakpoint. Removing the base class
+    // while editing `md:` would move the phone layout too, which is exactly the
+    // surprise this feature exists to avoid — so an inherited value is left
+    // alone and the new variant is simply layered over it.
+    const remove: string[] = [];
+    if (isActive) remove.push(variant + option.className);
+    else if (current && !inherited) remove.push(variant + current.className);
 
     visualEdit.mutate(
       {
@@ -95,7 +119,7 @@ export function VisualStylePanel({
               loc: selection.loc,
               expectTag: selection.tagName,
               op: { kind: "classes", add: undoAdd, remove: undoRemove },
-              label: group.label.toLowerCase(),
+              label: `${variant}${group.label.toLowerCase()}`,
             });
           }
 
@@ -125,8 +149,20 @@ export function VisualStylePanel({
         visualEdit.isPending && "opacity-60",
       )}
     >
+      {variant && (
+        <p className="pb-1.5 text-[11px] text-[var(--silver-600)]">
+          Writing{" "}
+          <span className="font-mono text-[var(--silver-900)]">{variant}</span>{" "}
+          styles — these apply at {VARIANT_SCOPE[variant]}. Dimmed values are
+          inherited from all sizes and are left alone unless you change them.
+        </p>
+      )}
       {STYLE_GROUPS.map((group) => {
-        const current = activeOption(group, selection.className);
+        const { option: current, inherited } = resolveOption(
+          group,
+          selection.className,
+          variant,
+        );
         return (
           <div key={group.id} className="flex items-start gap-2 py-1">
             <span className="w-20 shrink-0 pt-1 text-[11px] text-[var(--silver-600)]">
@@ -135,18 +171,27 @@ export function VisualStylePanel({
             <div className="flex flex-wrap gap-1">
               {group.options.map((option) => {
                 const isActive = current?.className === option.className;
+                // Dashed + dimmed for a value this breakpoint is only borrowing:
+                // it is what the element looks like, but nothing here sets it.
+                const isInherited = isActive && inherited;
                 return (
                   <button
                     key={option.className}
                     type="button"
                     disabled={visualEdit.isPending}
                     onClick={() => apply(group, option)}
-                    title={option.className}
+                    title={
+                      isInherited
+                        ? `${option.className} — inherited from all sizes`
+                        : variant + option.className
+                    }
                     aria-pressed={isActive}
                     className={cn(
                       "flex items-center gap-1 rounded-[var(--radius-md)] border px-1.5 py-0.5 text-[11px] transition-colors disabled:cursor-default",
                       isActive
-                        ? "border-[var(--blue-500)] text-[var(--silver-900)]"
+                        ? isInherited
+                          ? "border-dashed border-[var(--silver-400)] text-[var(--silver-600)]"
+                          : "border-[var(--blue-500)] text-[var(--silver-900)]"
                         : "border-[var(--silver-200)] text-[var(--silver-600)] hover:text-[var(--silver-900)]",
                     )}
                   >

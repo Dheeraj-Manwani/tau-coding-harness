@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   CodeIcon,
+  ImageIcon,
   LayersIcon,
   PaletteIcon,
   PlayIcon,
@@ -13,6 +14,8 @@ import toast from "react-hot-toast";
 import { cn } from "@/src/lib/utils";
 import BorderGlow from "@/src/components/ui/glow-loader";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
+import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
+import { VisualThemePanel } from "@/src/features/project/VisualThemePanel";
 import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
 import {
   locToPath,
@@ -145,6 +148,9 @@ function useVisualEditBridge(
           text: d.text ?? "",
           editableText: Boolean(d.editableText),
           siblingCount: d.siblingCount ?? 1,
+          // Only sent for <img>; absent on everything else.
+          ...(d.src === undefined ? {} : { src: d.src }),
+          ...(d.alt === undefined ? {} : { alt: d.alt }),
         });
       }
     }
@@ -296,6 +302,9 @@ const REFUSAL_COPY: Record<VisualEditRefusal, string> = {
   dynamic_classname:
     "This element's styles are set in code — ask tau in the chat.",
   invalid_class: "That style isn't supported.",
+  dynamic_attribute:
+    "This image's source is set in code — ask tau in the chat.",
+  invalid_attr_value: "That isn't a usable image address.",
 };
 
 /**
@@ -440,7 +449,10 @@ function VisualInspector({
   const openFile = useProjectStore((s) => s.openFile);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const files = useProjectStore((s) => s.files);
-  const [showStyles, setShowStyles] = useState(false);
+  // One panel at a time: both are tall, and stacking them would push the
+  // element the user is editing off the top of the preview.
+  const [panel, setPanel] = useState<"styles" | "image" | null>(null);
+  const isImage = selection.tagName === "img";
 
   const path = locToPath(selection.loc);
   // The tagger emits paths relative to the app root, which is the same key
@@ -459,8 +471,11 @@ function VisualInspector({
           in the code — an edit here changes all {selection.siblingCount}.
         </div>
       )}
-      {showStyles && (
+      {panel === "styles" && (
         <VisualStylePanel selection={selection} onReselect={onReselect} />
+      )}
+      {panel === "image" && (
+        <VisualImagePanel selection={selection} onReselect={onReselect} />
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-2 text-xs">
       <span className="font-mono font-semibold text-[var(--silver-900)]">
@@ -483,14 +498,31 @@ function VisualInspector({
       )}
 
       <div className="ml-auto flex items-center gap-1">
+        {isImage && (
+          <button
+            type="button"
+            onClick={() => setPanel((p) => (p === "image" ? null : "image"))}
+            aria-pressed={panel === "image"}
+            title="Replace this image"
+            className={cn(
+              "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
+              panel === "image"
+                ? "text-[var(--blue-500)]"
+                : "text-[var(--silver-900)]",
+            )}
+          >
+            <ImageIcon className="size-3.5" />
+            Image
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => setShowStyles((v) => !v)}
-          aria-pressed={showStyles}
+          onClick={() => setPanel((p) => (p === "styles" ? null : "styles"))}
+          aria-pressed={panel === "styles"}
           title="Style this element"
           className={cn(
             "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-            showStyles
+            panel === "styles"
               ? "text-[var(--blue-500)]"
               : "text-[var(--silver-900)]",
           )}
@@ -535,6 +567,8 @@ export function PreviewPane({ device }: { device: string }) {
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
 
   const visualSelection = useProjectStore((s) => s.visualSelection);
+  const themePanelOpen = useProjectStore((s) => s.themePanelOpen);
+  const setThemePanelOpen = useProjectStore((s) => s.setThemePanelOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
   useVisualUndo(reselect);
@@ -596,11 +630,18 @@ export function PreviewPane({ device }: { device: string }) {
               className="h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
-            {visualSelection && (
-              <VisualInspector
-                selection={visualSelection}
-                onReselect={reselect}
-              />
+            {/* The theme panel wins the bottom strip: it is global, so it isn't
+                describing the selected element and stacking the two would hide
+                whichever ended up underneath. */}
+            {themePanelOpen ? (
+              <VisualThemePanel onClose={() => setThemePanelOpen(false)} />
+            ) : (
+              visualSelection && (
+                <VisualInspector
+                  selection={visualSelection}
+                  onReselect={reselect}
+                />
+              )
             )}
           </>
         ) : (

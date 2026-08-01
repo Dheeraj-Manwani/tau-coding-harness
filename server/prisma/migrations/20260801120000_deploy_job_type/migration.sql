@@ -1,0 +1,12 @@
+-- AlterEnum
+--
+-- A publish is a job like any other: it provisions the project's sandbox, runs
+-- a build in it and streams progress over the same SSE channel. Giving it a
+-- JobType means the existing runner, reaper, liveness and "one active job per
+-- project" guard all apply to it for free, instead of growing a second
+-- lifecycle nobody watches.
+--
+-- Kept standalone: Postgres will not let a new enum value be USED in the same
+-- transaction that adds it, which is why Prisma always emits enum additions on
+-- their own (see 20260713130000_preview_job_type, 20260728160000_gateway_debit).
+ALTER TYPE "JobType" ADD VALUE 'DEPLOY';

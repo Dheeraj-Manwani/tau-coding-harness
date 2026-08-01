@@ -1,0 +1,62 @@
+{
+  "name": "server",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "dev:debug": "bun --inspect src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "build:template": "bun run scripts/build-template.ts",
+    "check:template": "bun run scripts/check-templates.ts",
+    "reset": "bun run scripts/reset-all.ts",
+    "reset:confirm": "bun run scripts/reset-all.ts --confirm"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/bun": "latest",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.17",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1075.0",
+    "@aws-sdk/s3-request-presigner": "3.1075.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "archiver": "^8.0.0",
+    "argon2": "^0.44.0",
+    "bun": "^1.3.14",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "diff": "^9.0.0",
+    "e2b": "^2.30.5",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "ignore": "^7.0.6",
+    "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.12.0",
+    "openai": "^6.44.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "playwright": "^1.50.0",
+    "razorpay": "^2.9.6",
+    "resend": "^6.12.4",
+    "tailwind-merge": "^3.6.0",
+    "typescript": "^5",
+    "unpdf": "^1.6.2",
+    "zod": "^4.4.3"
+  }
+}

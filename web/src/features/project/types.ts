@@ -147,6 +147,13 @@ export type JobEvent = BaseEvent &
     | { type: "shell_output"; stream: "stdout" | "stderr"; line: string }
     | { type: "preview_ready"; url: string }
     | {
+        type: "deploy_ready";
+        url: string | null;
+        deploymentId: string;
+        /** Set when the build only passed with the type check bypassed. */
+        warning: string | null;
+      }
+    | {
         type: "plan_created";
         name: string;
         description: string;

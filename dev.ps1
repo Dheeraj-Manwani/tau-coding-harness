@@ -1,23 +1,23 @@
 # Starts the dev services, each in its own terminal.
-#   web       -> pnpm dev            (vite)
-#   economy   -> bun run dev:economy (api + worker + SSE in ONE process)
+#   web     -> pnpm dev     (vite)
+#   server  -> bun run dev  (api + worker + SSE in ONE process)
 #
 # Usage:  ./dev.ps1
 #
 # This used to launch api, ws-gateway and worker-service as three separate
 # processes, which is the `master` (Redis) topology. On `economy` that layout is
-# broken, not merely redundant: both services' `lib/bus.ts` re-export
-# `deploy/in-process-bus.ts`, which is plain in-memory EventEmitters. Run in
-# separate processes they get separate buses, so the api never dispatches a job
-# the worker can see and the worker's events never reach the api's SSE stream.
-# `deploy/combined.ts` is the only correct way to run the backend here.
+# broken, not merely redundant: the event bus is `server/src/lib/bus.ts`, plain
+# in-memory EventEmitters. Run in separate processes they would get separate
+# buses, so the api would never dispatch a job the worker could see and worker
+# events would never reach the SSE stream. `server/src/index.ts` is the only
+# correct way to run the backend.
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 
 $services = @(
-    @{ Name = "web";     Dir = "web"; Cmd = "pnpm dev" },
-    @{ Name = "economy"; Dir = ".";   Cmd = "bun run dev:economy" }
+    @{ Name = "web";    Dir = "web";    Cmd = "pnpm dev" },
+    @{ Name = "server"; Dir = "server"; Cmd = "bun run dev" }
 )
 
 $wt = Get-Command wt.exe -ErrorAction SilentlyContinue

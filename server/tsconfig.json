@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    // Environment setup & latest features
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowJs": true,
+
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    // One alias for the whole service. `@/api/**` and `@/worker/**` are the two
+    // former services; `@/lib/**` is code shared by both; `@/generated/**` is
+    // the single Prisma client.
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    // Best practices
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+
+    // Some stricter flags (disabled by default)
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "types": ["node", "bun"]
+  },
+
+  "exclude": [
+    // Assets shipped *into* generated apps, not compiled as part of this
+    // service. `visual-edit/tagger.ts` imports @babel/parser and magic-string,
+    // which are dependencies of the generated app; the worker only ever reads
+    // these two files as text (see templates/shared.ts readVisualEditAsset).
+    "src/worker/templates/visual-edit",
+
+    // One-off experiments. These lived at the repo root outside either
+    // service's tsconfig and so were never typechecked; merging pulled them in
+    // and surfaced 15 pre-existing strictness errors. Excluded to preserve the
+    // status quo rather than silently changing it. They are candidates for
+    // deletion — see doc/SERVICE_MERGE_PLAN.md open decision #9 — at which
+    // point this entry goes too.
+    "scripts/spike-*"
+  ]
+}

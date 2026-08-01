@@ -1,12 +1,8 @@
-# Phase 0 of doc/SERVICE_MERGE_PLAN.md — the repo's first CI.
+# CI for the merged backend (doc/SERVICE_MERGE_PLAN.md).
 #
-# Runs what already exists and already passes: a typecheck and a test suite in
-# each service, plus the drift guard that keeps the duplicated api/ ↔
-# worker-service/ files from silently diverging.
-#
-# Verified green locally on 2026-08-01 @ 1733c5e:
-#   api    258 pass / 0 fail (15 files)   worker  77 pass / 0 fail (8 files)
-#   drift    7 pass / 0 fail
+# Phase 0 created this with one job per service. Phase 5 merged api/ and
+# worker-service/ into server/, so there is now a single install, a single
+# typecheck and a single test run.
 name: CI
 
 on:
@@ -22,15 +18,15 @@ concurrency:
 
 env:
   # ── Dummy values, not secrets ───────────────────────────────────────────────
-  # Both services validate their environment with zod at *import* time and call
-  # `process.exit(1)` when a required variable is missing, so the suites cannot
+  # The service validates its environment with zod at *import* time and calls
+  # `process.exit(1)` when a required variable is missing, so the suite cannot
   # even load without these. Nothing here reaches the network: no test opens a
   # database connection or calls an external API.
   #
   # `RESEND_API_KEY` is the subtle one. zod marks it `.optional()`, but
-  # `api/src/lib/email.ts:6` constructs `new Resend(env.RESEND_API_KEY)` at
-  # module scope and the SDK throws on an empty key — so an api suite without it
-  # fails with `Missing API key`, not with a validation error. Same trap
+  # `src/api/lib/email.ts` constructs `new Resend(env.RESEND_API_KEY)` at module
+  # scope and the SDK throws on an empty key — so a run without it fails with
+  # `Missing API key`, not with a validation error. Same trap
   # deploy/README.md documents under "boot-required env".
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
   ACCESS_TOKEN_SECRET: ci-access-token-secret-not-a-real-key
@@ -56,12 +52,11 @@ jobs:
         with:
           bun-version: 1.3.8
       # No `bun install`: test/drift.test.ts imports only node:fs by design, so
-      # this job stays fast and cannot be broken by a dependency problem in
-      # either service.
+      # this job stays fast and cannot be broken by a dependency problem.
       - run: bun run test:drift
 
-  api:
-    name: api
+  server:
+    name: server
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,34 +64,17 @@ jobs:
         with:
           bun-version: 1.3.8
       - run: bun install --frozen-lockfile
-        working-directory: api
+        working-directory: server
       # `src/generated/prisma` is gitignored, so the client must be generated
-      # before tsc runs or every `../generated/prisma/client` import fails.
+      # before tsc runs or every `@/generated/prisma/*` import fails.
       # `prisma generate` reads DATABASE_URL from prisma.config.ts but never
       # connects, so the dummy above is enough.
       - run: bun run generate
-        working-directory: api
+        working-directory: server
       - run: bun run typecheck
-        working-directory: api
+        working-directory: server
       - run: bun test
-        working-directory: api
-
-  worker:
-    name: worker-service
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.8
-      - run: bun install --frozen-lockfile
-        working-directory: worker-service
-      - run: bun run generate
-        working-directory: worker-service
-      - run: bun run typecheck
-        working-directory: worker-service
-      - run: bun test
-        working-directory: worker-service
+        working-directory: server
 
   mobile-parity:
     name: mobile API contract

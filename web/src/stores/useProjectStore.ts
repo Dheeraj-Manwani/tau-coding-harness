@@ -13,6 +13,7 @@ import { billingKeys, type BalanceSummary } from "@/src/features/billing/api";
 import { queryClient } from "@/src/lib/query-client";
 import { sha256Hex } from "@/src/lib/hash";
 import { normalizePreviewPath } from "@/src/features/project/previewUrl";
+import { deployKeys } from "@/src/features/project/deploy";
 
 /** Pull the credit balance back from the server after a job settles. */
 function invalidateBalance(): void {
@@ -1778,6 +1779,18 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         previewNonce: s.previewNonce + 1,
         buildStarted: true,
       }));
+      return;
+
+    case "deploy_ready":
+      // The publish job is finished and the live pointer has moved. Refetch the
+      // panel rather than patching it locally: the server owns the derived
+      // fields (unpublished-change count, which deployment is live) and there
+      // is no spinner to race — the panel is already showing "Publishing…".
+      // Any warning the build produced is on the deployment row, so the refetch
+      // brings it along — no need to carry it through the store as well.
+      void queryClient.invalidateQueries({
+        queryKey: deployKeys.status(get().projectId ?? ""),
+      });
       return;
 
     case "done":

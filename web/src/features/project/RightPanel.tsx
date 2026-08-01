@@ -22,6 +22,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { UserMenu } from "@/src/components/UserMenu";
 import { GithubPanel } from "@/src/features/project/GithubPanel";
+import { DeployPanel } from "@/src/features/project/DeployPanel";
 import {
   useProjectStore,
   type PreviewDevice,
@@ -329,6 +330,7 @@ export function RightPanel() {
         <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />
 
         <GithubPanel />
+        <DeployPanel />
         <UserMenu />
       </div>
 

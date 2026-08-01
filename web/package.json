@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "docs:index": "bun run ../scripts/build-docs-index.ts",
+    "docs:index": "bun run scripts/build-docs-index.ts",
     "predev": "pnpm run docs:index",
     "dev": "vite",
     "prebuild": "pnpm run docs:index",

@@ -3,14 +3,14 @@
   "private": true,
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File ./dev.ps1",
-    "start:economy": "bun run deploy/combined.ts",
-    "dev:economy": "bun run --hot deploy/combined.ts",
+    "start:economy": "cd server && bun run start",
+    "dev:economy": "cd server && bun run dev",
     "test:drift": "bun test test/drift.test.ts",
-    "reset": "bun run scripts/reset-all.ts",
-    "reset:confirm": "bun run scripts/reset-all.ts --confirm",
+    "reset": "cd server && bun run reset",
+    "reset:confirm": "cd server && bun run reset:confirm",
     "check:mobile": "bun run mobile/scripts/check-parity.ts",
-    "docs:index": "bun run scripts/build-docs-index.ts",
-    "prerender": "bun run scripts/prerender.ts"
+    "docs:index": "bun run web/scripts/build-docs-index.ts",
+    "prerender": "bun run web/scripts/prerender.ts"
   },
   "devDependencies": {
     "e2b": "^2.36.1",

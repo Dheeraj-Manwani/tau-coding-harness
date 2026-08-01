@@ -14,11 +14,30 @@ export const messageRole = z.enum(["USER", "ASSISTANT"]);
 export const messageType = z.enum(["RESULT", "ERROR"]);
 export const effortSchema = z.enum(["LOW", "HIGH", "MAX"]).default("LOW");
 
+/**
+ * The element a message was sent about, from the visual-edit inspector.
+ *
+ * Every field is bounded. These strings are read off the DOM by a script in the
+ * user's own sandbox and go straight into the model's context, so an element
+ * with a pathological `className` must cost a clamped block rather than a turn's
+ * worth of tokens. `visualContext.ts` clamps for prose; this refuses outright.
+ */
+export const visualContextSchema = z.object({
+  loc: z.string().max(300),
+  tagName: z.string().max(50),
+  className: z.string().max(2000).optional(),
+  text: z.string().max(1000).optional(),
+  src: z.string().max(2000).optional(),
+  siblingCount: z.number().int().min(1).max(10_000).optional(),
+  computed: z.enum(["text", "className", "attribute"]).optional(),
+});
+
 export const messageSchema = z
   .object({
     message: messageContent,
     effort: effortSchema,
     attachmentIds: z.array(z.uuid()).max(10).default([]),
+    visualContext: visualContextSchema.optional(),
   })
   .refine((v) => v.message.length > 0 || v.attachmentIds.length > 0, {
     message: "Message can't be empty",

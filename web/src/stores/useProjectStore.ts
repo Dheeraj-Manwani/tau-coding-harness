@@ -7,6 +7,7 @@ import type {
   ProjectDetail,
   ProjectMessage,
   ProjectTree,
+  VisualMessageContext,
 } from "@/src/features/project/types";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { billingKeys, type BalanceSummary } from "@/src/features/billing/api";
@@ -14,6 +15,7 @@ import { queryClient } from "@/src/lib/query-client";
 import { sha256Hex } from "@/src/lib/hash";
 import { normalizePreviewPath } from "@/src/features/project/previewUrl";
 import { deployKeys } from "@/src/features/project/deploy";
+import type { ComputedValue } from "@/src/features/project/visualEditPrompt";
 
 /** Pull the credit balance back from the server after a job settles. */
 function invalidateBalance(): void {
@@ -90,6 +92,17 @@ export interface Message {
   divider?: DividerMeta;
   /** Attachments the user sent with this turn; rendered as read-only chips. */
   attachments?: MessageAttachment[];
+  /** The element this turn was sent about, when it came from the visual-edit
+   *  inspector. Rendered as a chip; the rest of the context is in a block the
+   *  model reads and this transcript never shows. */
+  element?: MessageElement;
+}
+
+/** What the transcript needs to say "this was about that element". */
+export interface MessageElement {
+  path: string;
+  line: string;
+  tagName: string;
 }
 
 export type Tab = "preview" | "code";
@@ -193,6 +206,7 @@ const now = () => Date.now();
 function userMessage(
   content: string,
   attachments?: MessageAttachment[],
+  element?: MessageElement,
 ): Message {
   return {
     id: crypto.randomUUID(),
@@ -200,7 +214,17 @@ function userMessage(
     content,
     timestamp: now(),
     ...(attachments?.length ? { attachments } : {}),
+    ...(element ? { element } : {}),
   };
+}
+
+/** `src/App.tsx:42:7` → what the transcript chip shows. */
+export function toMessageElement(
+  ctx: VisualMessageContext,
+): MessageElement | undefined {
+  const m = /^(.+):(\d+):\d+$/.exec(ctx.loc);
+  if (!m) return undefined;
+  return { path: m[1]!, line: m[2]!, tagName: ctx.tagName };
 }
 
 function basename(path: string): string {
@@ -540,8 +564,47 @@ const LEGACY_EMPTY_MESSAGE_PLACEHOLDER =
 function isGeneratedBlock(text: string): boolean {
   return (
     text.startsWith("<attachment ") ||
+    text.startsWith("<selected-element ") ||
     text.trim() === LEGACY_EMPTY_MESSAGE_PLACEHOLDER
   );
+}
+
+/**
+ * Recover the chip from a `<selected-element>` block.
+ *
+ * Parsing a format we generate ourselves, which is normally a smell — but the
+ * alternative is a column on `Message` for three strings the block already
+ * carries, and the attributes exist precisely so this is a lookup rather than
+ * a guess. `visualContext.ts` escapes them on the way out, so an element whose
+ * class list contained a quote cannot produce a chip that lies.
+ *
+ * Only the opening tag is examined; whatever prose follows is the model's
+ * business, not the transcript's.
+ *
+ * Exported for `web/test/visualEditPrompt.test.ts`, which pins it against the
+ * same fixture `server/test/api/visualContext.test.ts` pins the *writer*
+ * against. The two halves live in different packages and cannot import each
+ * other, so a shared literal is what stops one being changed without the other
+ * — the same arrangement the tagger and the AST resolver use for coordinates
+ * (VISUAL_EDIT_PLAN.md §6 Phase 2).
+ */
+export function parseElementBlock(text: string): MessageElement | undefined {
+  const open = /^<selected-element ([^>]*)>/.exec(text);
+  if (!open) return undefined;
+  const attrs = open[1]!;
+  const get = (name: string) =>
+    new RegExp(`${name}="([^"]*)"`)
+      .exec(attrs)?.[1]
+      ?.replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&");
+
+  const path = get("file");
+  const line = get("line");
+  const tagName = get("tag");
+  if (!path || !line || !tagName) return undefined;
+  return { path, line, tagName };
 }
 
 function toConversation(
@@ -575,13 +638,22 @@ function toConversation(
         : String(blocks ?? "");
       const text = isGeneratedBlock(first) ? "" : first;
       const attachments = row.attachments ?? [];
-      if (text || attachments.length > 0)
+      // The element chip comes from a later block — the same one the model
+      // reads, so a reloaded transcript shows exactly what the optimistic
+      // bubble did without a column to store it in.
+      const element = Array.isArray(blocks)
+        ? blocks
+            .map((b) => parseElementBlock(b?.text ?? ""))
+            .find((e) => e !== undefined)
+        : undefined;
+      if (text || attachments.length > 0 || element)
         messages.push({
           id: row.id,
           role: "user",
           content: text,
           timestamp: ts,
           ...(attachments.length > 0 ? { attachments } : {}),
+          ...(element ? { element } : {}),
         });
       turnStart = messages.length; // ai messages from here onward are this turn's response
     } else if (row.role === "ASSISTANT" && row.type === "TOOL_REQ") {
@@ -833,10 +905,18 @@ interface ProjectState {
   /** The global theme panel. Not element-scoped, so it lives beside the picker
    *  rather than inside the inspector. */
   themePanelOpen: boolean;
+  /** The deterministic editor — inline text box, style panel, image panel.
+   *
+   *  Off by default: asking tau is what a selection does now, and editing the
+   *  element yourself is the opt-in. Sticky for the session rather than reset
+   *  per selection, so a styling pass costs one click instead of one per
+   *  element — it is a mode, not a property of the element. */
+  manualPanelOpen: boolean;
 
-  /** Text staged into the chat composer by something outside it (today: a
-   *  visual edit that needs the agent). Consumed and cleared by ChatPanel. */
-  composerPrefill: string | null;
+  /** Text staged into the inspector's prompt box (today: an edit the
+   *  deterministic path refused, rewritten as a request), plus which value it
+   *  refused. Consumed and cleared by `ElementPrompt`. */
+  visualPromptPrefill: { text: string; computed?: ComputedValue } | null;
 
   // ── Actions ──
   /** Reset everything when entering (or switching to) a project. */
@@ -873,6 +953,7 @@ interface ProjectState {
   appendUserMessage: (
     content: string,
     attachments?: MessageAttachment[],
+    visualContext?: VisualMessageContext,
   ) => string;
   /** Remove a single chat bubble by id (used to roll back a failed optimistic send). */
   removeChatMessage: (id: string) => void;
@@ -920,10 +1001,12 @@ interface ProjectState {
   clearVisualUndo: () => void;
   /** Open/close the global theme panel. */
   setThemePanelOpen: (open: boolean) => void;
+  /** Show/hide the deterministic editor inside the inspector. */
+  setManualPanelOpen: (open: boolean) => void;
 
-  /** Stage text into the chat composer, opening the chat if it's collapsed. */
-  prefillComposer: (text: string) => void;
-  clearComposerPrefill: () => void;
+  /** Stage a request into the inspector's prompt box. */
+  prefillVisualPrompt: (text: string, computed?: ComputedValue) => void;
+  clearVisualPromptPrefill: () => void;
 }
 
 /** State reset whenever we enter a project (UI prefs below are preserved). */
@@ -961,7 +1044,11 @@ const FRESH = {
   visualSelection: null as VisualSelection | null,
   visualUndo: [] as VisualUndoEntry[],
   themePanelOpen: false,
-  composerPrefill: null as string | null,
+  manualPanelOpen: false,
+  visualPromptPrefill: null as {
+    text: string;
+    computed?: ComputedValue;
+  } | null,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -1163,8 +1250,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       currentPlan: null,
     }),
 
-  appendUserMessage: (content, attachments) => {
-    const msg = userMessage(content, attachments);
+  appendUserMessage: (content, attachments, visualContext) => {
+    const msg = userMessage(
+      content,
+      attachments,
+      visualContext ? toMessageElement(visualContext) : undefined,
+    );
     set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
     return msg.id;
   },
@@ -1278,11 +1369,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   clearVisualUndo: () => set({ visualUndo: [] }),
 
   setThemePanelOpen: (themePanelOpen) => set({ themePanelOpen }),
+  setManualPanelOpen: (manualPanelOpen) => set({ manualPanelOpen }),
 
-  prefillComposer: (composerPrefill) =>
-    set({ composerPrefill, isChatOpen: true }),
+  prefillVisualPrompt: (text, computed) =>
+    set({ visualPromptPrefill: { text, computed } }),
 
-  clearComposerPrefill: () => set({ composerPrefill: null }),
+  clearVisualPromptPrefill: () => set({ visualPromptPrefill: null }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
 

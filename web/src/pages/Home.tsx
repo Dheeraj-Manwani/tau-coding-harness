@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
@@ -9,18 +9,17 @@ import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { MaxStarField } from "@/src/features/home/MaxStarField";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
 import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
-import type { Effort } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { projectPath } from "@/src/lib/routes";
 import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
-import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 
 // Free plan may own at most this many concurrent projects (mirrors
@@ -70,24 +69,10 @@ function Home() {
   const projectCount = projects?.length ?? 0;
   const atProjectLimit = isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
 
-  // Restore the last effort the user explicitly picked (persisted in localStorage).
-  const lastEffort = useSettingsStore((s) => s.lastEffort);
-  const setLastEffort = useSettingsStore((s) => s.setLastEffort);
-  const [effort, setEffort] = useState<Effort>(lastEffort ?? "LOW");
+  // Shared with the project composer and the visual-edit inspector.
+  const { effort, setEffort } = useEffortChoice();
   // Drives the Home-only dramatic animations (lightning composer + glitch stars).
   const maxActive = effort === "MAX";
-  // If we restored a saved choice, don't let the plan-based default override it.
-  const effortDefaultedRef = useRef(lastEffort != null);
-  useEffect(() => {
-    if (effortDefaultedRef.current || balance === undefined) return;
-    effortDefaultedRef.current = true;
-    if (!isFreePlan) setEffort("HIGH");
-  }, [balance, isFreePlan]);
-
-  const handleEffortChange = (next: Effort) => {
-    setEffort(next);
-    setLastEffort(next);
-  };
 
   // A prefilled prompt is a one-time welcome, not a sticky draft.
   useEffect(() => clearPendingPrompt(), []);
@@ -201,7 +186,7 @@ function Home() {
                 rightSlot={
                   <EffortDropdown
                     effort={effort}
-                    onChange={handleEffortChange}
+                    onChange={setEffort}
                     ceilings={balance?.effortCeilings}
                   />
                 }

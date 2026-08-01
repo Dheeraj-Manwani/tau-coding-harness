@@ -49,6 +49,7 @@ import {
   waitForExtraction,
   type ResolvedAttachment,
 } from "../lib/attachments";
+import { visualContextBlock, type VisualContext } from "../lib/visualContext";
 import {
   MessageRole,
   MessageType,
@@ -117,12 +118,22 @@ async function buildUserMessage(
   userId: string,
   text: string,
   attachmentIds: string[],
+  visualContext?: VisualContext,
 ): Promise<{
   content: Prisma.InputJsonValue;
   resolved: ResolvedAttachment[];
 }> {
   const blocks: { type: "text"; text: string }[] = [];
-  if (text.trim().length > 0) blocks.push({ type: "text", text });
+  const hasUserText = text.trim().length > 0;
+  if (hasUserText) blocks.push({ type: "text", text });
+
+  // Directly after the user's words, so the model reads "make it a dropdown"
+  // and "this is the <button> at App.tsx:42" adjacent rather than with a
+  // document dump between them.
+  if (visualContext) {
+    const block = visualContextBlock(visualContext);
+    if (block) blocks.push({ type: "text", text: block });
+  }
 
   if (attachmentIds.length === 0) {
     return { content: blocks, resolved: [] };
@@ -149,7 +160,11 @@ async function buildUserMessage(
   // Without this an attachment-only message reads as a bare document dump. It
   // goes LAST on purpose: the transcript treats block 0 as the user's own
   // words, so leading with it renders our instruction as their chat bubble.
-  if (blocks.length === resolved.length) {
+  //
+  // Keyed on whether the user actually typed something, not on a block count —
+  // a visual-context block also lands in here, and counting would read an
+  // element prompt with no typed words as if it had some.
+  if (!hasUserText) {
     blocks.push({
       type: "text",
       text: "The user sent the attached content without a message. Respond to it.",
@@ -282,6 +297,7 @@ export async function addMessage(
   text: string,
   effort: Effort,
   attachmentIds: string[] = [],
+  visualContext?: VisualContext,
 ): Promise<AddMessageResult> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -294,6 +310,7 @@ export async function addMessage(
     userId,
     text,
     attachmentIds,
+    visualContext,
   );
   const prompt = promptWithAttachments(text, resolved);
 

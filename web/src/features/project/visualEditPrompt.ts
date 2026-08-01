@@ -1,88 +1,63 @@
 /**
- * Turning a refused visual edit into a well-aimed chat message.
+ * Restating a refused deterministic edit as a request the user can send.
  *
- * When an element's text or styles are computed rather than literal, the
- * deterministic path can't touch it (see `VisualEditFailure` in
- * `api/src/lib/visualEdit.ts`). The bad version of that is an error toast and a
- * dead end. The good version is this: we already know the file, the line, the
- * tag and exactly what the user was trying to do, so we can write the prompt
- * for them — far more precise than what they'd have typed unaided.
+ * When an element's text, classes or `src` are computed rather than literal,
+ * the deterministic path can't touch it (see `VisualEditFailure` in
+ * `server/src/api/lib/visualEdit.ts`). The bad version of that is an error
+ * toast and a dead end. The good version is this: the intent is already known
+ * exactly, so it goes into the inspector's prompt box as one editable
+ * sentence, and the user hits Enter.
  *
- * See doc/VISUAL_EDIT_PLAN.md §6 Phase 4.
+ * Note what is *not* here. The prose describing the element — file, line, tag,
+ * current text and classes — is written by the API
+ * (`server/src/api/lib/visualContext.ts`) and travels beside the message
+ * rather than inside it. That is what keeps the chat bubble to the sentence
+ * the user actually typed, and it means model-facing wording lives in one
+ * codebase rather than two.
+ *
+ * See doc/VISUAL_EDIT_PROMPTING.md §7.
  */
-import {
-  locToLine,
-  locToPath,
-  type VisualEditOpInput,
-  type VisualSelection,
-} from "@/src/stores/useProjectStore";
+import type { VisualEditOpInput } from "@/src/stores/useProjectStore";
 
-/** A short, human way to point at the element among its siblings. */
-function identify(selection: VisualSelection): string {
-  const parts: string[] = [`the \`<${selection.tagName}>\` element`];
-  if (selection.text) {
-    // Quote the visible text — it's how the user thinks about the element and
-    // the fastest way for the agent to find the right one.
-    const snippet =
-      selection.text.length > 60
-        ? `${selection.text.slice(0, 60)}…`
-        : selection.text;
-    parts.push(`(currently "${snippet}")`);
-  } else if (selection.className) {
-    parts.push(`(classes: \`${selection.className}\`)`);
-  }
-  return parts.join(" ");
+/**
+ * Which value the server declined to rewrite, in the vocabulary the API's
+ * `visualContext` expects. Load-bearing: told only "apply `bg-red-500`", the
+ * agent bolts a literal class onto an element whose `className` is built
+ * elsewhere — the wrong fix, and one that looks right.
+ */
+export type ComputedValue = "text" | "className" | "attribute";
+
+export function computedValueFor(op: VisualEditOpInput): ComputedValue {
+  if (op.kind === "text") return "text";
+  if (op.kind === "classes") return "className";
+  return "attribute";
 }
 
 /**
- * Write the chat message for an edit tau couldn't apply itself.
+ * The request half of a refusal, phrased to stand on its own in the prompt box.
  *
  * Deliberately states the *intent* ("change the text to X") rather than the
  * mechanism, because the reason it was refused is that the mechanism doesn't
- * apply — the text comes from a variable, the classes from `cn(...)`. The agent
- * needs to work out where the value really comes from.
+ * apply — the text comes from a variable, the classes from `cn(...)`.
  */
-export function buildFallbackPrompt(
-  selection: VisualSelection,
-  op: VisualEditOpInput,
-): string {
-  const path = locToPath(selection.loc);
-  const line = locToLine(selection.loc);
-  const where = `In \`${path}\` (around line ${line}), ${identify(selection)}`;
-
-  const shared =
-    selection.siblingCount > 1
-      ? ` Note this element is rendered ${selection.siblingCount} times from one place in the code — change it for all of them.`
-      : "";
-
+export function describeRefusedEdit(op: VisualEditOpInput): string {
   if (op.kind === "text") {
-    return `${where}: change its text to "${op.value}".${shared}`;
+    return `Change this element's text to "${op.value}".`;
   }
 
   if (op.kind === "attr") {
-    // The attribute is computed — `src={hero}`. Naming the current value is what
-    // lets the agent find where it is built rather than adding a literal.
-    const current = op.name === "src" ? selection.src : selection.alt;
-    const currently = current ? ` It currently resolves to \`${current}\`.` : "";
-    return (
-      `${where}: set its \`${op.name}\` to "${op.value}".` +
-      ` That attribute is set from code, so change it wherever the value comes` +
-      ` from rather than hardcoding it on the element.${currently}${shared}`
-    );
+    return `Set this element's \`${op.name}\` to "${op.value}".`;
   }
 
-  const add = op.add ?? [];
-  const remove = op.remove ?? [];
   const bits: string[] = [];
-  if (add.length) bits.push(`apply ${add.map((c) => `\`${c}\``).join(", ")}`);
-  if (remove.length) {
-    bits.push(`remove ${remove.map((c) => `\`${c}\``).join(", ")}`);
+  if (op.add?.length) {
+    bits.push(`apply ${op.add.map((c) => `\`${c}\``).join(", ")}`);
   }
-  const change = bits.length ? bits.join(" and ") : "adjust its styling";
-
-  return (
-    `${where}: ${change}.` +
-    ` Its \`className\` is computed, so update it wherever that value is built` +
-    ` rather than adding a literal class.${shared}`
+  if (op.remove?.length) {
+    bits.push(`remove ${op.remove.map((c) => `\`${c}\``).join(", ")}`);
+  }
+  if (!bits.length) return "Adjust this element's styling.";
+  return `${bits.join(" and ")} on this element.`.replace(/^./, (c) =>
+    c.toUpperCase(),
   );
 }

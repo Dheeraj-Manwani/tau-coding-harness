@@ -40,6 +40,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   SquareCheckBigIcon,
+  SquareMousePointerIcon,
   TelescopeIcon,
   TerminalIcon,
   TimerIcon,
@@ -54,6 +55,7 @@ import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { MessageAttachmentRail } from "@/src/features/composer/attachments/AttachmentRail";
 import { toMessageAttachments } from "@/src/features/composer/attachments/chipModel";
@@ -62,26 +64,22 @@ import {
   type ActionItem,
   type DividerMeta,
   type Message,
+  type MessageElement,
 } from "@/src/stores/useProjectStore";
 import {
   fetchOlderMessages,
   submitJobAnswer,
-  useAddMessage,
   useProject,
 } from "@/src/features/project/api";
-import type { Effort } from "@/src/features/project/types";
+import { useSendMessage } from "@/src/features/project/useSendMessage";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
-import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME } from "@/src/lib/routes";
-import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
-import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
-import { useSettingsStore } from "@/src/stores/useSettingsStore";
 
 function formatRelativeTime(ts: number): string {
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -458,6 +456,47 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
 
 const USER_MSG_LINE_CLAMP = 4;
 
+/**
+ * "This turn was about that element", above the bubble it belongs to.
+ *
+ * The alternative was what shipped first: the file, line, tag, text and classes
+ * prepended to the user's own message, so a one-sentence request rendered as a
+ * five-line paragraph of bookkeeping. All of that still reaches the model — it
+ * just travels in a block the transcript doesn't read
+ * (`server/src/api/lib/visualContext.ts`), leaving this to say the same thing
+ * in the space it deserves.
+ *
+ * Clicking it opens the file, which is the one thing anyone wants from it
+ * later; the element itself is long gone by then.
+ */
+function ElementChip({ element }: { element: MessageElement }) {
+  const openFile = useProjectStore((s) => s.openFile);
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
+  const known = useProjectStore((s) => Boolean(s.files[element.path]));
+
+  return (
+    <button
+      type="button"
+      disabled={!known}
+      onClick={() => {
+        openFile(element.path);
+        setActiveTab("code");
+      }}
+      title={
+        known
+          ? `Open ${element.path}`
+          : `${element.path} isn't in the file tree yet`
+      }
+      className="flex max-w-[85%] items-center gap-1.5 rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 py-0.5 text-[11px] text-[var(--silver-600)] transition-colors enabled:hover:border-[var(--blue-500)] enabled:hover:text-[var(--silver-900)] disabled:cursor-default"
+    >
+      <SquareMousePointerIcon className="size-3 shrink-0" />
+      <span className="truncate font-mono">
+        &lt;{element.tagName}&gt; · {element.path.split("/").pop()}:{element.line}
+      </span>
+    </button>
+  );
+}
+
 // User turns sit in a right-aligned bubble with a timestamp underneath; tau's
 // replies render as flat, full-width text on the surface (no bubble), the way a
 // chat transcript reads.
@@ -491,6 +530,7 @@ function ChatBubble({
             <MessageAttachmentRail attachments={attachments} />
           </div>
         )}
+        {message.element && <ElementChip element={message.element} />}
         {/* Attachment-only turns have no text of their own — render the chips
             and the timestamp, but no empty bubble. */}
         {message.content && (
@@ -837,65 +877,24 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const activity = useProjectStore((s) => s.activity);
   const isStalled = useProjectStore((s) => s.isStalled);
   const status = useProjectStore((s) => s.status);
-  const appendUserMessage = useProjectStore((s) => s.appendUserMessage);
-  const removeChatMessage = useProjectStore((s) => s.removeChatMessage);
   const prependMessages = useProjectStore((s) => s.prependMessages);
   const hasMoreMessages = useProjectStore((s) => s.hasMoreMessages);
   const oldestSequence = useProjectStore((s) => s.oldestSequence);
-  const startJob = useProjectStore((s) => s.startJob);
   const cancelStream = useProjectStore((s) => s.cancelStream);
   const toggleChat = useProjectStore((s) => s.toggleChat);
   const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const answerPendingQuestion = useProjectStore((s) => s.answerPendingQuestion);
   const currentJobId = useProjectStore((s) => s.currentJobId);
 
-  const addMessage = useAddMessage(projectId ?? "");
-  const openOutOfCredits = useBillingStore((s) => s.open);
   const { data: balance } = useBalance();
-  const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
   const isStreaming = status === "streaming";
 
-  // Restore the last effort the user explicitly picked (persisted in
-  // localStorage, shared with the Home composer) so a MAX choice made on Home
-  // carries into the project chat instead of resetting to LOW.
-  const lastEffort = useSettingsStore((s) => s.lastEffort);
-  const setLastEffort = useSettingsStore((s) => s.setLastEffort);
-  const [effort, setEffort] = useState<Effort>(lastEffort ?? "LOW");
-  // If we restored a saved choice, don't let the plan-based default override it.
-  const effortDefaultedRef = useRef(lastEffort != null);
-  useEffect(() => {
-    if (effortDefaultedRef.current || balance === undefined) return;
-    effortDefaultedRef.current = true;
-    if (!isFreePlan) setEffort("HIGH");
-  }, [balance, isFreePlan]);
-
-  const handleEffortChange = (next: Effort) => {
-    setEffort(next);
-    setLastEffort(next);
-  };
+  // Shared with the Home composer and the visual-edit inspector, so a MAX
+  // choice made anywhere carries everywhere.
+  const { effort, setEffort } = useEffortChoice();
+  const { send, isSending } = useSendMessage(projectId);
 
   const [draft, setDraft] = useState("");
-
-  /**
-   * Adopt text staged by something outside the composer — today, a visual edit
-   * the deterministic path couldn't apply, which arrives as a ready-written
-   * prompt naming the file, line and intent.
-   *
-   * Driven by a store subscription rather than an effect on the value: the
-   * composer is uncontrolled from the store's point of view, and this is a
-   * one-shot handoff, not state to keep in sync. Appending (rather than
-   * replacing) protects a draft the user was already writing.
-   */
-  useEffect(
-    () =>
-      useProjectStore.subscribe((state, prev) => {
-        const text = state.composerPrefill;
-        if (!text || text === prev.composerPrefill) return;
-        setDraft((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
-        useProjectStore.getState().clearComposerPrefill();
-      }),
-    [],
-  );
 
   const attachments = useAttachments();
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -1007,50 +1006,28 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   const canSend =
     (draft.trim().length > 0 || attachments.attachments.length > 0) &&
     !isStreaming &&
-    !addMessage.isPending &&
+    !isSending &&
     !attachments.isBusy;
 
   const submit = () => {
     const content = draft.trim();
-    const attachmentIds = attachments.readyIds;
-    if (
-      (!content && attachmentIds.length === 0) ||
-      !projectId ||
-      isStreaming ||
-      addMessage.isPending ||
-      attachments.isBusy
-    )
-      return;
+    if (attachments.isBusy) return;
 
     // Snapshot for rollback — a failed send shouldn't eat the attachments.
     const sentAttachments = attachments.attachments;
-    const msgId = appendUserMessage(content, toMessageAttachments(sentAttachments));
+    const sent = send(content, {
+      effort,
+      attachmentIds: attachments.readyIds,
+      attachments: toMessageAttachments(sentAttachments),
+      onFailed: () => {
+        setDraft(content);
+        attachments.restore(sentAttachments);
+      },
+    });
+    if (!sent) return;
+
     setDraft("");
     attachments.clear();
-    addMessage.mutate(
-      { message: content, effort, attachmentIds },
-      {
-        onSuccess: ({ jobId }) => startJob(jobId, content),
-        onError: (err) => {
-          removeChatMessage(msgId);
-          setDraft(content);
-          attachments.restore(sentAttachments);
-          if (err instanceof ApiError && err.status === 402) {
-            openOutOfCredits();
-          } else if (err instanceof ApiError && err.status === 429) {
-            showConcurrentJobLimitToast();
-          } else {
-            toast.error(
-              err instanceof ApiError && err.status === 409
-                ? "A generation is already in progress."
-                : err instanceof ApiError
-                  ? err.message
-                  : "Couldn't send your message",
-            );
-          }
-        },
-      },
-    );
   };
 
   return (
@@ -1164,7 +1141,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
             rightSlot={
               <EffortDropdown
                 effort={effort}
-                onChange={handleEffortChange}
+                onChange={setEffort}
                 ceilings={balance?.effortCeilings}
               />
             }

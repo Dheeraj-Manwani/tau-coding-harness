@@ -3,7 +3,10 @@ import toast from "react-hot-toast";
 import { cn } from "@/src/lib/utils";
 import { ApiError } from "@/src/lib/api-client";
 import { useVisualEdit } from "@/src/features/project/api";
-import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
+import {
+  computedValueFor,
+  describeRefusedEdit,
+} from "@/src/features/project/visualEditPrompt";
 import {
   DEVICE_VARIANT,
   STYLE_GROUPS,
@@ -43,7 +46,7 @@ export function VisualStylePanel({
   const projectId = useProjectStore((s) => s.projectId);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const pushUndo = useProjectStore((s) => s.pushVisualUndo);
-  const prefillComposer = useProjectStore((s) => s.prefillComposer);
+  const prefillVisualPrompt = useProjectStore((s) => s.prefillVisualPrompt);
   const previewDevice = useProjectStore((s) => s.previewDevice);
   const visualEdit = useVisualEdit(projectId ?? undefined);
 
@@ -88,11 +91,11 @@ export function VisualStylePanel({
           if (!data.applied) {
             if (data.reason === "dynamic_classname") {
               // `cn(...)` or a template literal — there's no literal to edit,
-              // so hand it to the agent with the intent already written out.
-              prefillComposer(
-                buildFallbackPrompt(selection, { kind: "classes", add, remove }),
-              );
-              toast("tau can do this — the message is ready in the chat.", {
+              // so stage the intent in the prompt box above, already written
+              // out, for the user to send or adjust.
+              const op = { kind: "classes", add, remove } as const;
+              prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
+              toast("tau can do this — the request is ready above.", {
                 icon: "💬",
               });
             } else {

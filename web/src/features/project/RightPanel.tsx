@@ -127,6 +127,10 @@ function DeviceSwitcher() {
  * Only offered once the in-iframe runtime has announced itself — an older
  * project whose sandbox predates the tagger has no runtime, and a dead toggle
  * is worse than no toggle. `visualEditReady` is reset on every iframe remount.
+ *
+ * The copy says "ask about" rather than "edit": what a selection does first is
+ * open a prompt box (doc/VISUAL_EDIT_PROMPTING.md), with the deterministic
+ * editor one click further in.
  */
 function VisualEditToggle() {
   const ready = useProjectStore((s) => s.visualEditReady);
@@ -156,7 +160,7 @@ function VisualEditToggle() {
         </motion.button>
       </TooltipTrigger>
       <TooltipContent>
-        {enabled ? "Stop selecting" : "Select an element"}
+        {enabled ? "Stop selecting" : "Select an element to ask about it"}
       </TooltipContent>
     </Tooltip>
   );

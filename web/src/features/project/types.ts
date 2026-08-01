@@ -10,6 +10,26 @@ export type Effort = "LOW" | "HIGH" | "MAX";
 export type { MessageAttachment } from "@/src/features/composer/attachments/types";
 import type { MessageAttachment } from "@/src/features/composer/attachments/types";
 
+/**
+ * The element a chat message was sent about, when it came from the visual-edit
+ * inspector. Mirrors `visualContextSchema` in the API.
+ *
+ * All facts, no prose: the API writes every sentence the model reads
+ * (`server/src/api/lib/visualContext.ts`), so the wording lives in one place
+ * and this stays a description of what was clicked.
+ */
+export interface VisualMessageContext {
+  /** `src/App.tsx:42:7` — path, 1-based line, 1-based column. */
+  loc: string;
+  tagName: string;
+  className?: string;
+  text?: string;
+  src?: string;
+  siblingCount?: number;
+  /** Which value the deterministic editor found it could not touch. */
+  computed?: "text" | "className" | "attribute";
+}
+
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
  *  store — we keep it `unknown` here rather than over-specifying. */

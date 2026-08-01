@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
+  ArrowUpIcon,
   CodeIcon,
   ImageIcon,
   LayersIcon,
   PaletteIcon,
+  PencilIcon,
   PlayIcon,
   PowerOffIcon,
+  SquareMousePointerIcon,
   XIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -16,7 +19,12 @@ import BorderGlow from "@/src/components/ui/glow-loader";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
 import { VisualThemePanel } from "@/src/features/project/VisualThemePanel";
-import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
+import {
+  computedValueFor,
+  describeRefusedEdit,
+  type ComputedValue,
+} from "@/src/features/project/visualEditPrompt";
+import { useSendMessage } from "@/src/features/project/useSendMessage";
 import {
   locToPath,
   useProjectStore,
@@ -292,20 +300,240 @@ function useVisualUndo(onReselect: (loc: string) => void) {
   }, [pending, popUndo, clearUndo, setSelection, visualEdit, onReselect]);
 }
 
-/** Human copy for each reason the server can decline a deterministic edit. */
+/**
+ * Escape leaves selection mode.
+ *
+ * Two stages, in the order that matches what is on screen: with an element
+ * picked it drops the selection, and a second press turns the picker off. Only
+ * fires when focus is in the tau page — a keypress inside the preview belongs
+ * to the iframe's own runtime, which handles Escape itself — so the visible
+ * "Done" button, not this, is what makes the mode reliably escapable.
+ */
+function useVisualEditEscape(): void {
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+
+      // Never steal Escape from a text field — the inspector's prompt box uses
+      // it to clear the selection, and its own handler has already run.
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
+
+      const s = useProjectStore.getState();
+      if (!s.visualEditEnabled) return;
+
+      e.preventDefault();
+      if (s.visualSelection) s.setVisualSelection(null);
+      else s.setVisualEditEnabled(false);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+}
+
+/**
+ * The "you are in selection mode" banner.
+ *
+ * Selection mode swallows clicks inside the preview, so a user who has
+ * forgotten it is on experiences their own app as broken — and until now the
+ * only way out was a 28px icon in the toolbar above, lit in a colour that
+ * reads as decoration. This says what is happening and offers the way out in
+ * the place the user is already looking. The toolbar toggle is unchanged and
+ * still turns it off.
+ */
+function VisualEditBanner() {
+  const setEnabled = useProjectStore((s) => s.setVisualEditEnabled);
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--blue-500)]/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
+        <SquareMousePointerIcon className="size-3.5 shrink-0 text-[var(--blue-500)]" />
+        <span className="text-[var(--silver-900)]">
+          Click an element to edit it
+        </span>
+        <kbd className="hidden rounded border border-[var(--silver-200)] px-1 py-px font-mono text-[10px] text-[var(--silver-600)] sm:inline">
+          Esc
+        </kbd>
+        <button
+          type="button"
+          onClick={() => setEnabled(false)}
+          className="rounded-full bg-[var(--space-overlay)] px-2.5 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--blue-500)] hover:text-white"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Human copy for each reason the server can decline a deterministic edit.
+ *
+ * The three `dynamic_*` reasons are handled before they get here — each caller
+ * turns them into a staged request in the prompt box instead — but the map is
+ * exhaustive over `VisualEditRefusal` on purpose, so a new reason has to be
+ * given copy rather than silently falling through to `undefined`.
+ */
 const REFUSAL_COPY: Record<VisualEditRefusal, string> = {
   dynamic_children:
-    "This text comes from code, not a fixed string — ask tau in the chat.",
+    "This text comes from code — ask tau to change it in the box above.",
   empty_value: "Text can't be empty.",
   multiline_value: "Keep it to a single line.",
   bad_loc: "Couldn't locate this element — try selecting it again.",
   dynamic_classname:
-    "This element's styles are set in code — ask tau in the chat.",
+    "This element's styles are set in code — ask tau in the box above.",
   invalid_class: "That style isn't supported.",
   dynamic_attribute:
-    "This image's source is set in code — ask tau in the chat.",
+    "This image's source is set in code — ask tau in the box above.",
   invalid_attr_value: "That isn't a usable image address.",
 };
+
+/** Grow a one-line prompt box with its content, up to a few lines. */
+function autosize(el: HTMLTextAreaElement | null): void {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
+}
+
+/**
+ * The primary control: say what you want done to the selected element.
+ *
+ * This is what a selection is *for*. The deterministic editor below covers
+ * text, seven style groups and image swaps; everything else anyone wants to do
+ * to an element — "make this a dropdown", "center these cards" — only the agent
+ * can do, and until now the selection was thrown away before it could help.
+ *
+ * The box is autofocused on every new selection, so the whole interaction is
+ * click, type, Enter. See doc/VISUAL_EDIT_PROMPTING.md §2.
+ */
+function ElementPrompt({ selection }: { selection: VisualSelection }) {
+  const projectId = useProjectStore((s) => s.projectId);
+  const setSelection = useProjectStore((s) => s.setVisualSelection);
+  const clearUndo = useProjectStore((s) => s.clearVisualUndo);
+  const setChatOpen = useProjectStore((s) => s.setChatOpen);
+  const isStreaming = useProjectStore((s) => s.status) === "streaming";
+  const { send, canSend } = useSendMessage(projectId ?? undefined);
+
+  const [draft, setDraft] = useState("");
+  // Which value the deterministic path refused, when this draft came from one.
+  // A fact about the element, not part of the request — so it travels in the
+  // context rather than in what the user sees.
+  const [computed, setComputed] = useState<ComputedValue | undefined>(undefined);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // A new element was picked — empty box, and the old refusal no longer
+  // describes anything.
+  const [lastLoc, setLastLoc] = useState(selection.loc);
+  if (lastLoc !== selection.loc) {
+    setLastLoc(selection.loc);
+    setDraft("");
+    setComputed(undefined);
+  }
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [selection.loc]);
+
+  // After the value has actually been written, not during the event that
+  // changed it — `scrollHeight` before the commit describes the old content.
+  useEffect(() => {
+    autosize(inputRef.current);
+  }, [draft]);
+
+  /**
+   * Adopt a request staged by the deterministic editor after it refused one.
+   *
+   * A store subscription rather than an effect on the value: this is a one-shot
+   * handoff between siblings, not state to keep in sync, and doing the write in
+   * an external-event callback is what the repo's `set-state-in-effect` rule
+   * wants.
+   */
+  useEffect(
+    () =>
+      useProjectStore.subscribe((state, prev) => {
+        const staged = state.visualPromptPrefill;
+        if (!staged || staged === prev.visualPromptPrefill) return;
+        setDraft(staged.text);
+        setComputed(staged.computed);
+        useProjectStore.getState().clearVisualPromptPrefill();
+        inputRef.current?.focus();
+      }),
+    [],
+  );
+
+  const submit = () => {
+    const request = draft.trim();
+    if (!request || !canSend) return;
+
+    // Only the user's own words go in the message. Everything the agent needs
+    // to find the element travels beside it, and the API turns that into a
+    // block the model reads and the transcript never shows — so the bubble
+    // stays the sentence they typed. doc/VISUAL_EDIT_PROMPTING.md §7.
+    const sent = send(request, {
+      visualContext: {
+        loc: selection.loc,
+        tagName: selection.tagName,
+        ...(selection.className ? { className: selection.className } : {}),
+        ...(selection.text ? { text: selection.text } : {}),
+        ...(selection.src ? { src: selection.src } : {}),
+        ...(selection.siblingCount > 1
+          ? { siblingCount: selection.siblingCount }
+          : {}),
+        ...(computed ? { computed } : {}),
+      },
+    });
+    if (!sent) return;
+
+    setChatOpen(true);
+    // The job is about to rewrite this file, so every source position we are
+    // holding is about to be stale — this selection and the whole undo stack
+    // alike. Same reasoning as the 409 path in VISUAL_EDIT_PLAN.md §6 Phase 4.
+    clearUndo();
+    setSelection(null);
+  };
+
+  return (
+    <div className="flex items-end gap-1.5">
+      <textarea
+        ref={inputRef}
+        rows={1}
+        value={draft}
+        disabled={isStreaming}
+        placeholder={
+          isStreaming
+            ? "tau is working…"
+            : `Ask tau to change this ${selection.tagName || "element"}…`
+        }
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setSelection(null);
+          }
+          // The in-iframe runtime listens for Escape too, and Ctrl+Z is the
+          // visual-edit undo — neither should fire while this box has focus.
+          e.stopPropagation();
+        }}
+        aria-label="Ask tau about this element"
+        className="min-h-7 min-w-0 flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-2 py-1.5 text-xs leading-snug text-[var(--silver-900)] outline-none placeholder:text-[var(--silver-600)] focus:border-[var(--blue-500)] disabled:opacity-50"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!draft.trim() || !canSend}
+        title="Ask tau"
+        className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-brand text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
+      >
+        <ArrowUpIcon className="size-3.5" />
+      </button>
+    </div>
+  );
+}
 
 /**
  * Inline text editor for the selected element.
@@ -324,7 +552,7 @@ function TextEditor({
   const visualEdit = useVisualEdit(projectId ?? undefined);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const pushUndo = useProjectStore((s) => s.pushVisualUndo);
-  const prefillComposer = useProjectStore((s) => s.prefillComposer);
+  const prefillVisualPrompt = useProjectStore((s) => s.prefillVisualPrompt);
 
   const [draft, setDraft] = useState(selection.text);
 
@@ -365,14 +593,16 @@ function TextEditor({
 
           setDraft(selection.text);
 
-          // Not something we can do deterministically — hand it to the agent
-          // with the file, line and intent already filled in, rather than
-          // leaving the user at a dead end.
+          // Not something we can do deterministically — write the request into
+          // the prompt box directly above, where the user can edit it and hit
+          // Enter, rather than leaving them at a dead end.
           if (data.reason === "dynamic_children") {
-            prefillComposer(
-              buildFallbackPrompt(selection, { kind: "text", value: draft }),
+            const op = { kind: "text", value: draft } as const;
+            prefillVisualPrompt(
+              describeRefusedEdit(op),
+              computedValueFor(op),
             );
-            toast("tau can edit this — the message is ready in the chat.", {
+            toast("tau can edit this — the request is ready above.", {
               icon: "💬",
             });
             return;
@@ -437,7 +667,18 @@ function TextEditor({
   );
 }
 
-/** Detail strip for the picked element, plus inline text editing. */
+/**
+ * The strip under the preview describing the picked element.
+ *
+ * Ranked deliberately: the prompt box is the primary control and the
+ * deterministic editor is behind `✎ Edit`. Most of what people want to do to an
+ * element was never in the editor's vocabulary, so offering it first sent them
+ * to a dead end for everything except a colour swap.
+ *
+ * `manualPanelOpen` lives in the store rather than here because it is sticky
+ * for the session — someone doing a styling pass clicks it once, not once per
+ * element.
+ */
 function VisualInspector({
   selection,
   onReselect,
@@ -449,6 +690,8 @@ function VisualInspector({
   const openFile = useProjectStore((s) => s.openFile);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const files = useProjectStore((s) => s.files);
+  const manualOpen = useProjectStore((s) => s.manualPanelOpen);
+  const setManualOpen = useProjectStore((s) => s.setManualPanelOpen);
   // One panel at a time: both are tall, and stacking them would push the
   // element the user is editing off the top of the preview.
   const [panel, setPanel] = useState<"styles" | "image" | null>(null);
@@ -468,90 +711,134 @@ function VisualInspector({
         <div className="flex items-center gap-1.5 border-t border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600">
           <LayersIcon className="size-3 shrink-0" />
           This element is rendered {selection.siblingCount} times from one place
-          in the code — an edit here changes all {selection.siblingCount}.
+          in the code — a change here applies to all {selection.siblingCount}.
         </div>
       )}
-      {panel === "styles" && (
-        <VisualStylePanel selection={selection} onReselect={onReselect} />
-      )}
-      {panel === "image" && (
-        <VisualImagePanel selection={selection} onReselect={onReselect} />
-      )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-2 text-xs">
-      <span className="font-mono font-semibold text-[var(--silver-900)]">
-        &lt;{selection.tagName}&gt;
-      </span>
 
-      <span className="font-mono text-[var(--silver-600)]">{selection.loc}</span>
-
-      {selection.editableText ? (
-        <TextEditor selection={selection} onReselect={onReselect} />
-      ) : (
-        selection.className && (
-          <span
-            className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
-            title={selection.className}
-          >
-            {selection.className}
-          </span>
-        )
-      )}
-
-      <div className="ml-auto flex items-center gap-1">
-        {isImage && (
-          <button
-            type="button"
-            onClick={() => setPanel((p) => (p === "image" ? null : "image"))}
-            aria-pressed={panel === "image"}
-            title="Replace this image"
-            className={cn(
-              "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-              panel === "image"
-                ? "text-[var(--blue-500)]"
-                : "text-[var(--silver-900)]",
-            )}
-          >
-            <ImageIcon className="size-3.5" />
-            Image
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setPanel((p) => (p === "styles" ? null : "styles"))}
-          aria-pressed={panel === "styles"}
-          title="Style this element"
-          className={cn(
-            "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-            panel === "styles"
-              ? "text-[var(--blue-500)]"
-              : "text-[var(--silver-900)]",
+      {manualOpen && (
+        <>
+          {panel === "styles" && (
+            <VisualStylePanel selection={selection} onReselect={onReselect} />
           )}
-        >
-          <PaletteIcon className="size-3.5" />
-          Style
-        </button>
-        <button
-          type="button"
-          disabled={!known}
-          onClick={() => {
-            openFile(path);
-            setActiveTab("code");
-          }}
-          title={known ? `Open ${path}` : `${path} isn't in the file tree yet`}
-          className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
-        >
-          <CodeIcon className="size-3.5" />
-          Open in code
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelection(null)}
-          title="Clear selection"
-          className="rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-        >
-          <XIcon className="size-3.5" />
-        </button>
-      </div>
+          {panel === "image" && (
+            <VisualImagePanel selection={selection} onReselect={onReselect} />
+          )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-1.5 text-xs">
+            <span
+              className="shrink-0 text-[11px] text-[var(--silver-600)]"
+              title="Applied straight to the source — no model call, no credits"
+            >
+              Edit directly · free
+            </span>
+
+            {selection.editableText ? (
+              <TextEditor selection={selection} onReselect={onReselect} />
+            ) : (
+              selection.className && (
+                <span
+                  className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
+                  title={selection.className}
+                >
+                  {selection.className}
+                </span>
+              )
+            )}
+
+            <div className="ml-auto flex items-center gap-1">
+              {isImage && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPanel((p) => (p === "image" ? null : "image"))
+                  }
+                  aria-pressed={panel === "image"}
+                  title="Replace this image"
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
+                    panel === "image"
+                      ? "text-[var(--blue-500)]"
+                      : "text-[var(--silver-900)]",
+                  )}
+                >
+                  <ImageIcon className="size-3.5" />
+                  Image
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  setPanel((p) => (p === "styles" ? null : "styles"))
+                }
+                aria-pressed={panel === "styles"}
+                title="Style this element"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
+                  panel === "styles"
+                    ? "text-[var(--blue-500)]"
+                    : "text-[var(--silver-900)]",
+                )}
+              >
+                <PaletteIcon className="size-3.5" />
+                Style
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-col gap-1.5 border-t border-[var(--silver-200)] px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-mono font-semibold text-[var(--silver-900)]">
+            &lt;{selection.tagName}&gt;
+          </span>
+
+          <span className="font-mono text-[var(--silver-600)]">
+            {selection.loc}
+          </span>
+
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setManualOpen(!manualOpen)}
+              aria-pressed={manualOpen}
+              title="Edit this element yourself — free and instant"
+              className={cn(
+                "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
+                manualOpen
+                  ? "text-[var(--blue-500)]"
+                  : "text-[var(--silver-900)]",
+              )}
+            >
+              <PencilIcon className="size-3.5" />
+              Edit
+            </button>
+            <button
+              type="button"
+              disabled={!known}
+              onClick={() => {
+                openFile(path);
+                setActiveTab("code");
+              }}
+              title={
+                known ? `Open ${path}` : `${path} isn't in the file tree yet`
+              }
+              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <CodeIcon className="size-3.5" />
+              Open in code
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelection(null)}
+              title="Clear selection"
+              className="rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <ElementPrompt selection={selection} />
       </div>
     </div>
   );
@@ -567,11 +854,13 @@ export function PreviewPane({ device }: { device: string }) {
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
 
   const visualSelection = useProjectStore((s) => s.visualSelection);
+  const visualEditEnabled = useProjectStore((s) => s.visualEditEnabled);
   const themePanelOpen = useProjectStore((s) => s.themePanelOpen);
   const setThemePanelOpen = useProjectStore((s) => s.setThemePanelOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
   useVisualUndo(reselect);
+  useVisualEditEscape();
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
@@ -630,6 +919,7 @@ export function PreviewPane({ device }: { device: string }) {
               className="h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
+            {visualEditEnabled && <VisualEditBanner />}
             {/* The theme panel wins the bottom strip: it is global, so it isn't
                 describing the selected element and stacking the two would hide
                 whichever ended up underneath. */}

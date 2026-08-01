@@ -94,13 +94,17 @@ export const addMessage = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { message, effort, attachmentIds } = parse(messageSchema, req.body);
+    const { message, effort, attachmentIds, visualContext } = parse(
+      messageSchema,
+      req.body,
+    );
     const result = await projectService.addMessage(
       projectId,
       userId,
       message,
       effort,
       attachmentIds,
+      visualContext,
     );
     res.status(201).json(result);
   } catch (err) {

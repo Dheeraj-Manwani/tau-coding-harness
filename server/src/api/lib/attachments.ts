@@ -524,7 +524,9 @@ export function attachmentBlock(a: ResolvedAttachment): string {
 
 // `>` matters as much as `<` here: the model reads these tags as text, so an
 // unescaped `>` in a filename closes the tag early and the rest reads as body.
-function escapeAttr(s: string): string {
+// Exported for `visualContext.ts`, which emits a sibling tag into the same
+// content array and needs exactly this rule, not a second opinion on it.
+export function escapeAttr(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")

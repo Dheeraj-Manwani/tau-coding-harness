@@ -18,6 +18,7 @@ import type {
   ProjectTree,
   RestartPreviewResponse,
   SaveProjectFileResponse,
+  VisualMessageContext,
 } from "./types";
 
 export const projectKeys = {
@@ -75,6 +76,10 @@ export function useAddMessage(projectId: string) {
       message: string;
       effort: Effort;
       attachmentIds?: string[];
+      /** The element this message is about, when it was sent from the
+       *  visual-edit inspector. The API turns it into a `<selected-element>`
+       *  block the model reads and the transcript doesn't. */
+      visualContext?: VisualMessageContext;
     }) =>
       api
         .post<AddMessageResponse>(`/project/${projectId}/message`, vars)

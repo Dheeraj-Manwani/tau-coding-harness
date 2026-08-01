@@ -9,7 +9,10 @@ import {
   useVisualEdit,
   type AssetImportRefusal,
 } from "@/src/features/project/api";
-import { buildFallbackPrompt } from "@/src/features/project/visualEditPrompt";
+import {
+  computedValueFor,
+  describeRefusedEdit,
+} from "@/src/features/project/visualEditPrompt";
 import {
   useProjectStore,
   type VisualSelection,
@@ -55,7 +58,7 @@ export function VisualImagePanel({
   const files = useProjectStore((s) => s.files);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
   const pushUndo = useProjectStore((s) => s.pushVisualUndo);
-  const prefillComposer = useProjectStore((s) => s.prefillComposer);
+  const prefillVisualPrompt = useProjectStore((s) => s.prefillVisualPrompt);
 
   const visualEdit = useVisualEdit(projectId ?? undefined);
   const importAsset = useImportVisualAsset(projectId ?? undefined);
@@ -97,14 +100,9 @@ export function VisualImagePanel({
         onSuccess: (data) => {
           if (!data.applied) {
             if (data.reason === "dynamic_attribute") {
-              prefillComposer(
-                buildFallbackPrompt(selection, {
-                  kind: "attr",
-                  name: "src",
-                  value: src,
-                }),
-              );
-              toast("tau can do this — the message is ready in the chat.", {
+              const op = { kind: "attr", name: "src", value: src } as const;
+              prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
+              toast("tau can do this — the request is ready above.", {
                 icon: "💬",
               });
             } else {

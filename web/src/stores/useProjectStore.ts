@@ -7,6 +7,7 @@ import type {
   ProjectDetail,
   ProjectMessage,
   ProjectTree,
+  PreviewBuildError,
   VisualMessageContext,
 } from "@/src/features/project/types";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
@@ -565,6 +566,7 @@ function isGeneratedBlock(text: string): boolean {
   return (
     text.startsWith("<attachment ") ||
     text.startsWith("<selected-element ") ||
+    text.startsWith("<build-error>") ||
     text.trim() === LEGACY_EMPTY_MESSAGE_PLACEHOLDER
   );
 }
@@ -918,6 +920,14 @@ interface ProjectState {
    *  refused. Consumed and cleared by `ElementPrompt`. */
   visualPromptPrefill: { text: string; computed?: ComputedValue } | null;
 
+  /** The build error the preview is currently showing, read out of Vite's
+   *  overlay by the in-iframe runtime. Null when the app compiles. */
+  previewError: PreviewBuildError | null;
+  /** Whether the user has sent the error's modal away. It comes back as a
+   *  banner rather than vanishing, and a *new* error opens the modal again —
+   *  dismissing "missing semicolon" is not consent to hide the next one. */
+  previewErrorDismissed: boolean;
+
   // ── Actions ──
   /** Reset everything when entering (or switching to) a project. */
   initProject: (projectId: string) => void;
@@ -1007,6 +1017,10 @@ interface ProjectState {
   /** Stage a request into the inspector's prompt box. */
   prefillVisualPrompt: (text: string, computed?: ComputedValue) => void;
   clearVisualPromptPrefill: () => void;
+  /** Record (or clear) the build error the preview is showing. */
+  setPreviewError: (error: PreviewBuildError | null) => void;
+  /** Collapse the error modal to a banner, or bring it back. */
+  setPreviewErrorDismissed: (dismissed: boolean) => void;
 }
 
 /** State reset whenever we enter a project (UI prefs below are preserved). */
@@ -1049,6 +1063,8 @@ const FRESH = {
     text: string;
     computed?: ComputedValue;
   } | null,
+  previewError: null as PreviewBuildError | null,
+  previewErrorDismissed: false,
 };
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -1375,6 +1391,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ visualPromptPrefill: { text, computed } }),
 
   clearVisualPromptPrefill: () => set({ visualPromptPrefill: null }),
+
+  // A different error is a different problem, so it gets the modal again even
+  // if the last one was dismissed. Vite replaces its overlay per error, so this
+  // fires on every new failure.
+  setPreviewError: (previewError) =>
+    set((s) => ({
+      previewError,
+      previewErrorDismissed:
+        previewError && previewError.message === s.previewError?.message
+          ? s.previewErrorDismissed
+          : false,
+    })),
+
+  setPreviewErrorDismissed: (previewErrorDismissed) =>
+    set({ previewErrorDismissed }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
 }));
 

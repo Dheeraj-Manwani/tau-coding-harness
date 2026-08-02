@@ -94,7 +94,7 @@ export const addMessage = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { message, effort, attachmentIds, visualContext } = parse(
+    const { message, effort, attachmentIds, visualContext, buildError } = parse(
       messageSchema,
       req.body,
     );
@@ -104,7 +104,7 @@ export const addMessage = async (
       message,
       effort,
       attachmentIds,
-      visualContext,
+      { visual: visualContext, buildError },
     );
     res.status(201).json(result);
   } catch (err) {

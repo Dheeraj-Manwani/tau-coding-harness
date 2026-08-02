@@ -25,6 +25,7 @@ import { useProjectStore } from "@/src/stores/useProjectStore";
 import type {
   Effort,
   MessageAttachment,
+  PreviewBuildError,
   VisualMessageContext,
 } from "@/src/features/project/types";
 
@@ -38,6 +39,9 @@ export interface SendMessageOptions {
   /** The element this message is about. The API renders it into a block the
    *  model reads; the bubble shows a chip for it and nothing else. */
   visualContext?: VisualMessageContext;
+  /** Vite's build failure, for "Fix with tau". Same arrangement: the model
+   *  gets the whole thing, the bubble stays one line. */
+  buildError?: PreviewBuildError;
   /** Ran after the optimistic bubble has been removed, so the caller can
    *  restore whatever it cleared before calling. */
   onFailed?: () => void;
@@ -83,6 +87,7 @@ export function useSendMessage(projectId: string | undefined) {
         ...(options.visualContext
           ? { visualContext: options.visualContext }
           : {}),
+        ...(options.buildError ? { buildError: options.buildError } : {}),
       })
       .then(({ jobId }) => startJob(jobId, content))
       .catch((err: unknown) => {

@@ -10,6 +10,8 @@ import {
   PlayIcon,
   PowerOffIcon,
   SquareMousePointerIcon,
+  TriangleAlertIcon,
+  WrenchIcon,
   XIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -37,6 +39,7 @@ import {
   type VisualEditRefusal,
 } from "@/src/features/project/api";
 import { previewSrc } from "@/src/features/project/previewUrl";
+import type { PreviewBuildError } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 
 const DEVICE_WIDTH: Record<string, number> = {
@@ -132,6 +135,7 @@ function useVisualEditBridge(
   const enabled = useProjectStore((s) => s.visualEditEnabled);
   const setReady = useProjectStore((s) => s.setVisualEditReady);
   const setSelection = useProjectStore((s) => s.setVisualSelection);
+  const setPreviewError = useProjectStore((s) => s.setPreviewError);
 
   const origin = previewUrl ? new URL(previewUrl).origin : null;
 
@@ -143,11 +147,21 @@ function useVisualEditBridge(
       const d = e.data as Partial<VisualSelection> & {
         source?: string;
         type?: string;
+        message?: string;
+        file?: string;
+        frame?: string;
       };
       if (!d || d.source !== "tau-visual-edit") return;
 
       if (d.type === "tau:ready") setReady(true);
       else if (d.type === "tau:deselect") setSelection(null);
+      else if (d.type === "tau:error" && d.message) {
+        setPreviewError({
+          message: d.message,
+          ...(d.file ? { file: d.file } : {}),
+          ...(d.frame ? { frame: d.frame } : {}),
+        });
+      } else if (d.type === "tau:error-cleared") setPreviewError(null);
       else if (d.type === "tau:select" && d.loc) {
         setSelection({
           loc: d.loc,
@@ -165,13 +179,17 @@ function useVisualEditBridge(
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [origin, setReady, setSelection]);
+  }, [origin, setReady, setSelection, setPreviewError]);
 
   // A remount gives us a brand-new runtime that has never heard of us, so the
   // old `ready` is meaningless. `previewNonce` is what remounts the iframe.
+  // The error goes with it: the new document will re-report if it is still
+  // broken, and showing a stale one over a working preview is worse than a
+  // moment with no banner.
   useEffect(() => {
     setReady(false);
-  }, [previewUrl, previewNonce, setReady]);
+    setPreviewError(null);
+  }, [previewUrl, previewNonce, setReady, setPreviewError]);
 
   // Drive the runtime. Re-sent whenever `ready` flips so a reload during pick
   // mode comes back in pick mode rather than silently inert.
@@ -322,6 +340,8 @@ function useVisualEditEscape(): void {
 
       const s = useProjectStore.getState();
       if (!s.visualEditEnabled) return;
+      // The build-error modal is on top and owns Escape while it is open.
+      if (s.previewError && !s.previewErrorDismissed) return;
 
       e.preventDefault();
       if (s.visualSelection) s.setVisualSelection(null);
@@ -331,6 +351,227 @@ function useVisualEditEscape(): void {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+}
+
+/** Where the sandbox keeps the app; its paths mean nothing to the user. */
+const SANDBOX_APP_DIR = "/home/user/app/";
+
+/**
+ * Which file broke, for the banner's label.
+ *
+ * Path only, no line. Vite's `.file` line number frequently belongs to its own
+ * bundle rather than to the user's source — the overlay in the report that
+ * prompted this said `Hero.tsx:3661:23` for an eleven-line file — and a
+ * confidently wrong line is worse than none. The agent gets the full message,
+ * where the real position is.
+ */
+function errorLocation(error: PreviewBuildError): string | null {
+  const text = `${error.message}\n${error.file ?? ""}`
+    .split(SANDBOX_APP_DIR)
+    .join("");
+  const owned = /((?:src|public|app)\/[\w@./-]+\.\w+)/.exec(text);
+  if (owned) return owned[1]!;
+  const any = /([\w@./-]+\.(?:[jt]sx?|css|html))/.exec(text);
+  return any ? any[1]! : null;
+}
+
+/**
+ * Sending a build failure to the agent.
+ *
+ * Shared by the modal and the banner it collapses to, because they are two
+ * presentations of one action and the interesting part — what the agent
+ * actually receives — must not differ between them.
+ *
+ * The whole error goes in a block the model reads and the transcript doesn't
+ * (`server/src/api/lib/visualContext.ts`), so the chat bubble says "Fix the
+ * build error in src/components/Hero.tsx" while the model gets the caret line.
+ */
+function useFixWithTau(error: PreviewBuildError) {
+  const projectId = useProjectStore((s) => s.projectId);
+  const setChatOpen = useProjectStore((s) => s.setChatOpen);
+  const dismiss = useProjectStore((s) => s.setPreviewErrorDismissed);
+  const { send, canSend, isSending } = useSendMessage(projectId ?? undefined);
+
+  const where = errorLocation(error);
+
+  const fix = () => {
+    if (!canSend) return;
+    const sent = send(
+      where
+        ? `Fix the build error in \`${where}\` — the preview isn't compiling.`
+        : "Fix the build error — the preview isn't compiling.",
+      {
+        buildError: {
+          message: error.message,
+          ...(error.file ? { file: error.file } : {}),
+          ...(error.frame ? { frame: error.frame } : {}),
+        },
+      },
+    );
+    if (!sent) return;
+    setChatOpen(true);
+    // Out of the way so the answer is watchable. The error itself is still
+    // live, so the banner stays until the fix actually lands.
+    dismiss(true);
+  };
+
+  return { fix, where, canSend, isSending };
+}
+
+/**
+ * "The preview didn't build", as the only thing on screen.
+ *
+ * What is behind this is Vite's error overlay: a red wall of parse output,
+ * absolute sandbox paths and `node_modules` stack frames. It is accurate, and
+ * to the person this product is for it is a crash. A modal is the honest shape
+ * for it — the app is not running, there is nothing else to do in this pane,
+ * and the one useful action should not be a 100px button in a strip that reads
+ * like a notification.
+ *
+ * Scoped to the preview rather than the whole page on purpose: the chat and the
+ * code tab still work, and this must not stop someone reading either.
+ */
+function PreviewErrorModal({ error }: { error: PreviewBuildError }) {
+  const dismiss = useProjectStore((s) => s.setPreviewErrorDismissed);
+  const { fix, where, canSend, isSending } = useFixWithTau(error);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") dismiss(true);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dismiss]);
+
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        role="alertdialog"
+        aria-label="Preview build error"
+        className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] shadow-2xl"
+      >
+        <div className="flex items-start gap-3 px-4 pt-4">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+            <TriangleAlertIcon className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-[var(--silver-900)]">
+              Your app didn&apos;t build
+            </h2>
+            <p className="pt-0.5 text-xs text-[var(--silver-600)]">
+              {where ? (
+                <>
+                  Something in{" "}
+                  <span className="font-mono text-[var(--silver-900)]">
+                    {where}
+                  </span>{" "}
+                  stops it compiling, so the preview can&apos;t run.
+                </>
+              ) : (
+                "Something stops it compiling, so the preview can't run."
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => dismiss(true)}
+            title="Dismiss"
+            className="shrink-0 rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+          >
+            <XIcon className="size-4" />
+          </button>
+        </div>
+
+        {/* Verbatim and scrollable. It is not what most people here will read,
+            but hiding it entirely would make this the one screen in the product
+            that knows something and won't say what. */}
+        <pre className="mx-4 mt-3 min-h-0 flex-1 overflow-auto rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-3 py-2 font-mono text-[10px] leading-relaxed whitespace-pre text-[var(--silver-600)]">
+          {error.message}
+          {error.frame ? `\n\n${error.frame}` : ""}
+        </pre>
+
+        <div className="flex items-center gap-2 px-4 py-3">
+          <span className="text-[11px] text-[var(--silver-600)]">
+            tau gets the full error, not just this summary.
+          </span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => dismiss(true)}
+              className="rounded-[var(--radius-md)] px-2.5 py-1.5 text-xs font-medium text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              onClick={fix}
+              disabled={!canSend}
+              title={
+                canSend
+                  ? "Send this error to tau"
+                  : "tau is already working on something"
+              }
+              className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
+            >
+              {isSending ? (
+                <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <WrenchIcon className="size-3.5" />
+              )}
+              Fix with tau
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * What the modal collapses to.
+ *
+ * Dismissing must not mean "and now there is no way to fix it" — the app is
+ * still broken, and the button that repairs it has to stay somewhere. Clicking
+ * the strip reopens the full dialog.
+ */
+function PreviewErrorBanner({ error }: { error: PreviewBuildError }) {
+  const dismiss = useProjectStore((s) => s.setPreviewErrorDismissed);
+  const { fix, where, canSend, isSending } = useFixWithTau(error);
+
+  return (
+    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
+      <TriangleAlertIcon className="size-3.5 shrink-0 text-red-500" />
+      <button
+        type="button"
+        onClick={() => dismiss(false)}
+        title="Show the error"
+        className="min-w-0 truncate text-[var(--silver-900)] hover:underline"
+      >
+        Didn&apos;t build
+        {where && (
+          <span className="ml-1 font-mono text-[var(--silver-600)]">
+            {where}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={fix}
+        disabled={!canSend}
+        className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-2.5 py-1 font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
+      >
+        {isSending ? (
+          <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <WrenchIcon className="size-3.5" />
+        )}
+        Fix with tau
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -347,8 +588,7 @@ function VisualEditBanner() {
   const setEnabled = useProjectStore((s) => s.setVisualEditEnabled);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--blue-500)]/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
+    <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--blue-500)]/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
         <SquareMousePointerIcon className="size-3.5 shrink-0 text-[var(--blue-500)]" />
         <span className="text-[var(--silver-900)]">
           Click an element to edit it
@@ -363,7 +603,6 @@ function VisualEditBanner() {
         >
           Done
         </button>
-      </div>
     </div>
   );
 }
@@ -855,6 +1094,8 @@ export function PreviewPane({ device }: { device: string }) {
 
   const visualSelection = useProjectStore((s) => s.visualSelection);
   const visualEditEnabled = useProjectStore((s) => s.visualEditEnabled);
+  const previewError = useProjectStore((s) => s.previewError);
+  const previewErrorDismissed = useProjectStore((s) => s.previewErrorDismissed);
   const themePanelOpen = useProjectStore((s) => s.themePanelOpen);
   const setThemePanelOpen = useProjectStore((s) => s.setThemePanelOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -919,7 +1160,19 @@ export function PreviewPane({ device }: { device: string }) {
               className="h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
-            {visualEditEnabled && <VisualEditBanner />}
+            {/* One stack, so a dismissed build error and selection mode can
+                both be announced without either hiding the other. */}
+            {((previewError && previewErrorDismissed) || visualEditEnabled) && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-2 p-3">
+                {previewError && previewErrorDismissed && (
+                  <PreviewErrorBanner error={previewError} />
+                )}
+                {visualEditEnabled && <VisualEditBanner />}
+              </div>
+            )}
+            {previewError && !previewErrorDismissed && (
+              <PreviewErrorModal error={previewError} />
+            )}
             {/* The theme panel wins the bottom strip: it is global, so it isn't
                 describing the selected element and stacking the two would hide
                 whichever ended up underneath. */}

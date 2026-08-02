@@ -30,6 +30,18 @@ export interface VisualMessageContext {
   computed?: "text" | "className" | "attribute";
 }
 
+/**
+ * A build failure the preview is showing, as reported by the in-iframe runtime
+ * reading Vite's error overlay. Mirrors `buildErrorSchema` in the API.
+ */
+export interface PreviewBuildError {
+  /** Vite's message — plugin, reason, and the source position. */
+  message: string;
+  file?: string;
+  /** The offending source excerpt with its caret. */
+  frame?: string;
+}
+
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
  *  store — we keep it `unknown` here rather than over-specifying. */

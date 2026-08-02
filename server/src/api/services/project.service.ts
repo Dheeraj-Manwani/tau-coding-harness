@@ -49,7 +49,12 @@ import {
   waitForExtraction,
   type ResolvedAttachment,
 } from "../lib/attachments";
-import { visualContextBlock, type VisualContext } from "../lib/visualContext";
+import {
+  buildErrorBlock,
+  visualContextBlock,
+  type BuildErrorContext,
+  type VisualContext,
+} from "../lib/visualContext";
 import {
   MessageRole,
   MessageType,
@@ -118,7 +123,7 @@ async function buildUserMessage(
   userId: string,
   text: string,
   attachmentIds: string[],
-  visualContext?: VisualContext,
+  context?: { visual?: VisualContext; buildError?: BuildErrorContext },
 ): Promise<{
   content: Prisma.InputJsonValue;
   resolved: ResolvedAttachment[];
@@ -130,8 +135,12 @@ async function buildUserMessage(
   // Directly after the user's words, so the model reads "make it a dropdown"
   // and "this is the <button> at App.tsx:42" adjacent rather than with a
   // document dump between them.
-  if (visualContext) {
-    const block = visualContextBlock(visualContext);
+  if (context?.visual) {
+    const block = visualContextBlock(context.visual);
+    if (block) blocks.push({ type: "text", text: block });
+  }
+  if (context?.buildError) {
+    const block = buildErrorBlock(context.buildError);
     if (block) blocks.push({ type: "text", text: block });
   }
 
@@ -297,7 +306,7 @@ export async function addMessage(
   text: string,
   effort: Effort,
   attachmentIds: string[] = [],
-  visualContext?: VisualContext,
+  context?: { visual?: VisualContext; buildError?: BuildErrorContext },
 ): Promise<AddMessageResult> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -310,7 +319,7 @@ export async function addMessage(
     userId,
     text,
     attachmentIds,
-    visualContext,
+    context,
   );
   const prompt = promptWithAttachments(text, resolved);
 

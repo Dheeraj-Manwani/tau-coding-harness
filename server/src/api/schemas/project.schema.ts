@@ -32,12 +32,27 @@ export const visualContextSchema = z.object({
   computed: z.enum(["text", "className", "attribute"]).optional(),
 });
 
+/**
+ * A build failure the preview is showing, for "Fix with tau".
+ *
+ * Generous limits compared to `visualContextSchema` — a parse error's frame is
+ * genuinely the payload here, and truncating it to a tidy size would cut the
+ * caret line that says where the problem is. `buildErrorBlock` clamps each part
+ * again on the way into the prompt.
+ */
+export const buildErrorSchema = z.object({
+  message: z.string().min(1).max(8000),
+  file: z.string().max(1000).optional(),
+  frame: z.string().max(4000).optional(),
+});
+
 export const messageSchema = z
   .object({
     message: messageContent,
     effort: effortSchema,
     attachmentIds: z.array(z.uuid()).max(10).default([]),
     visualContext: visualContextSchema.optional(),
+    buildError: buildErrorSchema.optional(),
   })
   .refine((v) => v.message.length > 0 || v.attachmentIds.length > 0, {
     message: "Message can't be empty",

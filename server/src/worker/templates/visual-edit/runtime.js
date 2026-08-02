@@ -250,6 +250,92 @@
   window.addEventListener("scroll", onScroll, true);
   window.addEventListener("resize", onScroll);
 
+  // ── Build errors ───────────────────────────────────────────────────────────
+  //
+  // When a transform fails, Vite covers the app with a `<vite-error-overlay>`
+  // custom element and the user sees a red wall of text they can do nothing
+  // with. The parent is cross-origin, so tau cannot see any of it — the preview
+  // simply looks broken, and fixing it means retyping a stack trace into chat.
+  //
+  // Watching for that element is the hook. There is no event a plain script can
+  // subscribe to (`import.meta.hot` is module-only), and the overlay's internal
+  // class names have been stable across Vite 4–7. If a future version renames
+  // them, `readOverlay` returns null and nothing is reported — the preview
+  // still works exactly as it does today.
+
+  var lastError = null;
+
+  function overlayText(root, selector) {
+    var el = root.querySelector(selector);
+    var s = el ? (el.textContent || "").trim() : "";
+    // The stack section is node_modules noise; these three are not, but a
+    // pathological frame should still not be unbounded — it ends up in a model
+    // context window.
+    return s.length > 4000 ? s.slice(0, 4000) + "\n…" : s;
+  }
+
+  function readOverlay(node) {
+    var root = node.shadowRoot;
+    if (!root) return null;
+    var message =
+      overlayText(root, ".message-body") || overlayText(root, ".message");
+    if (!message) return null;
+    return {
+      message: message,
+      file: overlayText(root, ".file"),
+      frame: overlayText(root, ".frame"),
+    };
+  }
+
+  function reportError(node) {
+    // Read on the next frame: the element is appended before its shadow content
+    // is filled, and an empty message is worse than a late one.
+    requestAnimationFrame(function () {
+      var err = readOverlay(node);
+      if (!err) return;
+      lastError = err;
+      send({
+        type: "tau:error",
+        message: err.message,
+        file: err.file,
+        frame: err.frame,
+      });
+    });
+  }
+
+  function isOverlay(node) {
+    return node.nodeType === 1 && node.localName === "vite-error-overlay";
+  }
+
+  function watchErrors() {
+    // Already broken when we loaded — the common case, since a failed transform
+    // is what the user is looking at when they reach for this.
+    var existing = document.querySelector("vite-error-overlay");
+    if (existing) reportError(existing);
+
+    var mo = new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var a = 0; a < added.length; a++) {
+          if (isOverlay(added[a])) reportError(added[a]);
+        }
+
+        var removed = records[i].removedNodes;
+        for (var r = 0; r < removed.length; r++) {
+          // A new error replaces the overlay rather than updating it, so a
+          // removal only means "fixed" when nothing took its place. Mutations
+          // are applied before this callback runs, so the replacement is
+          // already queryable.
+          if (isOverlay(removed[r]) && !document.querySelector("vite-error-overlay")) {
+            lastError = null;
+            send({ type: "tau:error-cleared" });
+          }
+        }
+      }
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   // ── Parent channel ─────────────────────────────────────────────────────────
 
   window.addEventListener("message", function (e) {
@@ -263,7 +349,20 @@
     if (!d || d.source !== IN) return;
 
     // First valid parent wins and owns the channel from here on.
+    var justLocked = !lockedOrigin;
     if (!lockedOrigin) lockedOrigin = e.origin;
+
+    // An error found before any parent had spoken could not be sent: it names a
+    // source file, and `send` refuses to broadcast those to "*". Now that there
+    // is somewhere safe to put it, deliver it.
+    if (justLocked && lastError) {
+      send({
+        type: "tau:error",
+        message: lastError.message,
+        file: lastError.file,
+        frame: lastError.frame,
+      });
+    }
 
     if (d.type === "tau:enable") setEnabled(true);
     else if (d.type === "tau:disable") setEnabled(false);
@@ -289,6 +388,8 @@
       tagged: document.querySelectorAll("[" + ATTR + "]").length,
     });
   }
+
+  watchErrors();
 
   // Fires before React has mounted, so the parent treats `tagged` as a hint,
   // not a count. A second announce after paint gives it the real number.

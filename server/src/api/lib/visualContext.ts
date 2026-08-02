@@ -134,3 +134,68 @@ export function visualContextBlock(ctx: VisualContext): string | null {
 
   return `<selected-element ${attrs}>\n${lines.join(" ")}\n</selected-element>`;
 }
+
+/** A build failure the preview is showing, as reported by the in-iframe runtime. */
+export interface BuildErrorContext {
+  /** Vite's own message — the plugin name, the reason, and the source position. */
+  message: string;
+  /** The `file` line from the overlay, when it has one. */
+  file?: string;
+  /** The offending source excerpt with its caret. */
+  frame?: string;
+}
+
+/** The sandbox's app root, stripped so the agent sees paths it can act on. */
+const SANDBOX_APP_DIR = "/home/user/app/";
+
+/**
+ * Defuse the one sequence that could close this block, and nothing else.
+ *
+ * `body` escapes every angle bracket, which is right for the element block's
+ * short quoted values. It is wrong here. The payload is a compiler error frame,
+ * and `useScrollSpin<HTMLDivElement>(-420)` arriving as
+ * `useScrollSpin&lt;HTMLDivElement&gt;(-420)` mangles the exact line the agent
+ * has to read — generics and JSX are what these errors are usually *about*.
+ *
+ * So only the literal closing tag is neutralised. It is the sole sequence that
+ * can end the block, and it has no legitimate reason to appear inside a Vite
+ * message; everything else, including every angle bracket in the user's code,
+ * survives byte for byte.
+ */
+function fenced(s: string, max: number): string {
+  const clamped = s.length > max ? `${s.slice(0, max)}…` : s;
+  return clamped.replace(/<\/(build-error)/gi, "<\\/$1");
+}
+
+/**
+ * The block behind "Fix with tau".
+ *
+ * Same arrangement as `visualContextBlock`: the user's chat bubble says which
+ * file is broken, and the whole of Vite's output — which is long, and full of
+ * absolute sandbox paths and node_modules frames — travels here where only the
+ * model reads it.
+ *
+ * Verbatim on purpose. The parse error, the caret and the line are the entire
+ * value of this message, and summarising them would throw away the one thing
+ * the agent cannot reconstruct without reading the file.
+ */
+export function buildErrorBlock(err: BuildErrorContext): string | null {
+  const message = fenced(err.message, 4000);
+  if (!message.trim()) return null;
+
+  const parts = [message];
+  // `/home/user/app/src/App.tsx` is a path the agent's tools cannot open —
+  // every one of them is rooted at the app directory already.
+  if (err.file) {
+    parts.push(`File: ${fenced(err.file, 500).split(SANDBOX_APP_DIR).join("")}`);
+  }
+  if (err.frame) parts.push(fenced(err.frame, 2000));
+
+  return (
+    "<build-error>\n" +
+    "The preview is showing this build error. Read the file, find the cause and" +
+    " fix it. This is Vite's own output, verbatim:\n\n" +
+    parts.join("\n\n") +
+    "\n</build-error>"
+  );
+}

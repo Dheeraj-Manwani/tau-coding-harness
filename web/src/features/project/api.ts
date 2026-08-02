@@ -12,6 +12,7 @@ import type {
   InitProjectResponse,
   ListProjectsResponse,
   OlderMessagesResponse,
+  PreviewBuildError,
   PreviewStatusResponse,
   ProjectDetail,
   ProjectFileResponse,
@@ -80,6 +81,9 @@ export function useAddMessage(projectId: string) {
        *  visual-edit inspector. The API turns it into a `<selected-element>`
        *  block the model reads and the transcript doesn't. */
       visualContext?: VisualMessageContext;
+      /** Vite's build failure, when sent from "Fix with tau". Becomes a
+       *  `<build-error>` block on the same terms. */
+      buildError?: PreviewBuildError;
     }) =>
       api
         .post<AddMessageResponse>(`/project/${projectId}/message`, vars)

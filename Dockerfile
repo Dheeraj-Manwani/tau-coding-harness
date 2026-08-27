@@ -8,7 +8,12 @@ COPY . .
 
 # One package, one lockfile, one node_modules, one Prisma client. This used to
 # be two installs and two `prisma generate` runs, one per service.
-RUN cd server && bun install --frozen-lockfile && bun run generate
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+RUN cd server \
+    && bun install --frozen-lockfile \
+    && bun run generate \
+    && bunx playwright install --with-deps chromium
 
 ENV PORT=8080
 EXPOSE 8080

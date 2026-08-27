@@ -1918,6 +1918,10 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
 
     case "done":
       invalidateBalance();
+      // The worker captures and stores the project cover before this terminal
+      // event. Mark the inactive home-page list stale so returning home fetches
+      // the new presigned thumbnail URL instead of keeping the placeholder.
+      void queryClient.invalidateQueries({ queryKey: ["project", "list"] });
       set((s) => {
         const fin = finalizeStreaming(s);
         const { chatMessages } = flushPendingActions({ ...s, ...fin });

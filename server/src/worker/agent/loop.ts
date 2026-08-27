@@ -131,7 +131,7 @@ async function runPool<T, R>(
 
 const SCREENSHOT_BUDGET_MS = 25_000;
 
-async function captureAndStore(
+export async function captureProjectScreenshot(
   projectId: string,
   userId: string,
   url: string,
@@ -150,6 +150,10 @@ async function captureAndStore(
       await prisma.project.update({
         where: { id: projectId },
         data: { previewImageKey: key, previewImageUpdatedAt: new Date() },
+      });
+      log.info("screenshot.capture.success", {
+        projectId,
+        bytes: jpeg.length,
       });
     })(),
     timeout,
@@ -812,17 +816,28 @@ export async function runAgentLoop(
           });
         }
 
-        await publishTerminal(jobId, { type: "done" });
-
-        if (previewUrl && filesChanged && env.SCREENSHOT_ENABLED) {
-          await captureAndStore(projectId, userId, previewUrl).catch((err) =>
-            captureException(err, {
-              jobId,
-              projectId,
-              detail: "screenshot failed",
-            }),
-          );
+        if (previewUrl) {
+          if (env.SCREENSHOT_ENABLED) {
+            log.info("screenshot.capture.start", { jobId, projectId });
+            await captureProjectScreenshot(projectId, userId, previewUrl).catch(
+              (err) =>
+                captureException(err, {
+                  jobId,
+                  projectId,
+                  detail: "screenshot failed",
+                }),
+            );
+          } else {
+            // This used to be a silent skip, making a deployment typo look
+            // exactly like a broken browser or R2 upload.
+            log.warn("screenshot.capture.disabled", { jobId, projectId });
+          }
         }
+
+        // `done` tells clients that every completion side effect is visible.
+        // Keep it after the thumbnail write so an immediate project-list
+        // refetch cannot race the DB update and cache a null/old cover.
+        await publishTerminal(jobId, { type: "done" });
         break;
       }
 

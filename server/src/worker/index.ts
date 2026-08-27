@@ -5,7 +5,11 @@ import { publish, publishTerminal } from "./lib/publish";
 import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
 import { logGatewayReachability } from "./lib/aiEnv";
-import { AgentStopError, runAgentLoop } from "./agent/loop";
+import {
+  AgentStopError,
+  captureProjectScreenshot,
+  runAgentLoop,
+} from "./agent/loop";
 import { settle } from "@/lib/credits";
 import { finalizeJobRollups } from "./lib/jobRollups";
 import { getNextSequence } from "@/lib/sequence";
@@ -67,6 +71,23 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
       title: "Preview",
     },
   });
+
+  if (env.SCREENSHOT_ENABLED) {
+    log.info("screenshot.capture.start", { jobId, projectId, source: "preview" });
+    await captureProjectScreenshot(projectId, userId, previewUrl).catch((err) =>
+      captureException(err, {
+        jobId,
+        projectId,
+        detail: "preview screenshot failed",
+      }),
+    );
+  } else {
+    log.warn("screenshot.capture.disabled", {
+      jobId,
+      projectId,
+      source: "preview",
+    });
+  }
 
   await publishTerminal(jobId, { type: "done" });
 }

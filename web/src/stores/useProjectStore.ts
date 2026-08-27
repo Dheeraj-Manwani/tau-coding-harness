@@ -253,6 +253,58 @@ function nextSno(todos: { sno: number }[]): number {
   return todos.length > 0 ? Math.max(...todos.map((t) => t.sno)) + 1 : 1;
 }
 
+function todoUpdateLabel(
+  sno: number,
+  status: string,
+  todos: { sno: number; label: string; status: string }[],
+): string {
+  const todo = todos.find((item) => item.sno === sno);
+  const target = todo?.label || `todo #${sno}`;
+  if (status === "done") return `Completed ${target}`;
+  if (status === "skipped") return `Skipped ${target}`;
+  if (status === "blocked") return `Blocked ${target}`;
+  if (status === "pending") return `Reopened ${target}`;
+  return `Updated ${target}`;
+}
+
+/**
+ * A todo status change belongs to the plan that introduced the todo. Keep the
+ * checklist as the single visual source of truth instead of appending a new
+ * "Updated Todo" card for every checkbox change.
+ */
+function withUpdatedPlanTodos(
+  messages: Message[],
+  todos: { sno: number; label: string; status: string }[],
+  startIndex: number,
+): Message[] | null {
+  for (
+    let messageIndex = messages.length - 1;
+    messageIndex >= startIndex;
+    messageIndex--
+  ) {
+    const actions = messages[messageIndex].actions;
+    if (!actions) continue;
+
+    for (let actionIndex = actions.length - 1; actionIndex >= 0; actionIndex--) {
+      if (actions[actionIndex].kind !== "create_plan") continue;
+
+      const nextActions = [...actions];
+      nextActions[actionIndex] = {
+        ...actions[actionIndex],
+        meta: { ...actions[actionIndex].meta, todos },
+      };
+      const nextMessages = [...messages];
+      nextMessages[messageIndex] = {
+        ...messages[messageIndex],
+        actions: nextActions,
+      };
+      return nextMessages;
+    }
+  }
+
+  return null;
+}
+
 function deriveActionItem(
   toolName: string,
   input: Record<string, unknown>,
@@ -422,7 +474,7 @@ function deriveActionItem(
       const status = String(input.status ?? "");
       return {
         kind: "update_todo",
-        label: `Item ${sno} marked ${status}`,
+        label: todoUpdateLabel(sno, status, planSnapshot),
         meta: {
           sno,
           status,
@@ -734,6 +786,16 @@ function toConversation(
             planTodos = planTodos.map((t) =>
               t.sno === sno ? { ...t, status } : t,
             );
+
+            const updatedMessages = withUpdatedPlanTodos(
+              messages,
+              planTodos,
+              turnStart,
+            );
+            if (updatedMessages) {
+              messages.splice(0, messages.length, ...updatedMessages);
+              continue;
+            }
           }
 
           // Attach to the nearest ai message within this turn.
@@ -1608,6 +1670,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           const fin = finalizeStreaming(s);
 
           let action: ActionItem;
+          let updatedTodos: Todo[] | undefined;
 
           if (event.toolName === "create_plan") {
             const todos = parseTodos(inp.todos);
@@ -1626,12 +1689,14 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           } else {
             const sno = Number(inp.sno);
             const newStatus = String(inp.status ?? "");
-            const updatedTodos = s.currentPlan?.todos.map((t) =>
-              t.sno === sno ? { ...t, status: newStatus } : t,
+            updatedTodos = s.currentPlan?.todos.map((t) =>
+              t.sno === sno
+                ? { ...t, status: newStatus as TodoStatus }
+                : t,
             );
             action = {
               kind: "update_todo",
-              label: "Updated Todo",
+              label: todoUpdateLabel(sno, newStatus, updatedTodos ?? []),
               meta: {
                 sno,
                 status: newStatus,
@@ -1642,6 +1707,20 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
 
           const msgs = fin.chatMessages;
           const turnStart = currentTurnStart(msgs);
+          if (event.toolName === "update_todo" && updatedTodos) {
+            const updatedMessages = withUpdatedPlanTodos(
+              msgs,
+              updatedTodos,
+              turnStart,
+            );
+            if (updatedMessages) {
+              return {
+                ...fin,
+                isAiTyping: true,
+                chatMessages: updatedMessages,
+              };
+            }
+          }
           let targetIdx = -1;
           for (let i = msgs.length - 1; i >= turnStart; i--) {
             if (msgs[i].role === "ai") {

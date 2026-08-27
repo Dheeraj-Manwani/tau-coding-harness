@@ -21,9 +21,10 @@ const {
   lookupHashFor,
 } = await import("@/lib/apiKeys");
 
-const { listModels, isModelAlias, MODEL_ALIASES } = await import(
+const { listModels, isModelAlias, MODEL_ALIASES, resolveModel } = await import(
   "@/api/lib/gatewayModels"
 );
+const { env } = await import("@/lib/env");
 
 const {
   validateChatRequest,
@@ -123,6 +124,11 @@ describe("model aliases", () => {
     expect(listed.object).toBe("list");
     expect(listed.data.map((m) => m.id)).toEqual([...MODEL_ALIASES]);
     expect(listed.data.every((m) => m.owned_by === "tau")).toBe(true);
+  });
+
+  test("tau-max resolves to the configured DeepSeek pro model", () => {
+    const resolved = resolveModel("tau-max");
+    expect(resolved?.model).toBe(env.DEEPSEEK_MODEL);
   });
 });
 

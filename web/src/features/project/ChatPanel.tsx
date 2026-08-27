@@ -65,6 +65,7 @@ import {
   type DividerMeta,
   type Message,
   type MessageElement,
+  type Todo,
 } from "@/src/stores/useProjectStore";
 import {
   fetchOlderMessages,
@@ -155,7 +156,7 @@ const TODO_STATUS_CFG = {
 function ActionDetail({ action }: { action: ActionItem }) {
   if (action.kind === "create_plan") {
     const meta = action.meta as
-      | { description?: string; todos?: string[] }
+      | { description?: string; todos?: (string | Todo)[] }
       | undefined;
     return (
       <div className="space-y-2">
@@ -167,15 +168,29 @@ function ActionDetail({ action }: { action: ActionItem }) {
         {!!meta?.todos?.length && (
           <div className="space-y-1 pt-1">
             <div>Todo:</div>
-            {meta.todos.map((todo, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2 text-[var(--silver-700)]"
-              >
-                <CircleIcon className="mt-0.5 size-2.5 shrink-0 opacity-30" />
-                <span>{todo}</span>
-              </div>
-            ))}
+            {meta.todos.map((todo, i) => {
+              const item =
+                typeof todo === "string"
+                  ? { sno: i + 1, label: todo, status: "pending" }
+                  : todo;
+              const status = item.status as keyof typeof TODO_STATUS_CFG;
+              const cfg = TODO_STATUS_CFG[status] ?? TODO_STATUS_CFG.pending;
+              return (
+                <div
+                  key={item.sno}
+                  className="flex items-center gap-2 text-[var(--silver-700)]"
+                >
+                  <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
+                  <span
+                    className={cn(
+                      item.status === "done" ? "line-through opacity-50" : "",
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -343,7 +358,8 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
   const toggle = (i: number) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
       return next;
     });
 
@@ -382,10 +398,16 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
 
       <div>
         {actions.map((action, i) => {
+          const hasTodoSnapshot =
+            action.kind === "update_todo" &&
+            Array.isArray(
+              (action.meta as { todos?: unknown } | undefined)?.todos,
+            ) &&
+            ((action.meta as { todos?: unknown[] }).todos?.length ?? 0) > 0;
           const isExpandable =
             action.kind === "create_plan" ||
             action.kind === "add_todos" ||
-            action.kind === "update_todo" ||
+            hasTodoSnapshot ||
             action.kind === "dispatch_explorer" ||
             action.kind === "dispatch_debugger" ||
             action.kind === "dispatch_verifier" ||

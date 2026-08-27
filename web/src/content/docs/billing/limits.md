@@ -3,7 +3,7 @@ title: Limits
 description: Every cap in tau, in one table.
 section: billing
 order: 5
-updated: 2026-07-30
+updated: 2026-08-27
 ---
 
 Every limit tau enforces, in one place. These are the defaults the service runs
@@ -35,7 +35,7 @@ runs is refused with a clear message rather than queued.
 
 | | **Low** | **High** | **Max** |
 |---|---|---|---|
-| Model | DeepSeek (flash) | DeepSeek (pro) | Kimi K2.7 Code |
+| Model | DeepSeek (flash) | DeepSeek (pro) | DeepSeek (pro) |
 | Agent turns | 80 | 200 | 300 |
 | Sub-agent turns | 20 | 40 | 60 |
 | Parallel sub-agents | 1 | 3 | 5 |

@@ -3,7 +3,7 @@ title: Effort tiers
 description: Which model runs, how long it may think, and what a single build can cost.
 section: build
 order: 2
-updated: 2026-07-30
+updated: 2026-08-27
 ---
 
 Effort is the single control that decides how hard tau works on a build. It sets
@@ -17,7 +17,7 @@ are paying for the work it does.
 
 | | **Low** | **High** | **Max** |
 |---|---|---|---|
-| Model | DeepSeek (flash) | DeepSeek (pro) | Kimi K2.7 Code |
+| Model | DeepSeek (flash) | DeepSeek (pro) | DeepSeek (pro) |
 | Agent turns | 80 | 200 | 300 |
 | Sub-agent turns | 20 | 40 | 60 |
 | Parallel sub-agents | 1 | 3 | 5 |

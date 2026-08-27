@@ -39,18 +39,14 @@ import {
   type TemplateKey,
 } from "../templates/registry";
 import { env } from "@/lib/env";
-import { kimi } from "@/lib/kimi";
 import type { Effort } from "@/generated/prisma/enums";
 
 /**
- * LOW → Deepseek flash, HIGH → Deepseek pro, MAX → Kimi K2.7 Code.
- *
- * MAX falls back to the Deepseek model when Kimi isn't configured — a missing
- * key should degrade the top tier, not fail every job booked into it.
+ * LOW → Deepseek flash; HIGH and MAX → Deepseek pro.
+ * MAX is distinguished by its larger execution budget, not a different model.
  */
 export function modelForEffort(effort: Effort): string {
   if (effort === "LOW") return env.DEEPSEEK_MODEL_FLASH;
-  if (effort === "MAX" && kimi) return env.KIMI_MODEL_MAX;
   return env.DEEPSEEK_MODEL;
 }
 

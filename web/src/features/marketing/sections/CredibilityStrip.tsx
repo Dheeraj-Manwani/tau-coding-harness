@@ -17,7 +17,7 @@ import { cn } from "@/src/lib/utils";
 const STACK = [
   "E2B sandboxes",
   "DeepSeek",
-  "Kimi K2.7 Code",
+  "Moonshot Kimi",
   "Cloudflare R2",
   "Postgres",
   "Razorpay",

@@ -11,8 +11,8 @@ import type { Effort } from "@/src/features/project/types";
  *     → `RESERVE_CEILING_BY_EFFORT` in api/src/lib/pricing.ts
  *   model
  *     → `modelForEffort` in worker-service/src/agent/config.ts, resolved
- *       through the env defaults DEEPSEEK_MODEL_FLASH / DEEPSEEK_MODEL /
- *       KIMI_MODEL_MAX in worker-service/src/lib/env.ts
+ *       through the env defaults DEEPSEEK_MODEL_FLASH / DEEPSEEK_MODEL in
+ *       worker-service/src/lib/env.ts
  *
  * If a tier is retuned, change it there and mirror it here — a marketing page
  * quoting stale limits is a promise the product stops keeping.
@@ -60,8 +60,8 @@ export const EFFORT_TIERS: EffortTier[] = [
   {
     effort: "MAX",
     label: "Max",
-    model: "Kimi K2.7 Code",
-    modelId: "kimi-k2.7-code",
+    model: "DeepSeek (pro)",
+    modelId: "deepseek-v4-pro",
     turns: 300,
     subagentTurns: 60,
     parallel: 5,

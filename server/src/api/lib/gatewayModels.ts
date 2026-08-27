@@ -9,7 +9,6 @@
  * Allowlist-only — an unknown model is a 400, not a silent passthrough.
  */
 import { deepseekGateway } from "@/lib/deepseek";
-import { kimi } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import type OpenAI from "openai";
 
@@ -21,8 +20,6 @@ export const DEFAULT_ALIAS: ModelAlias = "tau-fast";
 interface AliasEntry {
   /** Human description, surfaced by GET /v1/models. */
   description: string;
-  /** Which upstream client serves it. */
-  provider: "deepseek" | "kimi";
   /** Resolved at call time from env, so it tracks the build-path config. */
   model: () => string;
 }
@@ -30,18 +27,15 @@ interface AliasEntry {
 const ALIASES: Record<ModelAlias, AliasEntry> = {
   "tau-fast": {
     description: "Fastest and cheapest. Good default for most app features.",
-    provider: "deepseek",
     model: () => env.DEEPSEEK_MODEL_FLASH,
   },
   "tau-smart": {
     description: "Stronger reasoning at a higher per-token cost.",
-    provider: "deepseek",
     model: () => env.DEEPSEEK_MODEL,
   },
   "tau-max": {
-    description: "Most capable. Falls back to tau-smart when unconfigured.",
-    provider: "kimi",
-    model: () => env.KIMI_MODEL_MAX,
+    description: "DeepSeek Pro compatibility alias for Max-tier app features.",
+    model: () => env.DEEPSEEK_MODEL,
   },
 };
 
@@ -62,22 +56,11 @@ export interface ResolvedModel {
 /**
  * Map an alias to a live client + upstream model.
  *
- * `tau-max` degrades to the Deepseek model when `KIMI_API_KEY` is absent,
- * mirroring `modelForEffort()` on the build path: a missing key should downgrade
- * the top tier, not fail every request booked into it. Cost is metered on the
- * model actually called, so a degraded request is billed at the lower rate.
+ * All public aliases currently use DeepSeek. `tau-max` mirrors the build path:
+ * it uses the pro model and is differentiated there by a larger agent budget.
  */
 export function resolveModel(alias: ModelAlias): ResolvedModel | null {
   const entry = ALIASES[alias];
-
-  if (entry.provider === "kimi") {
-    if (kimi) return { alias, model: entry.model(), client: kimi };
-    if (deepseekGateway) {
-      return { alias, model: env.DEEPSEEK_MODEL, client: deepseekGateway };
-    }
-    return null;
-  }
-
   if (!deepseekGateway) return null;
   return { alias, model: entry.model(), client: deepseekGateway };
 }

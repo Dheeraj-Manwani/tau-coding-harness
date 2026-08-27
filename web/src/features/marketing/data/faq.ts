@@ -39,7 +39,7 @@ export const FAQ: FaqItem[] = [
   {
     question: "Which models does it use?",
     answer:
-      "DeepSeek on Low and High effort, and Kimi K2.7 Code on Max. Effort also decides how many turns the agent gets, how many sub-agents it can run at once, and how long it may work.",
+      "DeepSeek flash on Low and DeepSeek pro on High and Max. Max gets the largest turn, sub-agent, parallelism, and wall-clock budgets.",
   },
   {
     question: "What happens if I run out of credits?",

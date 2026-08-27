@@ -32,7 +32,8 @@ The editor is web-only; a phone keyboard is the wrong tool for it.
 
 ## Which models does it use?
 
-DeepSeek on Low and High, Kimi K2.7 Code on Max. Effort is what selects the model.
+DeepSeek flash runs on Low; DeepSeek pro runs on High and Max. Max adds larger
+execution budgets rather than switching providers.
 
 For the [AI gateway](/docs/ai/overview) your app asks for an alias — `tau-fast`,
 `tau-smart`, `tau-max` — not a vendor id, so the mapping can move without breaking

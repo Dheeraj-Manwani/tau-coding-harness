@@ -11,6 +11,20 @@ export const authRateLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 });
 
+// Signing into the ops console. Separate from `authRateLimiter` rather than
+// reusing it: that one is a module-level singleton with a single store, so
+// sharing it would make an operator's admin sign-ins spend the same per-IP
+// budget as ordinary app logins from that address, and a burst of either would
+// lock them out of the console during an incident. Tighter than /auth because
+// far fewer people should ever be typing into this box.
+export const adminSessionRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
 // Extraction is a user-triggered LLM call, so it needs a ceiling that isn't the
 // credit balance.
 export const attachmentRateLimiter = rateLimit({

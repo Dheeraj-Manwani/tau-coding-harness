@@ -6,6 +6,7 @@ import {
   CheckIcon,
   LogOutIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   ZapIcon,
 } from "lucide-react";
 
@@ -14,6 +15,7 @@ import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
+import { openAdminConsole } from "@/src/features/admin/api";
 import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
@@ -116,6 +118,18 @@ export function UserMenu() {
               })()}
 
             <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
+
+            {/* Admins only. `openAdminConsole` runs inside the click handler's
+                call stack so its `window.open` survives the popup blocker. */}
+            {user.role === "ADMIN" && (
+              <DropdownMenu.Item
+                onSelect={() => void openAdminConsole()}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
+              >
+                <ShieldCheckIcon className="size-4 text-brand" />
+                Ops console
+              </DropdownMenu.Item>
+            )}
 
             <DropdownMenu.Item
               onSelect={() => openSettings()}

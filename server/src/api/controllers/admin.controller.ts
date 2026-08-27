@@ -9,7 +9,11 @@ import {
 import { Errors } from "../lib/errors";
 import { env } from "@/lib/env";
 import { bus } from "@/lib/bus";
-import { ADMIN_COOKIE, issueAdminSession } from "../middleware/admin.middleware";
+import {
+  ADMIN_COOKIE,
+  assertAdmin,
+  issueAdminSession,
+} from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
 import { renderAdminConsole } from "../views/adminConsole";
 
@@ -30,18 +34,29 @@ function handler(
 // ── session ──────────────────────────────────────────────────────────────────
 
 /**
- * Exchange `x-admin-key` for a short-lived HttpOnly cookie.
+ * Exchange proof of identity for a short-lived HttpOnly admin cookie.
  *
- * A browser tab can't set a header on navigation, and stashing the raw admin key
- * in localStorage would leave a long-lived secret in browser storage. This is
- * mounted *before* `requireAdminKey` and does its own check.
+ * A browser tab can't set an Authorization header on navigation, so the console
+ * needs a cookie; making it HttpOnly keeps it out of reach of page scripts.
+ *
+ * Two ways to authenticate, because an operator may not have a password at all:
+ *   - an access token the caller already holds, which is the only route open to
+ *     an OAuth-only account (`passwordHash` is null for those);
+ *   - email + password typed into the console.
+ *
+ * Either way the cookie is only minted for a user whose `role` is already
+ * ADMIN. This is mounted *before* `requireAdmin` — it is how you get past it —
+ * and so does its own check.
  */
-export const createSession = handler((req, res) => {
-  const key = req.headers["x-admin-key"] ?? (req.body as { key?: string })?.key;
-  if (!env.ADMIN_API_KEY || key !== env.ADMIN_API_KEY) {
-    throw Errors.forbidden("Admin access required");
-  }
-  const { token, expiresAt } = issueAdminSession();
+export const createSession = handler(async (req, res) => {
+  const header = req.headers.authorization;
+  const body = (req.body ?? {}) as { email?: string; password?: string };
+
+  const operator = header?.startsWith("Bearer ")
+    ? await assertAdmin(req)
+    : await admin.authenticateAdmin(body.email, body.password);
+
+  const { token, expiresAt } = issueAdminSession(operator.id);
   res.cookie(ADMIN_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -49,7 +64,7 @@ export const createSession = handler((req, res) => {
     expires: expiresAt,
     path: "/admin",
   });
-  return { ok: true, expiresAt };
+  return { ok: true, expiresAt, email: operator.email };
 });
 
 export const destroySession = handler((_req, res) => {

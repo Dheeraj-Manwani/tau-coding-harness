@@ -80,11 +80,16 @@ export function renderAdminConsole(): string {
 
 <div id="login">
   <h1>tau ops</h1>
-  <p class="dim">Paste the admin key to start a session (8 hours).</p>
-  <div class="row">
-    <input id="key" type="password" placeholder="ADMIN_API_KEY" class="grow" />
-    <button id="signin">Sign in</button>
-  </div>
+  <p class="dim">Sign in with an account whose role is ADMIN (8 hour session).</p>
+  <form id="loginForm">
+    <div class="row" style="margin-bottom:8px">
+      <input id="email" type="email" autocomplete="username" placeholder="email" class="grow" required />
+    </div>
+    <div class="row">
+      <input id="password" type="password" autocomplete="current-password" placeholder="password" class="grow" required />
+      <button type="submit" id="signin">Sign in</button>
+    </div>
+  </form>
   <p id="loginErr" class="err"></p>
 </div>
 
@@ -140,7 +145,13 @@ export function renderAdminConsole(): string {
 const $ = (id) => document.getElementById(id);
 const api = async (path, opts) => {
   const r = await fetch("/admin" + path, { credentials: "same-origin", ...opts });
-  if (r.status === 403) { showLogin("Session expired."); throw new Error("forbidden"); }
+  // 401 = the cookie lapsed. 403 = it is still valid but the account no longer
+  // holds the ADMIN role, since the role is re-read on every request rather
+  // than baked into the session.
+  if (r.status === 401 || r.status === 403) {
+    showLogin(r.status === 403 ? "Admin access revoked." : "Session expired.");
+    throw new Error("unauthorized");
+  }
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 };
@@ -164,15 +175,22 @@ function showApp() {
   refresh();
 }
 
-$("signin").onclick = async () => {
+$("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
   const r = await fetch("/admin/session", {
     method: "POST",
     credentials: "same-origin",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ key: $("key").value }),
+    body: JSON.stringify({ email: $("email").value, password: $("password").value }),
   });
-  if (r.ok) { $("key").value = ""; showApp(); }
-  else $("loginErr").textContent = "Rejected.";
+  $("password").value = "";
+  if (r.ok) { showApp(); return; }
+  // 403 means the credentials were right and the role is not ADMIN — worth
+  // saying plainly, or an operator retypes a correct password forever.
+  $("loginErr").textContent =
+    r.status === 403 ? "That account is not an admin."
+    : r.status === 429 ? "Too many attempts. Try again later."
+    : "Rejected.";
 };
 $("signout").onclick = async () => {
   await fetch("/admin/session/end", { method: "POST", credentials: "same-origin" });

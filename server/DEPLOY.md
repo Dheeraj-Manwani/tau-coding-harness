@@ -127,10 +127,23 @@ from. The image builds both clients from that schema with a single
 
 ## Admin
 
-`GET /admin/ui` is a server-rendered operations console behind `ADMIN_API_KEY`:
-health, 1h/24h/7d metrics, an SSE firehose of live job phases, job/user/project/
-sandbox drill-down, and kill-job / reconcile-stuck / release-holds actions.
-Start here when a job looks wedged.
+`GET /admin/ui` is a server-rendered operations console: health, 1h/24h/7d
+metrics, an SSE firehose of live job phases, job/user/project/sandbox
+drill-down, and kill-job / reconcile-stuck / release-holds actions. Start here
+when a job looks wedged.
+
+Access is `User.role === ADMIN` and nothing else — there is no admin key, and
+the role is re-read from the database on every request, so revoking someone
+takes effect immediately. Sign in with that account's email and password, or
+with an `Authorization: Bearer <access token>` for scripts and OAuth-only
+accounts. Promote the first operator by hand after the first deploy:
+
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+
+There is no bootstrap script and no break-glass credential: if you lose every
+admin account, the only way back in is this statement against the database.
 - **Attachments need an R2 CORS rule** allowing `PUT` from `APP_URL` — uploads
   go browser → R2 directly via presigned PUT. Without it the preflight 403s and
   every upload fails. Apply `server/r2-cors.json` (edit the origins first):

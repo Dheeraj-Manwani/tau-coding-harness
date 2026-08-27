@@ -17,7 +17,8 @@ import siteRoutes, { siteHostMiddleware } from "./routes/sites.routes";
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
-import { requireAdminKey } from "./middleware/admin.middleware";
+import { requireAdmin } from "./middleware/admin.middleware";
+import { adminSessionRateLimiter } from "./middleware/rateLimit.middleware";
 import {
   createSession,
   ui as adminUi,
@@ -137,14 +138,19 @@ export function buildApp(
   app.use("/auth", authRoutes);
 
   // Two admin routes sit OUTSIDE the admin gate, deliberately:
-  //   - `/admin/session` performs its own key check (it is how you get past the
-  //     gate in a browser, which can't send a header on navigation);
+  //   - `/admin/session` performs its own role check (it is how you get past
+  //     the gate in a browser, which can't send a header on navigation). It
+  //     accepts a password, so it is rate-limited like the other credential
+  //     endpoints — it is the one brute-forceable door into the ops console;
   //   - `/admin/ui` is an empty HTML shell with no data in it — every number it
   //     shows is fetched from the guarded endpoints below, so serving the page
   //     to an unauthenticated visitor reveals nothing but a login box.
-  app.post("/admin/session", createSession);
+  //
+  // Everything under the gate requires `User.role === ADMIN`, re-read from the
+  // database per request. There is no environment key and no second credential.
+  app.post("/admin/session", adminSessionRateLimiter, createSession);
   app.get("/admin/ui", adminUi);
-  app.use("/admin", requireAdminKey, adminRoutes);
+  app.use("/admin", requireAdmin, adminRoutes);
 
   // Note: the dev-only BullMQ dashboard is removed in the economy build —
   // there is no BullMQ queue (jobs run through the in-process runner).

@@ -117,8 +117,10 @@ const envSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
-  // Admin API key
-  ADMIN_API_KEY: z.string().optional(),
+  // Admin access is `User.role === ADMIN` and nothing else — there is no admin
+  // key here by design. Promote the first operator by hand:
+  //   UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+  //
   // Admin console may show user content (prompts, messages, tool IO). Off by
   // default: those are the user's words, and an operator browsing them casually
   // is a privacy problem even when the access itself is legitimate. Every read

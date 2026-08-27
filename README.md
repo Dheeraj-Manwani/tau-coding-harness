@@ -171,7 +171,7 @@ CI runs the typecheck, the test suite and the drift guard on every push and PR
 
 ## Operations
 
-`GET /admin/ui` (behind `ADMIN_API_KEY`) is a server-rendered console: health,
+`GET /admin/ui` (behind `User.role === ADMIN`) is a server-rendered console: health,
 1h/24h/7d metrics, an SSE firehose of live job phases, job/user/project/sandbox
 drill-down, and kill-job / reconcile-stuck / release-holds actions. Start there
 when a job looks wedged. Logs are one JSON object per line with `jobId` as a

@@ -1,5 +1,6 @@
 import argon2 from "argon2";
 import type { ClientType, Prisma, User } from "@/generated/prisma/client";
+import type { Role } from "@/generated/prisma/enums";
 import * as authRepository from "../repositories/auth.repository";
 import * as tokens from "../lib/tokens";
 import type { IssuedTokens } from "../lib/tokens";
@@ -18,6 +19,13 @@ export interface SafeUser {
   id: string;
   email: string;
   emailVerifiedAt: Date | null;
+  /**
+   * Exposed so the web app can show its admin entry points to the right people.
+   * This is presentation only — hiding a menu item is not access control, and
+   * `requireAdmin` re-reads the role from the database on every `/admin/*`
+   * request regardless of what any client believes.
+   */
+  role: Role;
   createdAt: Date;
 }
 
@@ -31,6 +39,7 @@ function toSafeUser(user: User): SafeUser {
     id: user.id,
     email: user.email,
     emailVerifiedAt: user.emailVerifiedAt,
+    role: user.role,
     createdAt: user.createdAt,
   };
 }

@@ -23,12 +23,12 @@ Two plans. Both have every feature; they differ in credits and project count.
 Everything. There is no feature behind the paywall — no locked effort tier, no
 disabled gateway, no watermark.
 
-What you get less of is credits and project slots. 25 credits is enough for
+What you get less of is credits and project slots. 20 credits is enough for
 several small builds, and 3 projects is enough to keep one real thing and two
 experiments.
 
 > [!NOTE]
-> The 25 credits are a **one-time grant**, not a monthly allowance. There is no
+> The 20 credits are a **one-time grant**, not a monthly allowance. There is no
 > daily or monthly refill on Free. When they are gone, buy a pack, redeem a code,
 > or upgrade.
 

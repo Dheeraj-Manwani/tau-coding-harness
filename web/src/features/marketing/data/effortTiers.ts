@@ -72,7 +72,7 @@ export const EFFORT_TIERS: EffortTier[] = [
 ];
 
 /** api/src/lib/pricing.ts — FREE_SIGNUP_GRANT_MICRO. */
-export const FREE_SIGNUP_CREDITS = 25;
+export const FREE_SIGNUP_CREDITS = 20;
 /** api/src/lib/pricing.ts — PRO_MONTHLY_ALLOTMENT_MICRO. */
 export const PRO_MONTHLY_CREDITS = 5000;
 /** api/src/lib/pricing.ts — FREE_PLAN_MAX_PROJECTS. */

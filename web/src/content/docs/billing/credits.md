@@ -34,7 +34,7 @@ These are observed ranges, not prices. A build costs what it costs; the
 
 ## Where they come from
 
-**25 free credits at signup.** One time, never refilled. Enough for several small
+**20 free credits at signup.** One time, never refilled. Enough for several small
 builds.
 
 **5,000 credits per cycle on PRO.** Granted on your billing date each month.

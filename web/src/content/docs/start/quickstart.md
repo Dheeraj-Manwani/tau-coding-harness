@@ -12,7 +12,7 @@ anything installed.
 ## 1. Make an account
 
 Sign up at [usetau.dev](/signup) and verify your email. New accounts get
-**25 credits**, once. That is enough for several small builds.
+**20 credits**, once. That is enough for several small builds.
 
 ## 2. Describe what you want
 

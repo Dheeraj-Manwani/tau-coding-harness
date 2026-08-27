@@ -72,7 +72,7 @@ describe("spendBuckets — free → plan → bonus order", () => {
 describe("constants", () => {
   test("micro unit and allotments are the agreed values", () => {
     expect(MICRO).toBe(1_000_000n);
-    expect(FREE_SIGNUP_GRANT_MICRO).toBe(25_000_000n);
+    expect(FREE_SIGNUP_GRANT_MICRO).toBe(20_000_000n);
     expect(JOB_RESERVE_CEILING_MICRO).toBe(50_000_000n);
   });
 });

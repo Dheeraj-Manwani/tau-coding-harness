@@ -66,7 +66,7 @@ export function Landing() {
     title: "tau — turn a sentence into a running web app",
     exactTitle: true,
     description:
-      "Describe what you want; tau plans it, writes it, runs it in a secure cloud sandbox, and streams every step to your screen. Start free with 20 credits — no card.",
+      "Describe what you want; tau plans it, writes it, runs it in a secure cloud sandbox, and streams every step to your screen. Start free with 200 credits — no card.",
     canonical: "/",
   });
 

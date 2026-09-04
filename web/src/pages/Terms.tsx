@@ -67,7 +67,7 @@ export default function TermsPage() {
       <Section title="4. Credits &amp; billing">
         <p className="font-medium">Free tier</p>
         <p>
-          Every registered user receives a one-time grant of 20 free credits
+          Every registered user receives a one-time grant of 200 free credits
           when they sign up. There is no daily or recurring refill of free
           credits; additional credits can be obtained via a promo code or the
           PRO plan.

@@ -62,7 +62,7 @@ credits, or failed. Distinct from whether it succeeded.
 
 ## Free credits
 
-The bucket holding the one-time 25-credit signup grant. Never expires, spent
+The bucket holding the one-time 200-credit signup grant. Never expires, spent
 first.
 
 ## Gateway

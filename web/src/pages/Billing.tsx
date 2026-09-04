@@ -604,7 +604,7 @@ export default function BillingPage() {
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
         <AlertTriangleIcon className="inline size-3 align-middle" /> Free tier
-        gives 20 credits once. PRO gives 5,000/month.
+        gives 200 credits once. PRO gives 5,000/month.
       </p>
       <p className="mt-2 text-center text-xs text-muted-foreground">
         Payments processed by Razorpay. No prorated refunds for partial billing

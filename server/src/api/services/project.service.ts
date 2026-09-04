@@ -68,7 +68,22 @@ import {
 import type { Prisma } from "@/generated/prisma/client";
 import type { Effort } from "@/generated/prisma/enums";
 
-const MAX_NAME_LENGTH = 80;
+const MAX_NAME_LENGTH = 48;
+const MAX_NAME_WORDS = 4;
+
+const LEADING_REQUEST_WORDS = new Set([
+  "a",
+  "an",
+  "build",
+  "create",
+  "develop",
+  "design",
+  "for",
+  "make",
+  "me",
+  "please",
+  "the",
+]);
 
 function clampName(name: string): string {
   return name.length > MAX_NAME_LENGTH
@@ -76,24 +91,49 @@ function clampName(name: string): string {
     : name;
 }
 
+/** Keep provider output usable even if it ignores the requested format. */
+export function normalizeProjectName(name: string): string {
+  const firstLine = name.split(/\r?\n/)[0]?.trim() ?? "";
+  const withoutPrefix = firstLine.replace(
+    /^(?:project\s+)?(?:name|title)\s*:\s*/i,
+    "",
+  );
+  const clean = withoutPrefix
+    .replace(/^[\s'"`*_#-]+|[\s'"`*_#.!?,;:-]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) return "";
+  return clampName(clean.split(" ").slice(0, MAX_NAME_WORDS).join(" "));
+}
+
 function deriveProjectName(message: string): string {
   const firstLine = message.trim().split("\n")[0]?.trim() ?? "";
-  if (!firstLine) return "Untitled project";
-  return clampName(firstLine);
+  if (!firstLine) return "New Project";
+
+  const words = firstLine
+    .replace(/[^\p{L}\p{N}+#.-]+/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  while (words.length > 1 && LEADING_REQUEST_WORDS.has(words[0]!.toLowerCase())) {
+    words.shift();
+  }
+
+  return normalizeProjectName(words.join(" ")) || "New Project";
 }
 
 async function generateProjectName(message: string): Promise<string> {
   if (!deepseek) return deriveProjectName(message);
   try {
     const completion = await deepseek.chat.completions.create({
-      model: env.DEEPSEEK_MODEL,
-      temperature: 0.3,
-      max_tokens: 20,
+      model: env.DEEPSEEK_MODEL_FLASH,
+      temperature: 0.1,
+      max_tokens: 12,
       messages: [
         {
           role: "system",
           content:
-            "You generate concise names for software projects. Given the user's first request, reply with ONLY a short, descriptive title of 2-4 words in Title Case. No quotes, no trailing punctuation, no explanation. If the request is unclear, empty, or doesn't make sense, default to 'New Project' as the name.",
+            "Name the software product described by the user. Return exactly one crisp title of 2-4 words in Title Case. Name the product, not the task: use 'Dentist Appointment Scheduler', not 'Build A Dentist Appointment Scheduling App'. Prefer specific nouns and omit filler such as Build, Create, My, New, App, Website, Platform, Project, or System unless essential to meaning. Output only the title: no label, quotes, punctuation, markdown, or explanation. If there is no clear product, return New Project.",
         },
         { role: "user", content: message },
       ],
@@ -102,8 +142,8 @@ async function generateProjectName(message: string): Promise<string> {
     const raw = completion.choices[0]?.message.content?.trim();
     if (!raw) return deriveProjectName(message);
 
-    const name = raw.replace(/^["']|["']$/g, "").trim();
-    return name ? clampName(name) : deriveProjectName(message);
+    const name = normalizeProjectName(raw);
+    return name || deriveProjectName(message);
   } catch (err) {
     console.error("DeepSeek project naming failed; using fallback", err);
     return deriveProjectName(message);

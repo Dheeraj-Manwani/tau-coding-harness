@@ -67,7 +67,7 @@ export function costMicro(
 }
 
 // ── Free tier / plan / reserve sizing (micro-credits) ──────────────────────────
-export const FREE_SIGNUP_GRANT_MICRO = 20n * MICRO; // one-time free grant at signup (never refilled)
+export const FREE_SIGNUP_GRANT_MICRO = 200n * MICRO; // one-time free grant at signup (never refilled)
 export const PRO_MONTHLY_ALLOTMENT_MICRO = 5_000n * MICRO; // granted each PRO cycle
 export const PRO_MONTHLY_PRICE_INR = 1_499;
 export const JOB_RESERVE_CEILING_MICRO = 25_000n * MICRO; // legacy/default HIGH ceiling

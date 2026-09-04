@@ -13,7 +13,7 @@ with.
 
 | Limit | Value |
 |---|---|
-| Free signup grant | 20 credits, one time, never refilled |
+| Free signup grant | 200 credits, one time, never refilled |
 | PRO monthly allotment | 5,000 credits per billing cycle |
 | Plan credit expiry | End of the billing cycle |
 | Free and bonus credit expiry | Never |

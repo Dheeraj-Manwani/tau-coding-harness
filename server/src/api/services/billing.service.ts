@@ -11,6 +11,7 @@ import {
 import {
   MICRO,
   PRO_MONTHLY_ALLOTMENT_MICRO,
+  PRO_MONTHLY_PRICE_INR,
   FREE_SIGNUP_GRANT_MICRO,
   toCredits,
 } from "@/lib/pricing";
@@ -34,7 +35,11 @@ export function getPlans() {
         name: "Pro",
         credits: toCredits(PRO_MONTHLY_ALLOTMENT_MICRO),
         resetPeriod: "monthly",
-        price: { amount: 999, currency: "INR", period: "monthly" },
+        price: {
+          amount: PRO_MONTHLY_PRICE_INR,
+          currency: "INR",
+          period: "monthly",
+        },
       },
     ],
   };
@@ -50,7 +55,7 @@ export interface CreditPack {
 }
 
 // PAYG top-up packs. Priced ABOVE the PRO subscription's effective rate
-// (₹999 / 5,000 credits ≈ ₹0.20/credit) to bake in the pay-as-you-go markup —
+// (₹1,499 / 5,000 credits ≈ ₹0.30/credit) to bake in the pay-as-you-go markup —
 // buying à la carte costs more per credit than committing to a monthly plan,
 // and the markup covers the real DeepSeek cost + payment fees. Tune freely.
 export const CREDIT_PACKS: CreditPack[] = [
@@ -183,6 +188,22 @@ export async function subscribeToPro(userId: string, userEmail: string) {
   const rzp = getRazorpay();
   await ensureBillingAccount(userId);
   const account = await prisma.billingAccount.findUnique({ where: { userId } });
+
+  // Razorpay plan prices are immutable external configuration. Fail closed if
+  // the configured id still points at the old catalog price, otherwise the UI
+  // could advertise ₹1,499 while checkout silently charges another amount.
+  const configuredPlan = await rzp.plans.fetch(env.RAZORPAY_PRO_PLAN_ID);
+  const expectedPaise = PRO_MONTHLY_PRICE_INR * 100;
+  if (
+    Number(configuredPlan.item.amount) !== expectedPaise ||
+    configuredPlan.item.currency !== "INR" ||
+    configuredPlan.period !== "monthly" ||
+    configuredPlan.interval !== 1
+  ) {
+    throw Errors.badRequest(
+      `RAZORPAY_PRO_PLAN_ID must reference the ₹${PRO_MONTHLY_PRICE_INR}/month INR plan`,
+    );
+  }
 
   // Create or reuse Razorpay customer.
   let razorpayCustomerId = account?.razorpayCustomerId ?? null;

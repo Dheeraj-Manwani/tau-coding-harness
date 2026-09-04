@@ -19,7 +19,7 @@ import { useIsVisible } from "@/src/features/marketing/motion/useRafLoop";
  *
  * Numbers come from `data/effortTiers.ts`, which cites the constants in
  * `api/src/lib/pricing.ts` and `billing.service.ts`. The one soft figure on the
- * page is "roughly 5–15 credits for a small landing page", and it is worded as
+ * page explains that credits meter model work and vary with token usage, and is worded as
  * an estimate because that is what it is — unlike every other number here,
  * there is no constant behind it.
  *

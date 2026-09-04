@@ -187,7 +187,7 @@ export default function PricingPage() {
             {[
               {
                 title: "What is a credit?",
-                body: "One unit of agent work. Generating a simple landing page costs roughly 5–15 credits.",
+                body: "One metered unit of model work. The total depends on input, output, and effort, and is shown live while a build runs.",
               },
               {
                 title: "One-time free credits",

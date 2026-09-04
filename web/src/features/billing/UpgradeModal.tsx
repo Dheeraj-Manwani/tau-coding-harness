@@ -11,6 +11,7 @@ import {
 import { UpgradeProButton } from "./UpgradeProButton";
 import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 import { APP_BILLING } from "@/src/lib/routes";
+import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
 
 const PRO_FEATURES = [
   "5,000 credits per month",
@@ -55,7 +56,9 @@ export function UpgradeModal() {
             PRO
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold">₹999</span>
+            <span className="text-2xl font-bold">
+              ₹{PRO_PRICE_INR.toLocaleString("en-IN")}
+            </span>
             <span className="text-sm text-muted-foreground">/month</span>
           </div>
           <ul className="mt-4 space-y-2">

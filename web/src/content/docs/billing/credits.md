@@ -20,7 +20,7 @@ For a sense of scale:
 
 | | Roughly |
 |---|---|
-| A small landing page | 5–15 credits |
+| A small landing page | Varies with model tokens and effort; watch the live balance while it runs |
 | A working app with a few screens | 15–40 credits |
 | A one-line follow-up change | Well under a credit |
 | A short gateway call from your app | A small fraction of a credit |

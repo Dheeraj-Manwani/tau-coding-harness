@@ -10,7 +10,7 @@ Two plans. Both have every feature; they differ in credits and project count.
 
 | | **Free** | **PRO** |
 |---|---|---|
-| Price | ₹0 | ₹999 / month |
+| Price | ₹0 | ₹1,499 / month |
 | Credits | 25, once, at signup | 5,000 per billing cycle |
 | Projects at a time | 3 | Unlimited |
 | Effort tiers | All three, including Max | All three |

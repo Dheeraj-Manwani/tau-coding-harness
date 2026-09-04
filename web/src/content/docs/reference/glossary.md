@@ -142,7 +142,7 @@ and therefore never pushed. Applied before your `.gitignore`, as a hard floor.
 
 ## Spend cap
 
-The most one build may consume, set by its effort tier — 15, 50 or 100 credits. A
+The most one build may consume, set by its effort tier — 5,000, 25,000 or 50,000 credits. A
 ceiling, not a price.
 
 ## Spend split

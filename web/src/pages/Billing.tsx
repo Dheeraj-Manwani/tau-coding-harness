@@ -31,6 +31,7 @@ import { Input } from "@/src/components/ui/input";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
 import { SpendSplitCard } from "@/src/features/billing/SpendSplitCard";
+import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -221,7 +222,9 @@ function PlanSection() {
 
   return (
     <div className="rounded-xl border bg-card p-5">
-      <h2 className="text-sm font-medium">PRO plan — ₹999/month</h2>
+      <h2 className="text-sm font-medium">
+        PRO plan — ₹{PRO_PRICE_INR.toLocaleString("en-IN")}/month
+      </h2>
       <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
         {[
           "5,000 credits per month",

@@ -11,11 +11,21 @@ const IN = 100_000;
 const OUT = 10_000;
 
 describe("model pricing", () => {
-  test("flash costs less than pro, while legacy Kimi pricing remains known", () => {
+  test("the production model rates match the margin-backed catalog", () => {
+    expect(PRICING[FLASH]).toEqual({
+      inputPerM: 450_000_000n,
+      outputPerM: 1_400_000_000n,
+    });
+    expect(PRICING[PRO]).toEqual({
+      inputPerM: 1_400_000_000n,
+      outputPerM: 4_200_000_000n,
+    });
+    expect(PRICING[KIMI]).toEqual({
+      inputPerM: 1_000_000_000n,
+      outputPerM: 4_000_000_000n,
+    });
     expect(PRICING[FLASH]!.inputPerM).toBeLessThan(PRICING[PRO]!.inputPerM);
-    expect(PRICING[PRO]!.inputPerM).toBeLessThan(PRICING[KIMI]!.inputPerM);
     expect(PRICING[FLASH]!.outputPerM).toBeLessThan(PRICING[PRO]!.outputPerM);
-    expect(PRICING[PRO]!.outputPerM).toBeLessThan(PRICING[KIMI]!.outputPerM);
   });
 
   test("an identical pro turn has the same token cost on HIGH and MAX", () => {
@@ -39,19 +49,18 @@ describe("model pricing", () => {
 });
 
 describe("costMicro", () => {
-  test("HIGH billing is unchanged by the tier split", () => {
-    // 2 credits/1M in, 8 credits/1M out — the original flat rate.
-    expect(costMicro(PRO, 1_000_000, 0)).toBe(2_000_000n);
-    expect(costMicro(PRO, 0, 1_000_000)).toBe(8_000_000n);
+  test("HIGH billing uses the margin-backed rates", () => {
+    expect(costMicro(PRO, 1_000_000, 0)).toBe(1_400_000_000n);
+    expect(costMicro(PRO, 0, 1_000_000)).toBe(4_200_000_000n);
   });
 
   test("an unknown model falls back to the baseline rate, not zero", () => {
-    expect(costMicro("some-new-model", 1_000_000, 0)).toBe(2_000_000n);
+    expect(costMicro("some-new-model", 1_000_000, 0)).toBe(1_400_000_000n);
   });
 
   test("negative counts clamp to zero and fractional tokens truncate", () => {
     expect(costMicro(PRO, -5, -5)).toBe(0n);
-    // 1 token (1.9 truncated) at 2_000_000 micro per 1M tokens = 2 micro.
-    expect(costMicro(PRO, 1.9, 0)).toBe(2n);
+    // 1 token (1.9 truncated) at 1.4B micro per 1M tokens = 1,400 micro.
+    expect(costMicro(PRO, 1.9, 0)).toBe(1_400n);
   });
 });

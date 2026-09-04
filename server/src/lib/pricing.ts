@@ -29,14 +29,29 @@ export const PRICING: Record<
   string,
   { inputPerM: bigint; outputPerM: bigint }
 > = {
-  "deepseek-chat": { inputPerM: 2_000_000n, outputPerM: 8_000_000n },
-  "deepseek-v4-pro": { inputPerM: 2_000_000n, outputPerM: 8_000_000n },
-  "deepseek-v4-flash": { inputPerM: 1_000_000n, outputPerM: 4_000_000n },
-  "kimi-k2.7-code": { inputPerM: 4_000_000n, outputPerM: 16_000_000n },
-  "kimi-k2.6": { inputPerM: 4_000_000n, outputPerM: 16_000_000n },
+  "deepseek-chat": { inputPerM: 1_400_000_000n, outputPerM: 4_200_000_000n },
+  "deepseek-v4-pro": {
+    inputPerM: 1_400_000_000n,
+    outputPerM: 4_200_000_000n,
+  },
+  "deepseek-v4-flash": {
+    inputPerM: 450_000_000n,
+    outputPerM: 1_400_000_000n,
+  },
+  "kimi-k2.7-code": {
+    inputPerM: 1_000_000_000n,
+    outputPerM: 4_000_000_000n,
+  },
+  "kimi-k2.6": {
+    inputPerM: 1_000_000_000n,
+    outputPerM: 4_000_000_000n,
+  },
 };
 
-const DEFAULT_PRICE = { inputPerM: 2_000_000n, outputPerM: 8_000_000n };
+const DEFAULT_PRICE = {
+  inputPerM: 1_400_000_000n,
+  outputPerM: 4_200_000_000n,
+};
 
 /** Cost in micro-credits for a single completion's token usage. */
 export function costMicro(
@@ -54,16 +69,17 @@ export function costMicro(
 // ── Free tier / plan / reserve sizing (micro-credits) ──────────────────────────
 export const FREE_SIGNUP_GRANT_MICRO = 20n * MICRO; // one-time free grant at signup (never refilled)
 export const PRO_MONTHLY_ALLOTMENT_MICRO = 5_000n * MICRO; // granted each PRO cycle
-export const JOB_RESERVE_CEILING_MICRO = 50n * MICRO; // max a single job may spend
+export const PRO_MONTHLY_PRICE_INR = 1_499;
+export const JOB_RESERVE_CEILING_MICRO = 25_000n * MICRO; // legacy/default HIGH ceiling
 export const MIN_SPEND_TO_START_MICRO = 1n * MICRO; // refuse a job below this available
 
 // Max concurrent projects a FREE-plan user may own (PRO is unlimited).
 export const FREE_PLAN_MAX_PROJECTS = 3;
 
 export const RESERVE_CEILING_BY_EFFORT: Record<Effort, bigint> = {
-  LOW: 15n * MICRO,
-  HIGH: 50n * MICRO,
-  MAX: 100n * MICRO,
+  LOW: 5_000n * MICRO,
+  HIGH: 25_000n * MICRO,
+  MAX: 50_000n * MICRO,
 };
 
 export function reserveCeilingForEffort(effort: Effort): bigint {

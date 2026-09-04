@@ -16,6 +16,7 @@ import {
 } from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
 import { renderAdminConsole } from "../views/adminConsole";
+import { renderAdminCostCalculator } from "../views/adminCosts";
 
 /** Wrap an async handler so a rejection reaches the error middleware. */
 function handler(
@@ -163,6 +164,10 @@ export const releaseHolds = handler((req) =>
 
 export function ui(_req: Request, res: Response): void {
   res.type("html").send(renderAdminConsole());
+}
+
+export function costsUi(_req: Request, res: Response): void {
+  res.type("html").send(renderAdminCostCalculator());
 }
 
 // ── credits reconciliation (pre-existing) ────────────────────────────────────

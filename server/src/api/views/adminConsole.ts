@@ -96,6 +96,7 @@ export function renderAdminConsole(): string {
 <div id="app" class="hide">
   <header>
     <h1>tau ops</h1>
+    <a href="/admin/costs" style="color:var(--accent);text-decoration:none">cost calculator</a>
     <div class="row grow">
       <select id="statusFilter">
         <option value="active">active (default)</option>

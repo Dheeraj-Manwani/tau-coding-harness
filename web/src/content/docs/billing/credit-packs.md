@@ -42,7 +42,7 @@ whether your usage is steady.
 **Build in bursts?** Packs. You pay more per credit but you never lose an unused
 allotment, and a quiet month costs nothing.
 
-**Build most weeks?** PRO. 5,000 credits for ₹999 is less than half the pack rate,
+**Build most weeks?** PRO. 5,000 credits for ₹1,499 still costs less per credit than a pack,
 and it lifts the project cap.
 
 **Both?** That works — plan credits are spent before pack credits, so your

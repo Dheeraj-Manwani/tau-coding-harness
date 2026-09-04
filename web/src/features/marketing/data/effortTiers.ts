@@ -42,7 +42,7 @@ export const EFFORT_TIERS: EffortTier[] = [
     subagentTurns: 20,
     parallel: 1,
     wallClockMinutes: 20,
-    spendCap: 15,
+    spendCap: 5000,
     bestFor: "Tweaks, single pages, copy changes",
   },
   {
@@ -54,7 +54,7 @@ export const EFFORT_TIERS: EffortTier[] = [
     subagentTurns: 40,
     parallel: 3,
     wallClockMinutes: 45,
-    spendCap: 50,
+    spendCap: 25000,
     bestFor: "Most real apps",
   },
   {
@@ -66,7 +66,7 @@ export const EFFORT_TIERS: EffortTier[] = [
     subagentTurns: 60,
     parallel: 5,
     wallClockMinutes: 90,
-    spendCap: 100,
+    spendCap: 50000,
     bestFor: 'Big multi-file builds, "make it actually work"',
   },
 ];
@@ -80,7 +80,7 @@ export const FREE_MAX_PROJECTS = 3;
 /** api/src/lib/pricing.ts — MIN_SPEND_TO_START_MICRO. */
 export const MIN_CREDITS_TO_START = 1;
 /** api/src/services/billing.service.ts — the PRO plan price. */
-export const PRO_PRICE_INR = 999;
+export const PRO_PRICE_INR = 1499;
 
 /** api/src/services/billing.service.ts — CREDIT_PACKS. */
 export const CREDIT_PACKS = [

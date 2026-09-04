@@ -40,7 +40,7 @@ runs is refused with a clear message rather than queued.
 | Sub-agent turns | 20 | 40 | 60 |
 | Parallel sub-agents | 1 | 3 | 5 |
 | Wall clock | 20 min | 45 min | 90 min |
-| Spend cap per build | 15 credits | 50 credits | 100 credits |
+| Spend cap per build | 5,000 credits | 25,000 credits | 50,000 credits |
 
 The spend cap is a ceiling, not a price. A small build on Max costs what it
 costs.

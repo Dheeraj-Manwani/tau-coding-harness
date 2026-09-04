@@ -13,7 +13,10 @@ import {
   computedValueFor,
   describeRefusedEdit,
 } from "@/src/features/project/visualEditPrompt";
-import { parseElementBlock } from "@/src/stores/useProjectStore";
+import {
+  parseElementBlock,
+  type VisualEditOpInput,
+} from "@/src/stores/useProjectStore";
 
 /**
  * Byte-identical to what `visualContextBlock` emits for the same element, and
@@ -70,12 +73,12 @@ describe("describeRefusedEdit", () => {
   });
 
   test("every shape is a complete sentence", () => {
-    const ops = [
+    const ops: VisualEditOpInput[] = [
       { kind: "text", value: "hi" },
       { kind: "attr", name: "alt", value: "a cat" },
       { kind: "classes", add: ["p-6"] },
       { kind: "classes" },
-    ] as const;
+    ];
     for (const op of ops) {
       const s = describeRefusedEdit(op);
       expect(s[0]).toBe(s[0]!.toUpperCase());

@@ -20,6 +20,7 @@ import {
   releaseHolds,
   destroySession,
   ui,
+  costsUi,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -53,6 +54,7 @@ router.post("/users/:id/holds/release", releaseHolds);
 
 // ── console ──────────────────────────────────────────────────────────────────
 router.get("/ui", ui);
+router.get("/costs", costsUi);
 router.post("/session/end", destroySession);
 
 export default router;

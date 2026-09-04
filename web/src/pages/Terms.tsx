@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { APP_BILLING } from "@/src/lib/routes";
+import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
 
 const CONTACT_EMAIL = "support@usetau.dev";
-const EFFECTIVE_DATE = "June 29, 2025";
-const PRO_PRICE = "₹999";
+const EFFECTIVE_DATE = "August 28, 2026";
+const PRO_PRICE = `₹${PRO_PRICE_INR.toLocaleString("en-IN")}`;
 
 export default function TermsPage() {
   useDocumentMeta({

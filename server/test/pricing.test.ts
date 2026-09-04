@@ -5,6 +5,7 @@ import {
   MICRO,
   FREE_SIGNUP_GRANT_MICRO,
   JOB_RESERVE_CEILING_MICRO,
+  PRO_MONTHLY_PRICE_INR,
 } from "@/lib/pricing.ts";
 
 // ── Drift guard ────────────────────────────────────────────────────────────────
@@ -13,25 +14,25 @@ import {
 // suite breaks. Keep both copies of this file identical too.
 
 describe("costMicro", () => {
-  test("deepseek-chat input rate: 2 credits / 1M input tokens", () => {
-    expect(costMicro("deepseek-chat", 1_000_000, 0)).toBe(2_000_000n);
+  test("deepseek-chat input rate: 1,400 credits / 1M input tokens", () => {
+    expect(costMicro("deepseek-chat", 1_000_000, 0)).toBe(1_400_000_000n);
   });
 
-  test("deepseek-chat output rate: 8 credits / 1M output tokens", () => {
-    expect(costMicro("deepseek-chat", 0, 1_000_000)).toBe(8_000_000n);
+  test("deepseek-chat output rate: 4,200 credits / 1M output tokens", () => {
+    expect(costMicro("deepseek-chat", 0, 1_000_000)).toBe(4_200_000_000n);
   });
 
   test("mixed input + output", () => {
-    // (500k*2_000_000 + 250k*8_000_000) / 1e6 = 3_000_000 micro
-    expect(costMicro("deepseek-chat", 500_000, 250_000)).toBe(3_000_000n);
+    // 500k input = 700 credits; 250k output = 1,050 credits.
+    expect(costMicro("deepseek-chat", 500_000, 250_000)).toBe(1_750_000_000n);
   });
 
   test("unknown model falls back to default price", () => {
-    expect(costMicro("some-future-model", 1_000_000, 0)).toBe(2_000_000n);
+    expect(costMicro("some-future-model", 1_000_000, 0)).toBe(1_400_000_000n);
   });
 
   test("clamps negative and truncates fractional token counts", () => {
-    expect(costMicro("deepseek-chat", -5, 1.9)).toBe(8n);
+    expect(costMicro("deepseek-chat", -5, 1.9)).toBe(4_200n);
   });
 
   test("zero usage costs nothing", () => {
@@ -73,6 +74,7 @@ describe("constants", () => {
   test("micro unit and allotments are the agreed values", () => {
     expect(MICRO).toBe(1_000_000n);
     expect(FREE_SIGNUP_GRANT_MICRO).toBe(20_000_000n);
-    expect(JOB_RESERVE_CEILING_MICRO).toBe(50_000_000n);
+    expect(PRO_MONTHLY_PRICE_INR).toBe(1_499);
+    expect(JOB_RESERVE_CEILING_MICRO).toBe(25_000_000_000n);
   });
 });

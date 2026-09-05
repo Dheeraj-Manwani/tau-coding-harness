@@ -17,6 +17,7 @@ import {
 import * as admin from "../services/admin.service";
 import { renderAdminConsole } from "../views/adminConsole";
 import { renderAdminCostCalculator } from "../views/adminCosts";
+import { renderAdminPromoCodes } from "../views/adminPromoCodes";
 
 /** Wrap an async handler so a rejection reaches the error middleware. */
 function handler(
@@ -168,6 +169,10 @@ export function ui(_req: Request, res: Response): void {
 
 export function costsUi(_req: Request, res: Response): void {
   res.type("html").send(renderAdminCostCalculator());
+}
+
+export function promoCodesUi(_req: Request, res: Response): void {
+  res.type("html").send(renderAdminPromoCodes());
 }
 
 // ── credits reconciliation (pre-existing) ────────────────────────────────────

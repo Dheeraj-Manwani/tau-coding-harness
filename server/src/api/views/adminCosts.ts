@@ -119,6 +119,7 @@ export function renderAdminCostCalculator(): string {
 <header>
   <h1>tau cost calculator</h1>
   <a href="/admin/ui">← ops console</a>
+  <a href="/admin/promo-codes">promo codes</a>
   <span class="grow"></span>
   <span class="dim">provider snapshot: 28 Aug 2026</span>
 </header>

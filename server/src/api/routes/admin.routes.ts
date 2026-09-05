@@ -21,10 +21,12 @@ import {
   destroySession,
   ui,
   costsUi,
+  promoCodesUi,
 } from "../controllers/admin.controller";
 
 const router = Router();
 
+router.get("/promo-codes", promoCodesUi);
 router.post("/promo-codes", createPromoCode);
 
 // ── credits reconciliation ───────────────────────────────────────────────────

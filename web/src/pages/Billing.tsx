@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { celebratePromoRedemption } from "@/src/lib/confetti";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -314,6 +315,7 @@ function RedeemSection() {
     if (!trimmed) return;
     redeemCode.mutate(trimmed, {
       onSuccess: (data) => {
+        celebratePromoRedemption();
         toast.success(`+${fmt(data.creditsGranted)} credits added!`);
         setCode("");
       },

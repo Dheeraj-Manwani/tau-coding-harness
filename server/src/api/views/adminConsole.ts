@@ -97,6 +97,7 @@ export function renderAdminConsole(): string {
   <header>
     <h1>tau ops</h1>
     <a href="/admin/costs" style="color:var(--accent);text-decoration:none">cost calculator</a>
+    <a href="/admin/promo-codes" style="color:var(--accent);text-decoration:none">promo codes</a>
     <div class="row grow">
       <select id="statusFilter">
         <option value="active">active (default)</option>

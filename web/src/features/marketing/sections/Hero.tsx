@@ -203,7 +203,7 @@ export function Hero() {
       </div>
 
       <p className="relative mt-5 text-xs text-silver-600">
-        200 free credits on signup · No card required · Your code, yours to take
+        300 free credits on signup · No card required · Your code, yours to take
       </p>
 
       <ScrollCue />

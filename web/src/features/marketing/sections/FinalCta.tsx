@@ -77,7 +77,7 @@ export function FinalCta() {
           <span aria-hidden="true"> →</span>
         </MagneticButton>
         <p className="text-xs text-silver-600">
-          200 credits on signup, no card.
+          300 credits on signup, no card.
         </p>
       </ScrollReveal>
     </section>

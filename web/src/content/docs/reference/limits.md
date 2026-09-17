@@ -24,7 +24,7 @@ That page covers:
 
 | Question | Answer |
 |---|---|
-| How many free credits? | 200, once, at signup |
+| How many free credits? | 300, once, at signup |
 | How many projects on Free? | 3 at a time |
 | How many builds at once? | 1 per account |
 | Biggest attachment? | 10 MB (5 MB for images) |

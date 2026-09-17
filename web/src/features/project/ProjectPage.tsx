@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
@@ -35,6 +35,7 @@ const STALL_AFTER_MS = 5 * 60_000;
 function useProjectBootstrap() {
   const { id: projectId } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const navState = location.state as { jobId?: string; prompt?: string } | null;
 
   const initProject = useProjectStore((s) => s.initProject);
@@ -52,7 +53,19 @@ function useProjectBootstrap() {
   useEffect(() => {
     if (!projectId) return;
     initProject(projectId);
-    if (navState?.jobId) startJob(navState.jobId, navState.prompt);
+    if (navState?.jobId) {
+      startJob(navState.jobId, navState.prompt);
+
+      // The job handoff from Home is a one-shot instruction, not durable route
+      // state. Leaving it on the history entry makes browser Back replay an old
+      // job after initProject clears the transcript; hydrate then correctly
+      // refuses to overwrite the resulting "streaming" state. Consume it now
+      // so returning from Billing hydrates the persisted conversation instead.
+      void navigate(
+        `${location.pathname}${location.search}${location.hash}`,
+        { replace: true, state: null },
+      );
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 

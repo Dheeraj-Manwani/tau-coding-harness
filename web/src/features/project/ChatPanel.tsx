@@ -37,6 +37,7 @@ import {
   MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
+  PlayIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   SquareCheckBigIcon,
@@ -73,6 +74,10 @@ import {
   useProject,
 } from "@/src/features/project/api";
 import { useSendMessage } from "@/src/features/project/useSendMessage";
+import {
+  CREDIT_RESUME_PROMPT,
+  shouldOfferCreditResume,
+} from "@/src/features/project/creditResume";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import {
   Tooltip,
@@ -915,6 +920,10 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
   // choice made anywhere carries everywhere.
   const { effort, setEffort } = useEffortChoice();
   const { send, isSending } = useSendMessage(projectId);
+  const canContinueAfterCredits =
+    !isStreaming &&
+    !isSending &&
+    shouldOfferCreditResume(messages, balance?.credits.available);
 
   const [draft, setDraft] = useState("");
 
@@ -1101,6 +1110,19 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
                 noAnimate={prependedIdsRef.current.has(m.id)}
               />
             ),
+          )}
+          {canContinueAfterCredits && (
+            <motion.button
+              type="button"
+              initial={ENTRANCE.initial}
+              animate={ENTRANCE.animate}
+              transition={ENTRANCE.transition}
+              onClick={() => void send(CREDIT_RESUME_PROMPT, { effort })}
+              className="flex items-center gap-2 rounded-lg border border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 px-3 py-2 text-sm font-medium text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-500)]/20"
+            >
+              <PlayIcon className="size-4 fill-current" />
+              Continue
+            </motion.button>
           )}
           <AnimatePresence>
             {isAiTyping && (

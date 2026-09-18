@@ -21,6 +21,7 @@ import {
   clearFreshBuild,
   hasFreshBuild,
 } from "@/src/features/project/revealSession";
+import { useReadyNotification } from "@/src/features/project/useReadyNotification";
 
 /**
  * How long an "active" job may send nothing before the UI calls it stalled.
@@ -155,7 +156,14 @@ export default function ProjectPage() {
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const buildStarted = useProjectStore((s) => s.buildStarted);
+  const status = useProjectStore((s) => s.status);
+  const currentJobId = useProjectStore((s) => s.currentJobId);
   const centered = cameFromHome && !buildStarted;
+  const readyNotification = useReadyNotification({
+    projectId,
+    currentJobId,
+    status,
+  });
 
   const chatPanelRef = useRef<PanelImperativeHandle | null>(null);
 
@@ -172,7 +180,10 @@ export default function ProjectPage() {
     return (
       <div className="flex h-full w-full justify-center">
         <div className="h-full w-full max-w-2xl">
-          <ChatPanel showCollapse={false} />
+          <ChatPanel
+            showCollapse={false}
+            readyNotification={readyNotification}
+          />
         </div>
       </div>
     );
@@ -192,7 +203,7 @@ export default function ProjectPage() {
           setChatOpen(!collapsed);
         }}
       >
-        <ChatPanel />
+        <ChatPanel readyNotification={readyNotification} />
       </Panel>
 
       <Separator

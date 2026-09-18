@@ -333,8 +333,13 @@ export function RightPanel() {
 
         <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />
 
-        <GithubPanel />
-        <DeployPanel />
+        <div
+          className="flex items-center gap-1"
+          aria-label="Project sharing and publishing"
+        >
+          <GithubPanel />
+          <DeployPanel />
+        </div>
         <UserMenu />
       </div>
 

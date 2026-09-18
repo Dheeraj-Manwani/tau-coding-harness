@@ -10,6 +10,8 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BellIcon,
+  BellRingIcon,
   BookOpen,
   Box,
   BrainIcon,
@@ -86,6 +88,8 @@ import {
 } from "@/src/components/ui/tooltip";
 import { APP_HOME } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
+import { UserMenu } from "@/src/components/UserMenu";
+import type { ReadyNotificationController } from "@/src/features/project/useReadyNotification";
 
 function formatRelativeTime(ts: number): string {
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -897,7 +901,13 @@ function AskUserPrompt({
   );
 }
 
-export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
+export function ChatPanel({
+  showCollapse = true,
+  readyNotification,
+}: {
+  showCollapse?: boolean;
+  readyNotification?: ReadyNotificationController;
+}) {
   const { id: projectId } = useParams<{ id: string }>();
   const messages = useProjectStore((s) => s.chatMessages);
   const isAiTyping = useProjectStore((s) => s.isAiTyping);
@@ -1079,6 +1089,7 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
               <PanelLeftCloseIcon className="size-4.5" />
             </motion.button>
           )}
+          {!showCollapse && <UserMenu />}
         </div>
       </div>
 
@@ -1156,6 +1167,59 @@ export function ChatPanel({ showCollapse = true }: { showCollapse?: boolean }) {
       </div>
 
       <div className="border-[var(--silver-200)] p-3">
+        {!pendingQuestion &&
+          isStreaming &&
+          currentJobId &&
+          readyNotification?.supported && (
+            <button
+              type="button"
+              onClick={() => void readyNotification.toggle()}
+              aria-pressed={readyNotification.armed}
+              className={cn(
+                "mb-2 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors",
+                readyNotification.armed
+                  ? "border-[var(--blue-500)]/30 bg-[var(--blue-500)]/8"
+                  : "border-[var(--silver-400)]/25 bg-[var(--space-surface)] hover:border-[var(--silver-400)]/50 hover:bg-[var(--space-overlay)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-full",
+                  readyNotification.armed
+                    ? "bg-[var(--blue-500)]/15 text-[var(--blue-500)]"
+                    : "bg-[var(--space-overlay)] text-[var(--silver-600)]",
+                )}
+              >
+                {readyNotification.armed ? (
+                  <BellRingIcon className="size-3.5" />
+                ) : (
+                  <BellIcon className="size-3.5" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-medium text-[var(--silver-900)]">
+                  {readyNotification.armed
+                    ? "We’ll notify you when it’s ready"
+                    : "Notify when ready?"}
+                </span>
+                <span className="block truncate text-[11px] text-[var(--silver-600)]">
+                  {readyNotification.armed
+                    ? "Click to turn this notification off"
+                    : "You can switch tabs while Tau works"}
+                </span>
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium",
+                  readyNotification.armed
+                    ? "text-[var(--blue-500)]"
+                    : "bg-[var(--space-overlay)] text-[var(--silver-900)]",
+                )}
+              >
+                {readyNotification.armed ? "On" : "Notify me"}
+              </span>
+            </button>
+          )}
         {pendingQuestion && currentJobId && projectId ? (
           <AskUserPrompt
             projectId={projectId}

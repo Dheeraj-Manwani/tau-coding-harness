@@ -129,7 +129,9 @@ async function runPool<T, R>(
   return results;
 }
 
-const SCREENSHOT_BUDGET_MS = 25_000;
+// Includes the browser navigation timeout plus the deliberately generous
+// render-settle/retry window in captureAppScreenshot().
+const SCREENSHOT_BUDGET_MS = 60_000;
 
 export async function captureProjectScreenshot(
   projectId: string,

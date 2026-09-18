@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { shouldOfferCreditResume } from "@/src/features/project/creditResume";
+import {
+  shouldOfferCreditResume,
+  wasInterruptedForCredits,
+} from "@/src/features/project/creditResume";
 
 const outOfCredits = {
   role: "ai" as const,
@@ -11,6 +14,7 @@ const outOfCredits = {
 describe("credit resume", () => {
   test("offers continue when credits were added after an interrupted run", () => {
     expect(shouldOfferCreditResume([outOfCredits], 10)).toBe(true);
+    expect(wasInterruptedForCredits([outOfCredits])).toBe(true);
   });
 
   test("does not offer continue while the balance is empty", () => {

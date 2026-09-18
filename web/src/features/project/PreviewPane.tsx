@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowUpIcon,
   CodeIcon,
+  CreditCardIcon,
   ImageIcon,
   LayersIcon,
+  ListChecksIcon,
+  MonitorSmartphoneIcon,
   PaletteIcon,
   PencilIcon,
   PlayIcon,
   PowerOffIcon,
+  SquareIcon,
   SquareMousePointerIcon,
   TriangleAlertIcon,
   WrenchIcon,
@@ -18,6 +23,7 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import BorderGlow from "@/src/components/ui/glow-loader";
+import { GithubMark } from "@/src/components/ui/github-mark";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
 import { VisualThemePanel } from "@/src/features/project/VisualThemePanel";
@@ -41,6 +47,17 @@ import {
 import { previewSrc } from "@/src/features/project/previewUrl";
 import type { PreviewBuildError } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
+import { APP_BILLING } from "@/src/lib/routes";
+import { useBalance } from "@/src/features/billing/api";
+import {
+  CREDIT_RESUME_PROMPT,
+  wasInterruptedForCredits,
+} from "@/src/features/project/creditResume";
+import {
+  getEmptyPreviewState,
+  type EmptyPreviewAction,
+  type EmptyPreviewState,
+} from "@/src/features/project/previewEmptyState";
 
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
@@ -48,9 +65,124 @@ const DEVICE_WIDTH: Record<string, number> = {
   desktop: 9999,
 };
 
-function PreviewPlaceholder({ label }: { label?: string }) {
+const BUILD_TIPS = [
+  {
+    title: "Keep your work on GitHub",
+    copy: "Use the GitHub button in the top bar to connect a repository and push your project whenever you want.",
+    icon: GithubMark,
+    iconClass: "text-[var(--silver-900)]",
+  },
+  {
+    title: "Check every screen size",
+    copy: "Switch between desktop, tablet, and mobile in the top bar to make sure your layout works everywhere.",
+    icon: MonitorSmartphoneIcon,
+    iconClass: "text-sky-400",
+  },
+  {
+    title: "Your code stays editable",
+    copy: "Open the Code tab at any time to inspect files or make a quick change yourself while tau works.",
+    icon: CodeIcon,
+    iconClass: "text-violet-400",
+  },
+  {
+    title: "Edit visually",
+    copy: "Use the pointer tool on a live preview to select an element, then change its text, style, or image.",
+    icon: SquareMousePointerIcon,
+    iconClass: "text-pink-400",
+  },
+  {
+    title: "Build in small steps",
+    copy: "After the first version, ask for focused changes one at a time for faster, more predictable results.",
+    icon: ListChecksIcon,
+    iconClass: "text-emerald-400",
+  },
+] as const;
+
+const TIP_INTERVAL_MS = 5600;
+
+function activityPhrase(title: string): string {
+  const phrase = title.replace(/^tau is\s+/i, "").trim();
+  if (!phrase) return "working…";
+  return `${phrase.charAt(0).toLowerCase()}${phrase.slice(1)}`;
+}
+
+function PreviewPlaceholder({
+  state,
+  onAction,
+}: {
+  state: EmptyPreviewState;
+  onAction: (action: EmptyPreviewAction) => void;
+}) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!state.animated || reduceMotion) return;
+    const timer = window.setInterval(() => {
+      setTipIndex((current) => (current + 1) % BUILD_TIPS.length);
+    }, TIP_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [state.animated, reduceMotion]);
+
+  const selectTip = (index: number) => {
+    setTipIndex((index + BUILD_TIPS.length) % BUILD_TIPS.length);
+  };
+
+  if (!state.animated) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex max-w-sm flex-col items-center text-center">
+          <span
+            className={cn(
+              "flex size-12 items-center justify-center rounded-full bg-[var(--space-overlay)]",
+              state.tone === "warning"
+                ? "text-amber-400"
+                : state.tone === "error"
+                  ? "text-red-400"
+                  : "text-[var(--silver-600)]",
+            )}
+          >
+            {state.tone === "neutral" ? (
+              <PowerOffIcon className="size-5" />
+            ) : (
+              <TriangleAlertIcon className="size-5" />
+            )}
+          </span>
+          <h2 className="mt-4 text-sm font-semibold text-[var(--silver-900)]">
+            {state.title}
+          </h2>
+          {state.description && (
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--silver-600)]">
+              {state.description}
+            </p>
+          )}
+          {state.action && state.actionLabel && (
+            <button
+              type="button"
+              onClick={() => onAction(state.action!)}
+              className="mt-4 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--blue-500)] px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
+            >
+              {state.action === "add_credits" ? (
+                <CreditCardIcon className="size-3.5" />
+              ) : state.action === "stop" ? (
+                <SquareIcon className="size-3.5 fill-current" />
+              ) : (
+                <PlayIcon className="size-3.5 fill-current" />
+              )}
+              {state.actionLabel}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const tip = BUILD_TIPS[tipIndex]!;
+  const TipIcon = tip.icon;
+  const liveActivity = activityPhrase(state.title);
+
   return (
-    <div className="flex h-full items-center justify-center p-0">
+    <div className="flex h-full items-center justify-center p-6">
       <BorderGlow
         autoAnimate
         autoAnimateDuration={3200}
@@ -62,15 +194,106 @@ function PreviewPlaceholder({ label }: { label?: string }) {
         glowRadius={32}
         glowIntensity={0.9}
         fillOpacity={0.3}
-        className=" px-8 mx-0 py-5"
+        className="mx-0 w-full max-w-md px-0 py-0"
       >
-        <div className="flex flex-col items-center gap-3">
-          <span className="logo-mark size-12" role="img" aria-label="tau" />
+        <div className="relative overflow-hidden rounded-[20px] px-6 py-5 sm:px-7">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
 
-          <div className="flex flex-col items-center  text-center">
-            <span className="text-sm font-semibold text-(--silver-900)">
-              {label ?? "tau is building your app…"}
-            </span>
+          <div className="flex flex-col items-center text-center">
+            <div
+              className="flex min-h-7 w-full items-center justify-center gap-1.5 overflow-hidden"
+              aria-live="polite"
+            >
+              <div className="relative shrink-0">
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-full bg-[var(--blue-500)]/20 blur-lg"
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          scale: [0.85, 1.15, 0.85],
+                          opacity: [0.3, 0.65, 0.3],
+                        }
+                  }
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+                <span
+                  className="logo-mark relative block size-4"
+                  role="img"
+                  aria-label="tau"
+                />
+              </div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.p
+                  key={state.title}
+                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                  transition={{ duration: 0.22 }}
+                  className="text-[13px] font-semibold leading-snug text-[var(--silver-900)]"
+                >
+                  is {liveActivity}
+                </motion.p>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="relative min-h-24 overflow-hidden text-center">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={tipIndex}
+                  initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, x: -18 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="flex flex-col items-center"
+                >
+                  <span className="mb-2.5 flex size-8 items-center justify-center rounded-lg bg-[var(--space-overlay)]">
+                    <TipIcon className={cn("size-4", tip.iconClass)} />
+                  </span>
+                  <p className="text-[13px] font-semibold text-[var(--silver-900)]">
+                    {tip.title}
+                  </p>
+                  <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[var(--silver-600)]">
+                    {tip.copy}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="mt-1.5 flex items-center justify-center">
+              <div
+                role="group"
+                className="flex items-center gap-0.5"
+                aria-label={`Tip ${tipIndex + 1} of ${BUILD_TIPS.length}`}
+              >
+                {BUILD_TIPS.map((item, index) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => selectTip(index)}
+                    aria-label={`Show tip ${index + 1}`}
+                    aria-current={index === tipIndex ? "true" : undefined}
+                    className="flex size-6 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--blue-500)]"
+                  >
+                    <span
+                      className={cn(
+                        "block h-1.5 rounded-full transition-[width,background-color,opacity]",
+                        index === tipIndex
+                          ? "w-4 bg-[var(--blue-500)]"
+                          : "w-1.5 bg-[var(--silver-600)] opacity-80 ring-1 ring-[var(--silver-400)] hover:opacity-100",
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </BorderGlow>
@@ -272,7 +495,8 @@ function useVisualUndo(onReselect: (loc: string) => void) {
       // included; there Ctrl+Z should undo typing.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable)
+        return;
 
       if (pending) return;
       const entry = useProjectStore.getState().visualUndo.at(-1);
@@ -336,7 +560,8 @@ function useVisualEditEscape(): void {
       // it to clear the selection, and its own handler has already run.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable)
+        return;
 
       const s = useProjectStore.getState();
       if (!s.visualEditEnabled) return;
@@ -589,20 +814,20 @@ function VisualEditBanner() {
 
   return (
     <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--blue-500)]/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
-        <SquareMousePointerIcon className="size-3.5 shrink-0 text-[var(--blue-500)]" />
-        <span className="text-[var(--silver-900)]">
-          Click an element to edit it
-        </span>
-        <kbd className="hidden rounded border border-[var(--silver-200)] px-1 py-px font-mono text-[10px] text-[var(--silver-600)] sm:inline">
-          Esc
-        </kbd>
-        <button
-          type="button"
-          onClick={() => setEnabled(false)}
-          className="rounded-full bg-[var(--space-overlay)] px-2.5 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--blue-500)] hover:text-white"
-        >
-          Done
-        </button>
+      <SquareMousePointerIcon className="size-3.5 shrink-0 text-[var(--blue-500)]" />
+      <span className="text-[var(--silver-900)]">
+        Click an element to edit it
+      </span>
+      <kbd className="hidden rounded border border-[var(--silver-200)] px-1 py-px font-mono text-[10px] text-[var(--silver-600)] sm:inline">
+        Esc
+      </kbd>
+      <button
+        type="button"
+        onClick={() => setEnabled(false)}
+        className="rounded-full bg-[var(--space-overlay)] px-2.5 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--blue-500)] hover:text-white"
+      >
+        Done
+      </button>
     </div>
   );
 }
@@ -659,7 +884,9 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
   // Which value the deterministic path refused, when this draft came from one.
   // A fact about the element, not part of the request — so it travels in the
   // context rather than in what the user sees.
-  const [computed, setComputed] = useState<ComputedValue | undefined>(undefined);
+  const [computed, setComputed] = useState<ComputedValue | undefined>(
+    undefined,
+  );
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // A new element was picked — empty box, and the old refusal no longer
@@ -837,10 +1064,7 @@ function TextEditor({
           // Enter, rather than leaving them at a dead end.
           if (data.reason === "dynamic_children") {
             const op = { kind: "text", value: draft } as const;
-            prefillVisualPrompt(
-              describeRefusedEdit(op),
-              computedValueFor(op),
-            );
+            prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
             toast("tau can edit this — the request is ready above.", {
               icon: "💬",
             });
@@ -852,7 +1076,8 @@ function TextEditor({
           const status = err instanceof ApiError ? err.status : 0;
           if (status === 409) {
             toast.error(
-              err instanceof ApiError && err.message === "generation in progress"
+              err instanceof ApiError &&
+                err.message === "generation in progress"
                 ? "Can't edit while tau is building."
                 : "This element moved — select it again.",
             );
@@ -1084,13 +1309,21 @@ function VisualInspector({
 }
 
 export function PreviewPane({ device }: { device: string }) {
+  const navigate = useNavigate();
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
   const previewNonce = useProjectStore((s) => s.previewNonce);
   const projectId = useProjectStore((s) => s.projectId);
   const status = useProjectStore((s) => s.status);
+  const hydrated = useProjectStore((s) => s.hydrated);
+  const activity = useProjectStore((s) => s.activity);
+  const isStalled = useProjectStore((s) => s.isStalled);
+  const messages = useProjectStore((s) => s.chatMessages);
+  const cancelStream = useProjectStore((s) => s.cancelStream);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
+  const { data: balance } = useBalance();
+  const { send } = useSendMessage(projectId ?? undefined);
 
   const visualSelection = useProjectStore((s) => s.visualSelection);
   const visualEditEnabled = useProjectStore((s) => s.visualEditEnabled);
@@ -1125,6 +1358,24 @@ export function PreviewPane({ device }: { device: string }) {
     Boolean(previewUrl) && !isStreaming && liveness.data?.alive === false;
 
   const src = previewSrc(previewUrl, previewPath);
+  const emptyState = getEmptyPreviewState({
+    status,
+    hydrated,
+    activity,
+    isStalled,
+    interruptedForCredits: wasInterruptedForCredits(messages),
+    availableCredits: balance?.credits.available,
+  });
+
+  const handleEmptyAction = (action: EmptyPreviewAction) => {
+    if (action === "add_credits") {
+      void navigate(APP_BILLING);
+    } else if (action === "continue") {
+      void send(CREDIT_RESUME_PROMPT);
+    } else {
+      cancelStream?.();
+    }
+  };
 
   const handleStart = () => {
     if (!projectId || starting) return;
@@ -1133,7 +1384,8 @@ export function PreviewPane({ device }: { device: string }) {
         setPreviewJobId(jobId);
         startPreviewJob(jobId);
       },
-      onError: () => toast.error("Couldn't start the preview. Please try again."),
+      onError: () =>
+        toast.error("Couldn't start the preview. Please try again."),
     });
   };
 
@@ -1188,7 +1440,7 @@ export function PreviewPane({ device }: { device: string }) {
             )}
           </>
         ) : (
-          <PreviewPlaceholder />
+          <PreviewPlaceholder state={emptyState} onAction={handleEmptyAction} />
         )}
       </motion.div>
     </div>

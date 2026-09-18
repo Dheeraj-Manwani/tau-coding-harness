@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { env } from "@/lib/env";
+import {
+  screenshotLooksUseful,
+  type ScreenshotPixelStats,
+} from "./screenshotQuality";
 
 /**
  * Headless-browser screenshots of a finished app's live preview URL.
@@ -23,7 +27,13 @@ import { env } from "@/lib/env";
 
 const VIEWPORT = { width: 1280, height: 800 };
 const DEVICE_SCALE = 0.5; // clip scale → 640x400 output
-const SETTLE_MS = 1_200; // let hydration / entrance animation land
+// Completion can arrive before Vite's final HMR paint, especially for a fresh
+// sandbox that is still warming dependencies. Covers are non-interactive and
+// captured once per completed run, so waiting generously is preferable to
+// permanently storing a fast but empty frame.
+const INITIAL_SETTLE_MS = 10_000;
+const RETRY_SETTLE_MS = 2_500;
+const MAX_CAPTURE_ATTEMPTS = 8;
 const JPEG_QUALITY = 72;
 const LAUNCH_TIMEOUT_MS = 30_000;
 
@@ -202,12 +212,85 @@ async function getSession(): Promise<Session> {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+/** Measure a downsampled capture inside Chromium, where JPEG decoding is free. */
+async function pixelStats(
+  page: CdpConnection,
+  jpegBase64: string,
+): Promise<ScreenshotPixelStats> {
+  const expression = `new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 64;
+      canvas.height = 40;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return reject(new Error("2d canvas unavailable"));
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      let sumSquares = 0;
+      let min = 255;
+      let max = 0;
+      const buckets = new Set();
+      const count = pixels.length / 4;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const luma = 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+        sum += luma;
+        sumSquares += luma * luma;
+        min = Math.min(min, luma);
+        max = Math.max(max, luma);
+        buckets.add(Math.round(luma / 16));
+      }
+      const mean = sum / count;
+      resolve({
+        mean,
+        variance: sumSquares / count - mean * mean,
+        range: max - min,
+        buckets: buckets.size,
+      });
+    };
+    image.onerror = () => reject(new Error("screenshot decode failed"));
+    image.src = "data:image/jpeg;base64,${jpegBase64}";
+  })`;
+
+  const evaluated = await page.send<{
+    result: { value?: ScreenshotPixelStats };
+    exceptionDetails?: unknown;
+  }>("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  const stats = evaluated.result.value;
+  if (!stats) throw new Error("could not inspect screenshot pixels");
+  return stats;
+}
+
+async function captureJpeg(page: CdpConnection): Promise<string> {
+  const { data } = await page.send<{ data: string }>(
+    "Page.captureScreenshot",
+    {
+      format: "jpeg",
+      quality: JPEG_QUALITY,
+      clip: {
+        x: 0,
+        y: 0,
+        width: VIEWPORT.width,
+        height: VIEWPORT.height,
+        scale: DEVICE_SCALE,
+      },
+    },
+  );
+  return data;
+}
+
 /**
  * Navigate to `url` and return a card-sized JPEG of the first fold.
  *
- * Waits for `Page.loadEventFired` (bounded) + a fixed settle rather than network
- * idle: generated apps often hold a WebSocket or poll, so we shoot whatever
- * rendered — a faithful thumbnail either way.
+ * Waits for `Page.loadEventFired` (bounded), then rejects and retries visually
+ * empty frames. Generated apps often keep a WebSocket open, so network-idle is
+ * not useful; pixel variance tells us whether the first fold has actually
+ * painted without knowing anything about the generated app's DOM.
  */
 export async function captureAppScreenshot(url: string): Promise<Buffer> {
   const { conn: browser, wsBase } = await getSession();
@@ -221,6 +304,7 @@ export async function captureAppScreenshot(url: string): Promise<Buffer> {
   try {
     page = await CdpConnection.connect(`${wsBase}/devtools/page/${targetId}`);
     await page.send("Page.enable");
+    await page.send("Runtime.enable");
     await page.send("Emulation.setDeviceMetricsOverride", {
       width: VIEWPORT.width,
       height: VIEWPORT.height,
@@ -234,23 +318,26 @@ export async function captureAppScreenshot(url: string): Promise<Buffer> {
     );
     await page.send("Page.navigate", { url });
     await loaded;
-    await new Promise((r) => setTimeout(r, SETTLE_MS));
+    await new Promise((r) => setTimeout(r, INITIAL_SETTLE_MS));
 
-    const { data } = await page.send<{ data: string }>(
-      "Page.captureScreenshot",
-      {
-        format: "jpeg",
-        quality: JPEG_QUALITY,
-        clip: {
-          x: 0,
-          y: 0,
-          width: VIEWPORT.width,
-          height: VIEWPORT.height,
-          scale: DEVICE_SCALE,
-        },
-      },
+    let lastStats: ScreenshotPixelStats | null = null;
+    for (let attempt = 1; attempt <= MAX_CAPTURE_ATTEMPTS; attempt++) {
+      const data = await captureJpeg(page);
+      lastStats = await pixelStats(page, data);
+      if (screenshotLooksUseful(lastStats)) {
+        return Buffer.from(data, "base64");
+      }
+      if (attempt < MAX_CAPTURE_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, RETRY_SETTLE_MS));
+      }
+    }
+
+    throw new Error(
+      `preview remained visually blank after ${MAX_CAPTURE_ATTEMPTS} captures` +
+        (lastStats
+          ? ` (variance=${lastStats.variance.toFixed(1)}, range=${lastStats.range.toFixed(1)}, buckets=${lastStats.buckets})`
+          : ""),
     );
-    return Buffer.from(data, "base64");
   } finally {
     page?.close();
     // Keep the browser warm; only close this page target.

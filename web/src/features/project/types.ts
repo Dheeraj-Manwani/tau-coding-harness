@@ -166,6 +166,12 @@ interface BaseEvent {
   index: number;
 }
 
+export type TerminalOutcome =
+  | { kind: "done" }
+  | { kind: "cancelled" }
+  | { kind: "error"; message: string }
+  | { kind: "credits"; reason: "budget" | "balance" };
+
 export type JobEvent = BaseEvent &
   (
     | { type: "thinking"; message: string }
@@ -198,7 +204,7 @@ export type JobEvent = BaseEvent &
     | { type: "cancelled" }
     | { type: "done" }
     | { type: "error"; message: string }
-    | { type: "insufficient_credits" }
+    | { type: "insufficient_credits"; reason?: "budget" | "balance" }
     | { type: "credits_update"; available: number; availableMicro: string }
     | { type: "context_compacted"; tokensBefore: number; tokensAfter: number }
     | {

@@ -158,11 +158,13 @@ export default function ProjectPage() {
   const buildStarted = useProjectStore((s) => s.buildStarted);
   const status = useProjectStore((s) => s.status);
   const currentJobId = useProjectStore((s) => s.currentJobId);
+  const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
   const centered = cameFromHome && !buildStarted;
   const readyNotification = useReadyNotification({
     projectId,
     currentJobId,
     status,
+    terminalOutcome,
   });
 
   const chatPanelRef = useRef<PanelImperativeHandle | null>(null);

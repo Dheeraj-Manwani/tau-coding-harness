@@ -32,6 +32,46 @@ docker run -p 8080:8080 --env-file server/.env tau-economy
 
 Only a Postgres `DATABASE_URL` is required as external infra.
 
+## EC2 without Docker (server-only checkout)
+
+Prefer Git sparse-checkout over deleting tracked files. It keeps the deployment
+checkout clean, so future pulls work normally, while only `server/` is present
+in the working tree.
+
+After the first clone:
+
+```sh
+cd tau
+bash server/scripts/ec2-server-only.sh --prune-untracked
+cd server
+bun install --frozen-lockfile
+bun run generate
+bunx playwright install --with-deps chromium
+bunx prisma migrate deploy
+```
+
+For later releases, the sparse-checkout setting is already persistent:
+
+```sh
+cd /opt/tau
+git pull --ff-only
+cd server
+bun install --frozen-lockfile
+bun run generate
+bunx prisma migrate deploy
+sudo systemctl restart tau
+```
+
+Run `bun run start` under systemd (or another process supervisor), not in an
+interactive SSH session. Keep secrets in `server/.env` with mode `0600`, or use
+an external systemd `EnvironmentFile`; never commit them. Put Nginx or an AWS
+Application Load Balancer in front for TLS and health checks.
+
+Repository files on disk do not normally consume application RAM. Sparse
+checkout mainly reduces disk use, clone/pull work, and accidental build/watch
+scope. Runtime memory is controlled by the Bun process, Chromium/Playwright,
+request concurrency, and the in-process job queue.
+
 ## Web
 
 The web SPA is still built/hosted separately. Point it at the single origin:

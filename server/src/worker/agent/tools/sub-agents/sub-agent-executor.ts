@@ -181,7 +181,10 @@ export const executeSubAgentLoop = async (
       });
       // Terminal — and deduped: the main loop's own meter will reach the same
       // conclusion within a turn or two and try to publish it again.
-      await publishTerminal(jobId, { type: "insufficient_credits" });
+      await publishTerminal(jobId, {
+        type: "insufficient_credits",
+        reason: "balance",
+      });
       return assistant.content ?? "Stopped early: ran out of credits.";
     }
 

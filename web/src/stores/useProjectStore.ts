@@ -8,6 +8,7 @@ import type {
   ProjectMessage,
   ProjectTree,
   PreviewBuildError,
+  TerminalOutcome,
   VisualMessageContext,
 } from "@/src/features/project/types";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
@@ -901,6 +902,9 @@ interface ProjectState {
   projectId: string | null;
   currentJobId: string | null;
   status: JobStatus;
+  /** The terminal event that ended the latest run. Kept separately from status
+   *  so browser notifications can explain what the user needs to do next. */
+  terminalOutcome: TerminalOutcome | null;
   /** Short human label of what the agent is doing right now (tool/shell). */
   activity: string | null;
   hydrated: boolean;
@@ -1090,6 +1094,7 @@ const FRESH = {
   currentJobId: null,
   isPreviewJob: false,
   status: "idle" as JobStatus,
+  terminalOutcome: null as TerminalOutcome | null,
   activity: null,
   hydrated: false,
   lastEventAt: null as number | null,
@@ -1303,6 +1308,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return {
         currentJobId: jobId,
         status: "streaming",
+        terminalOutcome: null,
         isAiTyping: true,
         isPreviewJob: false,
         activity: "Thinking",
@@ -1320,6 +1326,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       currentJobId: jobId,
       status: "streaming",
+      terminalOutcome: null,
       isPreviewJob: true,
       lastEventAt: Date.now(),
       isStalled: false,
@@ -2009,6 +2016,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           streamingId: null,
           isAiTyping: false,
           status: "done",
+          terminalOutcome: { kind: "done" },
           activity: null,
           writingPath: null,
           currentJobId: null,
@@ -2029,6 +2037,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           streamingId: null,
           isAiTyping: false,
           status: "cancelled",
+          terminalOutcome: { kind: "cancelled" },
           activity: null,
           writingPath: null,
           currentJobId: null,
@@ -2053,6 +2062,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           streamingId: null,
           isAiTyping: false,
           status: "error",
+          terminalOutcome: { kind: "error", message },
           activity: null,
           writingPath: null,
           currentJobId: null,
@@ -2077,6 +2087,10 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         ...finalizeStreaming(s),
         isAiTyping: false,
         status: "error",
+        terminalOutcome: {
+          kind: "credits",
+          reason: event.reason ?? "balance",
+        },
         activity: null,
         writingPath: null,
         currentJobId: null,

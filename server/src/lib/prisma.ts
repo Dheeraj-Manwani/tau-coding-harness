@@ -22,7 +22,13 @@ const globalForPrisma = globalThis as unknown as {
 // on the path where an existing client is reused.
 function createClient(): PrismaClient {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-  return new PrismaClient({ adapter });
+  return new PrismaClient({
+    adapter,
+    transactionOptions: {
+      maxWait: 30_000,
+      timeout: 30_000,
+    },
+  });
 }
 
 export const prisma = (globalForPrisma.prisma ??= createClient());

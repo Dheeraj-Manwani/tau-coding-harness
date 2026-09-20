@@ -11,7 +11,6 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   BellIcon,
-  BellRingIcon,
   BookOpen,
   Box,
   BrainIcon,
@@ -1167,59 +1166,28 @@ export function ChatPanel({
       </div>
 
       <div className="border-[var(--silver-200)] p-3">
-        {!pendingQuestion &&
-          isStreaming &&
-          currentJobId &&
-          readyNotification?.supported && (
-            <button
-              type="button"
-              onClick={() => void readyNotification.toggle()}
-              aria-pressed={readyNotification.armed}
-              className={cn(
-                "mb-2 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors",
-                readyNotification.armed
-                  ? "border-[var(--blue-500)]/30 bg-[var(--blue-500)]/8"
-                  : "border-[var(--silver-400)]/25 bg-[var(--space-surface)] hover:border-[var(--silver-400)]/50 hover:bg-[var(--space-overlay)]",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full",
-                  readyNotification.armed
-                    ? "bg-[var(--blue-500)]/15 text-[var(--blue-500)]"
-                    : "bg-[var(--space-overlay)] text-[var(--silver-600)]",
-                )}
-              >
-                {readyNotification.armed ? (
-                  <BellRingIcon className="size-3.5" />
-                ) : (
-                  <BellIcon className="size-3.5" />
-                )}
+        {!pendingQuestion && readyNotification?.showPrompt && (
+          <button
+            type="button"
+            onClick={() => void readyNotification.enable()}
+            className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--silver-400)]/50 hover:bg-[var(--space-overlay)]"
+          >
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
+              <BellIcon className="size-3.5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-medium text-[var(--silver-900)]">
+                Notify when ready?
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-medium text-[var(--silver-900)]">
-                  {readyNotification.armed
-                    ? "We’ll notify you when it’s ready"
-                    : "Notify when ready?"}
-                </span>
-                <span className="block truncate text-[11px] text-[var(--silver-600)]">
-                  {readyNotification.armed
-                    ? "Click to turn this notification off"
-                    : "You can switch tabs while Tau works"}
-                </span>
+              <span className="block truncate text-[11px] text-[var(--silver-600)]">
+                You can switch tabs while Tau works
               </span>
-              <span
-                className={cn(
-                  "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium",
-                  readyNotification.armed
-                    ? "text-[var(--blue-500)]"
-                    : "bg-[var(--space-overlay)] text-[var(--silver-900)]",
-                )}
-              >
-                {readyNotification.armed ? "On" : "Notify me"}
-              </span>
-            </button>
-          )}
+            </span>
+            <span className="shrink-0 rounded-md bg-[var(--space-overlay)] px-2 py-1 text-[11px] font-medium text-[var(--silver-900)]">
+              Notify me
+            </span>
+          </button>
+        )}
         {pendingQuestion && currentJobId && projectId ? (
           <AskUserPrompt
             projectId={projectId}

@@ -457,7 +457,10 @@ export async function runAgentLoop(
       if (reason !== FinishReason.CANCELLED) {
         // Terminal: the client finalizes on this and stops the shimmer. The
         // `cancelled` frame is owned by the runner's cancel handler instead.
-        await publishTerminal(jobId, { type: "insufficient_credits" });
+        await publishTerminal(jobId, {
+          type: "insufficient_credits",
+          reason: reason === FinishReason.BUDGET ? "budget" : "balance",
+        });
       }
     };
 

@@ -137,6 +137,7 @@ export const ProjectScalarFieldEnum = {
   userId: 'userId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
+  workspaceStartedAt: 'workspaceStartedAt',
   sandboxId: 'sandboxId',
   sandboxStatus: 'sandboxStatus',
   sandboxExpiresAt: 'sandboxExpiresAt',

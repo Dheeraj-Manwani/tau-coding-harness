@@ -2,6 +2,7 @@ import { env } from "@/lib/env";
 import { bus, type DispatchPayload } from "@/lib/bus";
 import { prisma } from "@/lib/prisma";
 import { publish, publishTerminal } from "./lib/publish";
+import { markProjectWorkspaceStarted } from "./lib/projectWorkspace";
 import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
 import { logGatewayReachability } from "./lib/aiEnv";
@@ -42,6 +43,7 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
   const sandbox = await provisionSandbox(projectId, userId, jobId);
   const previewUrl = `https://${sandbox.getHost(PREVIEW_PORT)}`;
 
+  await markProjectWorkspaceStarted(projectId);
   await publish(jobId, { type: "preview_ready", url: previewUrl });
 
   // Persist the new URL as the project's latest fragment so a page reload

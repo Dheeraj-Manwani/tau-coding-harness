@@ -9,6 +9,7 @@ import {
   toWorkdirPath,
 } from "./utils";
 import { publish } from "@/worker/lib/publish";
+import { markProjectWorkspaceStarted } from "@/worker/lib/projectWorkspace";
 
 export async function editFile(
   input: unknown,
@@ -47,6 +48,7 @@ export async function editFile(
     : original.replace(oldStr, newStr);
 
   const relPath = toRelativePath(p);
+  await markProjectWorkspaceStarted(projectId);
   await publish(jobId, { type: "file_start", path: relPath });
 
   await sandbox.files.write(abs, updated);

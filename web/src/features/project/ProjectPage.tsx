@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
+import { LoaderCircleIcon } from "lucide-react";
 import {
   Group,
   Panel,
@@ -22,6 +23,7 @@ import {
   hasFreshBuild,
 } from "@/src/features/project/revealSession";
 import { useReadyNotification } from "@/src/features/project/useReadyNotification";
+import { resolveProjectLayout } from "@/src/features/project/projectLayout";
 
 /**
  * How long an "active" job may send nothing before the UI calls it stalled.
@@ -48,7 +50,8 @@ function useProjectBootstrap() {
   const status = useProjectStore((s) => s.status);
   const qc = useQueryClient();
 
-  const { data } = useProject(projectId);
+  const projectQuery = useProject(projectId);
+  const { data } = projectQuery;
   const { data: tree } = useProjectTree(projectId);
 
   useEffect(() => {
@@ -138,12 +141,17 @@ function useProjectBootstrap() {
   }, [status, projectId, resyncFromDetail, setStalled]);
 
   useJobStream();
+
+  return {
+    detail: data,
+    detailPending: projectQuery.isPending,
+  };
 }
 
 const WORKSPACE_SPRING = { type: "spring", stiffness: 320, damping: 34 } as const;
 
 export default function ProjectPage() {
-  useProjectBootstrap();
+  const { detail, detailPending } = useProjectBootstrap();
 
   const { id: projectId } = useParams<{ id: string }>();
   const [cameFromHome] = useState(() =>
@@ -156,10 +164,18 @@ export default function ProjectPage() {
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const buildStarted = useProjectStore((s) => s.buildStarted);
+  const storeProjectId = useProjectStore((s) => s.projectId);
   const status = useProjectStore((s) => s.status);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
-  const centered = cameFromHome && !buildStarted;
+  const layoutMode = resolveProjectLayout({
+    liveBuildStarted: storeProjectId === projectId && buildStarted,
+    workspaceStartedAt: detail?.project.workspaceStartedAt,
+    hasPreviewFragment: detail?.latestFragment != null,
+    detailPending,
+    freshBuild: cameFromHome,
+  });
+  const centered = layoutMode === "chat";
   const readyNotification = useReadyNotification({
     projectId,
     currentJobId,
@@ -177,6 +193,15 @@ export default function ProjectPage() {
       if (!chatPanelRef.current?.isCollapsed()) chatPanelRef.current?.collapse();
     }
   }, [isChatOpen]);
+
+  if (layoutMode === "loading") {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-sm text-[var(--silver-600)]">
+        <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
+        Loading project…
+      </div>
+    );
+  }
 
   if (centered) {
     return (

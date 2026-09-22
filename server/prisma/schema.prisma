@@ -81,6 +81,8 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  workspaceStartedAt DateTime?
+
   sandboxId        String?
   sandboxStatus    SandboxStatus @default(NONE)
   sandboxExpiresAt DateTime?

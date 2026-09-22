@@ -11,6 +11,7 @@ import {
   toWorkdirPath,
 } from "./utils";
 import { publish } from "@/worker/lib/publish";
+import { markProjectWorkspaceStarted } from "@/worker/lib/projectWorkspace";
 
 const TIMEOUT_MS = 30_000;
 // Guard against a runaway download filling the sandbox / a huge hero video.
@@ -64,6 +65,7 @@ export async function downloadAsset(
 
     // Surface the write in the file tree immediately. e2b's write takes an
     // ArrayBuffer.
+    await markProjectWorkspaceStarted(projectId);
     await publish(jobId, { type: "file_start", path: relPath });
     await sandbox.files.write(toWorkdirPath(dest), arrayBuf);
 

@@ -44,6 +44,7 @@ export type ProjectMinAggregateOutputType = {
   userId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  workspaceStartedAt: Date | null
   sandboxId: string | null
   sandboxStatus: $Enums.SandboxStatus | null
   sandboxExpiresAt: Date | null
@@ -70,6 +71,7 @@ export type ProjectMaxAggregateOutputType = {
   userId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  workspaceStartedAt: Date | null
   sandboxId: string | null
   sandboxStatus: $Enums.SandboxStatus | null
   sandboxExpiresAt: Date | null
@@ -96,6 +98,7 @@ export type ProjectCountAggregateOutputType = {
   userId: number
   createdAt: number
   updatedAt: number
+  workspaceStartedAt: number
   sandboxId: number
   sandboxStatus: number
   sandboxExpiresAt: number
@@ -136,6 +139,7 @@ export type ProjectMinAggregateInputType = {
   userId?: true
   createdAt?: true
   updatedAt?: true
+  workspaceStartedAt?: true
   sandboxId?: true
   sandboxStatus?: true
   sandboxExpiresAt?: true
@@ -162,6 +166,7 @@ export type ProjectMaxAggregateInputType = {
   userId?: true
   createdAt?: true
   updatedAt?: true
+  workspaceStartedAt?: true
   sandboxId?: true
   sandboxStatus?: true
   sandboxExpiresAt?: true
@@ -188,6 +193,7 @@ export type ProjectCountAggregateInputType = {
   userId?: true
   createdAt?: true
   updatedAt?: true
+  workspaceStartedAt?: true
   sandboxId?: true
   sandboxStatus?: true
   sandboxExpiresAt?: true
@@ -301,6 +307,7 @@ export type ProjectGroupByOutputType = {
   userId: string
   createdAt: Date
   updatedAt: Date
+  workspaceStartedAt: Date | null
   sandboxId: string | null
   sandboxStatus: $Enums.SandboxStatus
   sandboxExpiresAt: Date | null
@@ -350,6 +357,7 @@ export type ProjectWhereInput = {
   userId?: Prisma.StringFilter<"Project"> | string
   createdAt?: Prisma.DateTimeFilter<"Project"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
+  workspaceStartedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   sandboxId?: Prisma.StringNullableFilter<"Project"> | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFilter<"Project"> | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -383,6 +391,7 @@ export type ProjectOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspaceStartedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxId?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxStatus?: Prisma.SortOrder
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -420,6 +429,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   userId?: Prisma.StringFilter<"Project"> | string
   createdAt?: Prisma.DateTimeFilter<"Project"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
+  workspaceStartedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   sandboxId?: Prisma.StringNullableFilter<"Project"> | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFilter<"Project"> | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -452,6 +462,7 @@ export type ProjectOrderByWithAggregationInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspaceStartedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxId?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxStatus?: Prisma.SortOrder
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -486,6 +497,7 @@ export type ProjectScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringWithAggregatesFilter<"Project"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Project"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Project"> | Date | string
+  workspaceStartedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   sandboxId?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusWithAggregatesFilter<"Project"> | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
@@ -511,6 +523,7 @@ export type ProjectCreateInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -544,6 +557,7 @@ export type ProjectUncheckedCreateInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -575,6 +589,7 @@ export type ProjectUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -608,6 +623,7 @@ export type ProjectUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -640,6 +656,7 @@ export type ProjectCreateManyInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -665,6 +682,7 @@ export type ProjectUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -691,6 +709,7 @@ export type ProjectUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -727,6 +746,7 @@ export type ProjectCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspaceStartedAt?: Prisma.SortOrder
   sandboxId?: Prisma.SortOrder
   sandboxStatus?: Prisma.SortOrder
   sandboxExpiresAt?: Prisma.SortOrder
@@ -759,6 +779,7 @@ export type ProjectMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspaceStartedAt?: Prisma.SortOrder
   sandboxId?: Prisma.SortOrder
   sandboxStatus?: Prisma.SortOrder
   sandboxExpiresAt?: Prisma.SortOrder
@@ -785,6 +806,7 @@ export type ProjectMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspaceStartedAt?: Prisma.SortOrder
   sandboxId?: Prisma.SortOrder
   sandboxStatus?: Prisma.SortOrder
   sandboxExpiresAt?: Prisma.SortOrder
@@ -971,6 +993,7 @@ export type ProjectCreateWithoutUserInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1002,6 +1025,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1063,6 +1087,7 @@ export type ProjectScalarWhereInput = {
   userId?: Prisma.StringFilter<"Project"> | string
   createdAt?: Prisma.DateTimeFilter<"Project"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
+  workspaceStartedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   sandboxId?: Prisma.StringNullableFilter<"Project"> | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFilter<"Project"> | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
@@ -1088,6 +1113,7 @@ export type ProjectCreateWithoutMessagesInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1120,6 +1146,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1166,6 +1193,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1198,6 +1226,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1228,6 +1257,7 @@ export type ProjectCreateWithoutJobsInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1260,6 +1290,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1306,6 +1337,7 @@ export type ProjectUpdateWithoutJobsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1338,6 +1370,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1368,6 +1401,7 @@ export type ProjectCreateWithoutFilesInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1400,6 +1434,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1446,6 +1481,7 @@ export type ProjectUpdateWithoutFilesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1478,6 +1514,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1508,6 +1545,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1540,6 +1578,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1586,6 +1625,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1618,6 +1658,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1648,6 +1689,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1680,6 +1722,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1726,6 +1769,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1758,6 +1802,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1788,6 +1833,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1820,6 +1866,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   userId: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1866,6 +1913,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1898,6 +1946,7 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1928,6 +1977,7 @@ export type ProjectCreateManyUserInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
   sandboxId?: string | null
   sandboxStatus?: $Enums.SandboxStatus
   sandboxExpiresAt?: Date | string | null
@@ -1953,6 +2003,7 @@ export type ProjectUpdateWithoutUserInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1984,6 +2035,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2015,6 +2067,7 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2117,6 +2170,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   userId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspaceStartedAt?: boolean
   sandboxId?: boolean
   sandboxStatus?: boolean
   sandboxExpiresAt?: boolean
@@ -2151,6 +2205,7 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   userId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspaceStartedAt?: boolean
   sandboxId?: boolean
   sandboxStatus?: boolean
   sandboxExpiresAt?: boolean
@@ -2178,6 +2233,7 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   userId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspaceStartedAt?: boolean
   sandboxId?: boolean
   sandboxStatus?: boolean
   sandboxExpiresAt?: boolean
@@ -2205,6 +2261,7 @@ export type ProjectSelectScalar = {
   userId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspaceStartedAt?: boolean
   sandboxId?: boolean
   sandboxStatus?: boolean
   sandboxExpiresAt?: boolean
@@ -2225,7 +2282,7 @@ export type ProjectSelectScalar = {
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "userId" | "createdAt" | "updatedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
@@ -2260,6 +2317,7 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     userId: string
     createdAt: Date
     updatedAt: Date
+    workspaceStartedAt: Date | null
     sandboxId: string | null
     sandboxStatus: $Enums.SandboxStatus
     sandboxExpiresAt: Date | null
@@ -2728,6 +2786,7 @@ export interface ProjectFieldRefs {
   readonly userId: Prisma.FieldRef<"Project", 'String'>
   readonly createdAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Project", 'DateTime'>
+  readonly workspaceStartedAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly sandboxId: Prisma.FieldRef<"Project", 'String'>
   readonly sandboxStatus: Prisma.FieldRef<"Project", 'SandboxStatus'>
   readonly sandboxExpiresAt: Prisma.FieldRef<"Project", 'DateTime'>

@@ -1166,7 +1166,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
 
-      const buildStarted = s.buildStarted || previewUrl != null;
+      const buildStarted =
+        s.buildStarted ||
+        detail.project.workspaceStartedAt != null ||
+        previewUrl != null;
 
       // If we received a full page (50), there may be older messages to load.
       const hasMoreMessages = detail.messages.length >= 50;
@@ -1192,8 +1195,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const chatMessages = toConversation(detail.messages, detail.checkpoints);
       const previewUrl =
         s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
+      // Chat history alone is not evidence that a workspace exists: a run can
+      // stop for credits or fail before writing its first file. Only the
+      // durable transition (or a legacy fragment) reveals the right panel.
       const buildStarted =
-        s.buildStarted || previewUrl != null || chatMessages.length > 0;
+        s.buildStarted ||
+        detail.project.workspaceStartedAt != null ||
+        previewUrl != null;
       const hasMoreMessages = detail.messages.length >= 50;
       const oldestSequence = detail.messages[0]?.sequence ?? null;
 

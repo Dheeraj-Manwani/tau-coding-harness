@@ -9,6 +9,7 @@ import { bus } from "@/lib/bus";
 import { publish, publishTerminal, makeIndexer } from "../lib/publish";
 import { captureException, log } from "../lib/log";
 import { captureAppScreenshot } from "../lib/screenshot";
+import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
 import { putScreenshot } from "@/lib/s3";
 import type { Sandbox } from "../lib/sandbox";
 import { TOOL_DEFINITIONS } from "./tools/tools";
@@ -809,6 +810,7 @@ export async function runAgentLoop(
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
           previewUrl = `https://${host}`;
+          await markProjectWorkspaceStarted(projectId);
           await publish(jobId, { type: "preview_ready", url: previewUrl });
 
           await prisma.fragment.create({

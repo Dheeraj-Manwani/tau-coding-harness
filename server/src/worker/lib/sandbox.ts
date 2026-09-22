@@ -12,6 +12,7 @@ import {
 import { buildAiEnv, isAiEnabled, reinjectAiEnv } from "./aiEnv";
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { publish } from "./publish";
+import { markProjectWorkspaceStarted } from "./projectWorkspace";
 import { log } from "./log";
 import { retrofitVisualEdit } from "./retrofitVisualEdit";
 import { allocateHeadSequence } from "@/lib/headSequence";
@@ -102,6 +103,8 @@ async function seedTemplateFiles(
   }
 
   if (records.length === 0) return;
+
+  await markProjectWorkspaceStarted(projectId);
 
   // Persist all records in a single transaction with one headSequence bump.
   await prisma.$transaction(async (tx) => {

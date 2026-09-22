@@ -9,6 +9,7 @@ import {
   toWorkdirPath,
 } from "./utils";
 import { publish } from "@/worker/lib/publish";
+import { markProjectWorkspaceStarted } from "@/worker/lib/projectWorkspace";
 
 export async function createFile(
   input: unknown,
@@ -23,6 +24,7 @@ export async function createFile(
   const c = asString(content, "content");
 
   const relPath = toRelativePath(p);
+  await markProjectWorkspaceStarted(projectId);
   await publish(jobId, { type: "file_start", path: relPath });
 
   await sandbox.files.write(toWorkdirPath(p), c);

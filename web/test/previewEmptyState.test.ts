@@ -7,6 +7,7 @@ const base = {
   hydrated: true,
   activity: null,
   isStalled: false,
+  waitingForAnswer: false,
   interruptedForCredits: false,
   availableCredits: 0,
 };
@@ -22,6 +23,17 @@ describe("empty preview state", () => {
     ).toMatchObject({
       title: "Designing the navigation…",
       animated: true,
+    });
+  });
+
+  test("shows a paused, actionable state while waiting for an answer", () => {
+    expect(getEmptyPreviewState({
+      ...base,
+      status: "streaming",
+      waitingForAnswer: true,
+    })).toMatchObject({
+      title: "Waiting for your answer",
+      animated: false,
     });
   });
 

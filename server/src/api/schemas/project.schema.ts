@@ -161,7 +161,8 @@ export const jobIdParamSchema = z.object({
 });
 
 export const jobAnswerSchema = z.object({
-  answer: z.string().min(1, "Answer can't be empty").max(10_000),
+  questionId: z.uuid("Invalid question id"),
+  answer: z.string().trim().min(1, "Answer can't be empty").max(10_000),
 });
 
 export const pushModeSchema = z.enum(["new_pr", "update_pr", "direct"]);

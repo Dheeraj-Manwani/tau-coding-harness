@@ -5,6 +5,7 @@ import { publish, publishTerminal } from "./lib/publish";
 import { markProjectWorkspaceStarted } from "./lib/projectWorkspace";
 import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
+import { previewNeedsScreenshot } from "./lib/previewScreenshot";
 import { logGatewayReachability } from "./lib/aiEnv";
 import {
   AgentStopError,
@@ -74,7 +75,22 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
     },
   });
 
-  if (env.SCREENSHOT_ENABLED) {
+  // Cover maintenance must never turn an otherwise successful preview restart
+  // into a failed job, including when its freshness lookup fails.
+  const needsScreenshot = env.SCREENSHOT_ENABLED
+    ? await previewNeedsScreenshot(projectId).catch((err) => {
+        captureException(err, { jobId, projectId, detail: "cover freshness check failed" });
+        return false;
+      })
+    : false;
+
+  if (!env.SCREENSHOT_ENABLED) {
+    log.warn("screenshot.capture.disabled", {
+      jobId,
+      projectId,
+      source: "preview",
+    });
+  } else if (needsScreenshot) {
     log.info("screenshot.capture.start", { jobId, projectId, source: "preview" });
     await captureProjectScreenshot(projectId, userId, previewUrl).catch((err) =>
       captureException(err, {
@@ -84,14 +100,13 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
       }),
     );
   } else {
-    log.warn("screenshot.capture.disabled", {
+    log.info("screenshot.capture.skipped", {
       jobId,
       projectId,
-      source: "preview",
+      reason: "cover_current",
     });
   }
 
-  await publishTerminal(jobId, { type: "done" });
 }
 
 /**
@@ -230,7 +245,6 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
     throw err;
   }
 
-  await publishTerminal(jobId, { type: "done" });
 }
 
 /**
@@ -268,6 +282,7 @@ async function runJob(payload: DispatchPayload): Promise<void> {
           finishReason: FinishReason.DONE,
         },
       });
+      await publishTerminal(jobId, { type: "done" });
     } catch (err) {
       captureException(err, { jobId, projectId, userId, phase: "preview" });
       await markFailed(jobId, err, "Couldn't start the preview");
@@ -286,6 +301,7 @@ async function runJob(payload: DispatchPayload): Promise<void> {
           finishReason: FinishReason.DONE,
         },
       });
+      await publishTerminal(jobId, { type: "done" });
     } catch (err) {
       // A DeployError is the user's build not compiling, not our bug — it says
       // what to do next, so pass it through instead of burying it under a
@@ -308,14 +324,15 @@ async function runJob(payload: DispatchPayload): Promise<void> {
     void (async () => {
       cancelled = true;
       try {
-        await prisma.job.update({
-          where: { id: jobId },
+        const cancelledRow = await prisma.job.updateMany({
+          where: { id: jobId, status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } },
           data: {
             status: JobStatus.CANCELLED,
             completedAt: new Date(),
             finishReason: FinishReason.CANCELLED,
           },
         });
+        if (cancelledRow.count === 0) return;
         await settle(jobId);
         await publishTerminal(jobId, { type: "cancelled" });
       } catch (err) {
@@ -365,19 +382,27 @@ async function runJob(payload: DispatchPayload): Promise<void> {
     );
 
     if (!cancelled) {
-      await prisma.job.update({
-        where: { id: jobId },
+      const completed = await prisma.job.updateMany({
+        where: { id: jobId, status: JobStatus.RUNNING },
         data: {
           status: JobStatus.COMPLETED,
           completedAt: new Date(),
           finishReason,
         },
       });
+      if (completed.count === 0) return; // cancellation won the race
       await settle(jobId).catch((err) =>
         captureException(err, { jobId, detail: "settle failed on complete" }),
       );
-      await finalizeJobRollups(jobId);
+      await finalizeJobRollups(jobId).catch((err) =>
+        captureException(err, { jobId, detail: "rollup failed on complete" }),
+      );
       log.info("job.finish", { jobId, projectId, userId, finishReason });
+      await publishTerminal(jobId,
+        finishReason === FinishReason.BUDGET || finishReason === FinishReason.INSUFFICIENT_CREDITS
+          ? { type: "insufficient_credits", reason: finishReason === FinishReason.BUDGET ? "budget" : "balance" }
+          : { type: "done" },
+      );
     }
   } finally {
     offCancel();
@@ -406,9 +431,9 @@ async function markFailed(
   // A guard rail that fired names itself; anything else is an opaque failure.
   const finishReason =
     err instanceof AgentStopError ? err.finishReason : FinishReason.ERROR;
-  await prisma.job
-    .update({
-      where: { id: jobId },
+  const failed = await prisma.job
+    .updateMany({
+      where: { id: jobId, status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } },
       data: {
         status: JobStatus.FAILED,
         error: message,
@@ -416,15 +441,28 @@ async function markFailed(
         finishReason,
       },
     })
-    .catch((e) =>
-      captureException(e, { jobId, detail: "failed-status update" }),
-    );
+    .catch((e) => {
+      captureException(e, { jobId, detail: "failed-status update" });
+      return null;
+    });
+  if (!failed) {
+    // The database will be reconciled by the reaper when it recovers. A live
+    // browser still needs an ending instead of an endless thinking state.
+    await publishTerminal(jobId, {
+      type: "error",
+      message: userMessage ?? "This run stopped unexpectedly. Please try again.",
+    });
+    return;
+  }
+  if (failed.count === 0) return;
   await settle(jobId).catch((e) =>
     captureException(e, { jobId, detail: "settle failed on job failure" }),
   );
   // A failed run still spent tokens — roll them up so cost reporting is not
   // silently blind to exactly the jobs worth investigating.
-  await finalizeJobRollups(jobId);
+  await finalizeJobRollups(jobId).catch((e) =>
+    captureException(e, { jobId, detail: "rollup failed on job failure" }),
+  );
   await publishTerminal(jobId, {
     type: "error",
     message: userMessage ?? message,

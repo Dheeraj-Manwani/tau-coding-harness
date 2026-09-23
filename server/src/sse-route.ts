@@ -3,6 +3,7 @@ import { bus, type JobEvent } from "@/lib/bus";
 import { verifyAccessToken } from "@/api/lib/tokens";
 import { terminateStrandedJob } from "@/api/lib/jobs";
 import { FinishReason, JobStatus } from "@/generated/prisma/enums";
+import { prisma } from "@/lib/prisma";
 
 const HEARTBEAT_MS = 30_000;
 
@@ -45,8 +46,9 @@ function authenticate(req: Request): { sub: string } | null {
  * in-process bus. Mounted via buildApp's `mountExtra` hook, before requireAuth.
  */
 export function mountSse(app: Express): void {
-  app.get("/jobs/:jobId/stream", (req: Request, res: Response) => {
-    if (!authenticate(req)) {
+  app.get("/jobs/:jobId/stream", async (req: Request, res: Response) => {
+    const identity = authenticate(req);
+    if (!identity) {
       res.status(401).end();
       return;
     }
@@ -54,6 +56,14 @@ export function mountSse(app: Express): void {
     const jobId = jobIdOf(req);
     if (!jobId) {
       res.status(400).end();
+      return;
+    }
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      select: { project: { select: { userId: true } } },
+    });
+    if (!job || job.project.userId !== identity.sub) {
+      res.status(404).end();
       return;
     }
     const raw = req.query.lastEventIndex;
@@ -82,14 +92,27 @@ export function mountSse(app: Express): void {
     });
   });
 
-  app.post("/jobs/:jobId/cancel", (req: Request, res: Response) => {
-    if (!authenticate(req)) {
+  app.post("/jobs/:jobId/cancel", async (req: Request, res: Response) => {
+    const identity = authenticate(req);
+    if (!identity) {
       res.status(401).end();
       return;
     }
     const jobId = jobIdOf(req);
     if (!jobId) {
       res.status(400).end();
+      return;
+    }
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      select: { status: true, project: { select: { userId: true } } },
+    });
+    if (!job || job.project.userId !== identity.sub) {
+      res.status(404).end();
+      return;
+    }
+    if (job.status !== JobStatus.QUEUED && job.status !== JobStatus.RUNNING) {
+      res.sendStatus(204);
       return;
     }
 
@@ -106,13 +129,11 @@ export function mountSse(app: Express): void {
     // a user ever needs to force-stop. Terminate the row here instead, recorded
     // as CANCELLED/CANCELLED: the user asked for this, so it is not a failure
     // and not an abandonment, even though the row was stranded when they did.
-    void terminateStrandedJob(jobId, {
+    await terminateStrandedJob(jobId, {
       status: JobStatus.CANCELLED,
       reason: FinishReason.CANCELLED,
       message: "This run was stopped because it was no longer running.",
-    }).catch((err) =>
-      console.error(`[sse] cancel of stranded job ${jobId} failed:`, err),
-    );
+    });
     res.sendStatus(202);
   });
 }

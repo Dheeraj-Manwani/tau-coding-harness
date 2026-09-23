@@ -18,6 +18,7 @@ import { sha256Hex } from "@/src/lib/hash";
 import { normalizePreviewPath } from "@/src/features/project/previewUrl";
 import { deployKeys } from "@/src/features/project/deploy";
 import type { ComputedValue } from "@/src/features/project/visualEditPrompt";
+import { lifecycleFromDetail } from "@/src/features/project/projectLifecycle";
 
 /** Pull the credit balance back from the server after a job settles. */
 function invalidateBalance(): void {
@@ -921,6 +922,8 @@ interface ProjectState {
    *  left and the preview/code panel slides in from the right. */
   buildStarted: boolean;
   isPreviewJob: boolean;
+  /** Job whose preview URL is already usable, even if cover work is still running. */
+  previewReadyJobId: string | null;
 
   // Chat
   chatMessages: Message[];
@@ -938,7 +941,7 @@ interface ProjectState {
   currentPlan: Plan | null;
 
   // Pending ask_user question waiting for the user's response.
-  pendingQuestion: { question: string; options: string[] } | null;
+  pendingQuestion: { id: string; question: string; options: string[] } | null;
 
   // Generated app
   files: Record<string, ProjectFile>;
@@ -1044,7 +1047,7 @@ interface ProjectState {
   /** Flag/clear the "this run has gone quiet" presentation state. */
   setStalled: (stalled: boolean) => void;
   setCanceller: (fn: (() => void) | null) => void;
-  answerPendingQuestion: (answer: string) => void;
+  answerPendingQuestion: (questionId: string, answer: string) => void;
 
   toggleChat: () => void;
   setChatOpen: (open: boolean) => void;
@@ -1093,6 +1096,7 @@ interface ProjectState {
 const FRESH = {
   currentJobId: null,
   isPreviewJob: false,
+  previewReadyJobId: null as string | null,
   status: "idle" as JobStatus,
   terminalOutcome: null as TerminalOutcome | null,
   activity: null,
@@ -1107,7 +1111,7 @@ const FRESH = {
   hasMoreMessages: false,
   oldestSequence: null as number | null,
   currentPlan: null as Plan | null,
-  pendingQuestion: null as { question: string; options: string[] } | null,
+  pendingQuestion: null as { id: string; question: string; options: string[] } | null,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -1156,11 +1160,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       // Never overwrite an active stream — the live content takes priority.
       if (s.status === "streaming") return {};
-      // Don't replace the fully-populated store right after a stream ends.
-      // The refetch triggered by invalidateQueries is for the *next* navigation's
-      // cache — the current session already has the correct messages.
-      if (s.status === "done" && s.hydrated) return {};
-
       const chatMessages = toConversation(detail.messages, detail.checkpoints);
 
       const previewUrl =
@@ -1176,6 +1175,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const oldestSequence = detail.messages[0]?.sequence ?? null;
 
       return {
+        ...lifecycleFromDetail(detail),
         hydrated: true,
         chatMessages,
         previewUrl,
@@ -1205,32 +1205,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const hasMoreMessages = detail.messages.length >= 50;
       const oldestSequence = detail.messages[0]?.sequence ?? null;
 
-      const stillActive = detail.activeJobId != null;
-
       return {
+        ...lifecycleFromDetail(detail),
         hydrated: true,
         chatMessages,
         previewUrl,
         buildStarted,
         hasMoreMessages,
         oldestSequence,
-        // Reconcile the loading state against the server's authority. If the job
-        // is gone, finalize locally so the shimmer/loader can't hang forever.
-        ...(stillActive
-          ? { status: "streaming" as JobStatus, isAiTyping: true }
-          : {
-              status: (s.status === "streaming"
-                ? "done"
-                : s.status) as JobStatus,
-              isAiTyping: false,
-              isPreviewJob: false,
-              isStalled: false,
-              streamingId: null,
-              currentJobId: null,
-              activity: null,
-              writingPath: null,
-              pendingActions: [],
-            }),
+        isStalled: false,
+        streamingId: null,
+        writingPath: null,
+        pendingActions: [],
       };
     }),
 
@@ -1323,6 +1309,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         currentPlan: null,
         lastEventAt: Date.now(),
         isStalled: false,
+        pendingQuestion: null,
         chatMessages:
           prompt && !alreadyShown
             ? [...s.chatMessages, userMessage(prompt)]
@@ -1336,6 +1323,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       status: "streaming",
       terminalOutcome: null,
       isPreviewJob: true,
+      previewReadyJobId: null,
       lastEventAt: Date.now(),
       isStalled: false,
       // No chat turn: the preview pane shows its own "Starting…" state, so we
@@ -1377,10 +1365,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setStalled: (stalled) => set({ isStalled: stalled }),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
-  answerPendingQuestion: (answer) =>
+  answerPendingQuestion: (questionId, answer) =>
     set((s) => ({
-      isAiTyping: true,
-      pendingQuestion: null,
+      ...(s.pendingQuestion?.id === questionId
+        ? { isAiTyping: true, pendingQuestion: null, activity: "Thinking" }
+        : {}),
       chatMessages: [...s.chatMessages, userMessage(answer)],
     })),
 
@@ -1667,11 +1656,27 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           ...fin,
           isAiTyping: false,
           chatMessages: [...fin.chatMessages, questionBubble],
-          pendingQuestion: { question: event.question, options: event.options },
+          pendingQuestion: { id: event.questionId, question: event.question, options: event.options },
         };
       });
       return;
     }
+
+    case "ask_user_expired":
+      set((s) => s.pendingQuestion?.id === event.questionId
+        ? {
+            pendingQuestion: null,
+            isAiTyping: true,
+            activity: "Thinking",
+            chatMessages: [...s.chatMessages, {
+              id: crypto.randomUUID(),
+              role: "ai" as const,
+              content: "That question timed out. Tau is continuing without an answer.",
+              timestamp: now(),
+            }],
+          }
+        : {});
+      return;
 
     case "tool_req": {
       const inp = event.input as Record<string, unknown>;
@@ -1995,7 +2000,17 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         previewUrl: event.url,
         previewNonce: s.previewNonce + 1,
         buildStarted: true,
+        previewReadyJobId: s.currentJobId,
       }));
+      // A previous liveness probe may still say the old sandbox was dead.
+      // The worker has just supplied a working URL, so do not let that stale
+      // result replace the iframe with "Preview stopped" when the job ends.
+      if (get().projectId) {
+        queryClient.setQueryData(
+          ["project", get().projectId, "preview-status"],
+          { alive: true },
+        );
+      }
       return;
 
     case "deploy_ready":
@@ -2012,9 +2027,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
 
     case "done":
       invalidateBalance();
-      // The worker captures and stores the project cover before this terminal
-      // event. Mark the inactive home-page list stale so returning home fetches
-      // the new presigned thumbnail URL instead of keeping the placeholder.
+      // The worker may have refreshed the project cover before this terminal
+      // event. Returning home should fetch its current thumbnail URL.
       void queryClient.invalidateQueries({ queryKey: ["project", "list"] });
       set((s) => {
         const fin = finalizeStreaming(s);

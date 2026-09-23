@@ -640,12 +640,10 @@ function ChatBubble({
 // (no bubble) — matching the inline "step" rows in the conversation flow.
 function TypingBubble({
   activity,
-  max = false,
   stalled = false,
   onStop,
 }: {
   activity: string | null;
-  max?: boolean;
   /** The run has gone quiet past the stall threshold — say so instead of
    *  shimmering indefinitely at a job that may never speak again. */
   stalled?: boolean;
@@ -680,7 +678,7 @@ function TypingBubble({
       exit={{ opacity: 0 }}
       className="flex items-center"
     >
-      <ChatLoader text={activity ?? "Thinking"} max={max} />
+      <ChatLoader text={activity ?? "Thinking"} />
     </motion.div>
   );
 }
@@ -815,11 +813,13 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
 function AskUserPrompt({
   projectId,
   jobId,
+  questionId,
   options,
   onAnswered,
 }: {
   projectId: string;
   jobId: string;
+  questionId: string;
   options: string[];
   onAnswered: (answer: string) => void;
 }) {
@@ -829,14 +829,12 @@ function AskUserPrompt({
   const submit = async (answer: string) => {
     if (!answer.trim() || submitting) return;
     setSubmitting(true);
-    // Add the user bubble immediately so it appears before the AI's response,
-    // not after (the HTTP round-trip would otherwise let streaming events arrive
-    // first and push the bubble below the AI's reply).
-    onAnswered(answer.trim());
     try {
-      await submitJobAnswer(projectId, jobId, answer.trim());
+      await submitJobAnswer(projectId, jobId, questionId, answer.trim());
+      onAnswered(answer.trim());
     } catch {
       toast.error("Failed to send your answer. Please try again.");
+      setSubmitting(false);
     }
   };
 
@@ -943,7 +941,7 @@ export function ChatPanel({
   // Messages present on first render get a staggered entrance; later ones don't.
   const [initialCount] = useState(messages.length);
   // Tracks message IDs prepended via pagination — they skip the entrance animation.
-  const prependedIdsRef = useRef(new Set<string>());
+  const [prependedIds, setPrependedIds] = useState(() => new Set<string>());
   // Scroll height snapshot taken just before prepending, used to hold position.
   const scrollHeightBeforePrependRef = useRef<number | null>(null);
   // Whether the viewport was near the bottom before the last messages change.
@@ -995,7 +993,11 @@ export function ChatPanel({
         hasMore,
         checkpoints,
       } = await fetchOlderMessages(projectId, oldestSequence);
-      older.forEach((m) => prependedIdsRef.current.add(m.id));
+      setPrependedIds((previous) => {
+        const next = new Set(previous);
+        older.forEach((m) => next.add(m.id));
+        return next;
+      });
       prependMessages(older, hasMore, checkpoints);
     } catch {
       scrollHeightBeforePrependRef.current = null;
@@ -1111,13 +1113,13 @@ export function ChatPanel({
                 key={m.id}
                 message={m}
                 delay={
-                  prependedIdsRef.current.has(m.id)
+                  prependedIds.has(m.id)
                     ? 0
                     : i < initialCount
                       ? i * 0.04
                       : 0
                 }
-                noAnimate={prependedIdsRef.current.has(m.id)}
+                noAnimate={prependedIds.has(m.id)}
               />
             ),
           )}
@@ -1138,7 +1140,6 @@ export function ChatPanel({
             {isAiTyping && (
               <TypingBubble
                 activity={activity}
-                max={effort === "MAX"}
                 stalled={isStalled}
                 onStop={cancelStream}
               />
@@ -1192,9 +1193,10 @@ export function ChatPanel({
           <AskUserPrompt
             projectId={projectId}
             jobId={currentJobId}
+            questionId={pendingQuestion.id}
             // question={pendingQuestion.question}
             options={pendingQuestion.options}
-            onAnswered={answerPendingQuestion}
+            onAnswered={(answer) => answerPendingQuestion(pendingQuestion.id, answer)}
           />
         ) : (
           <PromptComposer

@@ -4,9 +4,10 @@ import { isTemplateKey } from "@/worker/templates/registry";
 import { publish } from "@/worker/lib/publish";
 import { log } from "@/worker/lib/log";
 import { bus } from "@/lib/bus";
+import { prisma } from "@/lib/prisma";
 import type { SandboxRef } from "../loop";
 import type { Tool } from "./tools";
-import type { Effort } from "@/generated/prisma/enums";
+import { ToolCallStatus, type Effort } from "@/generated/prisma/enums";
 import { asString } from "./functions/utils";
 import { createPlan } from "./functions/create-plan";
 import { updateTodo } from "./functions/update-todos";
@@ -103,6 +104,7 @@ export async function executeTool(
   indexer: () => number,
   model: string,
   effort: Effort,
+  toolCallId?: string,
 ): Promise<unknown> {
   return redactSecrets(
     await executeToolInner(
@@ -115,6 +117,7 @@ export async function executeTool(
       indexer,
       model,
       effort,
+      toolCallId,
     ),
   );
 }
@@ -129,6 +132,7 @@ async function executeToolInner(
   indexer: () => number,
   model: string,
   effort: Effort,
+  toolCallId?: string,
 ): Promise<unknown> {
   log.debug("job.tool", { jobId, projectId, tool: name });
   if (name === "ask_user") bus.setPhase(jobId, "waiting_user");
@@ -144,17 +148,62 @@ async function executeToolInner(
         ? (options as unknown[]).map((o) => asString(o, "options[]"))
         : [];
 
-      await publish(jobId, { type: "ask_user", question: q, options: opts });
+      if (!toolCallId) throw new Error("Missing persisted question id");
 
-      // Block for the user's answer (10 min), delivered in-process by the api
-      // via bus.pushUserResponse (replaces the Redis lpush ↔ blpop rendezvous).
-      const answer = await bus.waitForUserResponse(jobId, 600_000);
-      if (answer === null) return { answer: null, timedOut: true };
+      // The tool-call row is the durable waiting state. A refreshed browser can
+      // recover this question even when the in-memory event buffer is gone.
+      bus.registerQuestion(jobId, toolCallId);
+      try {
+        await publish(jobId, {
+          type: "ask_user",
+          questionId: toolCallId,
+          question: q,
+          options: opts,
+        });
 
-      // The answer is returned as this tool call's result and persisted as
-      // part of the standard TOOL_RES row by the agent loop — no separate
-      // USER message row here, or the UI would render it twice.
-      return { answer };
+        // The bus is the fast path. Also check the persisted answer every few
+        // seconds: a successful DB claim followed by a failed in-process handoff
+        // must not leave the user waiting until the ten-minute timeout.
+        const deadline = Date.now() + 600_000;
+        let answer: string | null = null;
+        while (Date.now() < deadline) {
+          answer = await bus.waitForUserResponse(jobId, Math.min(5000, deadline - Date.now()));
+          if (answer !== null || bus.isCancelled(jobId)) break;
+          const persisted = await prisma.toolCall.findUnique({
+            where: { id: toolCallId },
+            select: { status: true, output: true },
+          });
+          const saved = persisted?.output as { answer?: unknown } | null;
+          if (persisted?.status === ToolCallStatus.SUCCESS && typeof saved?.answer === "string") {
+            answer = saved.answer;
+            break;
+          }
+        }
+        if (answer === null) {
+          if (bus.isCancelled(jobId)) return { answer: null, cancelled: true };
+          // Race timeout against an answer that the API has already committed.
+          const expired = await prisma.toolCall.updateMany({
+            where: { id: toolCallId, status: ToolCallStatus.RUNNING },
+            data: { status: ToolCallStatus.FAILED, error: "Question timed out" },
+          });
+          if (expired.count > 0) {
+            await publish(jobId, { type: "ask_user_expired", questionId: toolCallId });
+            return { answer: null, timedOut: true };
+          }
+          const accepted = await prisma.toolCall.findUnique({
+            where: { id: toolCallId },
+            select: { output: true },
+          });
+          const saved = accepted?.output as { answer?: unknown } | null;
+          if (typeof saved?.answer === "string") return { answer: saved.answer };
+          return { answer: null, timedOut: true };
+        }
+
+        // The answer is persisted as the standard TOOL_RES by the agent loop.
+        return { answer };
+      } finally {
+        bus.clearQuestion(jobId, toolCallId);
+      }
     }
     case "provision_sandbox": {
       if (!sandboxRef.current) {

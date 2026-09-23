@@ -30,7 +30,6 @@ interface EffortDropdownProps {
 export function EffortDropdown({
   effort,
   onChange,
-  ceilings,
 }: EffortDropdownProps) {
   const current =
     EFFORT_OPTIONS.find((o) => o.value === effort) ?? EFFORT_OPTIONS[0];

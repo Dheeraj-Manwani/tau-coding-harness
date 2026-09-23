@@ -86,39 +86,40 @@ export function useJobStream(): void {
         } catch {
           return;
         }
+        if (event.type === "resync" && projectId) {
+          // A resync marker deliberately uses the current cursor, so it must
+          // be handled before ordinary index deduplication. Close this stream
+          // while rebuilding; otherwise live events could race the snapshot.
+          source?.close();
+          source = null;
+          api
+            .get<ProjectDetail>(`/project/${projectId}`)
+            .then((r) => {
+              if (disposed) return;
+              resyncFromDetail(r.data);
+              if (r.data.activeJobId === jobId) {
+                if (r.data.activeJobEventIndex != null && r.data.activeJobEventIndex >= 0) {
+                  seedWatermark(jobId, r.data.activeJobEventIndex);
+                } else {
+                  watermarks.delete(jobId);
+                }
+                void connect();
+              }
+            })
+            .catch((err) => {
+              console.error("[useJobStream] resync project fetch failed:", err);
+              scheduleReconnect();
+            });
+          api
+            .get<ProjectTree>(`/project/${projectId}/tree`)
+            .then((r) => hydrateTree(r.data))
+            .catch((err) => console.error("[useJobStream] resync tree fetch failed:", err));
+          return;
+        }
         // Dedup using the monotonic per-job index (replayed + live can overlap).
         if (typeof event.index === "number") {
           if (event.index <= (watermarks.get(jobId) ?? -1)) return;
           watermarks.set(jobId, event.index);
-        }
-        if (event.type === "resync" && projectId) {
-          // Replay window expired: the live buffer is gone, so we can't catch up
-          // from the stream. Re-fetch the authoritative project snapshot (+ tree)
-          // and let `resyncFromDetail` rebuild the transcript and reconcile the
-          // loading state — if the job finished while we were disconnected this is
-          // what clears the "thinking" shimmer that would otherwise hang forever.
-          api
-            .get<ProjectDetail>(`/project/${projectId}`)
-            .then((r) => {
-              resyncFromDetail(r.data);
-              if (r.data.activeJobId) {
-                // Job still running — resume from its current head so we don't
-                // re-replay, and only apply genuinely-new events from here.
-                if (r.data.activeJobEventIndex != null) {
-                  seedWatermark(r.data.activeJobId, r.data.activeJobEventIndex);
-                }
-              }
-            })
-            .catch((err) =>
-              console.error("[useJobStream] resync project fetch failed:", err),
-            );
-          api
-            .get<ProjectTree>(`/project/${projectId}/tree`)
-            .then((r) => hydrateTree(r.data))
-            .catch((err) =>
-              console.error("[useJobStream] resync tree fetch failed:", err),
-            );
-          return;
         }
         applyEvent(event);
       };

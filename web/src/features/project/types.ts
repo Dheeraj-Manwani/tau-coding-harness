@@ -103,7 +103,23 @@ export interface ProjectDetail {
   /** Id of a still-running job, if any — used to resume the stream on reload. */
   activeJobId: string | null;
   activeJobEventIndex: number | null;
+  jobState: {
+    id: string;
+    type: "GENERATION" | "RECOVERY" | "PREVIEW" | "DEPLOY";
+    status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+    phase: "queued" | "waiting_user" | "working" | "terminal";
+    finishReason: string | null;
+    error: string | null;
+    pendingQuestion: { id: string; question: string; options: string[] } | null;
+  } | null;
   checkpoints: ProjectCheckpoint[];
+}
+
+/** Lightweight `GET /project/:id/job-status` recovery-poll response. */
+export interface ProjectJobStatusResponse {
+  activeJobId: string | null;
+  jobType: NonNullable<ProjectDetail["jobState"]>["type"] | null;
+  pendingQuestionId: string | null;
 }
 
 /** Response from `GET /project/:id/messages?before=<sequence>` */
@@ -201,7 +217,8 @@ export type JobEvent = BaseEvent &
       }
     | { type: "todo_updated"; sno: number; status: string }
     | { type: "todos_added"; todos: string[] }
-    | { type: "ask_user"; question: string; options: string[] }
+    | { type: "ask_user"; questionId: string; question: string; options: string[] }
+    | { type: "ask_user_expired"; questionId: string }
     | { type: "resync" }
     | { type: "cancelled" }
     | { type: "done" }

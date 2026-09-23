@@ -51,6 +51,10 @@ export function useProject(projectId: string | undefined) {
     enabled: Boolean(projectId),
     retry: false,
     staleTime: 30_000,
+    // Job phase is live state. Never restore a cached "working" snapshot on
+    // re-entry and wait 30 seconds to discover that it is now waiting/finished.
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 }
 
@@ -173,10 +177,11 @@ export function useRestartPreview(projectId: string) {
 export function submitJobAnswer(
   projectId: string,
   jobId: string,
+  questionId: string,
   answer: string,
 ): Promise<void> {
   return api
-    .post(`/project/${projectId}/jobs/${jobId}/answer`, { answer })
+    .post(`/project/${projectId}/jobs/${jobId}/answer`, { questionId, answer })
     .then(() => undefined);
 }
 
@@ -395,7 +400,7 @@ export function useSaveProjectFile(projectId: string | undefined) {
     onSuccess: (data, vars) => {
       qc.setQueryData<ProjectFileResponse>(
         projectKeys.file(projectId ?? "", vars.path),
-        { content: vars.content, contentHash: data.contentHash },
+        () => ({ binary: false, content: vars.content, contentHash: data.contentHash }),
       );
       // The GitHub panel derives "N changes since last push" from headSequence,
       // which this save just bumped.

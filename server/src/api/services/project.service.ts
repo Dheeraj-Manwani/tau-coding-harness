@@ -61,6 +61,7 @@ import {
   FinishReason,
   JobType,
   JobStatus,
+  ToolCallStatus,
   HoldStatus,
   SandboxStatus,
   Plan,
@@ -531,6 +532,46 @@ export async function listProjects(
   };
 }
 
+async function findWaitingQuestionCall(
+  activeJob: { id: string; status: JobStatus } | null,
+) {
+  if (activeJob?.status !== JobStatus.RUNNING) return null;
+  return prisma.toolCall.findFirst({
+    where: {
+      message: { jobId: activeJob.id },
+      toolName: "ask_user",
+      status: ToolCallStatus.RUNNING,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/** Small recovery-poll response. Full messages are fetched only on mismatch. */
+export async function getProjectJobStatus(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  });
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const activeJob = await prisma.job.findFirst({
+    where: {
+      projectId,
+      status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] },
+    },
+    select: { id: true, type: true, status: true },
+  });
+  const waitingCall = await findWaitingQuestionCall(activeJob);
+  return {
+    activeJobId: activeJob?.id ?? null,
+    jobType: activeJob?.type ?? null,
+    pendingQuestionId: waitingCall?.id ?? null,
+  };
+}
+
 export async function getProject(projectId: string, userId: string) {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -552,12 +593,46 @@ export async function getProject(projectId: string, userId: string) {
       )
     : [];
 
+  const latestJob = activeJob ?? await prisma.job.findFirst({
+    where: { projectId },
+    orderBy: { queuedAt: "desc" },
+  });
+  const waitingCall = await findWaitingQuestionCall(activeJob);
+  const questionInput = waitingCall?.input as {
+    question?: unknown;
+    options?: unknown;
+  } | undefined;
+  const pendingQuestion = waitingCall && typeof questionInput?.question === "string"
+    ? {
+        id: waitingCall.id,
+        question: questionInput.question,
+        options: Array.isArray(questionInput.options)
+          ? questionInput.options.filter((option): option is string => typeof option === "string")
+          : [],
+      }
+    : null;
+
   return {
     project,
     messages,
     latestFragment,
     activeJobId: activeJob?.id ?? null,
     activeJobEventIndex: activeJob ? bus.headIndex(activeJob.id) : null,
+    jobState: latestJob ? {
+      id: latestJob.id,
+      type: latestJob.type,
+      status: latestJob.status,
+      phase: pendingQuestion
+        ? "waiting_user"
+        : activeJob?.status === JobStatus.QUEUED
+          ? "queued"
+          : activeJob
+            ? "working"
+            : "terminal",
+      finishReason: latestJob.finishReason,
+      error: latestJob.error,
+      pendingQuestion,
+    } : null,
     checkpoints,
   };
 }
@@ -610,6 +685,7 @@ export async function submitJobAnswer(
   jobId: string,
   userId: string,
   answer: string,
+  questionId: string,
 ): Promise<void> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -619,10 +695,53 @@ export async function submitJobAnswer(
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job || job.projectId !== projectId)
     throw Errors.notFound("Job not found");
+  // A retry may arrive after the worker has already consumed the answer and
+  // even completed the job. Acknowledge the exact same accepted answer without
+  // sending it to the in-memory handoff again.
+  const existing = await prisma.toolCall.findFirst({
+    where: { id: questionId, message: { jobId }, toolName: "ask_user" },
+    select: { status: true, output: true },
+  });
+  const existingOutput = existing?.output as { answer?: unknown } | null;
+  if (existing?.status === ToolCallStatus.SUCCESS && existingOutput?.answer === answer)
+    return;
   if (job.status !== "RUNNING")
     throw Errors.conflict("Job is not waiting for a response");
 
-  bus.pushUserResponse(jobId, answer);
+  if (!bus.isResident(jobId)) {
+    await terminateStrandedJob(jobId);
+    throw Errors.conflict("This run was interrupted. Send another message to continue.");
+  }
+  if (!bus.isQuestionActive(jobId, questionId))
+    throw Errors.conflict("This question is no longer waiting for an answer");
+
+  const claimed = await prisma.toolCall.updateMany({
+    where: {
+      id: questionId,
+      message: { jobId },
+      toolName: "ask_user",
+      status: ToolCallStatus.RUNNING,
+    },
+    data: {
+      status: ToolCallStatus.SUCCESS,
+      output: { answer },
+      completedAt: new Date(),
+    },
+  });
+  if (claimed.count !== 1) {
+    // Idempotent retry when the HTTP response to an accepted answer was lost.
+    // Do not push it into the bus twice (the next ask_user could consume it).
+    const previous = await prisma.toolCall.findFirst({
+      where: { id: questionId, message: { jobId }, toolName: "ask_user" },
+      select: { status: true, output: true },
+    });
+    const saved = previous?.output as { answer?: unknown } | null;
+    if (previous?.status === ToolCallStatus.SUCCESS && saved?.answer === answer)
+      return;
+    throw Errors.conflict("This question has already been answered or expired");
+  }
+
+  bus.pushUserResponse(jobId, questionId, answer);
 }
 
 /**

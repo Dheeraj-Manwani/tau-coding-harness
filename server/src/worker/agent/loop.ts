@@ -6,7 +6,7 @@ import { getNextSequence } from "@/lib/sequence";
 import { meter, type MeterResult } from "@/lib/credits";
 import { toCredits, MIN_SPEND_TO_START_MICRO } from "@/lib/pricing";
 import { bus } from "@/lib/bus";
-import { publish, publishTerminal, makeIndexer } from "../lib/publish";
+import { publish, makeIndexer } from "../lib/publish";
 import { captureException, log } from "../lib/log";
 import { captureAppScreenshot } from "../lib/screenshot";
 import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
@@ -455,14 +455,9 @@ export async function runAgentLoop(
         });
       });
 
-      if (reason !== FinishReason.CANCELLED) {
-        // Terminal: the client finalizes on this and stops the shimmer. The
-        // `cancelled` frame is owned by the runner's cancel handler instead.
-        await publishTerminal(jobId, {
-          type: "insufficient_credits",
-          reason: reason === FinishReason.BUDGET ? "budget" : "balance",
-        });
-      }
+      // The runner emits the terminal frame only after Job.status and
+      // finishReason have been committed, so a refresh cannot see an active
+      // job after receiving an end-of-run event.
     };
 
     while (true) {
@@ -841,10 +836,8 @@ export async function runAgentLoop(
           }
         }
 
-        // `done` tells clients that every completion side effect is visible.
-        // Keep it after the thumbnail write so an immediate project-list
-        // refetch cannot race the DB update and cache a null/old cover.
-        await publishTerminal(jobId, { type: "done" });
+        // The runner publishes `done` after it persists the terminal Job row.
+        // The thumbnail has already been written before we return there.
         break;
       }
 
@@ -865,6 +858,9 @@ export async function runAgentLoop(
       const runOne = async (
         tc: FunctionToolCall,
       ): Promise<StoredToolResult> => {
+        if (bus.isCancelled(jobId)) {
+          return { tool_call_id: tc.id, content: JSON.stringify({ cancelled: true }) };
+        }
         const toolName = tc.function.name;
         const toolCallId = tc.id;
 
@@ -911,6 +907,7 @@ export async function runAgentLoop(
             nextIndex,
             model,
             effort,
+            toolCallRow.id,
           );
           await prisma.toolCall.update({
             where: { id: toolCallRow.id },

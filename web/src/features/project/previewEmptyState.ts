@@ -16,6 +16,7 @@ interface EmptyPreviewInput {
   hydrated: boolean;
   activity: string | null;
   isStalled: boolean;
+  waitingForAnswer: boolean;
   interruptedForCredits: boolean;
   availableCredits: number | undefined;
 }
@@ -30,6 +31,7 @@ export function getEmptyPreviewState({
   hydrated,
   activity,
   isStalled,
+  waitingForAnswer,
   interruptedForCredits,
   availableCredits,
 }: EmptyPreviewInput): EmptyPreviewState {
@@ -73,6 +75,14 @@ export function getEmptyPreviewState({
   }
 
   if (status === "streaming") {
+    if (waitingForAnswer) {
+      return {
+        title: "Waiting for your answer",
+        description: "Choose an option or type a response in the chat to continue.",
+        animated: false,
+        tone: "neutral",
+      };
+    }
     if (isStalled) {
       return {
         title: "Build may be stuck",

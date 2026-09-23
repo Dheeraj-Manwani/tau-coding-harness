@@ -17,7 +17,8 @@ import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
 import { useProject, useProjectTree, projectKeys } from "@/src/features/project/api";
 import { useJobStream, seedWatermark } from "@/src/features/project/useJobStream";
-import type { ProjectDetail } from "@/src/features/project/types";
+import type { ProjectDetail, ProjectJobStatusResponse } from "@/src/features/project/types";
+import { jobStatusFromDetail, jobStatusNeedsResync } from "@/src/features/project/projectJobPoll";
 import {
   clearFreshBuild,
   hasFreshBuild,
@@ -74,18 +75,17 @@ function useProjectBootstrap() {
   }, [projectId]);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || !projectQuery.isFetchedAfterMount) return;
+    const wasLive = useProjectStore.getState().currentJobId === data.activeJobId &&
+      useProjectStore.getState().status === "streaming";
     hydrate(data);
-    if (data.activeJobId && !useProjectStore.getState().currentJobId) {
-      // Seed the stream cursor to the job's current head BEFORE the stream
-      // connects, so a reload resumes past already-persisted events instead of
-      // re-streaming them (they're already rendered by hydrate above).
-      if (data.activeJobEventIndex != null) {
-        seedWatermark(data.activeJobId, data.activeJobEventIndex);
-      }
-      startJob(data.activeJobId);
+    if (data.activeJobId && !wasLive && data.activeJobEventIndex != null) {
+      // Hydration restored the durable question/transcript. Skip events already
+      // reflected in that snapshot, but never skip on the Home handoff where
+      // hydrate deliberately leaves a live optimistic stream alone.
+      seedWatermark(data.activeJobId, data.activeJobEventIndex);
     }
-  }, [data, hydrate, startJob]);
+  }, [data, hydrate, projectQuery.isFetchedAfterMount]);
 
   useEffect(() => {
     if (tree) hydrateTree(tree);
@@ -94,16 +94,21 @@ function useProjectBootstrap() {
   useEffect(() => {
     if (!projectId) return;
     if (status === "done" || status === "cancelled" || status === "error") {
-      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId), refetchType: "active" });
+      // Rebuild from the final persisted transcript. A snapshot/stream handoff
+      // can miss a transient frame, but it must never leave final messages or
+      // terminal reasons missing until the next full page refresh.
+      void api.get<ProjectDetail>(`/project/${projectId}`).then((response) => {
+        if (useProjectStore.getState().projectId !== projectId) return;
+        qc.setQueryData(projectKeys.detail(projectId), response.data);
+        resyncFromDetail(response.data);
+      }).catch(() => {});
+      void qc.invalidateQueries({ queryKey: projectKeys.tree(projectId), refetchType: "active" });
     }
-  }, [status, projectId, qc]);
+  }, [status, projectId, qc, resyncFromDetail]);
 
-  // Backstop: while the store believes a job is streaming, poll the server's
-  // authoritative job status. A terminal SSE event (`done`/`error`) is the fast
-  // path that clears the "thinking" shimmer; this is the safety net for when that
-  // event never arrives (worker crash, dropped terminal frame, dedup edge). If
-  // the poll finds the job is no longer active, `resyncFromDetail` finalizes
-  // locally so the shimmer can't hang forever.
+  // Backstop: while the store believes a job is streaming, poll only the
+  // authoritative job state. A terminal SSE event (`done`/`error`) is the fast
+  // path; fetch the full transcript only when this small snapshot disagrees.
   //
   // When the server *does* still call the job active, that used to be the end of
   // it — the poll simply re-confirmed the shimmer every 6s, forever, which is
@@ -113,9 +118,11 @@ function useProjectBootstrap() {
   useEffect(() => {
     if (!projectId || status !== "streaming") return;
     let cancelled = false;
+    let inFlight = false;
     const timer = setInterval(() => {
-      const { lastEventAt, isStalled } = useProjectStore.getState();
+      const { lastEventAt, isStalled, pendingQuestion } = useProjectStore.getState();
       if (
+        !pendingQuestion &&
         !isStalled &&
         lastEventAt !== null &&
         Date.now() - lastEventAt > STALL_AFTER_MS
@@ -123,28 +130,46 @@ function useProjectBootstrap() {
         setStalled(true);
       }
 
-      void api
-        .get<ProjectDetail>(`/project/${projectId}`)
-        .then((r) => {
-          if (cancelled || r.data.activeJobId) return;
-          if (useProjectStore.getState().status !== "streaming") return;
-          resyncFromDetail(r.data);
-        })
-        .catch(() => {
-          /* transient — the next tick retries */
-        });
+      if (inFlight) return;
+      inFlight = true;
+      void (async () => {
+        try {
+          const { data: snapshot } = await api.get<ProjectJobStatusResponse>(
+            `/project/${projectId}/job-status`,
+          );
+          if (cancelled) return;
+          const current = useProjectStore.getState();
+          if (current.projectId !== projectId || current.status !== "streaming") return;
+          if (!jobStatusNeedsResync(snapshot, current)) return;
+
+          const { data: detail } = await api.get<ProjectDetail>(`/project/${projectId}`);
+          if (cancelled) return;
+          const latest = useProjectStore.getState();
+          if (latest.projectId !== projectId || latest.status !== "streaming") return;
+          // The SSE stream may have caught up during the two requests. Only
+          // replace its state if the full server snapshot still disagrees.
+          if (jobStatusNeedsResync(jobStatusFromDetail(detail), latest)) {
+            qc.setQueryData(projectKeys.detail(projectId), detail);
+            resyncFromDetail(detail);
+          }
+        } catch {
+          // Transient network failure: keep the live stream and retry next tick.
+        } finally {
+          inFlight = false;
+        }
+      })();
     }, 6000);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [status, projectId, resyncFromDetail, setStalled]);
+  }, [status, projectId, qc, resyncFromDetail, setStalled]);
 
   useJobStream();
 
   return {
-    detail: data,
-    detailPending: projectQuery.isPending,
+    detail: projectQuery.isFetchedAfterMount ? data : undefined,
+    detailPending: projectQuery.isPending || !projectQuery.isFetchedAfterMount,
   };
 }
 

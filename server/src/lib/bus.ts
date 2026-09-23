@@ -94,8 +94,9 @@ class InProcessBus {
   private readonly dispatches = new EventEmitter(); // role 1
   private readonly cancels = new EventEmitter(); // role 4
   private readonly cancelled = new Set<string>();
-  private readonly waiters = new Map<string, Array<(v: string) => void>>(); // role 6
+  private readonly waiters = new Map<string, Array<(v: string | null) => void>>(); // role 6
   private readonly pendingAnswers = new Map<string, string[]>(); // role 6
+  private readonly activeQuestions = new Map<string, string>(); // jobId -> questionId
   private readonly plans = new Map<string, number>(); // role 7: jobId -> expiresAt
   private readonly resident = new Map<string, JobRegistryEntry>();
   private readonly registryEvents = new EventEmitter();
@@ -234,8 +235,15 @@ class InProcessBus {
     if ((!buf || buf.events.length === 0) && fromIndex >= 0) {
       onEvent({ type: "resync", index: fromIndex });
     } else if (buf) {
-      for (const e of buf.events) {
-        if (e.index > fromIndex) onEvent(e);
+      // A capped ring can be non-empty yet no longer contain the client's next
+      // frame. Replaying its tail would silently omit state transitions.
+      if (buf.events[0] &&
+          (buf.events[0].index > fromIndex + 1 || fromIndex > buf.events[buf.events.length - 1]!.index)) {
+        onEvent({ type: "resync", index: fromIndex });
+      } else {
+        for (const e of buf.events) {
+          if (e.index > fromIndex) onEvent(e);
+        }
       }
     }
     const listener = (e: JobEvent): void => onEvent(e);
@@ -336,6 +344,11 @@ class InProcessBus {
   // ── role 4: cancellation ──────────────────────────────────────────────────
   requestCancel(jobId: string): void {
     this.cancelled.add(jobId);
+    // A worker blocked at ask_user must release its runner slot immediately,
+    // not wait for the question's ten-minute timeout.
+    for (const resolve of [...(this.waiters.get(jobId) ?? [])]) resolve(null);
+    this.pendingAnswers.delete(jobId);
+    this.activeQuestions.delete(jobId);
     this.cancels.emit(jobId);
   }
 
@@ -351,8 +364,25 @@ class InProcessBus {
   }
 
   // ── role 6: user-response rendezvous (lpush ↔ blpop) ──────────────────────
+  registerQuestion(jobId: string, questionId: string): void {
+    this.activeQuestions.set(jobId, questionId);
+    this.pendingAnswers.delete(jobId);
+  }
+
+  isQuestionActive(jobId: string, questionId: string): boolean {
+    return this.activeQuestions.get(jobId) === questionId;
+  }
+
+  clearQuestion(jobId: string, questionId: string): void {
+    if (this.isQuestionActive(jobId, questionId)) {
+      this.activeQuestions.delete(jobId);
+      this.pendingAnswers.delete(jobId);
+    }
+  }
+
   /** Producer side (api): deliver a user's answer to a waiting agent. */
-  pushUserResponse(jobId: string, answer: string): void {
+  pushUserResponse(jobId: string, questionId: string, answer: string): void {
+    if (this.cancelled.has(jobId) || !this.isQuestionActive(jobId, questionId)) return;
     const queue = this.waiters.get(jobId);
     const resolve = queue?.shift();
     if (resolve) {
@@ -370,6 +400,7 @@ class InProcessBus {
     jobId: string,
     timeoutMs: number,
   ): Promise<string | null> {
+    if (this.cancelled.has(jobId)) return Promise.resolve(null);
     const pending = this.pendingAnswers.get(jobId);
     if (pending && pending.length > 0) {
       return Promise.resolve(pending.shift() ?? null);
@@ -387,7 +418,7 @@ class InProcessBus {
         }
         resolve(v);
       };
-      const waiter = (answer: string): void => finish(answer);
+      const waiter = (answer: string | null): void => finish(answer);
       const arr = this.waiters.get(jobId) ?? [];
       arr.push(waiter);
       this.waiters.set(jobId, arr);
@@ -424,6 +455,7 @@ class InProcessBus {
         this.cancelled.delete(jobId);
         this.waiters.delete(jobId);
         this.pendingAnswers.delete(jobId);
+        this.activeQuestions.delete(jobId);
       }
     }
     for (const [jobId, exp] of this.plans) {

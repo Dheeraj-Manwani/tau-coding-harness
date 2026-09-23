@@ -66,6 +66,22 @@ export const getProject = async (
   }
 };
 
+export const getProjectJobStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const result = await projectService.getProjectJobStatus(projectId, userId);
+    res.set("Cache-Control", "no-store");
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const listMessages = async (
   req: Request,
   res: Response,
@@ -150,8 +166,8 @@ export const submitJobAnswer = async (
   try {
     const userId = requireUserId(req);
     const { projectId, jobId } = parse(jobIdParamSchema, req.params);
-    const { answer } = parse(jobAnswerSchema, req.body);
-    await projectService.submitJobAnswer(projectId, jobId, userId, answer);
+    const { answer, questionId } = parse(jobAnswerSchema, req.body);
+    await projectService.submitJobAnswer(projectId, jobId, userId, answer, questionId);
     res.status(204).send();
   } catch (err) {
     next(err);

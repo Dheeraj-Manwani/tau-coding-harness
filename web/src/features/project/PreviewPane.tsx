@@ -1318,9 +1318,11 @@ export function PreviewPane({ device }: { device: string }) {
   const hydrated = useProjectStore((s) => s.hydrated);
   const activity = useProjectStore((s) => s.activity);
   const isStalled = useProjectStore((s) => s.isStalled);
+  const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const messages = useProjectStore((s) => s.chatMessages);
   const cancelStream = useProjectStore((s) => s.cancelStream);
   const currentJobId = useProjectStore((s) => s.currentJobId);
+  const previewReadyJobId = useProjectStore((s) => s.previewReadyJobId);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
   const { data: balance } = useBalance();
   const { send } = useSendMessage(projectId ?? undefined);
@@ -1338,15 +1340,16 @@ export function PreviewPane({ device }: { device: string }) {
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
-  // Id of the restart job we launched; used to keep the "Starting…" state up
-  // for the whole life of that job (it clears itself when currentJobId resets
-  // to null on the terminal frame), without a setState-in-effect.
+  // Id of the restart job we launched. Its preview can be shown as soon as
+  // preview_ready arrives; thumbnail capture may continue afterwards.
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
 
-  // Covers the click→dispatch gap and the whole streamed restart job.
+  // Covers the click→dispatch gap and only the provision phase of the job.
   const starting =
     restart.isPending ||
-    (previewJobId !== null && currentJobId === previewJobId);
+    (previewJobId !== null &&
+      currentJobId === previewJobId &&
+      previewReadyJobId !== previewJobId);
 
   // Only probe liveness while a preview exists and nothing is actively
   // streaming (a running job means the sandbox is being managed already).
@@ -1363,6 +1366,7 @@ export function PreviewPane({ device }: { device: string }) {
     hydrated,
     activity,
     isStalled,
+    waitingForAnswer: pendingQuestion !== null,
     interruptedForCredits: wasInterruptedForCredits(messages),
     availableCredits: balance?.credits.available,
   });

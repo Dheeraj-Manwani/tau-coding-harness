@@ -3,6 +3,7 @@ import {
   initializeProject,
   listProjects,
   getProject,
+  getProjectJobStatus,
   listMessages,
   addMessage,
   deleteProject,
@@ -33,6 +34,7 @@ router.get("/", listProjects);
 // "jobs" is never captured as a projectId.
 router.post("/jobs/cancel-all", cancelAllJobs);
 router.get("/:projectId", getProject);
+router.get("/:projectId/job-status", getProjectJobStatus);
 router.get("/:projectId/messages", listMessages);
 router.post("/:projectId/message", addMessage);
 router.delete("/:projectId", deleteProject);

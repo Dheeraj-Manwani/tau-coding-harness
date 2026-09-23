@@ -7,6 +7,7 @@ const base = {
   thresholdJobId: "job-1",
   status: "streaming" as const,
   notificationsEnabled: false,
+  permissionGranted: false,
   supported: true,
 };
 
@@ -15,13 +16,24 @@ describe("shouldShowReadyNotificationPrompt", () => {
     expect(shouldShowReadyNotificationPrompt(base)).toBe(true);
   });
 
-  test("never shows when notifications are enabled", () => {
+  test("stays hidden when notifications and permission are enabled", () => {
     expect(
       shouldShowReadyNotificationPrompt({
         ...base,
         notificationsEnabled: true,
+        permissionGranted: true,
       }),
     ).toBe(false);
+  });
+
+  test("reappears when the saved setting outlives browser permission", () => {
+    expect(
+      shouldShowReadyNotificationPrompt({
+        ...base,
+        notificationsEnabled: true,
+        permissionGranted: false,
+      }),
+    ).toBe(true);
   });
 
   test("stays hidden before this job reaches the threshold", () => {

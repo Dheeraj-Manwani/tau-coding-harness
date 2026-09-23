@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-import { getReadyNotificationCopy } from "../src/features/project/readyNotificationCopy";
+import {
+  getInputNotificationCopy,
+  getReadyNotificationCopy,
+} from "../src/features/project/readyNotificationCopy";
+
+test("input notifications include a concise version of the question", () => {
+  expect(getInputNotificationCopy("Which database should I use?")).toEqual({
+    title: "Tau needs your input",
+    body: "Which database should I use?",
+  });
+});
 
 describe("getReadyNotificationCopy", () => {
   test("covers successful completion", () => {

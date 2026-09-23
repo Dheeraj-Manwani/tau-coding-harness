@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import {
   browserNotificationsSupported,
   requestReadyNotificationPermission,
+  sendReadyNotificationTest,
 } from "@/src/features/project/useReadyNotification";
 
 /** Global Settings modal — open it from anywhere via useSettingsStore.openSettings(). */
@@ -24,6 +25,9 @@ export function SettingsModal() {
   const notifyWhenReady = useSettingsStore((s) => s.notifyWhenReady);
   const setNotifyWhenReady = useSettingsStore((s) => s.setNotifyWhenReady);
   const notificationsSupported = browserNotificationsSupported();
+  const notificationPermission = notificationsSupported
+    ? Notification.permission
+    : "denied";
 
   const changeReadyNotifications = async (enabled: boolean) => {
     if (!enabled) {
@@ -94,12 +98,28 @@ export function SettingsModal() {
                     Browser notifications are not supported here.
                   </span>
                 )}
+                {notificationsSupported && notificationPermission === "denied" && (
+                  <span className="text-xs text-amber-400">
+                    Notifications are blocked in browser settings.
+                  </span>
+                )}
+                {notificationsSupported &&
+                  notifyWhenReady &&
+                  notificationPermission === "default" && (
+                    <span className="text-xs text-amber-400">
+                      Browser permission needs to be granted again.
+                    </span>
+                  )}
               </span>
             </span>
 
             <Switch.Root
               id="notify-when-ready"
-              checked={notifyWhenReady && notificationsSupported}
+              checked={
+                notifyWhenReady &&
+                notificationsSupported &&
+                notificationPermission === "granted"
+              }
               disabled={!notificationsSupported}
               onCheckedChange={(enabled) =>
                 void changeReadyNotifications(enabled)
@@ -109,6 +129,16 @@ export function SettingsModal() {
               <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px]" />
             </Switch.Root>
           </label>
+
+          {notifyWhenReady && notificationPermission === "granted" && (
+            <button
+              type="button"
+              onClick={() => void sendReadyNotificationTest()}
+              className="ml-auto block rounded-md border border-silver-400/30 px-2.5 py-1.5 text-xs font-medium text-silver-700 transition-colors hover:border-silver-400/60 hover:text-silver-900"
+            >
+              Send test notification
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

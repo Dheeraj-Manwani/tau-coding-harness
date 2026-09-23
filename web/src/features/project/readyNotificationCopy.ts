@@ -14,6 +14,13 @@ function concise(message: string): string {
     : normalized;
 }
 
+export function getInputNotificationCopy(question: string): ReadyNotificationCopy {
+  return {
+    title: "Tau needs your input",
+    body: concise(question),
+  };
+}
+
 /** User-facing copy for every meaningful way an active run can end. */
 export function getReadyNotificationCopy(
   outcome: TerminalOutcome | null,

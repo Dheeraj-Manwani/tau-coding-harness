@@ -7,19 +7,21 @@ type ReadyNotificationPromptState = {
   thresholdJobId: string | null;
   status: JobStatus;
   notificationsEnabled: boolean;
+  permissionGranted: boolean;
   supported: boolean;
 };
 
 /**
- * The opt-in bar is only an invitation to enable the persisted setting. Browser
- * permission affects whether a notification can fire, but it must not make the
- * bar reappear while that setting is already on.
+ * The opt-in bar appears when either the saved preference is off or browser
+ * permission has been lost. That lets the user repair a permission reset
+ * instead of leaving notifications silently enabled but unable to fire.
  */
 export function shouldShowReadyNotificationPrompt({
   currentJobId,
   thresholdJobId,
   status,
   notificationsEnabled,
+  permissionGranted,
   supported,
 }: ReadyNotificationPromptState): boolean {
   return Boolean(
@@ -27,6 +29,6 @@ export function shouldShowReadyNotificationPrompt({
       thresholdJobId === currentJobId &&
       status === "streaming" &&
       supported &&
-      !notificationsEnabled,
+      (!notificationsEnabled || !permissionGranted),
   );
 }

@@ -24,6 +24,7 @@ import {
   hasFreshBuild,
 } from "@/src/features/project/revealSession";
 import { useReadyNotification } from "@/src/features/project/useReadyNotification";
+import { useAgentFavicon } from "@/src/features/project/useAgentFavicon";
 import { resolveProjectLayout } from "@/src/features/project/projectLayout";
 
 /**
@@ -193,6 +194,8 @@ export default function ProjectPage() {
   const status = useProjectStore((s) => s.status);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
+  const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
+  const isStalled = useProjectStore((s) => s.isStalled);
   const layoutMode = resolveProjectLayout({
     liveBuildStarted: storeProjectId === projectId && buildStarted,
     workspaceStartedAt: detail?.project.workspaceStartedAt,
@@ -206,6 +209,12 @@ export default function ProjectPage() {
     currentJobId,
     status,
     terminalOutcome,
+    pendingQuestion,
+  });
+  useAgentFavicon({
+    status,
+    pendingQuestion: pendingQuestion != null,
+    stalled: isStalled,
   });
 
   const chatPanelRef = useRef<PanelImperativeHandle | null>(null);

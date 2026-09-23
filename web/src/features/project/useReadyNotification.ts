@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getReadyNotificationCopy } from "@/src/features/project/readyNotificationCopy";
+import {
+  getInputNotificationCopy,
+  getReadyNotificationCopy,
+  type ReadyNotificationCopy,
+} from "@/src/features/project/readyNotificationCopy";
 import {
   READY_NOTIFICATION_PROMPT_DELAY_MS,
   shouldShowReadyNotificationPrompt,
 } from "@/src/features/project/readyNotificationPrompt";
 import type { TerminalOutcome } from "@/src/features/project/types";
+import {
+  playNotificationSound,
+  primeNotificationSound,
+  registerNotificationSoundUnlock,
+} from "@/src/features/project/notificationSound";
 import type { JobStatus } from "@/src/stores/useProjectStore";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 
@@ -22,6 +31,7 @@ type ReadyNotificationOptions = {
   currentJobId: string | null;
   status: JobStatus;
   terminalOutcome: TerminalOutcome | null;
+  pendingQuestion: { id: string; question: string } | null;
 };
 
 export function browserNotificationsSupported() {
@@ -30,6 +40,7 @@ export function browserNotificationsSupported() {
 
 export async function requestReadyNotificationPermission() {
   if (!browserNotificationsSupported()) return false;
+  await primeNotificationSound();
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") return false;
 
@@ -37,6 +48,58 @@ export async function requestReadyNotificationPermission() {
     return (await Notification.requestPermission()) === "granted";
   } catch {
     return false;
+  }
+}
+
+function showBrowserNotification(
+  copy: ReadyNotificationCopy,
+  projectId: string | undefined,
+  event: "finished" | "input",
+): boolean {
+  try {
+    const notification = new Notification(copy.title, {
+      body: copy.body,
+      icon: "/android-chrome-192x192.png",
+      badge: "/favicon-32x32.png",
+      tag: `tau-project-${event}-${projectId ?? "project"}`,
+      requireInteraction: event === "input",
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showInAppNotification(
+  copy: ReadyNotificationCopy,
+  projectId: string | undefined,
+  event: "finished" | "input",
+) {
+  toast(`${copy.title}: ${copy.body}`, {
+    id: `tau-project-${event}-${projectId ?? "project"}`,
+    icon: event === "input" ? "🔔" : "✓",
+    duration: event === "input" ? 8_000 : 6_000,
+  });
+}
+
+/** User-initiated smoke test exposed in Settings. */
+export async function sendReadyNotificationTest(): Promise<void> {
+  const copy = {
+    title: "Tau notifications are ready",
+    body: "You’ll get an alert when an agent run finishes.",
+  };
+  await primeNotificationSound();
+  playNotificationSound();
+  showInAppNotification(copy, undefined, "finished");
+  if (
+    browserNotificationsSupported() &&
+    Notification.permission === "granted"
+  ) {
+    showBrowserNotification(copy, undefined, "finished");
   }
 }
 
@@ -51,6 +114,7 @@ export function useReadyNotification({
   currentJobId,
   status,
   terminalOutcome,
+  pendingQuestion,
 }: ReadyNotificationOptions): ReadyNotificationController {
   const supported = browserNotificationsSupported();
   const notificationsEnabled = useSettingsStore((s) => s.notifyWhenReady);
@@ -58,6 +122,7 @@ export function useReadyNotification({
   const [promptJobId, setPromptJobId] = useState<string | null>(null);
   const previousStatusRef = useRef(status);
   const armedRef = useRef(false);
+  const notifiedQuestionRef = useRef<string | null>(null);
   const permissionGranted =
     supported && Notification.permission === "granted";
   const armed = Boolean(
@@ -68,8 +133,11 @@ export function useReadyNotification({
     thresholdJobId: promptJobId,
     status,
     notificationsEnabled,
+    permissionGranted,
     supported,
   });
+
+  useEffect(() => registerNotificationSoundUnlock(), []);
 
   // Track the five-second threshold independently from the setting. This means
   // turning notifications off after a long run has already crossed the
@@ -91,27 +159,32 @@ export function useReadyNotification({
     previousStatusRef.current = status;
     armedRef.current = armed;
 
-    if (!wasArmed || !wasRunning) return;
+    if (!wasRunning) return;
 
     const copy = getReadyNotificationCopy(terminalOutcome, status);
     if (!copy) return;
 
-    try {
-      const notification = new Notification(copy.title, {
-        body: copy.body,
-        icon: "/android-chrome-192x192.png",
-        tag: `tau-project-finished-${projectId ?? "project"}`,
-      });
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
-    } catch {
-      // Some browsers expose the API but reject direct construction. The
-      // in-app toast still makes the ending visible when that happens.
-      toast(copy.title);
+    // The in-app toast is unconditional so a foreground tab always shows an
+    // observable completion even when browser permission is off or blocked.
+    showInAppNotification(copy, projectId, "finished");
+
+    if (wasArmed) {
+      playNotificationSound();
+      showBrowserNotification(copy, projectId, "finished");
     }
   }, [armed, projectId, status, terminalOutcome]);
+
+  useEffect(() => {
+    if (!pendingQuestion) return;
+    if (notifiedQuestionRef.current === pendingQuestion.id) return;
+    notifiedQuestionRef.current = pendingQuestion.id;
+    const copy = getInputNotificationCopy(pendingQuestion.question);
+    showInAppNotification(copy, projectId, "input");
+    if (armed) {
+      playNotificationSound();
+      showBrowserNotification(copy, projectId, "input");
+    }
+  }, [armed, pendingQuestion, projectId]);
 
   const enable = useCallback(async () => {
     if (!projectId || !currentJobId || status !== "streaming") return;

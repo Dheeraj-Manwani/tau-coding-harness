@@ -950,6 +950,8 @@ interface ProjectState {
   writingPath: string | null;
   /** Origin of the live sandbox (`https://<host>`), with no path component. */
   previewUrl: string | null;
+  /** Latest persisted project cover, used while the live sandbox is offline. */
+  previewImageUrl: string | null;
   /** Path the preview iframe is pointed at — what the URL bar shows and edits.
    *  Cross-origin means we can't observe navigation *inside* the app, so this is
    *  where we last sent it, not necessarily where it is now. */
@@ -1116,6 +1118,7 @@ const FRESH = {
   headSequence: null as number | null,
   writingPath: null as string | null,
   previewUrl: null,
+  previewImageUrl: null,
   previewPath: "/",
   previewNonce: 0,
   cancelStream: null,
@@ -1179,6 +1182,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         hydrated: true,
         chatMessages,
         previewUrl,
+        previewImageUrl: detail.project.previewImageUrl,
         buildStarted,
         hasMoreMessages,
         oldestSequence,
@@ -1210,6 +1214,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         hydrated: true,
         chatMessages,
         previewUrl,
+        previewImageUrl: detail.project.previewImageUrl,
         buildStarted,
         hasMoreMessages,
         oldestSequence,

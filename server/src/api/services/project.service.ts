@@ -579,10 +579,11 @@ export async function getProject(projectId: string, userId: string) {
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  const [messages, latestFragment, activeJob] = await Promise.all([
+  const [messages, latestFragment, activeJob, previewImageUrl] = await Promise.all([
     projectRepo.findRecentMessages(projectId, 50),
     projectRepo.findLatestFragment(projectId),
     projectRepo.findActiveJob(projectId),
+    project.previewImageKey ? presignGet(project.previewImageKey) : Promise.resolve(null),
   ]);
 
   const checkpoints = messages.length
@@ -613,7 +614,7 @@ export async function getProject(projectId: string, userId: string) {
     : null;
 
   return {
-    project,
+    project: { ...project, previewImageUrl },
     messages,
     latestFragment,
     activeJobId: activeJob?.id ?? null,

@@ -5,7 +5,10 @@ import type { ProjectDetail } from "../src/features/project/types";
 
 const question = { id: "q1", question: "Which layout?", options: ["Grid", "List"] };
 const detail: ProjectDetail = {
-  project: { id: "p1", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null },
+  project: {
+    id: "p1", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null,
+    previewImageUrl: "https://images.example.test/cover.png",
+  },
   messages: [],
   latestFragment: null,
   activeJobId: "j1",
@@ -24,6 +27,7 @@ describe("project store lifecycle reconciliation", () => {
     expect(useProjectStore.getState()).toMatchObject({
       currentJobId: "j1", status: "streaming", pendingQuestion: question,
       isAiTyping: false,
+      previewImageUrl: "https://images.example.test/cover.png",
     });
   });
 

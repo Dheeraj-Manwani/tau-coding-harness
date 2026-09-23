@@ -3,7 +3,10 @@ import { lifecycleFromDetail } from "../src/features/project/projectLifecycle";
 import type { ProjectDetail } from "../src/features/project/types";
 
 const base: ProjectDetail = {
-  project: { id: "p", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null },
+  project: {
+    id: "p", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null,
+    previewImageUrl: null,
+  },
   messages: [],
   latestFragment: null,
   activeJobId: null,

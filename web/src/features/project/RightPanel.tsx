@@ -344,9 +344,23 @@ export function RightPanel() {
       </div>
 
       <div className="min-h-0 flex-1">
-        {activeTab === "preview" ? (
-          <PreviewPane device={previewDevice} />
-        ) : (
+        {/* Keep the iframe mounted while Code is open. Unmounting it made a
+            simple tab round-trip navigate the preview again and replay the
+            post-load shimmer even though the already-loaded page was usable. */}
+        <div
+          className={cn(
+            "h-full bg-black",
+            activeTab !== "preview" && "hidden",
+          )}
+          aria-hidden={activeTab !== "preview"}
+        >
+          <PreviewPane
+            device={previewDevice}
+            active={activeTab === "preview"}
+          />
+        </div>
+
+        {activeTab === "code" && (
           <Suspense
             fallback={
               <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">

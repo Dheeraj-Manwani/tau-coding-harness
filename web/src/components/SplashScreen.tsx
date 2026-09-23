@@ -1,5 +1,11 @@
-/** Full-screen brand splash shown while auth state is being resolved. */
-export function SplashScreen() {
+/** The glowing brand mark shared by full-page and in-workspace loading states. */
+export function TauShimmerLogo({
+  size = 72,
+  decorative = false,
+}: {
+  size?: number;
+  decorative?: boolean;
+}) {
   return (
     <>
       <style>{`
@@ -25,15 +31,23 @@ export function SplashScreen() {
           animation: tau-shimmer 3s linear infinite;
         }
       `}</style>
-      <div className="flex min-h-[100svh] items-center justify-center bg-[var(--space-void)]">
-        <span
-          className="tau-splash-logo"
-          style={{ width: 72, height: 72 }}
-          role="img"
-          aria-label="tau"
-        />
-      </div>
+      <span
+        className="tau-splash-logo inline-block shrink-0"
+        style={{ width: size, height: size }}
+        role={decorative ? undefined : "img"}
+        aria-label={decorative ? undefined : "tau"}
+        aria-hidden={decorative || undefined}
+      />
     </>
+  );
+}
+
+/** Full-screen brand splash shown while auth state is being resolved. */
+export function SplashScreen() {
+  return (
+    <div className="flex min-h-[100svh] items-center justify-center bg-[var(--space-void)]">
+      <TauShimmerLogo />
+    </div>
   );
 }
 

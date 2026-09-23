@@ -77,6 +77,8 @@ export interface ProjectSummary {
   sandboxStatus: string;
   /** Durable one-way transition from the initial chat-only view. */
   workspaceStartedAt: string | null;
+  /** Short-lived signed URL for the latest captured project cover. */
+  previewImageUrl: string | null;
 }
 
 /** A row in the user's project list (`GET /project`). */

@@ -23,6 +23,7 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import BorderGlow from "@/src/components/ui/glow-loader";
+import { TauShimmerLogo } from "@/src/components/SplashScreen";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
@@ -130,7 +131,7 @@ function PreviewPlaceholder({
 
   if (!state.animated) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex h-full items-center justify-center bg-black p-6">
         <div className="flex max-w-sm flex-col items-center text-center">
           <span
             className={cn(
@@ -182,7 +183,7 @@ function PreviewPlaceholder({
   const liveActivity = activityPhrase(state.title);
 
   return (
-    <div className="flex h-full items-center justify-center p-6">
+    <div className="flex h-full items-center justify-center bg-black p-6">
       <BorderGlow
         autoAnimate
         autoAnimateDuration={3200}
@@ -307,21 +308,34 @@ function PreviewPlaceholder({
 function PreviewStopped({
   starting,
   onStart,
+  coverImageUrl,
 }: {
   starting: boolean;
   onStart: () => void;
+  coverImageUrl: string | null;
 }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3">
-      <span className="flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
+    <div className="relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden bg-black">
+      {coverImageUrl && (
+        <>
+          <img
+            src={coverImageUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 size-full scale-110 object-cover object-top opacity-45 blur-md"
+          />
+          <div className="absolute inset-0 bg-black/80" />
+        </>
+      )}
+      <span className="relative flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)] shadow-lg">
         <PowerOffIcon className="size-4.5" />
       </span>
-      <span className="text-xs text-[var(--silver-600)]">Preview stopped</span>
+      <span className="relative text-xs text-[var(--silver-900)]">Preview stopped</span>
       <button
         type="button"
         disabled={starting}
         onClick={onStart}
-        className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-default disabled:hover:bg-brand"
+        className="relative flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-default disabled:hover:bg-brand"
       >
         {starting ? (
           <>
@@ -1308,9 +1322,16 @@ function VisualInspector({
   );
 }
 
-export function PreviewPane({ device }: { device: string }) {
+export function PreviewPane({
+  device,
+  active = true,
+}: {
+  device: string;
+  active?: boolean;
+}) {
   const navigate = useNavigate();
   const previewUrl = useProjectStore((s) => s.previewUrl);
+  const previewImageUrl = useProjectStore((s) => s.previewImageUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
   const previewNonce = useProjectStore((s) => s.previewNonce);
   const projectId = useProjectStore((s) => s.projectId);
@@ -1334,6 +1355,8 @@ export function PreviewPane({ device }: { device: string }) {
   const themePanelOpen = useProjectStore((s) => s.themePanelOpen);
   const setThemePanelOpen = useProjectStore((s) => s.setThemePanelOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loadedFrameKey, setLoadedFrameKey] = useState<string | null>(null);
   const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
   useVisualUndo(reselect);
   useVisualEditEscape();
@@ -1353,14 +1376,24 @@ export function PreviewPane({ device }: { device: string }) {
 
   // Only probe liveness while a preview exists and nothing is actively
   // streaming (a running job means the sandbox is being managed already).
+  // The pane stays mounted behind the Code tab to preserve its loaded iframe,
+  // but hidden previews should not create background liveness traffic.
   const liveness = usePreviewStatus(projectId ?? undefined, {
-    enabled: Boolean(previewUrl) && !isStreaming && !starting,
+    enabled: active && Boolean(previewUrl) && !isStreaming && !starting,
   });
 
   const isDown =
     Boolean(previewUrl) && !isStreaming && liveness.data?.alive === false;
 
   const src = previewSrc(previewUrl, previewPath);
+  const frameKey = src ? `${src}-${previewNonce}` : null;
+  const previewLoaded = frameKey !== null && loadedFrameKey === frameKey;
+
+  useEffect(() => {
+    return () => {
+      if (previewRevealTimer.current) clearTimeout(previewRevealTimer.current);
+    };
+  }, [frameKey]);
   const emptyState = getEmptyPreviewState({
     status,
     hydrated,
@@ -1394,15 +1427,18 @@ export function PreviewPane({ device }: { device: string }) {
   };
 
   return (
-    <div className="flex h-full items-center justify-center overflow-auto p-6">
+    <div className="flex h-full items-center justify-center overflow-auto bg-black p-6">
       <motion.div
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
-        className="relative h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)]"
-        style={{ backgroundColor: "var(--space-void)" }}
+        className="relative h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-black"
       >
         {starting || isDown ? (
-          <PreviewStopped starting={starting} onStart={handleStart} />
+          <PreviewStopped
+            starting={starting}
+            onStart={handleStart}
+            coverImageUrl={previewImageUrl}
+          />
         ) : src ? (
           <>
             <iframe
@@ -1413,9 +1449,39 @@ export function PreviewPane({ device }: { device: string }) {
               ref={iframeRef}
               src={src}
               title="App preview"
-              className="h-full w-full border-0 bg-white"
+              onLoad={() => {
+                setLoadedFrameKey(null);
+                if (previewRevealTimer.current) {
+                  clearTimeout(previewRevealTimer.current);
+                }
+                previewRevealTimer.current = setTimeout(() => {
+                  setLoadedFrameKey(frameKey);
+                  previewRevealTimer.current = null;
+                }, 1_500);
+              }}
+              className={cn(
+                "h-full w-full border-0 bg-black transition-opacity duration-200",
+                previewLoaded
+                  ? "visible opacity-100"
+                  : "invisible opacity-0",
+              )}
+              style={{ colorScheme: "dark", backgroundColor: "black" }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
+            {!previewLoaded && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
+                <div
+                  role="status"
+                  aria-label="Loading preview"
+                  className="flex flex-col items-center gap-5"
+                >
+                  <TauShimmerLogo decorative />
+                  <span className="text-sm font-medium tracking-wide text-[var(--silver-600)]">
+                    Loading preview…
+                  </span>
+                </div>
+              </div>
+            )}
             {/* One stack, so a dismissed build error and selection mode can
                 both be announced without either hiding the other. */}
             {((previewError && previewErrorDismissed) || visualEditEnabled) && (

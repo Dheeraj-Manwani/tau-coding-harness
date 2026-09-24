@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { LoaderCircleIcon } from "lucide-react";
 import {
   Group,
   Panel,
@@ -11,6 +10,7 @@ import {
 } from "react-resizable-panels";
 
 import { cn } from "@/src/lib/utils";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { api } from "@/src/lib/api-client";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
@@ -230,9 +230,8 @@ export default function ProjectPage() {
 
   if (layoutMode === "loading") {
     return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-[var(--silver-600)]">
-        <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-        Loading project…
+      <div className="flex h-full w-full items-center justify-center">
+        <DataSpinner label="Loading project" />
       </div>
     );
   }

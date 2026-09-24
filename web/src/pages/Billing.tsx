@@ -29,6 +29,7 @@ import {
 } from "@/src/features/billing/api";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
 import { SpendSplitCard } from "@/src/features/billing/SpendSplitCard";
@@ -126,9 +127,14 @@ function openRazorpayCheckout(
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function BalanceCard() {
-  const { data: balance } = useBalance();
-  if (!balance)
-    return <div className="h-28 animate-pulse rounded-xl bg-muted" />;
+  const { data: balance, isLoading } = useBalance();
+  if (isLoading)
+    return (
+      <div className="flex h-28 items-center justify-center rounded-xl border bg-card">
+        <DataSpinner label="Loading credit balance" />
+      </div>
+    );
+  if (!balance) return null;
 
   const { credits, plan, cycleEnd } = balance;
 
@@ -177,7 +183,7 @@ function BalanceCard() {
 
 function PlanSection() {
   const { data: user } = useMe();
-  const { data: sub, refetch: refetchSub } = useSubscription();
+  const { data: sub, isLoading, refetch: refetchSub } = useSubscription();
   const { refetch: refetchBalance } = useBalance();
   const subscribePro = useSubscribePro();
   const cancelSub = useCancelSubscription();
@@ -240,7 +246,9 @@ function PlanSection() {
       </ul>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {!isActive ? (
+        {isLoading ? (
+          <DataSpinner label="Loading subscription" />
+        ) : !isActive ? (
           <UpgradeProButton
             onClick={handleUpgrade}
             disabled={subscribePro.isPending}
@@ -352,7 +360,7 @@ function RedeemSection() {
 
 function TopUpSection() {
   const { data: user } = useMe();
-  const { data: packs } = useCreditPacks();
+  const { data: packs, isLoading } = useCreditPacks();
   const createOrder = useCreateCreditOrder();
   const verifyPayment = useVerifyCreditPayment();
   const [pendingPack, setPendingPack] = useState<string | null>(null);
@@ -414,7 +422,11 @@ function TopUpSection() {
         One-time top-ups — credits never expire. Available on any plan.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        {packs
+        {isLoading ? (
+          <div className="col-span-full flex min-h-20 items-center justify-center">
+            <DataSpinner label="Loading credit packs" />
+          </div>
+        ) : packs
           ? packs.map((pack) => (
               <button
                 key={pack.id}
@@ -435,9 +447,7 @@ function TopUpSection() {
                 )}
               </button>
             ))
-          : Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
-            ))}
+          : null}
       </div>
     </div>
   );
@@ -496,6 +506,8 @@ function HistorySection() {
 
   useEffect(() => {
     if (!data?.entries.length) return;
+    // Each cursor response is a new server page that must be appended locally.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAllEntries((prev) => {
       const ids = new Set(prev.map((e) => e.id));
       const fresh = data.entries.filter((e) => !ids.has(e.id));
@@ -538,7 +550,7 @@ function HistorySection() {
 
       {isFetching && (
         <div className="flex justify-center py-4">
-          <div className="size-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <DataSpinner label="Loading credit history" />
         </div>
       )}
 

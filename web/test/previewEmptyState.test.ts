@@ -13,6 +13,19 @@ const base = {
 };
 
 describe("empty preview state", () => {
+  test("uses a data spinner while the project is hydrating", () => {
+    expect(
+      getEmptyPreviewState({
+        ...base,
+        hydrated: false,
+      }),
+    ).toMatchObject({
+      title: "Loading project…",
+      loading: true,
+      animated: false,
+    });
+  });
+
   test("shows live activity only while a job is actually streaming", () => {
     expect(
       getEmptyPreviewState({

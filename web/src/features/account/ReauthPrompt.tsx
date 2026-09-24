@@ -3,6 +3,7 @@ import { ShieldCheckIcon } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { ApiError } from "@/src/lib/api-client";
 import { useReauth, useReauthChallenge, useReauthMethod } from "./api";
 
@@ -49,8 +50,8 @@ export function ReauthPrompt({
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border bg-muted/30 p-3">
-        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+      <div className="flex min-h-12 items-center justify-center rounded-lg border bg-muted/30 p-3">
+        <DataSpinner label="Loading verification method" />
       </div>
     );
   }

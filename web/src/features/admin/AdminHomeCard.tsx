@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, ShieldCheckIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { openAdminConsole, useAdminHealth, useIsAdmin } from "./api";
 
 function Stat({
@@ -41,7 +42,7 @@ function Stat({
  */
 export function AdminHomeCard() {
   const isAdmin = useIsAdmin();
-  const { data: health, isError } = useAdminHealth(isAdmin);
+  const { data: health, isLoading, isError } = useAdminHealth(isAdmin);
 
   if (!isAdmin) return null;
 
@@ -83,7 +84,11 @@ export function AdminHomeCard() {
           </button>
         </div>
 
-        {health && (
+        {isLoading ? (
+          <div className="flex min-h-16 items-center justify-center">
+            <DataSpinner label="Loading service health" />
+          </div>
+        ) : health && (
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
             <Stat label="Active" value={`${health.active}/${health.concurrency}`} />
             <Stat

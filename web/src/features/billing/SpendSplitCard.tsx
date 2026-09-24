@@ -1,5 +1,6 @@
 import { HammerIcon, SparklesIcon } from "lucide-react";
 
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useSpend } from "./api";
 
 function Bar({ build, runtime }: { build: number; runtime: number }) {
@@ -32,8 +33,8 @@ export function SpendSplitCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-card p-5">
-        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+      <div className="flex min-h-20 items-center justify-center rounded-xl border bg-card p-5">
+        <DataSpinner label="Loading credit usage" />
       </div>
     );
   }

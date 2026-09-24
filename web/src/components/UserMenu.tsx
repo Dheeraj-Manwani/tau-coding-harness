@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
@@ -25,7 +26,7 @@ export function UserMenu() {
   const navigate = useNavigate();
   const { data: user } = useMe();
   const logout = useLogout();
-  const { data: balance } = useBalance();
+  const { data: balance, isLoading: balanceLoading } = useBalance();
 
   const openSettings = useSettingsStore((s) => s.openSettings);
   const hasSeenMotionIntro = useSettingsStore((s) => s.hasSeenMotionIntro);
@@ -81,41 +82,44 @@ export function UserMenu() {
               </p>
             </div>
 
-            {balance &&
-              (() => {
-                const available = balance.credits.available;
-                const isLow = available < LOW_CREDITS;
-                return (
-                  <>
-                    <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
-                    <button
-                      type="button"
-                      onClick={() => navigate(APP_BILLING)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
-                        isLow
-                          ? "text-amber-400 hover:bg-amber-500/10"
-                          : "text-silver-600 hover:bg-space-overlay hover:text-silver-900",
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        {isLow ? (
-                          <AlertTriangleIcon className="size-4 shrink-0" />
-                        ) : (
-                          <ZapIcon className="size-4 shrink-0" />
-                        )}
-                        Credits
-                      </span>
-                      <span className="font-medium">
-                        {available % 1 === 0
-                          ? available.toFixed(0)
-                          : available.toFixed(1)}{" "}
-                        cr
-                      </span>
-                    </button>
-                  </>
-                );
-              })()}
+            <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
+            {(() => {
+              const available = balance?.credits.available;
+              const isLow = available !== undefined && available < LOW_CREDITS;
+              return (
+                <button
+                  type="button"
+                  onClick={() => navigate(APP_BILLING)}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
+                    isLow
+                      ? "text-amber-400 hover:bg-amber-500/10"
+                      : "text-silver-600 hover:bg-space-overlay hover:text-silver-900",
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    {isLow ? (
+                      <AlertTriangleIcon className="size-4 shrink-0" />
+                    ) : (
+                      <ZapIcon className="size-4 shrink-0" />
+                    )}
+                    Credits
+                  </span>
+                  {balanceLoading ? (
+                    <DataSpinner label="Loading credits" />
+                  ) : available !== undefined ? (
+                    <span className="font-medium">
+                      {available % 1 === 0
+                        ? available.toFixed(0)
+                        : available.toFixed(1)}{" "}
+                      cr
+                    </span>
+                  ) : (
+                    <span aria-label="Credits unavailable">—</span>
+                  )}
+                </button>
+              );
+            })()}
 
             <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
 

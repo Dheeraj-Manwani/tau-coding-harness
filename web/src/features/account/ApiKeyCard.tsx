@@ -4,6 +4,7 @@ import { CopyIcon, KeyRoundIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { ApiError } from "@/src/lib/api-client";
 import {
   useApiKey,
@@ -82,8 +83,8 @@ export function ApiKeyCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-card p-5">
-        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+      <div className="flex min-h-20 items-center justify-center rounded-xl border bg-card p-5">
+        <DataSpinner label="Loading API key" />
       </div>
     );
   }

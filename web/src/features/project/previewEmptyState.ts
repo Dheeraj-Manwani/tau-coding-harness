@@ -7,6 +7,8 @@ export interface EmptyPreviewState {
   description?: string;
   action?: EmptyPreviewAction;
   actionLabel?: string;
+  /** Server data is pending; use a compact spinner, not agent-work visuals. */
+  loading?: boolean;
   animated: boolean;
   tone: "neutral" | "warning" | "error";
 }
@@ -42,6 +44,7 @@ export function getEmptyPreviewState({
       return {
         title: "Build paused",
         description: "Checking your credit balance…",
+        loading: true,
         animated: false,
         tone: "warning",
       };
@@ -69,7 +72,8 @@ export function getEmptyPreviewState({
   if (!hydrated && status === "idle") {
     return {
       title: "Loading project…",
-      animated: true,
+      loading: true,
+      animated: false,
       tone: "neutral",
     };
   }

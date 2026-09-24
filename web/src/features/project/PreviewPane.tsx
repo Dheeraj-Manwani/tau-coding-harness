@@ -23,7 +23,7 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import BorderGlow from "@/src/components/ui/glow-loader";
-import { TauShimmerLogo } from "@/src/components/SplashScreen";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
@@ -128,6 +128,14 @@ function PreviewPlaceholder({
   const selectTip = (index: number) => {
     setTipIndex((index + BUILD_TIPS.length) % BUILD_TIPS.length);
   };
+
+  if (state.loading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-black">
+        <DataSpinner label={state.title} />
+      </div>
+    );
+  }
 
   if (!state.animated) {
     return (
@@ -1470,16 +1478,7 @@ export function PreviewPane({
             />
             {!previewLoaded && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
-                <div
-                  role="status"
-                  aria-label="Loading preview"
-                  className="flex flex-col items-center gap-5"
-                >
-                  <TauShimmerLogo decorative />
-                  <span className="text-sm font-medium tracking-wide text-[var(--silver-600)]">
-                    Loading preview…
-                  </span>
-                </div>
+                <DataSpinner label="Loading preview" />
               </div>
             )}
             {/* One stack, so a dismissed build error and selection mode can

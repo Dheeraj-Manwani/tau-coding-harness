@@ -22,6 +22,7 @@ import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 
 // Free plan may own at most this many concurrent projects (mirrors
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
@@ -49,8 +50,8 @@ function Home() {
   const navigate = useNavigate();
   const initProject = useInitProject();
   const openOutOfCredits = useBillingStore((s) => s.open);
-  const { data: projects } = useProjects();
-  const { data: balance } = useBalance();
+  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: balance, isLoading: balanceLoading } = useBalance();
   // If they described their idea on the landing page before signing up, it is
   // waiting for them here. Read without consuming (StrictMode may run this
   // initializer twice); the effect below retires it once we're mounted.
@@ -67,6 +68,7 @@ function Home() {
   // Proactively surface the free-plan project cap instead of only failing on
   // submit with a 403. PRO users are unlimited, so only gate FREE.
   const isFreePlan = (balance?.plan ?? "FREE") === "FREE";
+  const limitsLoading = projectsLoading || balanceLoading;
   const projectCount = projects?.length ?? 0;
   const atProjectLimit = isFreePlan && projectCount >= FREE_PLAN_MAX_PROJECTS;
 
@@ -208,7 +210,11 @@ function Home() {
                 }
               />
             </LightningComposer>
-            {isFreePlan && (
+            {limitsLoading ? (
+              <div className="mt-2 flex h-5 items-center px-1">
+                <DataSpinner label="Loading account limits" className="[&_svg]:size-3" />
+              </div>
+            ) : isFreePlan && (
               <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
                 <span>
                   {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}

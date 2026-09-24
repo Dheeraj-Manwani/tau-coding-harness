@@ -5,6 +5,7 @@ import { MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
 import { useMe } from "@/src/features/auth/queries";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { APP_HOME, projectPath } from "@/src/lib/routes";
 import { useProjects } from "./api";
 import type { ProjectListItem } from "./types";
@@ -107,7 +108,17 @@ export function MyProjects() {
   const [pendingDelete, setPendingDelete] = useState<ProjectListItem | null>(null);
 
   if (!user) return null;
-  if (isLoading || isError || !projects || projects.length === 0) return null;
+  if (isLoading) {
+    return (
+      <section className="relative z-10 mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
+        <h2 className="mb-4 text-sm font-medium text-silver-600">My projects</h2>
+        <div className="flex min-h-24 items-center justify-center">
+          <DataSpinner label="Loading projects" />
+        </div>
+      </section>
+    );
+  }
+  if (isError || !projects || projects.length === 0) return null;
 
   return (
     <>

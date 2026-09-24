@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangleIcon, ZapIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { APP_BILLING } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
 
@@ -9,8 +10,15 @@ const LOW_CREDITS = 10;
 
 export function CreditsWidget() {
   const navigate = useNavigate();
-  const { data: balance } = useBalance();
+  const { data: balance, isLoading } = useBalance();
 
+  if (isLoading) {
+    return (
+      <span className="flex min-w-14 items-center justify-center rounded-full bg-[var(--space-overlay)] px-2.5 py-1">
+        <DataSpinner label="Loading credits" className="[&_svg]:size-3" />
+      </span>
+    );
+  }
   if (!balance) return null;
 
   const available = balance.credits.available;

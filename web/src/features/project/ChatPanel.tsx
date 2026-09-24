@@ -55,6 +55,7 @@ import toast from "react-hot-toast";
 import { cn } from "@/src/lib/utils";
 import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
+import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
@@ -907,6 +908,7 @@ export function ChatPanel({
 }) {
   const { id: projectId } = useParams<{ id: string }>();
   const messages = useProjectStore((s) => s.chatMessages);
+  const hydrated = useProjectStore((s) => s.hydrated);
   const isAiTyping = useProjectStore((s) => s.isAiTyping);
   const activity = useProjectStore((s) => s.activity);
   const isStalled = useProjectStore((s) => s.isStalled);
@@ -922,6 +924,7 @@ export function ChatPanel({
 
   const { data: balance } = useBalance();
   const isStreaming = status === "streaming";
+  const chatLoading = !hydrated && messages.length === 0 && !isStreaming;
 
   // Shared with the Home composer and the visual-edit inspector, so a MAX
   // choice made anywhere carries everywhere.
@@ -1102,7 +1105,12 @@ export function ChatPanel({
         >
           {isLoadingOlder && (
             <div className="flex justify-center py-2">
-              <div className="size-4 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
+              <DataSpinner label="Loading earlier messages" />
+            </div>
+          )}
+          {chatLoading && (
+            <div className="flex h-full items-center justify-center">
+              <DataSpinner label="Loading chat" />
             </div>
           )}
           {messages.map((m, i) =>

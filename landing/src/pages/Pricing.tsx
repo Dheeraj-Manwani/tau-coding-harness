@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { CheckCircleIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
-import { APP_BILLING, APP_SIGNUP } from "@/src/lib/routes";
+import { APP_BILLING, APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 import {
   CREDIT_PACKS,
@@ -140,8 +140,8 @@ export default function PricingPage() {
             price="₹0"
             description="For turning your first few ideas into real apps."
             features={FREE_FEATURES}
-            cta="Get started free"
-            ctaHref={APP_SIGNUP}
+            cta="Open Tau"
+            ctaHref={APP_HOME}
           />
           <PlanCard
             name="PRO"

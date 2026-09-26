@@ -8,13 +8,11 @@ export const APP_ORIGIN =
   (import.meta.env.DEV ? "http://localhost:5174" : "https://app.tauai.pro");
 
 export const APP_HOME = `${APP_ORIGIN}/`;
-export const APP_LOGIN = `${APP_ORIGIN}/login`;
-export const APP_SIGNUP = `${APP_ORIGIN}/signup`;
 export const APP_BILLING = `${APP_ORIGIN}/billing`;
 
-export function signupPath(prompt?: string): string {
-  if (!prompt) return APP_SIGNUP;
-  const url = new URL(APP_SIGNUP);
+export function appPath(prompt?: string): string {
+  if (!prompt) return APP_HOME;
+  const url = new URL(APP_HOME);
   url.searchParams.set(PROMPT_PARAM, prompt);
   return url.toString();
 }

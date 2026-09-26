@@ -5,8 +5,6 @@ import { Link } from "react-router-dom";
 
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { cn } from "@/src/lib/utils";
-import { APP_LOGIN, APP_SIGNUP } from "@/src/lib/routes";
-import { MagneticButton } from "@/src/features/marketing/motion/MagneticButton";
 
 /**
  * The marketing navbar (§4.0).
@@ -225,21 +223,6 @@ export function MarketingNav() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Link
-            to={APP_LOGIN}
-            className="rounded-md px-3 py-1.5 text-sm text-silver-600 transition-colors hover:text-silver-900"
-          >
-            Sign in
-          </Link>
-          <MagneticButton
-            to={APP_SIGNUP}
-            className="rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Start building
-            <span aria-hidden="true"> →</span>
-          </MagneticButton>
-        </div>
       </nav>
     </motion.header>
   );

@@ -1,7 +1,6 @@
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -12,7 +11,6 @@ import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME, LANDING_PRIVACY, LANDING_TERMS } from "@/src/lib/routes";
-import { PROMPT_PARAM, stashPendingPrompt } from "@/src/lib/promptHandoff";
 import { GoogleButton } from "@/src/features/auth/GoogleButton";
 import { useRegister } from "@/src/features/auth/mutations";
 import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
@@ -20,16 +18,6 @@ import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
 function SignUp() {
   const navigate = useNavigate();
   const registerMutation = useRegister();
-  const [params] = useSearchParams();
-
-  // The landing hero sends whatever the visitor typed along in the query
-  // string. Park it now: the trip from here to the builder goes through email
-  // verification, which may well finish in a different tab.
-  useEffect(() => {
-    const handedOver = params.get(PROMPT_PARAM);
-    if (handedOver) stashPendingPrompt(handedOver);
-  }, [params]);
-
   const {
     register: field,
     handleSubmit,

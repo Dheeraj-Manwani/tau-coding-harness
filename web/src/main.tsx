@@ -11,6 +11,9 @@ import {
   RequireGuest,
   RequireUnverified,
 } from "./features/auth/guards";
+import { capturePendingPromptFromUrl } from "./lib/promptHandoff";
+
+capturePendingPromptFromUrl();
 
 const lazyComponent =
   (load: () => Promise<{ default: ComponentType }>) => async () => ({

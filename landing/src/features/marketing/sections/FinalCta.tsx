@@ -3,10 +3,8 @@ import { useState } from "react";
 import { ElectricBorder } from "@/src/components/ui/electric-border";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
-import { APP_SIGNUP, signupPath } from "@/src/lib/routes";
-import { MagneticButton } from "@/src/features/marketing/motion/MagneticButton";
+import { appPath } from "@/src/lib/routes";
 import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
-import { useCosmos } from "@/src/features/marketing/motion/cosmos";
 
 /**
  * §4.12: "Full burn".
@@ -21,17 +19,13 @@ import { useCosmos } from "@/src/features/marketing/motion/cosmos";
  * read in there.
  */
 
-/** Long enough to read as acceleration, short enough not to be a light show. */
-const WARP_MS = 1100;
-
 export function FinalCta() {
-  const cosmos = useCosmos();
   const reduceMotion = useReduceMotion();
   const [prompt, setPrompt] = useState("");
 
   const submit = () => {
     const message = prompt.trim();
-    window.location.assign(signupPath(message || undefined));
+    window.location.assign(appPath(message || undefined));
   };
 
   return (
@@ -61,17 +55,9 @@ export function FinalCta() {
         </ElectricBorder>
       </ScrollReveal>
 
-      <ScrollReveal className="mt-8 flex flex-col items-center gap-3">
-        <MagneticButton
-          to={APP_SIGNUP}
-          onPointerEnter={() => cosmos.warp(WARP_MS)}
-          className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Start building free
-          <span aria-hidden="true"> →</span>
-        </MagneticButton>
+      <ScrollReveal className="mt-5 flex flex-col items-center gap-3">
         <p className="text-xs text-silver-600">
-          300 credits on signup, no card.
+          Type your idea and press send. Your first 300 credits are free.
         </p>
       </ScrollReveal>
     </section>

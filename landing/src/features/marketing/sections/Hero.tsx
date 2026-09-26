@@ -9,10 +9,9 @@ import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import type { Effort } from "@/src/features/project/types";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
-import { MagneticButton } from "@/src/features/marketing/motion/MagneticButton";
 import { TauWatermark } from "@/src/features/marketing/motion/TauWatermark";
 import { useCosmos } from "@/src/features/marketing/motion/cosmos";
-import { APP_SIGNUP, signupPath } from "@/src/lib/routes";
+import { appPath } from "@/src/lib/routes";
 
 /**
  * The hero (§4.1).
@@ -24,17 +23,15 @@ import { APP_SIGNUP, signupPath } from "@/src/lib/routes";
  * the single most persuasive thing we can put above the fold, and it costs
  * nothing to let them play with it.
  *
- * Submitting does not build. It carries the prompt to signup, so the visitor
- * has already written their idea before they have made an account, and the
- * first thing they see after verifying is their own sentence waiting in the
- * builder.
+ * Submitting carries the prompt to the app. If the visitor needs to sign in
+ * first, the app keeps the prompt safe until they reach the builder.
  *
  * Attachments are the one piece of chrome that stays inert: the paperclip
  * renders in its real disabled state rather than opening a file picker that
  * would have nowhere to upload to.
  */
 
-/** Mirrors SUGGESTIONS in pages/Home.tsx: the same carousel, before signup. */
+/** Mirrors SUGGESTIONS in pages/Home.tsx: the same carousel, before the app. */
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
   "Create a landing page for my coffee shop…",
@@ -76,7 +73,7 @@ export function Hero() {
 
   const submit = () => {
     const message = prompt.trim();
-    window.location.assign(signupPath(message || undefined));
+    window.location.assign(appPath(message || undefined));
   };
 
   return (
@@ -182,13 +179,6 @@ export function Hero() {
       </motion.div>
 
       <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
-        <MagneticButton
-          to={APP_SIGNUP}
-          className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Start building free
-          <span aria-hidden="true"> →</span>
-        </MagneticButton>
         <Link
           to="/docs"
           className="rounded-lg border border-silver-200 px-5 py-2.5 text-sm font-medium text-silver-900 transition-colors hover:border-silver-400 hover:bg-space-overlay"
@@ -198,7 +188,7 @@ export function Hero() {
       </div>
 
       <p className="relative mt-5 text-xs text-silver-600">
-        300 free credits on signup · No card required · Your code, yours to take
+        300 free credits when you join · No card required · Your code, yours to take
       </p>
 
       <ScrollCue />

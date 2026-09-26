@@ -8,7 +8,7 @@ import { ExternalLinkIcon, LinkIcon } from "lucide-react";
 import { Callout } from "./Callout";
 import { calloutKindOf, type CalloutKind } from "./calloutKind";
 import { CodeBlock } from "./CodeBlock";
-import { APP_SIGNUP } from "@/src/lib/routes";
+import { APP_HOME } from "@/src/lib/routes";
 
 /**
  * The docs renderer.
@@ -169,7 +169,7 @@ const COMPONENTS: Components = {
   ),
 
   a: ({ href, children }) => {
-    const target = href === "/signup" ? APP_SIGNUP : (href ?? "");
+    const target = href === "/signup" ? APP_HOME : (href ?? "");
     const external = /^https?:\/\//.test(target);
     if (external) {
       return (

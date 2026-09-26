@@ -9,15 +9,17 @@ cross them.
 
 ```bash
 pnpm install
-pnpm dev        # vite dev server
+pnpm dev        # vite dev server on http://localhost:5174
 pnpm build      # tsc -b && vite build
 pnpm lint
 ```
 
 ## Environment
 
-`VITE_API_URL` — the API origin, if it isn't on the default host. That's the
-only required var.
+`VITE_API_URL` — the API origin, if it isn't on the default host.
+
+`VITE_LANDING_URL` — the public site origin. Production defaults to
+`https://tauai.pro`; local development defaults to `http://localhost:5173`.
 
 `VITE_WS_URL` is **gone**. Live streaming rides the api origin over SSE
 (`GET /jobs/:jobId/stream?lastEventIndex=N`, with replay); there is no WebSocket
@@ -27,13 +29,13 @@ anymore.
 
 ```
 src/
-  pages/        route components (Home, Login, Billing, Checkout, Pricing, …)
+  pages/        route components (Home, Login, Billing, Checkout, …)
   features/
     account/    API-key card + the re-auth dialog
     auth/       login/signup/verify, OAuth callback
     billing/    balance, packs, ledger, spend split, subscription
     composer/   prompt box + attachments (pick → hash → presigned PUT → complete)
-    home/       landing
+    home/       authenticated home visuals
     project/    the IDE — ChatPanel, CodePane, PreviewPane, GithubPanel, RightPanel
     settings/
   stores/       zustand — useProjectStore.ts is the big one

@@ -11,7 +11,7 @@ import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 import { ApiError } from "@/src/lib/api-client";
-import { APP_HOME } from "@/src/lib/routes";
+import { APP_HOME, LANDING_PRIVACY, LANDING_TERMS } from "@/src/lib/routes";
 import { PROMPT_PARAM, stashPendingPrompt } from "@/src/lib/promptHandoff";
 import { GoogleButton } from "@/src/features/auth/GoogleButton";
 import { useRegister } from "@/src/features/auth/mutations";
@@ -143,13 +143,13 @@ function SignUp() {
 
         <p className="mt-5 text-center text-xs text-muted-foreground">
           By creating an account you agree to our{" "}
-          <Link to="/terms" className="underline hover:text-foreground">
+          <a href={LANDING_TERMS} className="underline hover:text-foreground">
             Terms of Service
-          </Link>{" "}
+          </a>{" "}
           and{" "}
-          <Link to="/privacy" className="underline hover:text-foreground">
+          <a href={LANDING_PRIVACY} className="underline hover:text-foreground">
             Privacy Policy
-          </Link>
+          </a>
           .
         </p>
       </div>

@@ -8,6 +8,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: true,
+    port: 5174,
     allowedHosts: [".e2b.app"],
   },
   resolve: {

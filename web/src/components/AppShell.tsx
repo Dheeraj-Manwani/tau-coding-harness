@@ -9,7 +9,7 @@ import { APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
 /**
- * The authenticated product shell (everything under `/app`). Extracted from the
+ * The authenticated product shell on app.tauai.pro. Extracted from the
  * former `App.tsx` when the router grew a public half; `MarketingShell` and
  * `DocsShell` are its siblings.
  */
@@ -17,7 +17,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const outlet = useOutlet();
   // The project editor is a full-screen workspace — it hides the app navbar.
-  const isProject = pathname.startsWith("/app/project/");
+  const isProject = pathname.startsWith("/project/");
   const isHome = pathname === APP_HOME;
 
   return (

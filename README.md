@@ -90,8 +90,10 @@ defaults in `server/.env.example`. Postgres is the only infrastructure required.
   otherwise cost you an hour (empty-string URL vars failing zod's `.url()` and
   exiting on boot; the R2 CORS rule attachments need; `KIMI_API_KEY` degrading
   silently rather than failing).
-- **web** needs an optional `VITE_API_URL` if the API isn't on the default host.
-  `VITE_WS_URL` is gone — streaming rides the api origin over SSE.
+- **landing** serves `tauai.pro`; `VITE_APP_URL` points its CTAs at the product.
+- **web** serves `app.tauai.pro`; it needs an optional `VITE_API_URL` and accepts
+  `VITE_LANDING_URL` for links back to the public site. `VITE_WS_URL` is gone —
+  streaming rides the api origin over SSE.
 - **mobile** needs `EXPO_PUBLIC_API_URL`. On a physical device that must be your
   machine's LAN IP, not `localhost`.
 

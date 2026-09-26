@@ -1,8 +1,8 @@
 [
   {
     "AllowedOrigins": [
-      "http://localhost:5173",
-      "https://your-production-domain.com"
+      "http://localhost:5174",
+      "https://app.tauai.pro"
     ],
     "AllowedMethods": ["PUT", "GET"],
     "AllowedHeaders": ["content-type"],

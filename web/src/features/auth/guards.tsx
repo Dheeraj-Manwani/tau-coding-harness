@@ -58,22 +58,3 @@ export function RequireUnverified() {
   if (user.emailVerifiedAt) return <Navigate to={APP_HOME} replace />;
   return <Outlet />;
 }
-
-/**
- * `/` serves two audiences. A stranger gets the marketing page; a signed-in
- * user is forwarded to the builder at `/app`, so the shareable root URL is
- * always the landing page and the product always has one unambiguous URL.
- *
- * Mount this *above* `MarketingShell`, not inside it. Nested under the shell it
- * would render the marketing navbar and footer around itself before deciding to
- * redirect, which is precisely the flash of marketing this exists to prevent.
- *
- * `AuthBootstrap` has already run the silent refresh by the time any route
- * renders, so the wait below is one in-flight request, not a re-authentication.
- */
-export function RootGate() {
-  const { data: user, isLoading } = useMe();
-  if (isLoading) return <SplashScreen />;
-  if (user) return <Navigate to={APP_HOME} replace />;
-  return <Outlet />;
-}

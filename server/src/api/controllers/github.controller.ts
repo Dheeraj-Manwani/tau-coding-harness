@@ -7,12 +7,9 @@ import { mobileDeepLink, withParam } from "../lib/mobileLink";
 /**
  * Where a web GitHub round-trip lands when we have no usable `return_to`.
  *
- * Not bare APP_URL: `/` is the public marketing page, and a signed-in visitor
- * there is immediately redirected to `/app` — which would drop the
- * `?github=connected|denied|error` flag before the app ever read it, so the
- * user would get no feedback at all about what just happened.
+ * APP_URL is the dedicated product origin, so its root is the builder.
  */
-const WEB_FALLBACK_RETURN = `${env.APP_URL.replace(/\/+$/, "")}/app`;
+const WEB_FALLBACK_RETURN = `${env.APP_URL.replace(/\/+$/, "")}/`;
 
 /**
  * Only allow post-OAuth redirects back into our own app, so `return_to` can't be

@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { octavedNoise } from "@/src/features/marketing/motion/noise";
+import { octavedNoise } from "@/src/lib/noise";
 
 // Adapted from BalintFerenczy's "ElectricBorder" pen. Two changes vs. the
 // original: (1) the default stroke is our brand blue instead of violet, and

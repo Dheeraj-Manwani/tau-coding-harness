@@ -1,32 +1,17 @@
 import { StrictMode, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
+
 import "./index.css";
-import { SplashScreen } from "./components/SplashScreen.tsx";
-import { Providers } from "./components/providers.tsx";
+import { SplashScreen } from "./components/SplashScreen";
+import { Providers } from "./components/providers";
 import {
   AuthBootstrap,
   RequireAuth,
   RequireGuest,
   RequireUnverified,
-  RootGate,
-} from "./features/auth/guards.tsx";
+} from "./features/auth/guards";
 
-/**
- * Every screen is code-split. The entry chunk holds the router, the auth
- * guards and the splash — nothing else.
- *
- * That split is what makes the landing page's JS budget (§10: <160KB gzipped)
- * achievable at all. Eagerly importing the product put the builder, CodeMirror
- * and tsparticles in the first bytes a stranger downloaded, which is roughly
- * 370KB gzipped of code they will never run.
- *
- * Route-level `lazy` rather than `React.lazy` + `<Suspense>`: the data router
- * resolves the module as part of the navigation, so there is no fallback flash
- * between the click and the page. On a cold load the module fetch overlaps with
- * the silent token refresh `AuthBootstrap` is already waiting on, and the root
- * route's `hydrateFallbackElement` covers the remainder.
- */
 const lazyComponent =
   (load: () => Promise<{ default: ComponentType }>) => async () => ({
     Component: (await load()).default,
@@ -34,128 +19,48 @@ const lazyComponent =
 
 const router = createBrowserRouter([
   {
-    // Pathless root, purely so there is somewhere to hang the hydrate fallback.
     element: <Outlet />,
     hydrateFallbackElement: <SplashScreen />,
     children: [
-      // ── Product ───────────────────────────────────────────────────────────
-      // Everything the signed-in user does lives under /app so that `/` can
-      // always be the shareable marketing link. See LANDING_AND_DOCS_PLAN §3.
       {
         element: <RequireAuth />,
         children: [
           {
-            path: "/app",
-            lazy: lazyComponent(() => import("./components/AppShell.tsx")),
+            path: "/",
+            lazy: lazyComponent(() => import("./components/AppShell")),
             children: [
               {
                 index: true,
-                lazy: lazyComponent(() => import("./pages/Home.tsx")),
+                lazy: lazyComponent(() => import("./pages/Home")),
               },
               {
                 path: "project/:id",
                 lazy: lazyComponent(
-                  () => import("./features/project/ProjectPage.tsx"),
+                  () => import("./features/project/ProjectPage"),
                 ),
               },
               {
                 path: "billing",
-                lazy: lazyComponent(() => import("./pages/Billing.tsx")),
+                lazy: lazyComponent(() => import("./pages/Billing")),
               },
             ],
           },
         ],
       },
-
-      // ── Public: marketing + docs, sharing one starfield ───────────────────
-      {
-        lazy: lazyComponent(() => import("./features/marketing/CosmosRoot.tsx")),
-        children: [
-          {
-            // Above MarketingShell on purpose — see RootGate. Only `/` is gated:
-            // a signed-in user must never land on the marketing page, but is
-            // free to read the changelog.
-            element: <RootGate />,
-            children: [
-              {
-                lazy: lazyComponent(
-                  () => import("./features/marketing/MarketingShell.tsx"),
-                ),
-                children: [
-                  {
-                    path: "/",
-                    lazy: lazyComponent(
-                      () => import("./features/marketing/Landing.tsx"),
-                    ),
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            // The marketing shell again, ungated — see above.
-            lazy: lazyComponent(
-              () => import("./features/marketing/MarketingShell.tsx"),
-            ),
-            children: [
-              {
-                path: "/changelog",
-                lazy: lazyComponent(
-                  () => import("./features/marketing/Changelog.tsx"),
-                ),
-              },
-            ],
-          },
-          {
-            lazy: lazyComponent(() => import("./features/docs/DocsShell.tsx")),
-            children: [
-              {
-                path: "/docs",
-                lazy: lazyComponent(
-                  () => import("./features/docs/DocsIndex.tsx"),
-                ),
-              },
-              {
-                // A section is a grouping, not a page — bounce to its first.
-                path: "/docs/:section",
-                lazy: lazyComponent(
-                  () => import("./features/docs/DocsSectionRedirect.tsx"),
-                ),
-              },
-              {
-                path: "/docs/:section/:slug",
-                lazy: lazyComponent(
-                  () => import("./features/docs/DocsPage.tsx"),
-                ),
-              },
-              {
-                // Anything else under /docs keeps the shell, so a dead link
-                // still leaves you looking at the map.
-                path: "/docs/*",
-                lazy: lazyComponent(
-                  () => import("./features/docs/DocsNotFound.tsx"),
-                ),
-              },
-            ],
-          },
-        ],
-      },
-
-      // ── Auth ──────────────────────────────────────────────────────────────
       {
         element: <RequireGuest />,
         children: [
           {
             path: "/login",
-            lazy: lazyComponent(() => import("./pages/Login.tsx")),
+            lazy: lazyComponent(() => import("./pages/Login")),
           },
           {
             path: "/signup",
-            lazy: lazyComponent(() => import("./pages/SignUp.tsx")),
+            lazy: lazyComponent(() => import("./pages/SignUp")),
           },
           {
             path: "/auth/callback",
-            lazy: lazyComponent(() => import("./pages/OAuthCallback.tsx")),
+            lazy: lazyComponent(() => import("./pages/OAuthCallback")),
           },
         ],
       },
@@ -164,37 +69,21 @@ const router = createBrowserRouter([
         children: [
           {
             path: "/verify-pending",
-            lazy: lazyComponent(() => import("./pages/VerifyPending.tsx")),
+            lazy: lazyComponent(() => import("./pages/VerifyPending")),
           },
         ],
       },
       {
         path: "/verify-email",
-        lazy: lazyComponent(() => import("./pages/VerifyEmail.tsx")),
+        lazy: lazyComponent(() => import("./pages/VerifyEmail")),
       },
-
-      // ── Standalone public pages ───────────────────────────────────────────
-      {
-        path: "/privacy",
-        lazy: lazyComponent(() => import("./pages/Privacy.tsx")),
-      },
-      {
-        path: "/terms",
-        lazy: lazyComponent(() => import("./pages/Terms.tsx")),
-      },
-      {
-        path: "/pricing",
-        lazy: lazyComponent(() => import("./pages/Pricing.tsx")),
-      },
-      // Intentionally unguarded: this is the mobile app's credit-pack checkout,
-      // opened in an in-app browser tab that carries no session. See Checkout.
       {
         path: "/checkout",
-        lazy: lazyComponent(() => import("./pages/Checkout.tsx")),
+        lazy: lazyComponent(() => import("./pages/Checkout")),
       },
       {
         path: "*",
-        lazy: lazyComponent(() => import("./pages/NotFound.tsx")),
+        lazy: lazyComponent(() => import("./pages/NotFound")),
       },
     ],
   },

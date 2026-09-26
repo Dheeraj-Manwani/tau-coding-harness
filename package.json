@@ -9,8 +9,8 @@
     "reset": "cd server && bun run reset",
     "reset:confirm": "cd server && bun run reset:confirm",
     "check:mobile": "bun run mobile/scripts/check-parity.ts",
-    "docs:index": "bun run web/scripts/build-docs-index.ts",
-    "prerender": "bun run web/scripts/prerender.ts"
+    "docs:index": "bun run landing/scripts/build-docs-index.ts",
+    "prerender": "bun run landing/scripts/prerender.ts"
   },
   "devDependencies": {
     "e2b": "^2.36.1",

@@ -1,5 +1,6 @@
 # Starts the dev services, each in its own terminal.
-#   web     -> pnpm dev     (vite)
+#   landing -> pnpm dev     (vite, http://localhost:5173)
+#   web     -> pnpm dev     (vite, http://localhost:5174)
 #   server  -> bun run dev  (api + worker + SSE in ONE process)
 #
 # Usage:  ./dev.ps1
@@ -16,6 +17,7 @@ $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 
 $services = @(
+    @{ Name = "landing"; Dir = "landing"; Cmd = "pnpm dev" },
     @{ Name = "web";    Dir = "web";    Cmd = "pnpm dev" },
     @{ Name = "server"; Dir = "server"; Cmd = "bun run dev" }
 )

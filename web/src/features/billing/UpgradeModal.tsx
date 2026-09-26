@@ -11,7 +11,7 @@ import {
 import { UpgradeProButton } from "./UpgradeProButton";
 import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 import { APP_BILLING } from "@/src/lib/routes";
-import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
+import { PRO_PRICE_INR } from "@/src/lib/pricing";
 
 const PRO_FEATURES = [
   "5,000 credits per month",

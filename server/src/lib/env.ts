@@ -28,7 +28,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
 
   // App / client URLs
-  APP_URL: z.string().url().default("http://localhost:5173"),
+  APP_URL: z.string().url().default("http://localhost:5174"),
   /**
    * Deep-link base for the native app. Where `GET /auth/github/callback` sends
    * the browser when the flow was started from mobile — an in-app browser tab
@@ -39,7 +39,7 @@ const envSchema = z.object({
   OAUTH_SUCCESS_REDIRECT: z
     .string()
     .url()
-    .default("http://localhost:5173/auth/callback"),
+    .default("http://localhost:5174/auth/callback"),
 
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),

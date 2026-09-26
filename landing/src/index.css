@@ -1,0 +1,717 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Space / cosmos palette — the single source of truth for the theme.
+ * This is a dark-only site: both :root and .dark resolve to the same values.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root,
+.dark {
+  color-scheme: dark;
+
+  /* Base / backgrounds */
+  --space-void: #07070f; /* html/body bg, deepest surface */
+  --space-surface: #0c0f14; /* cards, panels (slightly lifted) */
+  --space-overlay: #1e2532; /* hover states, dropdowns, modals */
+
+  /* Comet Silver scale (text + borders) */
+  --silver-900: #e2e8f0; /* primary body text (not pure white) */
+  --silver-600: #94a3b8; /* muted / secondary text, icons */
+  --silver-400: #4a5568; /* borders, dividers */
+  --silver-200: #2d3748; /* subtle borders, input bg on surface */
+
+  /* Pulsar Blue scale (interactive / info) */
+  --blue-500: #60a5fa; /* links, focus rings, info badges */
+  --blue-300: #a0c4fd; /* hover state of links */
+  --blue-900: #040d1f; /* text on blue bg fills */
+
+  /* ── shadcn token overrides → mapped to the space palette ─────────────── */
+  --background: var(--space-void);
+  --foreground: var(--silver-900);
+  --card: var(--space-surface);
+  --card-foreground: var(--silver-900);
+  --popover: var(--space-overlay);
+  --popover-foreground: var(--silver-900);
+  --primary: var(--blue-500);
+  --primary-foreground: var(--blue-900);
+  --secondary: var(--space-overlay);
+  --secondary-foreground: var(--silver-600);
+  --muted: var(--space-overlay);
+  --muted-foreground: var(--silver-600);
+  --accent: var(--space-overlay);
+  --accent-foreground: var(--silver-900);
+  --destructive: #f87171;
+  --border: var(--silver-200);
+  --input: var(--space-overlay);
+  --ring: var(--blue-500);
+
+  /* Brand vars consumed by shadcn primitives (focus rings, selection) —
+     remapped from the old violet to Pulsar Blue for a cohesive theme. */
+  --brand-violet: var(--blue-500);
+  --brand-violet-light: var(--blue-300);
+  --brand-violet-deep: #3b82f6;
+  --brand-violet-dim: #2563eb;
+  --flux-green: #28a874;
+  --error-red: #f87171;
+
+  /* Legacy element-level tokens (h1/h2/code base styles below). */
+  --text: var(--silver-900);
+  --text-h: #ffffff;
+  --code-bg: var(--space-surface);
+
+  /* Workspace / IDE tokens — dark space surfaces. */
+  --bg-base: var(--space-void);
+  --bg-surface: var(--space-surface);
+  --bg-elevated: var(--space-overlay);
+  --text-primary: var(--silver-900);
+  --text-secondary: var(--silver-600);
+  --text-tertiary: var(--silver-400);
+  --accent-primary: var(--blue-500);
+  --accent-secondary: var(--blue-300);
+
+  --sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --heading: "Inter Variable", Inter, system-ui, sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+
+  --radius: 0.625rem;
+
+  /* Charts + sidebar tokens (kept for any shadcn component that reads them). */
+  --chart-1: var(--blue-500);
+  --chart-2: var(--blue-300);
+  --chart-3: #818cf8;
+  --chart-4: #c084fc;
+  --chart-5: #22d3ee;
+  --sidebar: var(--space-surface);
+  --sidebar-foreground: var(--silver-900);
+  --sidebar-primary: var(--blue-500);
+  --sidebar-primary-foreground: var(--blue-900);
+  --sidebar-accent: var(--space-overlay);
+  --sidebar-accent-foreground: var(--silver-900);
+  --sidebar-border: var(--silver-200);
+  --sidebar-ring: var(--blue-500);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Named Tailwind tokens — usable as bg-space-void, text-silver-900,
+ * border-silver-400, text-blue-500, etc. (Tailwind v4 CSS-first config.)
+ * ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+
+  --color-space-void: #07070f;
+  --color-space-surface: #0c0f14;
+  --color-space-overlay: #1e2532;
+
+  --color-silver-900: #e2e8f0;
+  --color-silver-600: #94a3b8;
+  --color-silver-400: #4a5568;
+  --color-silver-200: #2d3748;
+
+  --color-blue-500: #60a5fa;
+  --color-blue-300: #a0c4fd;
+  --color-blue-900: #040d1f;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * HTML / body base + CSS-only star field.
+ * ───────────────────────────────────────────────────────────────────────── */
+html {
+  background-color: var(--space-void);
+  /* ~12 stars at varied positions, sizes and opacities. Tiles seamlessly. */
+  background-image:
+    radial-gradient(
+      1px 1px at 20% 30%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 75% 15%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 50% 60%,
+      rgba(255, 255, 255, 0.22) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 90% 45%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 10% 78%,
+      rgba(255, 255, 255, 0.2) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 35% 88%,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 65% 80%,
+      rgba(255, 255, 255, 0.45) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 85% 68%,
+      rgba(255, 255, 255, 0.15) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 5% 48%,
+      rgba(255, 255, 255, 0.25) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 45% 22%,
+      rgba(255, 255, 255, 0.4) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 60% 38%,
+      rgba(160, 196, 253, 0.3) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      1px 1px at 28% 55%,
+      rgba(255, 255, 255, 0.18) 0%,
+      transparent 100%
+    );
+  background-size: 400px 300px;
+  background-repeat: repeat;
+  background-attachment: fixed;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+  color: var(--silver-900);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keep the star field on <html> visible through body / #root. */
+body {
+  margin: 0;
+  background: transparent;
+}
+
+#root {
+  width: 100%;
+  margin: 0 auto;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* ── Typography scale ────────────────────────────────────────────────────── */
+h1,
+h2,
+h3 {
+  font-family: var(--heading);
+  color: var(--silver-900);
+}
+
+h1 {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+h2,
+h3 {
+  font-weight: 500;
+}
+
+@layer base {
+  p {
+    margin: 0;
+    line-height: 1.7;
+  }
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--blue-500);
+}
+
+code {
+  font-size: 0.9375rem;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--space-surface);
+}
+
+/* White logo text with a soft blue bloom. */
+.logo-glow {
+  color: #ffffff;
+  text-shadow:
+    0 0 12px #93c5fd,
+    0 0 32px #60a5fa44;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Marketing / docs surfaces (features/marketing, features/docs).
+ * No new colours — everything below resolves to tokens declared above.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Headline words that should glow. Pairs with .logo-glow. */
+.text-cosmic {
+  background-image: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    var(--silver-900) 55%,
+    var(--blue-300) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* NebulaDrift: three counter-rotating clouds. Durations and direction are set
+   per-blob in NebulaDrift.tsx; everything constant lives here. */
+.nebula-blob {
+  opacity: 0.06;
+  filter: blur(90px);
+  mix-blend-mode: screen;
+  will-change: transform;
+  animation-name: nebula-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes nebula-drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate3d(6%, -4%, 0) rotate(120deg) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-5%, 5%, 0) rotate(240deg) scale(0.95);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+  }
+}
+
+/* Belt and braces: the OS setting stops the clouds even if a component forgets
+   to pass `animationPlayState`. */
+@media (prefers-reduced-motion: reduce) {
+  .nebula-blob {
+    animation-play-state: paused !important;
+  }
+}
+
+/* Nav logo: a bright band sweeps across the τ mask on hover. The spec calls for
+   200ms; at 60fps that is three frames and reads as a flicker rather than a
+   shimmer, so it runs at 500ms. The mark is a masked element, so the "stroke"
+   is really the background showing through the mask. */
+.logo-shimmer {
+  background-image: linear-gradient(
+    105deg,
+    var(--blue-500) 0%,
+    var(--blue-500) 38%,
+    #dbeafe 50%,
+    var(--blue-500) 62%,
+    var(--blue-500) 100%
+  );
+  background-size: 300% 100%;
+  background-position-x: 100%;
+}
+
+.logo-shimmer:hover,
+a:hover > .logo-shimmer {
+  animation: logo-shimmer-sweep 500ms ease-in-out;
+}
+
+@keyframes logo-shimmer-sweep {
+  from {
+    background-position-x: 100%;
+  }
+  to {
+    background-position-x: -100%;
+  }
+}
+
+/* ── Docs ─────────────────────────────────────────────────────────────────── */
+
+/* Shiki ships its own background and padding on the <pre> it generates; the
+   CodeBlock frame already provides both, so strip them and keep only the
+   colours. */
+.docs-shiki pre {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
+.docs-shiki code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  display: block;
+}
+
+/* Jumping to an anchor flashes the heading, so it is obvious which one of a
+   dozen similar headings you actually landed on. */
+.docs-body :is(h2, h3):target {
+  animation: anchor-flash 900ms ease-out;
+}
+
+@keyframes anchor-flash {
+  0% {
+    background-color: rgba(96, 165, 250, 0.16);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-body :is(h2, h3):target {
+    animation: none;
+  }
+}
+
+/* FAQ: Radix reports the measured content height as a custom property, so the
+   open/close is one CSS transition rather than a JS-measured animation. */
+.accordion-content[data-state="open"] {
+  animation: accordion-down 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.accordion-content[data-state="closed"] {
+  animation: accordion-up 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-content[data-state="open"],
+  .accordion-content[data-state="closed"] {
+    animation: none;
+  }
+}
+
+/* Credits: a slow conic sheen rotating on the PRO card's border. Deliberately
+   *not* the electric bolt — that belongs to MAX, and two loud borders on one
+   page compete instead of ranking. */
+@property --sheen-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.conic-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--sheen-angle),
+    transparent 0deg,
+    var(--blue-500) 60deg,
+    transparent 140deg,
+    transparent 360deg
+  );
+  /* Both halves of the mask, or the standard property wins with no mask set
+     and the gradient floods the whole card instead of tracing its edge. */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  /* The gradient's own angle is animated rather than the element's transform:
+     rotating a non-square box swings its corners outside the card, where
+     `overflow-hidden` clips them and the sheen blinks out twice a lap. */
+  animation: conic-sheen 8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes conic-sheen {
+  to {
+    --sheen-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conic-sheen::before {
+    animation: none;
+  }
+}
+
+/* WorkspaceTour: pins breathe until one is opened. Well under the 3Hz
+   photosensitivity threshold (§10). */
+.hotspot-pulse {
+  animation: hotspot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hotspot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(96, 165, 250, 0);
+  }
+}
+
+/* ShipIt: the GitHub glyph flashes as each packet lands. One-shot — the
+   element is re-keyed on arrival, which restarts it. */
+.github-pulse {
+  animation: github-pulse 400ms ease-out;
+}
+
+@keyframes github-pulse {
+  0% {
+    color: var(--blue-300);
+    transform: scale(1.12);
+  }
+  100% {
+    color: var(--silver-600);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-pulse,
+  .github-pulse {
+    animation: none;
+  }
+}
+
+/* OrbitRing: one composited rotation, no rAF. */
+.orbit-spin {
+  animation-name: orbit-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-spin {
+    animation: none;
+  }
+}
+
+/* CredibilityStrip: one row scrolls a full copy's width, then snaps back. The
+   snap is invisible because the second copy is identical and adjacent. */
+.marquee {
+  animation: marquee-scroll 60s linear infinite;
+}
+
+.marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
+/* The footer's "planet you're orbiting": a wide, very faint blue radial clipped
+   to the bottom edge of the page. */
+.horizon-glow::before {
+  content: "";
+  position: absolute;
+  inset-inline: -20%;
+  bottom: -60%;
+  height: 140%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(59, 130, 246, 0.16),
+    transparent 62%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-shimmer:hover,
+  a:hover > .logo-shimmer {
+    animation: none;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--silver-400) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--silver-400);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--silver-600);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Minimal, dark custom scrollbars — thin track, silver thumb. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--silver-400) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--silver-400);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--silver-600);
+}
+
+/* Fully hidden scrollbar (e.g. the editor tab strip). */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Soft translucent focus glow for input wrappers (chat composer). */
+.focus-glow:focus-within {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue-500) 20%, transparent);
+}
+
+/* Navbar logo mark: recolors the τ glyph PNG to the brand blue via a mask
+   (the raw asset is the old violet) and adds a soft brand bloom. */
+.logo-mark {
+  display: inline-block;
+  background-color: var(--blue-500);
+  -webkit-mask: url(/logo.png) no-repeat center / contain;
+  mask: url(/logo.png) no-repeat center / contain;
+  filter: drop-shadow(0 0 8px #60a5fa66);
+}
+
+/* White variant (e.g. on the home hero) — recolors the glyph white and swaps
+   the brand-blue bloom for a soft neutral one. */
+.logo-mark--white {
+  background-color: #cbd5e1;
+  filter: drop-shadow(0 0 6px rgba(203, 213, 225, 0.2));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * shadcn token bridge — maps the runtime CSS vars above to Tailwind color
+ * utilities (bg-background, text-foreground, border-border, …).
+ * ───────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --font-heading: var(--font-sans);
+  --color-brand: var(--brand-violet);
+  --color-brand-light: var(--brand-violet-light);
+  --color-brand-deep: var(--brand-violet-deep);
+  --color-brand-dim: var(--brand-violet-dim);
+  --color-flux: var(--flux-green);
+  --color-error-red: var(--error-red);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

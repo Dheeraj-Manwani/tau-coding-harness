@@ -33,7 +33,8 @@ import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
 import { SpendSplitCard } from "@/src/features/billing/SpendSplitCard";
-import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
+import { LANDING_TERMS } from "@/src/lib/routes";
+import { PRO_PRICE_INR } from "@/src/lib/pricing";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -623,7 +624,7 @@ export default function BillingPage() {
       <p className="mt-2 text-center text-xs text-muted-foreground">
         Payments processed by Razorpay. No prorated refunds for partial billing
         periods. See our{" "}
-        <a href="/terms" className="underline hover:text-foreground">
+        <a href={LANDING_TERMS} className="underline hover:text-foreground">
           Cancellation &amp; Refund Policy
         </a>{" "}
         · Questions?{" "}

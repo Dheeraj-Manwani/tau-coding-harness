@@ -72,41 +72,47 @@ checkout mainly reduces disk use, clone/pull work, and accidental build/watch
 scope. Runtime memory is controlled by the Bun process, Chromium/Playwright,
 request concurrency, and the in-process job queue.
 
-## Web
+## Web and landing
 
-The web SPA is still built/hosted separately. Point it at the single origin:
+The authenticated web SPA is built/hosted at `app.tauai.pro`. Point it at the
+single API origin and the public site:
 
 ```
 VITE_API_URL=https://<host>
+VITE_LANDING_URL=https://tauai.pro
 ```
+
+Set backend `APP_URL=https://app.tauai.pro` and
+`OAUTH_SUCCESS_REDIRECT=https://app.tauai.pro/auth/callback`.
 
 Live streaming now rides the api origin over SSE, so **`VITE_WS_URL` is gone**.
 
 ### Build order
 
-`vite build` alone ships a client-only SPA: the landing page and all 41 doc
+`vite build` alone ships a client-only SPA: the landing page and all doc
 pages are an empty `<div id="root">` to any crawler that doesn't run JS. Two
 steps around it fix that.
 
 ```bash
 # 1. Nav tree + ⌘K search index + public/sitemap.xml.
-#    Already wired into web/'s predev and prebuild — listed for completeness.
+#    Already wired into landing/'s predev and prebuild — listed for completeness.
 bun run docs:index
 
-# 2. Build.
+# 2. Build both deployable packages.
+cd landing && pnpm build && cd ..
 cd web && pnpm build && cd ..
 
 # 3. Static HTML per public route, written over dist/<route>/index.html.
 #    Node, not bun: playwright's CDP pipe transport doesn't complete its
 #    handshake under bun on Windows (the browser launches, then times out).
-node scripts/prerender.ts
+node landing/scripts/prerender.ts
 ```
 
 Notes:
 
 - **Set `SITE_ORIGIN`** for anything other than production. Both the sitemap and
   the prerendered `<link rel="canonical">` / `og:url` are written against it, and
-  it defaults to `https://usetau.dev`.
+  it defaults to `https://tauai.pro`.
 - **Prerender needs fresh build output.** It refuses to run over an already
   prerendered `dist/` rather than rendering each route on top of the previous
   run's markup. Rebuild between runs.
@@ -114,7 +120,7 @@ Notes:
   shells, so a half-prerendered deploy must fail the build rather than pass
   quietly.
 - **Chromium must be installed**: `npx playwright install chromium`.
-- The public routes live in `scripts/public-routes.ts`; doc routes come from the
+- The public routes live in `landing/scripts/public-routes.ts`; doc routes come from the
   generated index, so neither list can drift from the content tree.
 
 ## Notes / tradeoffs

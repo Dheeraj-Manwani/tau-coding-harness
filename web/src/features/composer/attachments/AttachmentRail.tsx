@@ -26,7 +26,7 @@ function chipToTarget(
   };
 }
 
-/** The composer rail — editable chips for attachments not yet sent. */
+/** The composer rail: editable chips for attachments not yet sent. */
 export function AttachmentRail({
   attachments,
   onRemove,
@@ -75,7 +75,7 @@ export function AttachmentRail({
   );
 }
 
-/** The transcript rail — read-only chips under a sent user bubble. */
+/** The transcript rail: read-only chips under a sent user bubble. */
 export function MessageAttachmentRail({
   attachments,
 }: {

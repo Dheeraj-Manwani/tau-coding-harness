@@ -10,7 +10,7 @@ export const authKeys = {
 /**
  * The single source of truth for "who is logged in". A 401 (after the silent
  * refresh attempt in the axios interceptor) resolves to `undefined` rather than
- * retrying — guards read that to decide redirects.
+ * retrying: guards read that to decide redirects.
  */
 export function useMe() {
   return useQuery({

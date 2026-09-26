@@ -79,10 +79,10 @@ function dayLabel(iso: string): string {
 const LEDGER_LABELS: Record<string, string> = {
   SIGNUP_GRANT: "Signup bonus",
   DAILY_FREE_GRANT: "Daily free credits",
-  PLAN_GRANT: "PRO plan grant",
+  PLAN_GRANT: "Monthly PRO credits",
   PROMO_REDEEM: "Promo code",
   PURCHASE: "Purchase",
-  DEBIT: "Generation",
+  DEBIT: "Tau build",
   // Runtime inference from a deployed app, as opposed to DEBIT's "tau built
   // something for you". Different enough that one label for both would be
   // actively misleading on a bill.
@@ -231,12 +231,12 @@ function PlanSection() {
   return (
     <div className="rounded-xl border bg-card p-5">
       <h2 className="text-sm font-medium">
-        PRO plan — ₹{PRO_PRICE_INR.toLocaleString("en-IN")}/month
+        PRO plan: ₹{PRO_PRICE_INR.toLocaleString("en-IN")}/month
       </h2>
       <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
         {[
           "5,000 credits per month",
-          "Priority generation queue",
+          "Your builds move to the front",
           "Credits reset monthly",
         ].map((f) => (
           <li key={f} className="flex items-center gap-2">
@@ -396,9 +396,9 @@ function TopUpSection() {
               {
                 onSuccess: (data) =>
                   toast.success(`+${fmt(data.creditsGranted)} credits added!`),
-                // The webhook backstop will still land the credits — don't alarm.
+                // The webhook backstop will still land the credits: don't alarm.
                 onError: () =>
-                  toast.success("Payment received — credits will appear shortly."),
+                  toast.success("Payment received: credits will appear shortly."),
                 onSettled: () => setPendingPack(null),
               },
             );
@@ -420,7 +420,7 @@ function TopUpSection() {
     <div className="rounded-xl border bg-card p-5">
       <h2 className="text-sm font-medium">Buy credits</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        One-time top-ups — credits never expire. Available on any plan.
+        One-time top-ups: credits never expire. Available on any plan.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {isLoading ? (
@@ -470,11 +470,9 @@ function LedgerRow({ entry }: { entry: LedgerEntry }) {
   // Secondary line: turn count for multi-turn generations, else the raw reason
   // when it adds something beyond the label.
   const detail =
-    isGeneration && entry.turnCount > 1
-      ? `${entry.turnCount} turns`
-      : entry.reason && entry.reason !== baseLabel.toLowerCase()
-        ? entry.reason
-        : null;
+    !isGeneration && entry.reason && entry.reason !== baseLabel.toLowerCase()
+      ? entry.reason
+      : null;
 
   return (
     <div className="flex items-center justify-between py-2.5 text-sm">

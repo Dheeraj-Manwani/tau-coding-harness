@@ -115,7 +115,7 @@ export function UserMenu() {
                       cr
                     </span>
                   ) : (
-                    <span aria-label="Credits unavailable">—</span>
+                    <span aria-label="Credits unavailable">-</span>
                   )}
                 </button>
               );

@@ -9,8 +9,8 @@
  * browser forever.
  *
  * Lives in `lib/` rather than in `features/marketing` because three unrelated
- * surfaces touch it — the hero writes the URL, signup stashes it, and the
- * builder consumes it — and none of them should have to import the others.
+ * surfaces touch it: the hero writes the URL, signup stashes it, and the
+ * builder consumes it: and none of them should have to import the others.
  */
 
 /** Query-string key the hero uses to hand the prompt to signup. */
@@ -68,6 +68,6 @@ export function clearPendingPrompt(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Nothing to do — the TTL will retire it anyway.
+    // Nothing to do: the TTL will retire it anyway.
   }
 }

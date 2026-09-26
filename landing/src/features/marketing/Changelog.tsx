@@ -9,7 +9,7 @@ import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
 import { loadChangelog, type ChangelogEntry } from "./changelog";
 
 /**
- * `/changelog` — every entry on one page, newest first.
+ * `/changelog`: every entry on one page, newest first.
  *
  * Rendered with the docs' `Markdown` rather than a second renderer: an entry is
  * prose with lists and the occasional code fence, which is exactly what that
@@ -74,7 +74,7 @@ export function Changelog() {
   useDocumentMeta({
     title: "Changelog",
     description:
-      "What shipped in tau, and when — every release, newest first.",
+      "What shipped in tau, and when: every release, newest first.",
     canonical: "/changelog",
   });
 

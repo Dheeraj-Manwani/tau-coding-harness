@@ -3,7 +3,7 @@
  *
  * lucide-react 1.x dropped brand marks, so it is inlined. Extracted here from
  * `features/project/GithubPanel.tsx` when the landing page's "Ship it" band
- * needed the same glyph — one copy of a logo path, not two that can drift.
+ * needed the same glyph: one copy of a logo path, not two that can drift.
  */
 export function GithubMark({ className }: { className?: string }) {
   return (

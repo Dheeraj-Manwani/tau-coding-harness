@@ -32,7 +32,7 @@ export const projectKeys = {
   theme: (id: string) => ["project", id, "theme"] as const,
 };
 
-/** `GET /project` — the signed-in user's projects, newest first. */
+/** `GET /project`: the signed-in user's projects, newest first. */
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.list(),
@@ -58,7 +58,7 @@ export function useProject(projectId: string | undefined) {
   });
 }
 
-/** `POST /project` — create a project from the first prompt and enqueue a job. */
+/** `POST /project`: create a project from the first prompt and enqueue a job. */
 export function useInitProject() {
   return useMutation({
     mutationFn: (vars: {
@@ -70,7 +70,7 @@ export function useInitProject() {
 }
 
 /**
- * `POST /project/:id/message` — queue a follow-up generation. The API rejects
+ * `POST /project/:id/message`: queue a follow-up generation. The API rejects
  * with 409 ("generation in progress") if a job is already running; callers
  * surface that via the mutation's error (a typed {@link ApiError}).
  */
@@ -100,7 +100,7 @@ export function useAddMessage(projectId: string) {
 }
 
 /**
- * `POST /project/jobs/cancel-all` — cancel every in-flight generation the user
+ * `POST /project/jobs/cancel-all`: cancel every in-flight generation the user
  * owns. Used by the concurrent-job-limit toast to free the blocked slot so the
  * user can start a new generation without waiting for the running one to finish.
  */
@@ -110,7 +110,7 @@ export function cancelAllJobs(): Promise<{ cancelled: number }> {
     .then((r) => r.data);
 }
 
-/** `DELETE /project/:id` — permanently delete a project and all its data. */
+/** `DELETE /project/:id`: permanently delete a project and all its data. */
 export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
@@ -122,7 +122,7 @@ export function useDeleteProject() {
   });
 }
 
-/** `GET /project/:id/messages?before=<sequence>` — load older messages for pagination. */
+/** `GET /project/:id/messages?before=<sequence>`: load older messages for pagination. */
 export function fetchOlderMessages(
   projectId: string,
   beforeSequence: number,
@@ -135,7 +135,7 @@ export function fetchOlderMessages(
     .then((r) => r.data);
 }
 
-/** `GET /project/:id/tree` — the full file manifest with headSequence. */
+/** `GET /project/:id/tree`: the full file manifest with headSequence. */
 export function useProjectTree(projectId: string | undefined) {
   return useQuery({
     queryKey: projectKeys.tree(projectId ?? ""),
@@ -173,7 +173,7 @@ export function useRestartPreview(projectId: string) {
   });
 }
 
-/** `POST /project/:id/jobs/:jobId/answer` — submit a user answer to a paused ask_user tool call. */
+/** `POST /project/:id/jobs/:jobId/answer`: submit a user answer to a paused ask_user tool call. */
 export function submitJobAnswer(
   projectId: string,
   jobId: string,
@@ -185,7 +185,7 @@ export function submitJobAnswer(
     .then(() => undefined);
 }
 
-/** `GET /project/:id/file?path=…` — lazy-load a single file's body.
+/** `GET /project/:id/file?path=…`: lazy-load a single file's body.
  *  Only fetches when `path` is non-empty and `enabled` is true. */
 export function useProjectFile(
   projectId: string | undefined,
@@ -207,11 +207,11 @@ export function useProjectFile(
 }
 
 /**
- * `PUT /project/:id/file` — persist a manual edit.
+ * `PUT /project/:id/file`: persist a manual edit.
  *
  * `baseHash` is the hash the editor loaded; the server rejects with 409 if the
  * file moved underneath it. On success we write straight into the file query's
- * cache — with `staleTime: Infinity` it would otherwise never refetch and a tab
+ * cache: with `staleTime: Infinity` it would otherwise never refetch and a tab
  * round-trip would show pre-save content.
  */
 /** Why a visual edit couldn't be applied without the agent. */
@@ -240,7 +240,7 @@ export type VisualEditResponse =
 /**
  * Apply a change made by clicking an element in the preview.
  *
- * Costs no credits and starts no job — the server rewrites the one JSX node
+ * Costs no credits and starts no job: the server rewrites the one JSX node
  * deterministically. A successful edit writes the sandbox, so Vite hot-reloads
  * and the preview updates on its own; there is nothing to refetch for it.
  *
@@ -262,7 +262,7 @@ export function useVisualEdit(projectId: string | undefined) {
         .then((r) => r.data),
     onSuccess: (data, vars) => {
       if (!data.applied) return;
-      // The file's cached body is now stale — the edit happened server-side, so
+      // The file's cached body is now stale: the edit happened server-side, so
       // unlike useSaveProjectFile we don't have the new content to write in.
       void qc.invalidateQueries({
         queryKey: projectKeys.file(projectId ?? "", locToPath(vars.loc)),
@@ -296,7 +296,7 @@ export type ThemeEditResponse =
       applied: true;
       contentHash: string;
       headSequence: number;
-      /** Which palette actually got written — not always the one asked for, see
+      /** Which palette actually got written: not always the one asked for, see
        *  `applyThemeEdit`. */
       scope: ThemeScope;
     }
@@ -322,7 +322,7 @@ export function useProjectTheme(projectId: string | undefined) {
 }
 
 /**
- * Set one theme variable — the cheapest big change in the product.
+ * Set one theme variable: the cheapest big change in the product.
  *
  * Like `useVisualEdit`: no credits, no job, and the sandbox write means Vite
  * hot-reloads the preview on its own. Unlike it, one request restyles every
@@ -369,7 +369,7 @@ export type VisualAssetResponse =
 /**
  * Copy a remote image into the project's `public/`.
  *
- * Deliberately does not touch the source — it returns a `src` the caller then
+ * Deliberately does not touch the source: it returns a `src` the caller then
  * applies with a normal `attr` visual edit, so the JSX rewrite keeps going
  * through the one path that has the tag check, the stale-file check and undo.
  */
@@ -383,7 +383,7 @@ export function useImportVisualAsset(projectId: string | undefined) {
         .then((r) => r.data),
     onSuccess: (data) => {
       if (!data.imported) return;
-      // A new file exists — the tree is stale.
+      // A new file exists: the tree is stale.
       void qc.invalidateQueries({ queryKey: projectKeys.tree(projectId ?? "") });
     },
   });

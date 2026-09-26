@@ -1,4 +1,4 @@
-# tau app — https://app.tauai.pro
+# tau app: https://app.tauai.pro
 # The public, indexable site is https://tauai.pro. This host contains only the
 # authenticated product and auth/payment hand-offs.
 

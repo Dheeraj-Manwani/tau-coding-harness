@@ -1,6 +1,6 @@
 ---
 title: GitHub
-description: Connect once, then push from inside a project — as a new PR, an update to one, or straight to a branch.
+description: Connect once, then push from inside a project: as a new PR, an update to one, or straight to a branch.
 section: ship
 order: 1
 updated: 2026-07-30
@@ -14,7 +14,7 @@ project.
 Authorise tau from your account settings or from a project's GitHub panel. It is
 a normal OAuth flow, once, and it applies to every project.
 
-Disconnecting revokes tau's access. Repos you already pushed are unaffected —
+Disconnecting revokes tau's access. Repos you already pushed are unaffected -
 they are yours.
 
 ## Linking a repo
@@ -36,7 +36,7 @@ Three, chosen at push time:
 
 ## How the commit is made
 
-Tau builds commits through GitHub's Git Data API — it constructs the tree and the
+Tau builds commits through GitHub's Git Data API: it constructs the tree and the
 commit objects and posts them.
 
 There is no `git` binary in the sandbox and no clone. Practically, that means a
@@ -55,7 +55,7 @@ The order is the point: deleting your `.gitignore` still cannot publish a key.
 ## Opening issues
 
 Tau can open a GitHub issue on your linked repo, on request. Useful for the thing
-it noticed but did not fix — a rough edge, a follow-up, a TODO worth tracking
+it noticed but did not fix: a rough edge, a follow-up, a TODO worth tracking
 outside the chat.
 
 ## What does not happen

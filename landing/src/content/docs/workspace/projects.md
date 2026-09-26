@@ -11,7 +11,7 @@ linked GitHub repo.
 
 ## Creating one
 
-Send a prompt. That is it — there is no project form. The first message creates
+Send a prompt. That is it: there is no project form. The first message creates
 the project, provisions the sandbox and starts the first job in one step.
 
 ## The list
@@ -40,7 +40,7 @@ Deleting a project removes its files, its chat history and its manifest. This is
 not reversible and there is no restore.
 
 Before deleting anything you might want later: push it to GitHub. That is your
-only archive, and it is a good one — an ordinary repo you own.
+only archive, and it is a good one: an ordinary repo you own.
 
 > [!WARNING]
 > There are no checkpoints and no undo. A deleted project is gone, and a project

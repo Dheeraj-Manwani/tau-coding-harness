@@ -1,7 +1,7 @@
 /**
  * The GitHub-alert markers the docs renderer recognises.
  *
- * Split from `Callout.tsx` so that file exports only its component — the
+ * Split from `Callout.tsx` so that file exports only its component: the
  * detector is used by `Markdown.tsx` while walking blockquotes, before it knows
  * whether a `Callout` is involved at all.
  */

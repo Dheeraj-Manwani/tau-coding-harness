@@ -89,7 +89,7 @@ export function useBalance() {
  * Where the credits went: building, versus apps calling AI at runtime.
  *
  * Two different things draw on one balance, and until this existed only one of
- * them was visible anywhere — a deployed app burning credits showed up as a
+ * them was visible anywhere: a deployed app burning credits showed up as a
  * balance that dropped for no stated reason.
  */
 export interface SpendSummary {

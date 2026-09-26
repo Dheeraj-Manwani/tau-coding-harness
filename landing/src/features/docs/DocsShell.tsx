@@ -14,7 +14,7 @@ import { DocsSidebar } from "./DocsSidebar";
  *
  * Docs share the marketing sky but turn it down: 40% density, no parallax, no
  * shooting stars. A background that slides while you read is a background that
- * fights the text. Nothing here lights up, arcs or streaks — lightning and
+ * fights the text. Nothing here lights up, arcs or streaks: lightning and
  * comets belong to marketing (§6).
  *
  * On narrow screens the sidebar becomes a drawer rather than disappearing;
@@ -27,7 +27,7 @@ export function DocsShell() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   // The drawer remembers which page it was opened on, so navigating away closes
-  // it by derivation — a drawer that survives navigation covers the page you
+  // it by derivation: a drawer that survives navigation covers the page you
   // just asked for, and resetting it from an effect would cost a second render.
   const [drawer, setDrawer] = useState({ open: false, at: pathname });
   const drawerOpen = drawer.open && drawer.at === pathname;

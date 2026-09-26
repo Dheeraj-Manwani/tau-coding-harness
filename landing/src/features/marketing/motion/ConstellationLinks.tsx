@@ -9,7 +9,7 @@ import { useIsVisible, useRafLoop } from "./useRafLoop";
  * ones near the cursor (§5.7).
  *
  * The motif behind the workspace tour: "wired together". Cheap by construction
- * — the whole thing is one canvas, the point count is small, and the loop is
+ *: the whole thing is one canvas, the point count is small, and the loop is
  * gated on both visibility and tab focus through `useRafLoop`, so scrolling
  * past it stops the work entirely.
  *
@@ -165,7 +165,7 @@ export function ConstellationLinks({ className }: { className?: string }) {
       className={cn("pointer-events-none absolute inset-0", className)}
     >
       {/* Reduced motion drops the canvas entirely. A frozen point cloud is
-          visual noise with no meaning — the section reads fine without it. */}
+          visual noise with no meaning: the section reads fine without it. */}
       {!reduceMotion && <canvas ref={canvasRef} className="block" />}
     </div>
   );

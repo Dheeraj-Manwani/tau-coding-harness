@@ -4,7 +4,7 @@
 @import "@fontsource-variable/inter";
 
 /* ───────────────────────────────────────────────────────────────────────────
- * Space / cosmos palette — the single source of truth for the theme.
+ * Space / cosmos palette: the single source of truth for the theme.
  * This is a dark-only site: both :root and .dark resolve to the same values.
  * ───────────────────────────────────────────────────────────────────────── */
 :root,
@@ -47,7 +47,7 @@
   --input: var(--space-overlay);
   --ring: var(--blue-500);
 
-  /* Brand vars consumed by shadcn primitives (focus rings, selection) —
+  /* Brand vars consumed by shadcn primitives (focus rings, selection) -
      remapped from the old violet to Pulsar Blue for a cohesive theme. */
   --brand-violet: var(--blue-500);
   --brand-violet-light: var(--blue-300);
@@ -61,7 +61,7 @@
   --text-h: #ffffff;
   --code-bg: var(--space-surface);
 
-  /* Workspace / IDE tokens — dark space surfaces. */
+  /* Workspace / IDE tokens: dark space surfaces. */
   --bg-base: var(--space-void);
   --bg-surface: var(--space-surface);
   --bg-elevated: var(--space-overlay);
@@ -94,7 +94,7 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
- * Named Tailwind tokens — usable as bg-space-void, text-silver-900,
+ * Named Tailwind tokens: usable as bg-space-void, text-silver-900,
  * border-silver-400, text-blue-500, etc. (Tailwind v4 CSS-first config.)
  * ───────────────────────────────────────────────────────────────────────── */
 @theme {
@@ -262,7 +262,7 @@ code {
 
 /* ───────────────────────────────────────────────────────────────────────────
  * Marketing / docs surfaces (features/marketing, features/docs).
- * No new colours — everything below resolves to tokens declared above.
+ * No new colours: everything below resolves to tokens declared above.
  * ───────────────────────────────────────────────────────────────────────── */
 
 /* Headline words that should glow. Pairs with .logo-glow. */
@@ -419,7 +419,7 @@ a:hover > .logo-shimmer {
 }
 
 /* Credits: a slow conic sheen rotating on the PRO card's border. Deliberately
-   *not* the electric bolt — that belongs to MAX, and two loud borders on one
+   *not* the electric bolt: that belongs to MAX, and two loud borders on one
    page compete instead of ranking. */
 @property --sheen-angle {
   syntax: "<angle>";
@@ -485,7 +485,7 @@ a:hover > .logo-shimmer {
   }
 }
 
-/* ShipIt: the GitHub glyph flashes as each packet lands. One-shot — the
+/* ShipIt: the GitHub glyph flashes as each packet lands. One-shot: the
    element is re-keyed on arrival, which restarts it. */
 .github-pulse {
   animation: github-pulse 400ms ease-out;
@@ -601,7 +601,7 @@ a:hover > .logo-shimmer {
   background: transparent;
 }
 
-/* Minimal, dark custom scrollbars — thin track, silver thumb. */
+/* Minimal, dark custom scrollbars: thin track, silver thumb. */
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--silver-400) transparent;
@@ -645,7 +645,7 @@ a:hover > .logo-shimmer {
   filter: drop-shadow(0 0 8px #60a5fa66);
 }
 
-/* White variant (e.g. on the home hero) — recolors the glyph white and swaps
+/* White variant (e.g. on the home hero): recolors the glyph white and swaps
    the brand-blue bloom for a soft neutral one. */
 .logo-mark--white {
   background-color: #cbd5e1;
@@ -653,7 +653,7 @@ a:hover > .logo-shimmer {
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
- * shadcn token bridge — maps the runtime CSS vars above to Tailwind color
+ * shadcn token bridge: maps the runtime CSS vars above to Tailwind color
  * utilities (bg-background, text-foreground, border-border, …).
  * ───────────────────────────────────────────────────────────────────────── */
 @theme inline {

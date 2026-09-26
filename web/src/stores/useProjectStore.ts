@@ -81,7 +81,7 @@ export interface ActionItem {
   description?: string;
   /** Structured detail payload for create_plan and update_todo. */
   meta?: Record<string, unknown>;
-  /** Tool call id — lets a later tool_res attach its output to this action (dispatch_* only). */
+  /** Tool call id: lets a later tool_res attach its output to this action (dispatch_* only). */
   toolCallId?: string;
 }
 
@@ -118,7 +118,7 @@ export type PreviewDevice = "mobile" | "tablet" | "desktop";
  * See doc/VISUAL_EDIT_PLAN.md.
  */
 export interface VisualSelection {
-  /** `src/App.tsx:42:7` — path, 1-based line, 1-based column. */
+  /** `src/App.tsx:42:7`: path, 1-based line, 1-based column. */
   loc: string;
   tagName: string;
   className: string;
@@ -130,7 +130,7 @@ export interface VisualSelection {
    *  an edit here would change all of them. */
   siblingCount: number;
   /** Current `src`/`alt`, for `<img>` only. Read off the DOM, so `src` is the
-   *  browser-resolved absolute URL rather than what the source literally says —
+   *  browser-resolved absolute URL rather than what the source literally says -
    *  fine for previewing, never sent back as the new value. */
   src?: string;
   alt?: string;
@@ -150,7 +150,7 @@ export function locToLine(loc: string): string {
  * A visual edit request body. Mirrors `VisualEditOp` in
  * `api/src/lib/visualEdit.ts`. Declared here rather than in `api.ts` because
  * the undo stack below stores these, and `api.ts` already imports from this
- * module — putting it there would make the two files circular.
+ * module: putting it there would make the two files circular.
  */
 export type VisualEditOpInput =
   | { kind: "text"; value: string }
@@ -161,8 +161,8 @@ export type VisualEditOpInput =
  * One reversible visual edit, stored as the operation that *undoes* it.
  *
  * Keeping the inverse op rather than the previous file contents means undo runs
- * through exactly the same deterministic path as the original edit — same AST
- * lookup, same guards, same `USER_EDIT` record — instead of blindly restoring
+ * through exactly the same deterministic path as the original edit: same AST
+ * lookup, same guards, same `USER_EDIT` record: instead of blindly restoring
  * bytes that may no longer be current.
  */
 export interface VisualUndoEntry {
@@ -187,7 +187,7 @@ export interface ProjectFile {
    * survives switching tabs. `undefined` means "no local edits".
    */
   draft?: string;
-  /** Hash of `content` as the server served it — sent as `baseHash` on save so
+  /** Hash of `content` as the server served it: sent as `baseHash` on save so
    *  a file that moved underneath us is rejected instead of clobbered. */
   savedHash?: string;
   saving?: boolean;
@@ -434,24 +434,24 @@ function deriveActionItem(
     case "list_dir":
       return {
         kind: "list_dir",
-        label: `Listed ${input.path ? String(input.path) : "project root"}`,
+        label: `Looked through ${input.path ? String(input.path) : "the project"}`,
       };
     case "delete_file":
       return { kind: "delete_file", label: `Deleted ${file}`, meta: { path } };
     case "run_command":
       return {
         kind: "run_command",
-        label: `Ran ${truncateLabel(String(input.command ?? ""), 50)}`,
+        label: `Ran a project check`,
       };
     case "tail_command_output":
-      return { kind: "tail_command_output", label: "Checked command output" };
+      return { kind: "tail_command_output", label: "Checked the result" };
     case "wait_for_port":
       return {
         kind: "wait_for_port",
-        label: `Waited for port ${input.port ?? ""}`,
+        label: "Waited for the preview to start",
       };
     case "check_sandbox":
-      return { kind: "check_sandbox", label: "Checked sandbox health" };
+      return { kind: "check_sandbox", label: "Checked the workspace" };
     case "report_progress":
       return { kind: "report_progress", label: String(input.message ?? "") };
 
@@ -467,7 +467,7 @@ function deriveActionItem(
       const todos = parseTodos(input.todos);
       return {
         kind: "add_todos",
-        label: `Added ${todos.length} todo${todos.length === 1 ? "" : "s"}`,
+        label: `Added ${todos.length} step${todos.length === 1 ? "" : "s"}`,
         meta: { todos },
       };
     }
@@ -487,10 +487,10 @@ function deriveActionItem(
     case "provision_sandbox":
       return {
         kind: "provision_sandbox",
-        label: "Started Sandbox",
+        label: "Prepared the workspace",
       };
     case "ask_user": {
-      return { kind: "ask_user", label: "Asked Question" };
+      return { kind: "ask_user", label: "Asked for your input" };
     }
     default:
       return { kind: "create_file", label: truncateLabel(toolName) };
@@ -614,7 +614,7 @@ function dividerMessage(cp: ProjectCheckpoint): Message {
  * cheaper and safer than rewriting stored conversation history.
  */
 const LEGACY_EMPTY_MESSAGE_PLACEHOLDER =
-  "(no message — see the attached content below)";
+  "(no message: see the attached content below)";
 
 function isGeneratedBlock(text: string): boolean {
   return (
@@ -628,7 +628,7 @@ function isGeneratedBlock(text: string): boolean {
 /**
  * Recover the chip from a `<selected-element>` block.
  *
- * Parsing a format we generate ourselves, which is normally a smell — but the
+ * Parsing a format we generate ourselves, which is normally a smell: but the
  * alternative is a column on `Message` for three strings the block already
  * carries, and the attributes exist precisely so this is a lookup rather than
  * a guess. `visualContext.ts` escapes them on the way out, so an element whose
@@ -641,7 +641,7 @@ function isGeneratedBlock(text: string): boolean {
  * same fixture `server/test/api/visualContext.test.ts` pins the *writer*
  * against. The two halves live in different packages and cannot import each
  * other, so a shared literal is what stops one being changed without the other
- * — the same arrangement the tagger and the AST resolver use for coordinates
+ *: the same arrangement the tagger and the AST resolver use for coordinates
  * (VISUAL_EDIT_PLAN.md §6 Phase 2).
  */
 export function parseElementBlock(text: string): MessageElement | undefined {
@@ -674,7 +674,7 @@ function toConversation(
   );
   let cpIdx = 0;
   let turnStart = 0;
-  // Running plan state — rebuilt as create_plan / update_todo calls are replayed.
+  // Running plan state: rebuilt as create_plan / update_todo calls are replayed.
   let planTodos: { sno: number; label: string; status: string }[] = [];
   // tool_call_id -> true for ask_user calls, so a later TOOL_RES row can be
   // rendered as the user's reply instead of being skipped.
@@ -685,7 +685,7 @@ function toConversation(
 
     if (row.role === "USER" && row.type === "USER") {
       const blocks = row.content as { type?: string; text?: string }[] | string;
-      // Only the first block is the user's own words — later ones are extracted
+      // Only the first block is the user's own words: later ones are extracted
       // attachment text, which would otherwise splice into their bubble. When
       // the user sent attachments and typed nothing there is no such block, so
       // whatever sits at index 0 is ours and must not render as their message.
@@ -694,7 +694,7 @@ function toConversation(
         : String(blocks ?? "");
       const text = isGeneratedBlock(first) ? "" : first;
       const attachments = row.attachments ?? [];
-      // The element chip comes from a later block — the same one the model
+      // The element chip comes from a later block: the same one the model
       // reads, so a reloaded transcript shows exactly what the optimistic
       // bubble did without a column to store it in.
       const element = Array.isArray(blocks)
@@ -815,7 +815,7 @@ function toConversation(
               actions: [...(messages[targetIdx].actions ?? []), action],
             };
           } else {
-            // No preceding AI bubble in this turn — create a placeholder so
+            // No preceding AI bubble in this turn: create a placeholder so
             // the action isn't silently dropped (mirrors the live streaming
             // tool_req handler's fallback).
             messages.push({
@@ -835,7 +835,7 @@ function toConversation(
         messages.push({ id: row.id, role: "ai", content: text, timestamp: ts });
       }
     } else if (row.type === "TOOL_RES") {
-      // Not rendered as a tool result — but if one of these results answers
+      // Not rendered as a tool result: but if one of these results answers
       // a pending ask_user call, surface it as the user's reply bubble. Otherwise,
       // if it belongs to a dispatch_* action, attach its summary to that action.
       const results = row.content as {
@@ -915,7 +915,7 @@ interface ProjectState {
    *  not working, and the user deserves to be told rather than shimmered at. */
   lastEventAt: number | null;
   /** True once the active job has gone quiet past the stall threshold. Purely a
-   *  presentation flag — the job is untouched and may still recover. */
+   *  presentation flag: the job is untouched and may still recover. */
   isStalled: boolean;
   /** Flips true once the agent starts writing files (or a preview exists). Drives
    *  the home→workspace reveal: chat is centered until this is true, then it docks
@@ -934,7 +934,7 @@ interface ProjectState {
   pendingActions: ActionItem[];
   /** Whether older messages exist beyond the current window (pagination). */
   hasMoreMessages: boolean;
-  /** Sequence number of the oldest loaded message — used as the pagination cursor. */
+  /** Sequence number of the oldest loaded message: used as the pagination cursor. */
   oldestSequence: number | null;
 
   // Plan tracker (active job only; reset on new job)
@@ -952,7 +952,7 @@ interface ProjectState {
   previewUrl: string | null;
   /** Latest persisted project cover, used while the live sandbox is offline. */
   previewImageUrl: string | null;
-  /** Path the preview iframe is pointed at — what the URL bar shows and edits.
+  /** Path the preview iframe is pointed at: what the URL bar shows and edits.
    *  Cross-origin means we can't observe navigation *inside* the app, so this is
    *  where we last sent it, not necessarily where it is now. */
   previewPath: string;
@@ -978,12 +978,12 @@ interface ProjectState {
   /** The global theme panel. Not element-scoped, so it lives beside the picker
    *  rather than inside the inspector. */
   themePanelOpen: boolean;
-  /** The deterministic editor — inline text box, style panel, image panel.
+  /** The deterministic editor: inline text box, style panel, image panel.
    *
    *  Off by default: asking tau is what a selection does now, and editing the
    *  element yourself is the opt-in. Sticky for the session rather than reset
    *  per selection, so a styling pass costs one click instead of one per
-   *  element — it is a mode, not a property of the element. */
+   *  element: it is a mode, not a property of the element. */
   manualPanelOpen: boolean;
 
   /** Text staged into the inspector's prompt box (today: an edit the
@@ -995,7 +995,7 @@ interface ProjectState {
    *  overlay by the in-iframe runtime. Null when the app compiles. */
   previewError: PreviewBuildError | null;
   /** Whether the user has sent the error's modal away. It comes back as a
-   *  banner rather than vanishing, and a *new* error opens the modal again —
+   *  banner rather than vanishing, and a *new* error opens the modal again -
    *  dismissing "missing semicolon" is not consent to hide the next one. */
   previewErrorDismissed: boolean;
 
@@ -1007,7 +1007,7 @@ interface ProjectState {
   /** Authoritative rebuild from a fresh project fetch, used to recover from a
    *  stream gap (`resync`) or a missed terminal event. Unlike {@link hydrate} it
    *  always rebuilds the transcript and reconciles the loading state against the
-   *  server's `activeJobId` — so the "thinking" shimmer can never outlive the job. */
+   *  server's `activeJobId`: so the "thinking" shimmer can never outlive the job. */
   resyncFromDetail: (detail: ProjectDetail) => void;
   /** Populate the file tree from the manifest (paths only, no bodies). */
   hydrateTree: (tree: ProjectTree) => void;
@@ -1025,7 +1025,7 @@ interface ProjectState {
   /** Begin streaming a job; optionally append the prompt as a user bubble. */
   startJob: (jobId: string, prompt?: string) => void;
   /** Begin streaming a preview-only restart job (drives the preview pane, no chat
-   *  turn — so no user bubble and no "thinking" shimmer). */
+   *  turn: so no user bubble and no "thinking" shimmer). */
   startPreviewJob: (jobId: string) => void;
   /** Append a user bubble immediately (optimistic, before the job id is known).
    *  Returns the generated message id so callers can remove it on failure. */
@@ -1058,7 +1058,7 @@ interface ProjectState {
   reloadPreview: () => void;
   /** Point the preview at a path (`/`, `/home`, `/items?id=1`). Always remounts,
    *  so re-entering the current path re-navigates instead of silently doing
-   *  nothing — matching what Enter in a browser address bar does. */
+   *  nothing: matching what Enter in a browser address bar does. */
   setPreviewPath: (path: string) => void;
   openFile: (id: string) => void;
   closeFile: (id: string) => void;
@@ -1071,7 +1071,7 @@ interface ProjectState {
 
   /** Turn element-picking on/off in the preview. */
   setVisualEditEnabled: (enabled: boolean) => void;
-  /** The in-iframe runtime announced itself — the toggle is safe to offer. */
+  /** The in-iframe runtime announced itself: the toggle is safe to offer. */
   setVisualEditReady: (ready: boolean) => void;
   /** Record (or clear) the element the user picked. */
   setVisualSelection: (selection: VisualSelection | null) => void;
@@ -1153,7 +1153,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   initProject: (projectId) => {
     // Always reset non-streaming state on (re-)entry so messages are re-seeded
     // from the API. Skip only when an active stream is in progress for the same
-    // project — tearing that down would orphan the live job connection.
+    // project: tearing that down would orphan the live job connection.
     const s = get();
     if (s.projectId === projectId && s.status === "streaming") return;
     set({ projectId, ...FRESH });
@@ -1161,7 +1161,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   hydrate: (detail) =>
     set((s) => {
-      // Never overwrite an active stream — the live content takes priority.
+      // Never overwrite an active stream: the live content takes priority.
       if (s.status === "streaming") return {};
       const chatMessages = toConversation(detail.messages, detail.checkpoints);
 
@@ -1191,7 +1191,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   resyncFromDetail: (detail) =>
     set((s) => {
-      // Authoritative rebuild — always applied, even mid-stream, because we only
+      // Authoritative rebuild: always applied, even mid-stream, because we only
       // reach here after a real gap (the live buffer expired → `resync`) or after
       // the status backstop found the job already gone. The DB snapshot is the
       // source of truth; any in-flight bubble it doesn't contain was lost with the
@@ -1269,7 +1269,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   markFileSaved: (path, content, contentHash) =>
     set((s) => {
       const file = s.files[path];
-      // Keep the draft if the user kept typing while the save was in flight —
+      // Keep the draft if the user kept typing while the save was in flight -
       // dropping it would silently revert those keystrokes to the saved body.
       const draft =
         file?.draft !== undefined && file.draft !== content
@@ -1602,8 +1602,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
     case "todo_updated":
       set((s) => {
         if (!s.currentPlan) {
-          // Should no longer happen — the backend now refuses update_todo
-          // without a prior create_plan — but warn loudly rather than
+          // Should no longer happen: the backend now refuses update_todo
+          // without a prior create_plan: but warn loudly rather than
           // silently dropping the update if it ever does.
           console.warn(
             "[project] todo_updated received with no active plan; dropping",
@@ -1708,7 +1708,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
             const todos = parseTodos(inp.todos);
             action = {
               kind: "add_todos",
-              label: `Added ${todos.length} todo${todos.length === 1 ? "" : "s"}`,
+              label: `Added ${todos.length} step${todos.length === 1 ? "" : "s"}`,
               meta: { todos },
             };
           } else {
@@ -1808,7 +1808,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           event.toolCallId,
         );
         const msgs = fin.chatMessages;
-        // Only attach within the current turn — never reach back into a previous exchange.
+        // Only attach within the current turn: never reach back into a previous exchange.
         const turnStart = currentTurnStart(msgs);
         let targetIdx = -1;
         for (let i = msgs.length - 1; i >= turnStart; i--) {
@@ -1972,7 +1972,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
 
     case "context_summarized":
       // The model condensed the older turns. Drop a quiet divider into the
-      // transcript. The full summary text isn't in the live event — it's fetched
+      // transcript. The full summary text isn't in the live event: it's fetched
       // with the checkpoint on the next reload, which upgrades this to expandable.
       set((s) => {
         const divider: Message = {
@@ -1999,7 +1999,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
 
     case "preview_ready":
       // Bump the nonce so the iframe remounts even if the URL string is
-      // unchanged — a restarted sandbox may serve at the same host, and the old
+      // unchanged: a restarted sandbox may serve at the same host, and the old
       // (dead) frame must be torn down and reloaded.
       set((s) => ({
         previewUrl: event.url,
@@ -2022,9 +2022,9 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
       // The publish job is finished and the live pointer has moved. Refetch the
       // panel rather than patching it locally: the server owns the derived
       // fields (unpublished-change count, which deployment is live) and there
-      // is no spinner to race — the panel is already showing "Publishing…".
+      // is no spinner to race: the panel is already showing "Publishing…".
       // Any warning the build produced is on the deployment row, so the refetch
-      // brings it along — no need to carry it through the store as well.
+      // brings it along: no need to carry it through the store as well.
       void queryClient.invalidateQueries({
         queryKey: deployKeys.status(get().projectId ?? ""),
       });
@@ -2128,7 +2128,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
       return;
 
     default:
-      // Unknown / gateway frames (e.g. its own "error") — ignore quietly.
+      // Unknown / gateway frames (e.g. its own "error"): ignore quietly.
       return;
   }
 }

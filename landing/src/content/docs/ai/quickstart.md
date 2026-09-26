@@ -34,15 +34,15 @@ TAU_API_KEY=tau_sk_live_...
 **Writes the calling code**, server-side, reading both from the environment.
 
 **Records the requirement** in `.tau/deploy.json`, so the variables your app needs
-are declared rather than implicit. That file holds only variable *names* — no
-secret — so it is safe in your repo.
+are declared rather than implicit. That file holds only variable *names*: no
+secret: so it is safe in your repo.
 
 ## The code it writes
 
 Something close to this, on your server:
 
 ```ts
-// server/index.ts — inside the app tau built for you
+// server/index.ts: inside the app tau built for you
 const res = await fetch(`${process.env.TAU_AI_URL}/chat`, {
   method: "POST",
   headers: {
@@ -88,8 +88,8 @@ Frames arrive as `{"text":"…"}` and the last one is
 Ask tau to test it, or click the button in the preview. If it fails, the two
 usual causes are:
 
-- **Calling from the browser** — move the call to the server.
-- **Out of credits or over the daily cap** — check your billing page.
+- **Calling from the browser**: move the call to the server.
+- **Out of credits or over the daily cap**: check your billing page.
 
 Both produce a clear error with a machine-readable `code`. See
 [Errors](/docs/reference/errors).
@@ -105,12 +105,12 @@ TAU_API_KEY=tau_sk_live_...
 ```
 
 Copy the key from your billing page. Rotating it there does not update a deploy
-you made elsewhere — you will need to paste the new one within the grace window.
+you made elsewhere: you will need to paste the new one within the grace window.
 
 → [API keys](/docs/ai/api-keys) · [Deploying](/docs/ship/deploying)
 
 ## Next
 
-- [Chat API](/docs/ai/chat-api) — the full request and response shapes
-- [API keys](/docs/ai/api-keys) — rotation, the daily cap, re-auth
+- [Chat API](/docs/ai/chat-api): the full request and response shapes
+- [API keys](/docs/ai/api-keys): rotation, the daily cap, re-auth
 - [Gateway billing](/docs/ai/billing)

@@ -1,7 +1,7 @@
 /**
  * Restating a refused deterministic edit as a request the user can send.
  *
- * The element's own description is not built here any more — the API writes it
+ * The element's own description is not built here any more: the API writes it
  * (`server/src/api/lib/visualContext.ts`, pinned by
  * `server/test/api/visualContext.test.ts`). What is left is the sentence that
  * lands in the inspector's prompt box, which has to read as a standalone
@@ -23,7 +23,7 @@ import {
  * asserted as such by `server/test/api/visualContext.test.ts`.
  *
  * The writer is in `server/`, the reader is here, and neither package can
- * import the other — so this literal is the only thing keeping them honest.
+ * import the other: so this literal is the only thing keeping them honest.
  * Change the tag's shape on one side without the other and one of the two
  * suites fails.
  */

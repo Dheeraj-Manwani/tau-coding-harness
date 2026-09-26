@@ -6,16 +6,16 @@ order: 3
 updated: 2026-07-30
 ---
 
-The code pane is a real editor — CodeMirror 6, with syntax highlighting and
+The code pane is a real editor: CodeMirror 6, with syntax highlighting and
 multiple tabs. You can type in it, and what you type is your project's code.
 
 ## Saving
 
 Three things save the file, all of them automatic:
 
-- **⌘S / Ctrl+S** — immediately.
-- **Blur** — clicking away from the editor.
-- **2 seconds idle** — stop typing and it saves.
+- **⌘S / Ctrl+S**: immediately.
+- **Blur**: clicking away from the editor.
+- **2 seconds idle**: stop typing and it saves.
 
 A dirty indicator on the tab shows unsaved changes. There is no save button
 because there is nothing a save button would add.
@@ -48,7 +48,7 @@ So the sequence works the way you would want:
 ## Editing is blocked while a job runs
 
 You cannot save while the agent is working on the project. You and the agent
-writing the same file at the same time has no correct outcome — one of you loses,
+writing the same file at the same time has no correct outcome: one of you loses,
 silently.
 
 Wait for the job to finish, or cancel it. Then edit.
@@ -56,7 +56,7 @@ Wait for the job to finish, or cancel it. Then edit.
 ## Conflicts
 
 Every save carries the hash of the version you started from. If the file has
-moved since — usually because the agent rewrote it — the save is refused with a
+moved since: usually because the agent rewrote it: the save is refused with a
 conflict rather than overwriting.
 
 When that happens: reopen the file, look at the current version, and reapply your
@@ -65,7 +65,7 @@ change to it. The refusal is protecting an edit you would otherwise have lost.
 ## How files are stored
 
 Your project's files live in durable object storage, content-addressed and
-deduplicated. The database holds a **manifest** — path, content hash, size — not
+deduplicated. The database holds a **manifest**: path, content hash, size: not
 the bytes.
 
 Two consequences worth knowing:
@@ -78,7 +78,7 @@ Two consequences worth knowing:
 ## What the tree shows
 
 Every file the agent creates or edits, as it lands, plus anything you add. It is
-the sandbox's project tree, and it is what a GitHub push publishes — subject to
+the sandbox's project tree, and it is what a GitHub push publishes: subject to
 secret filtering. See [Secrets](/docs/ship/secrets).
 
 ## Not on mobile
@@ -91,4 +91,4 @@ mobile. See [Mobile parity](/docs/mobile/parity).
 
 - [Preview](/docs/workspace/preview)
 - [Secrets](/docs/ship/secrets)
-- [Errors](/docs/reference/errors) — including what a 409 conflict means
+- [Errors](/docs/reference/errors): including what a 409 conflict means

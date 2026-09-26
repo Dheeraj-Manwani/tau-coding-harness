@@ -17,7 +17,7 @@ interface PromptComposerProps {
   placeholder?: string;
   /**
    * Accessible name for the textarea. Worth setting wherever the surrounding
-   * heading doesn't already name the field — an animated placeholder is not an
+   * heading doesn't already name the field: an animated placeholder is not an
    * accessible name, and neither is a placeholder that is about to change.
    */
   ariaLabel?: string;
@@ -29,7 +29,7 @@ interface PromptComposerProps {
   minRows?: number;
   maxRows?: number;
   autoFocus?: boolean;
-  /** Tighter padding, radius, text and controls — used in the chat panel. */
+  /** Tighter padding, radius, text and controls: used in the chat panel. */
   compact?: boolean;
   /** When provided, replaces the send button with a red stop button. */
   onStop?: () => void;
@@ -39,7 +39,7 @@ interface PromptComposerProps {
   attachments?: AttachmentDraft[];
   onAttach?: (files: File[]) => void;
   onRemoveAttachment?: (key: string) => void;
-  /** Called when a paste exceeds the length threshold — becomes a chip. */
+  /** Called when a paste exceeds the length threshold: becomes a chip. */
   onPasteLarge?: (text: string) => void;
   /** Blocks submit while an attachment is uploading or extracting. */
   attachmentsBusy?: boolean;

@@ -27,7 +27,7 @@ describe("getReadyNotificationCopy", () => {
         "error",
       ),
     ).toEqual({
-      title: "Tau stopped — credits ran out",
+      title: "Tau stopped: credits ran out",
       body: "Add credits, then send another message to continue.",
     });
   });

@@ -20,8 +20,8 @@ page for a bakery." One phrase that fixes the category.
 **The data.** What does it hold, and what are the fields? This becomes your
 schema, and it is the single highest-value sentence in any prompt.
 
-**One screen you care about.** Naming a view — "a 7-day grid", "a table I can
-sort", "a checkout with a summary" — stops tau guessing at layout.
+**One screen you care about.** Naming a view: "a 7-day grid", "a table I can
+sort", "a checkout with a summary": stops tau guessing at layout.
 
 **A constraint or two.** "Dark." "Works on a phone." "No login." Short
 constraints do the work of a long design brief.
@@ -49,7 +49,7 @@ assumed, which it sometimes will.
 
 When something is wrong, describe what you observe.
 
-> "The total is wrong when quantity is 0 — it shows NaN."
+> "The total is wrong when quantity is 0: it shows NaN."
 
 is worth more than
 
@@ -60,7 +60,7 @@ prescribing a fix narrows it to your guess.
 
 ## Attach things
 
-A screenshot of a layout you like, a PDF spec, a pasted table of sample data —
+A screenshot of a layout you like, a PDF spec, a pasted table of sample data -
 all of it goes in the composer, and tau extracts text from it before building.
 See [Attachments](/docs/build/attachments).
 
@@ -70,9 +70,9 @@ A screenshot is usually a faster way to convey a layout than any paragraph.
 
 One message per meaningful chunk beats one message for the whole product.
 
-1. **Pass one** — the core object and the one screen that shows it.
-2. **Pass two** — the second screen, now that the data model exists.
-3. **Pass three** — polish: empty states, validation, mobile, errors.
+1. **Pass one**: the core object and the one screen that shows it.
+2. **Pass two**: the second screen, now that the data model exists.
+3. **Pass three**: polish: empty states, validation, mobile, errors.
 
 Each pass is cheaper than the last, gives you something you can look at, and
 lets you correct course before the mistake gets built on.
@@ -88,8 +88,8 @@ shallow screens, and the parts you cared about got the same attention as the
 parts you didn't.
 
 **The stack you don't need.** "Use Next.js with tRPC, Prisma and Tailwind" is a
-set of constraints tau now has to satisfy. Unless you have a reason — you're
-extending an existing codebase, or your host requires it — leave it out.
+set of constraints tau now has to satisfy. Unless you have a reason: you're
+extending an existing codebase, or your host requires it: leave it out.
 
 **The vague noun.** "An app to manage things." There is no schema in that
 sentence, so tau invents one, and then you are editing someone else's data model.
@@ -103,7 +103,7 @@ think is wrong.
 
 If the agent hits a decision it cannot make safely, it stops and asks rather
 than guessing. Answer in the chat and it continues from where it paused. A
-question is a good sign — it means the ambiguity was caught before it was built.
+question is a good sign: it means the ambiguity was caught before it was built.
 
 ## Next
 

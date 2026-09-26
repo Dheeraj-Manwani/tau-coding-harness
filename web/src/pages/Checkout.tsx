@@ -9,7 +9,7 @@ import { Button } from "@/src/components/ui/button";
  * Razorpay checkout surface for the **mobile** app.
  *
  * Razorpay *orders* (credit packs) have no hosted payment page the way
- * *subscriptions* do — the only first-party way to pay one is Checkout JS,
+ * *subscriptions* do: the only first-party way to pay one is Checkout JS,
  * which is browser-only. Rather than add a native Razorpay module and a second
  * checkout implementation, mobile opens this route in an in-app browser tab and
  * we reuse the Checkout JS that already ships on web. See doc/SYNC_MOBILE.md §1.
@@ -22,7 +22,7 @@ import { Button } from "@/src/components/ui/button";
  *  - It does **not** call POST /billing/credits/verify. That endpoint credits
  *    the *calling* user's account, and this tab is not the mobile user's
  *    session. The `order.paid` webhook is mobile's crediting path
- *    (billing.service.ts:349) — it shares the `purchase:order:{id}` ledger key
+ *    (billing.service.ts:349): it shares the `purchase:order:{id}` ledger key
  *    with verify, so credits land exactly once either way.
  */
 
@@ -133,7 +133,7 @@ export default function CheckoutPage() {
         <>
           <p className="mt-2 text-sm text-muted-foreground">
             {done === "success"
-              ? "Payment received. Returning to the app — your credits will appear in a moment."
+              ? "Payment received. Returning to the app: your credits will appear in a moment."
               : "Checkout cancelled."}
           </p>
           {/* The deep link normally fires on its own; this is the manual escape

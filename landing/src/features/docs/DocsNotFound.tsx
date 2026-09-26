@@ -6,7 +6,7 @@ import { TauWatermark } from "@/src/features/marketing/motion/TauWatermark";
 /**
  * The docs 404 (§6): "you're off the map".
  *
- * Kept inside the docs shell so the sidebar is still there — the most useful
+ * Kept inside the docs shell so the sidebar is still there: the most useful
  * thing to offer someone who followed a dead link is the map, not a dead end.
  */
 export function DocsNotFound() {

@@ -1,6 +1,6 @@
 ---
 title: Your first prompt
-description: A worked example — one sentence in, a running app out, and the two follow-ups that finish it.
+description: A worked example: one sentence in, a running app out, and the two follow-ups that finish it.
 section: start
 order: 4
 updated: 2026-07-30
@@ -20,11 +20,11 @@ Sent on **High**.
 
 Four things make this a good first prompt, and none of them are technical:
 
-- **A noun** — "a habit tracker". Tau needs to know what it is building.
-- **The data** — habits, and a tick per day. This becomes the schema.
-- **One view** — the 7-day grid. Naming the screen you care about stops tau
+- **A noun**: "a habit tracker". Tau needs to know what it is building.
+- **The data**: habits, and a tick per day. This becomes the schema.
+- **One view**: the 7-day grid. Naming the screen you care about stops tau
   guessing.
-- **A constraint** — dark, mobile. Two words that replace a design review.
+- **A constraint**: dark, mobile. Two words that replace a design review.
 
 ## What happens, in order
 
@@ -34,7 +34,7 @@ the add-habit form, build the grid, wire persistence, style it, verify it runs.
 Items tick over as they complete.
 
 **Then the sandbox.** A Linux machine is provisioned for the project. You will
-see commands run in it — a package install, a dev server starting.
+see commands run in it: a package install, a dev server starting.
 
 **Then files.** They appear in the tree in the order tau writes them, and the
 code pane shows what went in. This is the real file tree, not a summary; you can
@@ -47,7 +47,7 @@ On High this whole sequence is typically a few minutes.
 
 > [!TIP]
 > You do not have to watch. Close the tab, come back later, and the stream
-> resumes from where it was — nothing is lost by leaving.
+> resumes from where it was: nothing is lost by leaving.
 
 ## The first follow-up
 
@@ -58,7 +58,7 @@ Label the grid columns with weekday initials, and highlight today's column.
 ```
 
 Same chat, same project, same sandbox. Tau reads the file it already wrote,
-edits it, and the preview reloads. This is much cheaper than the first message —
+edits it, and the preview reloads. This is much cheaper than the first message -
 it is one small change, so send it on **Low**.
 
 ## The second follow-up
@@ -93,5 +93,5 @@ More on all three in [Writing prompts](/docs/build/writing-prompts).
 ## Next
 
 - [Writing prompts](/docs/build/writing-prompts)
-- [Iterating](/docs/build/iterating) — follow-ups, cancel, resume
-- [What tau can build](/docs/build/what-tau-can-build) — and what it can't
+- [Iterating](/docs/build/iterating): follow-ups, cancel, resume
+- [What tau can build](/docs/build/what-tau-can-build): and what it can't

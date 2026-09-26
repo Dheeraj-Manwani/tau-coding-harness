@@ -1,5 +1,5 @@
 /**
- * The preview URL bar shows only the path — `/` for the app root, `/home` for
+ * The preview URL bar shows only the path: `/` for the app root, `/home` for
  * `https://<sandbox>.e2b.app/home`. The sandbox origin is noise: it's a
  * generated hostname the user never chose and can't meaningfully edit.
  */
@@ -8,7 +8,7 @@
  * Coerce whatever the user typed into a path.
  *
  * Accepts a bare segment (`home`), a rooted path (`/home`), a path with query
- * and hash (`/items?id=1#top`), or a full URL pasted from the address bar — in
+ * and hash (`/items?id=1#top`), or a full URL pasted from the address bar: in
  * which case only the part after the origin is kept.
  */
 export function normalizePreviewPath(input: string): string {
@@ -20,7 +20,7 @@ export function normalizePreviewPath(input: string): string {
       const url = new URL(raw);
       return `${url.pathname}${url.search}${url.hash}` || "/";
     } catch {
-      // Not a parseable URL — fall through and treat it as a path.
+      // Not a parseable URL: fall through and treat it as a path.
     }
   }
 

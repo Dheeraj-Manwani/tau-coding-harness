@@ -13,7 +13,7 @@ import { APP_SIGNUP } from "@/src/lib/routes";
 /**
  * The docs renderer.
  *
- * Deliberately not `ChatMarkdown`: that one is tuned for chat bubbles — tight
+ * Deliberately not `ChatMarkdown`: that one is tuned for chat bubbles: tight
  * spacing, no headings worth linking to, no tables to speak of. A reference
  * page needs anchored headings, wide scrollable tables and real code blocks.
  * The two share nothing but the underlying library, and keeping them apart

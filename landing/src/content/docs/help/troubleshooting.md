@@ -14,7 +14,7 @@ an idle one goes away and its URL stops answering.
 **Fix:** press **Start preview**. It reconnects or provisions a new sandbox,
 rehydrates it from your stored files, and starts the dev server.
 
-Your code is unaffected — files are stored independently of any sandbox. What a
+Your code is unaffected: files are stored independently of any sandbox. What a
 dead sandbox costs you is the running process.
 
 > [!TIP]
@@ -27,10 +27,10 @@ Check the finish reason in the chat.
 
 | Reason | What to do |
 |---|---|
-| Out of credits | Top up, then send a follow-up — it continues from where it stopped |
+| Out of credits | Top up, then send a follow-up: it continues from where it stopped |
 | Out of turns | Follow up, or use a higher [effort tier](/docs/build/effort-tiers) |
 | Out of wall clock | Usually something wedged. Retry |
-| Failed | Read the last few tool lines — the error is normally right there |
+| Failed | Read the last few tool lines: the error is normally right there |
 
 Nothing is lost in any of these cases. Whatever was written is on disk and in
 storage.
@@ -56,7 +56,7 @@ This is a known limitation of the current architecture, not a transient bug.
 
 ## The app builds but the page is blank
 
-The dev server is answering, so tau considers it running — but something fails at
+The dev server is answering, so tau considers it running: but something fails at
 runtime.
 
 **Fix:** tell tau what you see. "The page is blank and the console says
@@ -68,12 +68,12 @@ useful thing you can provide.
 
 ## Tau keeps undoing my edit
 
-It shouldn't — tau is told about every hand edit via a diff before its next turn.
+It shouldn't: tau is told about every hand edit via a diff before its next turn.
 If it is genuinely overwriting your change, the usual cause is that the edit never
 saved.
 
 **Check:** the tab's dirty indicator. Saves happen on ⌘S, on blur, and after 2
-seconds idle. If a job was running, the save was blocked — editing is disabled
+seconds idle. If a job was running, the save was blocked: editing is disabled
 during a build.
 
 → [Files and the editor](/docs/workspace/files-and-editor)
@@ -113,7 +113,7 @@ what the cap is for.
 ## My credits went down and I wasn't building
 
 Check the **spend split** on your billing page. Runtime spend is your deployed app
-calling the [AI gateway](/docs/ai/overview) — its traffic, your credits.
+calling the [AI gateway](/docs/ai/overview): its traffic, your credits.
 
 Set the [daily cap](/docs/ai/api-keys) to bound it.
 
@@ -141,7 +141,7 @@ than repeating yourself:
 possible place to catch a misunderstanding.
 
 **Describe the gap, not the fix.** "The list should group by date, and it's
-currently flat" beats "no, do it properly" — and beats it by more the second and
+currently flat" beats "no, do it properly": and beats it by more the second and
 third time.
 
 → [Writing prompts](/docs/build/writing-prompts)

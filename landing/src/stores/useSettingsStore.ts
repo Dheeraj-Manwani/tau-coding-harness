@@ -14,7 +14,7 @@ interface SettingsState {
    *  they pick one, which is what lets {@link planDefault} apply. */
   lastEffort: Effort | null;
   /** What this account's plan defaults to before the user has chosen (paid
-   *  plans start at HIGH). Derived from the balance, so not persisted — and
+   *  plans start at HIGH). Derived from the balance, so not persisted: and
    *  deliberately not written into `lastEffort`, where it would masquerade as a
    *  choice the user made and outlive their plan. */
   planDefault: Effort | null;

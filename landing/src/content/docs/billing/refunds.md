@@ -11,7 +11,7 @@ explains the practical position.
 
 ## Consumed credits are not refundable
 
-A credit is spent when work is done — a model call on a build, or a gateway call
+A credit is spent when work is done: a model call on a build, or a gateway call
 from your app. That work has already been paid for on tau's side, so a consumed
 credit cannot be returned.
 
@@ -32,7 +32,7 @@ there so a surprise stays small.
 Cancel PRO any time from your billing page. Cancelling stops future billing.
 
 Credits already granted for the current cycle stay until the cycle ends, and
-expire then — the same as any plan credit.
+expire then: the same as any plan credit.
 
 A part-used cycle is not pro-rated. If you cancel mid-cycle you keep what you have
 until the cycle closes.
@@ -41,15 +41,15 @@ until the cycle closes.
 
 An unused pack purchase is a payment question rather than a credit question. If
 you bought the wrong pack or bought by mistake and have not spent it,
-[contact support](/docs/help/contact) — the position depends on the payment
+[contact support](/docs/help/contact): the position depends on the payment
 processor's window as much as on ours.
 
 Once spent, the answer is the same as any consumed credit.
 
 ## When something went wrong
 
-If credits were spent on work that failed for a reason on tau's side — a build
-that broke on our infrastructure, a charge you cannot account for in your ledger —
+If credits were spent on work that failed for a reason on tau's side: a build
+that broke on our infrastructure, a charge you cannot account for in your ledger -
 that is worth raising.
 
 Include:
@@ -75,7 +75,7 @@ Max build uses a more expensive model, and a large first build is the most
 expensive thing you will do.
 
 **"My balance dropped while I was not building."** Check the spend split. Runtime
-spend is your deployed app calling the [AI gateway](/docs/ai/overview) — its
+spend is your deployed app calling the [AI gateway](/docs/ai/overview): its
 traffic, your credits. That is what the daily cap is for.
 
 ## Next

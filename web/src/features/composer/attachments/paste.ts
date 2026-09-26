@@ -1,4 +1,4 @@
-/** Paste this long or longer becomes a chip instead of filling the textarea —
+/** Paste this long or longer becomes a chip instead of filling the textarea -
  *  clear of a normal snippet, below the point the composer gets unusable. */
 export const PASTE_THRESHOLD = 1_500;
 

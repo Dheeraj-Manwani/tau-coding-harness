@@ -10,8 +10,8 @@ import { loadSearchIndex, searchDocs, type SearchDoc } from "./search";
  * ⌘K search over the docs.
  *
  * The index loads the first time the overlay opens and is cached for the
- * session. The list is keyboard-first — arrows move, Enter opens, Escape
- * closes — because that is the only way anyone uses a ⌘K palette.
+ * session. The list is keyboard-first: arrows move, Enter opens, Escape
+ * closes: because that is the only way anyone uses a ⌘K palette.
  *
  * Mounted only while open (see `DocsShell`), so the query and cursor are fresh
  * every time it appears without anything having to reset them.

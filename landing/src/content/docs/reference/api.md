@@ -12,7 +12,7 @@ Tau has one public, documented, credential-authenticated HTTP surface: the
 ## The public surface
 
 **Base:** `https://api.usetau.dev`
-**Auth:** `Authorization: Bearer $TAU_API_KEY` — your
+**Auth:** `Authorization: Bearer $TAU_API_KEY`: your
 [`tau_sk_live_…` key](/docs/ai/api-keys).
 
 | Method | Path | What it does |
@@ -25,8 +25,8 @@ Tau has one public, documented, credential-authenticated HTTP surface: the
 
 Full request and response shapes:
 
-- **→ [Chat API](/docs/ai/chat-api)** — the `/ai` dialect
-- **→ [OpenAI-compatible API](/docs/ai/openai-compatible)** — the `/v1` dialect
+- **→ [Chat API](/docs/ai/chat-api)**: the `/ai` dialect
+- **→ [OpenAI-compatible API](/docs/ai/openai-compatible)**: the `/v1` dialect
 
 Both dialects share one credential, one set of limits and one metering path. They
 differ only in wire format.
@@ -49,7 +49,7 @@ differ only in wire format.
 You cannot start a build, create a project, or read a transcript over HTTP with an
 API key. There is no programmatic way to drive tau itself.
 
-Tau's own endpoints — projects, messages, files, billing — exist, and your browser
+Tau's own endpoints: projects, messages, files, billing: exist, and your browser
 and the mobile app use them. They authenticate with a **session**, not with your
 API key, and they are not a public contract:
 
@@ -61,7 +61,7 @@ API key, and they are not a public contract:
 > Do not build against them. Anything you write will break, and the breakage will
 > not be announced because there is nothing to announce it to.
 
-If you want to automate tau, say so — [contact us](/docs/help/contact). Knowing
+If you want to automate tau, say so: [contact us](/docs/help/contact). Knowing
 what people would automate is what decides whether a real API gets built.
 
 ## Webhooks
@@ -90,7 +90,7 @@ retry shortly.
 ## Versioning
 
 `/v1` is the OpenAI-compatible surface's name, not a tau version number. Both
-dialects are stable in the sense that breaking either would break deployed apps —
+dialects are stable in the sense that breaking either would break deployed apps -
 which is exactly why models are exposed as
 [aliases](/docs/ai/overview) rather than vendor ids.
 

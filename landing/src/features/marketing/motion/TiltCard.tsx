@@ -10,7 +10,7 @@ import { cn } from "@/src/lib/utils";
  * ±6° is the whole budget. Past that the text starts to keystone visibly and
  * the card reads as a gimmick rather than as a physical object.
  *
- * Under reduced motion the card is simply a card — flat, no sheen, no listener
+ * Under reduced motion the card is simply a card: flat, no sheen, no listener
  * attached at all.
  */
 

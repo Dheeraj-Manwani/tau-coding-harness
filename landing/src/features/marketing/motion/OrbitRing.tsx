@@ -5,7 +5,7 @@ import { cn } from "@/src/lib/utils";
  * A dashed ring with satellites tracking round it (§5.6).
  *
  * The gateway motif: something of yours in the middle, tau's inference orbiting
- * it. Pure SVG with a CSS rotation — one composited transform, no rAF, so it
+ * it. Pure SVG with a CSS rotation: one composited transform, no rAF, so it
  * costs nothing to leave running behind a code block.
  *
  * Under reduced motion the ring and its satellites stay exactly where they are.

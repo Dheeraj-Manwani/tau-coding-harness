@@ -6,7 +6,7 @@ date: 2026-07-12
 A long build used to run out of room in its conversation and start losing the
 thread. Tau now manages that budget itself.
 
-- **Compaction** trims old tool output — the twelfth `npm install` log is not worth
+- **Compaction** trims old tool output: the twelfth `npm install` log is not worth
   the space it occupies.
 - **Summarisation** condenses earlier turns once the conversation gets long, keeping
   the shape of what happened rather than the exact text.

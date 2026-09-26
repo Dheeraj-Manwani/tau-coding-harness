@@ -13,14 +13,14 @@ import type { ISourceOptions, MoveDirection } from "@tsparticles/engine";
 import { cn } from "@/src/lib/utils";
 
 // The engine init callback MUST keep a stable identity across the whole app
-// lifecycle — ParticlesProvider throws if it sees a different callback before
+// lifecycle: ParticlesProvider throws if it sees a different callback before
 // the engine has finished loading. Defining it at module scope guarantees that.
 const initEngine: ParticlesPluginRegistrar = async (engine) => {
   await loadSlim(engine);
 };
 
 // Stable empty default so `userOptions` doesn't get a fresh `{}` reference on
-// every render — otherwise the memoized options change identity, which forces
+// every render: otherwise the memoized options change identity, which forces
 // <Particles> to reload the container and snaps every star back to its start.
 const EMPTY_USER_OPTIONS: Record<string, unknown> = {};
 
@@ -101,7 +101,7 @@ interface SparkleParticlesProps {
   opacityAnimationSpeed?: number;
   minParticleOpacity?: number | null;
   /**
-   * Star color. Pass an array to give each star a random color from the set —
+   * Star color. Pass an array to give each star a random color from the set -
    * a cheap way to tint a few stars warm/cool among the rest.
    */
   particleColor?: string | string[];
@@ -149,7 +149,7 @@ function ParticlesField({
 }: SparkleParticlesProps) {
   const instanceId = useId();
 
-  // Depend on the color *values*, not the array reference — callers may pass an
+  // Depend on the color *values*, not the array reference: callers may pass an
   // inline array literal, which would otherwise change identity every render and
   // force the container to reload (resetting every star).
   const colorKey = Array.isArray(particleColor)

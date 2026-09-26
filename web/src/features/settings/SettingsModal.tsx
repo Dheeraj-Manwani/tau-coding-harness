@@ -16,7 +16,7 @@ import {
   sendReadyNotificationTest,
 } from "@/src/features/project/useReadyNotification";
 
-/** Global Settings modal — open it from anywhere via useSettingsStore.openSettings(). */
+/** Global Settings modal: open it from anywhere via useSettingsStore.openSettings(). */
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const close = useSettingsStore((s) => s.closeSettings);

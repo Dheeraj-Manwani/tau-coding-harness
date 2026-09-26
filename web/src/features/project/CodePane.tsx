@@ -63,7 +63,7 @@ function extOf(path: string): string {
   return dot === -1 ? "" : path.slice(dot + 1).toLowerCase();
 }
 
-// Binary asset extensions — mirrors the server's isBinaryPath. These are served
+// Binary asset extensions: mirrors the server's isBinaryPath. These are served
 // as a presigned URL (not text) and rendered as a preview, never in CodeMirror.
 // SVG is intentionally absent: it's XML text and stays editable in the editor.
 const BINARY_EXTS = new Set([
@@ -82,7 +82,7 @@ function isBinaryPath(path: string): boolean {
 /**
  * CodeMirror language extensions for the file types the agent emits.
  *
- * Note these are *syntax* modes only — there is deliberately no TypeScript
+ * Note these are *syntax* modes only: there is deliberately no TypeScript
  * language service here. Type definitions live in the sandbox's node_modules,
  * which is excluded from the file manifest (`seedTemplateFiles`), so semantic
  * analysis in the browser would flag every third-party import as unresolved.
@@ -368,13 +368,13 @@ function CodeEditor() {
   const setFileContent = useProjectStore((s) => s.setFileContent);
   const setFileDraft = useProjectStore((s) => s.setFileDraft);
   // The agent writes these same files. Rather than race it, edits are blocked
-  // while a job is live — the api refuses them anyway (409).
+  // while a job is live: the api refuses them anyway (409).
   const isBuilding = useProjectStore((s) => s.status === "streaming");
   const file = activeFileId ? files[activeFileId] : undefined;
 
   const { flush, scheduleSave } = useFileSave(projectId ?? undefined);
 
-  // Binary assets always need a fetch (for their presigned preview URL) — their
+  // Binary assets always need a fetch (for their presigned preview URL): their
   // in-store `content` is an empty placeholder from the file_start event, so the
   // usual `content === undefined` check would wrongly skip the load.
   const needsLoad =
@@ -457,7 +457,7 @@ function CodeEditor() {
   }
 
   // Binary assets (downloaded images, fonts, media) can't be shown in the text
-  // editor — render a preview from the presigned URL the api hands back instead.
+  // editor: render a preview from the presigned URL the api hands back instead.
   if (isBinaryPath(activeFileId)) {
     return (
       <div className="flex h-full flex-col bg-[var(--space-void)]">
@@ -571,7 +571,7 @@ export function CodePane() {
   const tree = useMemo(() => buildTree(paths), [paths]);
   const expanded = useMemo(() => folderPaths(tree), [tree]);
   // Re-mount the Tree (re-applying expanded folders) only when the folder
-  // structure changes — not on every file content chunk.
+  // structure changes: not on every file content chunk.
   const treeKey = expanded.join("|");
 
   const handleDrag = (clientX: number) => {

@@ -10,7 +10,7 @@ import {
  *
  * Its whole job is to mount the starfield exactly once. If `MarketingShell` and
  * `DocsShell` each mounted their own, clicking "Docs" would reseed the canvas
- * and the entire sky would jump — the one thing a shared background must never
+ * and the entire sky would jump: the one thing a shared background must never
  * do. Mounted here, the shells only *describe* the sky they want (via
  * `useCosmosScene`) and the same stars carry across the navigation.
  *

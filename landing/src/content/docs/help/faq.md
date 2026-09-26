@@ -8,7 +8,7 @@ updated: 2026-07-30
 
 ## Do I own the code?
 
-Yes. Push it to a GitHub repo you own, any time. It is an ordinary web project —
+Yes. Push it to a GitHub repo you own, any time. It is an ordinary web project -
 there is no tau runtime to depend on and nothing to eject from.
 
 → [GitHub](/docs/ship/github)
@@ -24,7 +24,7 @@ genuinely serving it.
 ## Can I edit code by hand?
 
 Yes, in the browser, in a real editor. Your edit autosaves, and tau is told what
-you changed — it receives the diff before its next turn, so your change survives.
+you changed: it receives the diff before its next turn, so your change survives.
 
 The editor is web-only; a phone keyboard is the wrong tool for it.
 
@@ -35,8 +35,8 @@ The editor is web-only; a phone keyboard is the wrong tool for it.
 DeepSeek flash runs on Low; DeepSeek pro runs on High and Max. Max adds larger
 execution budgets rather than switching providers.
 
-For the [AI gateway](/docs/ai/overview) your app asks for an alias — `tau-fast`,
-`tau-smart`, `tau-max` — not a vendor id, so the mapping can move without breaking
+For the [AI gateway](/docs/ai/overview) your app asks for an alias: `tau-fast`,
+`tau-smart`, `tau-max`: not a vendor id, so the mapping can move without breaking
 deployed apps.
 
 → [Effort tiers](/docs/build/effort-tiers)
@@ -46,7 +46,7 @@ deployed apps.
 The build stops cleanly. Whatever was written is on disk and in storage, the job
 ends with a clear reason, and nothing is left broken.
 
-Top up or upgrade, then send a follow-up — it continues from where it stopped.
+Top up or upgrade, then send a follow-up: it continues from where it stopped.
 
 → [Credits](/docs/billing/credits)
 
@@ -63,7 +63,7 @@ No. Tau's [Privacy Policy](/privacy) states that we do not use your prompts or
 generated code to train AI models, and we do not sell or rent your personal data.
 
 Your prompts and conversation context are sent to the model provider that serves
-your build — that is how inference works — and the sub-processors we use are listed
+your build: that is how inference works: and the sub-processors we use are listed
 in the privacy policy. Generated project files are retained so you can get back to
 your work. You can request deletion of your account and all associated data by
 email, and we complete it within 30 days.
@@ -73,7 +73,7 @@ email, and we complete it within 30 days.
 **No.** Not yet.
 
 Tau builds and runs your app in a sandbox on a temporary URL. To publish it, push
-to GitHub and deploy from there — Vercel, Netlify, Fly, Render, Cloudflare Pages,
+to GitHub and deploy from there: Vercel, Netlify, Fly, Render, Cloudflare Pages,
 anything.
 
 → [Deploying](/docs/ship/deploying)
@@ -86,7 +86,7 @@ No. GitHub is the route out. A private repo is free and works as an archive.
 
 ## If I edit my GitHub repo, does tau pick it up?
 
-No. Pushing is one-directional — tau does not read your repo's tree. Treat a push
+No. Pushing is one-directional: tau does not read your repo's tree. Treat a push
 as an export, and do not develop in both places at once.
 
 ## Is there an undo, or checkpoints?
@@ -99,7 +99,7 @@ a good one.
 
 ## Why does my preview URL keep dying?
 
-Sandboxes are not permanent. Your files are — press **Start preview** and a fresh
+Sandboxes are not permanent. Your files are: press **Start preview** and a fresh
 sandbox is built from them.
 
 → [Troubleshooting](/docs/help/troubleshooting)
@@ -112,7 +112,7 @@ accident.
 
 ## Are all the effort tiers available on the free plan?
 
-Yes, including Max. Nothing is behind the paywall — the plans differ in credits and
+Yes, including Max. Nothing is behind the paywall: the plans differ in credits and
 project slots, not features.
 
 → [Plans](/docs/billing/plans)
@@ -120,7 +120,7 @@ project slots, not features.
 ## My app can call an LLM without an API key?
 
 Yes, and this is genuinely unusual. Ask tau to add AI and it mints you a
-credential, injects it into the sandbox, and serves the inference itself — billed
+credential, injects it into the sandbox, and serves the inference itself: billed
 to the same credits that paid for the build.
 
 You need no SDK, no provider account, and no key of your own.
@@ -147,7 +147,7 @@ hour. Deploy from your repo to share something durable.
 ## Is there a gallery of examples?
 
 Not yet. When there is, it will be real generated projects with real screenshots
-and their owners' consent — not invented ones.
+and their owners' consent: not invented ones.
 
 ## Next
 

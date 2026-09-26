@@ -3,7 +3,7 @@ title: Attachments, and cancel all
 date: 2026-07-24
 ---
 
-- **Attach files to any message.** Images, PDFs, text files — and on the web, paste
+- **Attach files to any message.** Images, PDFs, text files: and on the web, paste
   a table or a log straight into the composer and it becomes an attachment instead
   of a wall of prompt. Tau extracts the text before the agent reads it.
 

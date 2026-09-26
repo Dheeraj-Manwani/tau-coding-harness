@@ -1,6 +1,6 @@
 ---
 title: API keys
-description: Your tau_sk_* credential — where it lives, how rotation works, the daily cap, and why revealing it needs re-auth.
+description: Your tau_sk_* credential: where it lives, how rotation works, the daily cap, and why revealing it needs re-auth.
 section: ai
 order: 3
 updated: 2026-07-30
@@ -16,7 +16,7 @@ tau_sk_live_••••••••••••••••••••••�
 ## Where it lives
 
 **In the sandbox**, as `TAU_API_KEY`, injected by tau and re-injected on every
-provision — so it survives a rebuild without you doing anything.
+provision: so it survives a rebuild without you doing anything.
 
 **In your account settings**, where you can reveal it, rotate it, revoke it, and
 set its daily cap.
@@ -26,7 +26,7 @@ for lookups. Tau does not store it in plain text.
 
 ## Revealing it
 
-Revealing is an explicit action that requires **re-authentication** — you confirm
+Revealing is an explicit action that requires **re-authentication**: you confirm
 who you are, again, even though you are already signed in.
 
 Two reasons. A page load must never cause a decrypt, and a reveal puts a live
@@ -37,7 +37,7 @@ Reveals are rate-limited and logged.
 
 > [!WARNING]
 > Treat it like a card number. It spends real credits, and a deployed app's
-> endpoints are public — a leaked key on a public repo is someone else's budget.
+> endpoints are public: a leaked key on a public repo is someone else's budget.
 
 ## Rotation
 
@@ -65,7 +65,7 @@ Tau's own sandboxes pick up the new key automatically on their next provision.
 The "it leaked" button. It kills every key immediately, with **no grace window**.
 
 Every deployed app that calls the gateway stops working at once. That is the
-point — use it when the alternative is worse.
+point: use it when the alternative is worse.
 
 Afterwards, mint a new key and update your deploys.
 
@@ -75,7 +75,7 @@ A spend ceiling per key, per day, resetting at **00:00 UTC**. The default is
 **20 credits**.
 
 This is the backstop that matters. A deployed app's endpoints are public and
-usually unauthenticated, so without a cap one enthusiastic visitor — or one bot —
+usually unauthenticated, so without a cap one enthusiastic visitor: or one bot -
 could drain your balance overnight.
 
 You can change it in settings. Zero disables gateway use entirely; the maximum

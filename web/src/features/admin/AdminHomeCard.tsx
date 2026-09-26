@@ -32,7 +32,7 @@ function Stat({
  * The admin entry point on Home. Renders for nobody but an ADMIN.
  *
  * It shows live health rather than being a bare link, because the question an
- * operator opens the app with is "is anything wrong right now" — and if the
+ * operator opens the app with is "is anything wrong right now": and if the
  * answer is no, they should be able to stop reading here instead of opening the
  * console to find out.
  *

@@ -29,7 +29,7 @@ async function copy(value: string): Promise<void> {
     await navigator.clipboard.writeText(value);
     toast.success("Copied to clipboard");
   } catch {
-    toast.error("Could not copy — select the key and copy it manually.");
+    toast.error("Could not copy: select the key and copy it manually.");
   }
 }
 
@@ -51,7 +51,7 @@ export function ApiKeyCard() {
   const rotate = useRotateApiKey();
   const setCap = useSetDailyCap();
 
-  // Held in component state only — never persisted, and cleared on unmount.
+  // Held in component state only: never persisted, and cleared on unmount.
   const [shown, setShown] = useState<string | null>(null);
   const [capDraft, setCapDraft] = useState<string>("");
   const [confirmRotate, setConfirmRotate] = useState(false);
@@ -99,7 +99,7 @@ export function ApiKeyCard() {
         <p className="mt-2 text-xs text-muted-foreground">
           Lets apps tau builds for you call an AI model, billed to the credits
           above. tau creates one automatically the first time you ask for an AI
-          feature — or you can create it now.
+          feature: or you can create it now.
         </p>
         <Button
           variant="outline"
@@ -174,7 +174,7 @@ export function ApiKeyCard() {
       )}
 
       {/* The cap is the only thing standing between a popular deployed app and
-          the whole balance — its endpoints are public by default. */}
+          the whole balance: its endpoints are public by default. */}
       <div className="mt-4 border-t pt-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-medium">Daily spend limit</span>

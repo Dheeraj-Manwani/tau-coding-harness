@@ -1,6 +1,6 @@
 ---
 title: Limits
-description: A pointer — every cap lives in one table on the billing side.
+description: A pointer: every cap lives in one table on the billing side.
 section: reference
 order: 2
 updated: 2026-07-30
@@ -15,7 +15,7 @@ That page covers:
 
 - Credits, grants, expiry and spend order
 - The project cap and job concurrency
-- Per-build budgets by effort tier — turns, sub-agents, wall clock, spend cap
+- Per-build budgets by effort tier: turns, sub-agents, wall clock, spend cap
 - Attachment sizes and counts
 - Every AI gateway limit per key
 - Context budget behaviour
@@ -33,6 +33,6 @@ That page covers:
 
 ## Related
 
-- [Effort tiers](/docs/build/effort-tiers) — the per-build budgets in context
-- [Credits](/docs/billing/credits) — buckets and spend order
-- [Errors](/docs/reference/errors) — what each refusal looks like when you hit one
+- [Effort tiers](/docs/build/effort-tiers): the per-build budgets in context
+- [Credits](/docs/billing/credits): buckets and spend order
+- [Errors](/docs/reference/errors): what each refusal looks like when you hit one

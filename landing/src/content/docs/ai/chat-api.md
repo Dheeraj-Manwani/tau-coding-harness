@@ -1,6 +1,6 @@
 ---
 title: Chat API
-description: POST /ai/chat and /ai/chat/stream — the full request and response shapes your generated app uses.
+description: POST /ai/chat and /ai/chat/stream: the full request and response shapes your generated app uses.
 section: ai
 order: 4
 updated: 2026-07-30
@@ -74,7 +74,7 @@ Either `prompt` or `messages` is required. Both together is a `400`
 
 > [!NOTE]
 > Reasoning models put their working in a separate field and leave `content`
-> empty. `text` is always the answer — tau never hands back the scratch work.
+> empty. `text` is always the answer: tau never hands back the scratch work.
 
 ### Example
 
@@ -117,7 +117,7 @@ data: {"done":true,"usage":{"inputTokens":412,"outputTokens":88}}
 ```
 
 **The rule: read frames until `done`.** Every exit path sends a final frame with
-`done: true` — success, a wall-clock timeout, or a mid-flight failure. A failure
+`done: true`: success, a wall-clock timeout, or a mid-flight failure. A failure
 frame also carries `error` and `code`:
 
 ```json
@@ -130,7 +130,7 @@ frame also carries `error` and `code`:
 ```
 
 A single stream is stopped after 5 minutes as a backstop. That is generous by
-design — a limit on runaway streams, not on long answers.
+design: a limit on runaway streams, not on long answers.
 
 ### Example
 
@@ -187,7 +187,7 @@ your billing page. Optional, and useful when several of your apps share one key.
 
 ## Errors
 
-Flat and readable, deliberately unlike `/v1`'s OpenAI envelope — a human or the
+Flat and readable, deliberately unlike `/v1`'s OpenAI envelope: a human or the
 agent is reading these out of a `fetch` response:
 
 ```json
@@ -202,11 +202,11 @@ agent is reading these out of a `fetch` response:
 | 401 | `invalid_api_key` | Missing, wrong, or revoked key |
 | 402 | `insufficient_credits` | The account is out of credits |
 | 429 | `rate_limit_exceeded` | Over 60 requests/minute |
-| 429 | `concurrency_limit_exceeded` | Too many in flight — retry shortly |
+| 429 | `concurrency_limit_exceeded` | Too many in flight: retry shortly |
 | 429 | `daily_cap_exceeded` | Over the key's daily cap; resets 00:00 UTC |
 | 500 | `internal_error` | Tau-side failure |
 
-`code` is stable and machine-usable — branch on `insufficient_credits` to show
+`code` is stable and machine-usable: branch on `insufficient_credits` to show
 your users something better than a stack trace.
 
 ## Next

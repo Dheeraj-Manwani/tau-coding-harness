@@ -23,7 +23,7 @@ import {
 /**
  * Style controls for the selected element.
  *
- * Every click is one request and one commit — there is no drag state to
+ * Every click is one request and one commit: there is no drag state to
  * coalesce, because the vocabulary is stepped rather than continuous. That
  * keeps "one save per change" true without a debounce.
  *
@@ -74,7 +74,7 @@ export function VisualStylePanel({
 
     // Only ever remove a class from *this* breakpoint. Removing the base class
     // while editing `md:` would move the phone layout too, which is exactly the
-    // surprise this feature exists to avoid — so an inherited value is left
+    // surprise this feature exists to avoid: so an inherited value is left
     // alone and the new variant is simply layered over it.
     const remove: string[] = [];
     if (isActive) remove.push(variant + option.className);
@@ -90,12 +90,12 @@ export function VisualStylePanel({
         onSuccess: (data) => {
           if (!data.applied) {
             if (data.reason === "dynamic_classname") {
-              // `cn(...)` or a template literal — there's no literal to edit,
+              // `cn(...)` or a template literal: there's no literal to edit,
               // so stage the intent in the prompt box above, already written
               // out, for the user to send or adjust.
               const op = { kind: "classes", add, remove } as const;
               prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
-              toast("tau can do this — the request is ready above.", {
+              toast("tau can do this: the request is ready above.", {
                 icon: "💬",
               });
             } else {
@@ -112,7 +112,7 @@ export function VisualStylePanel({
 
           // Diff the two authoritative class lists to build the inverse. Doing
           // it this way (rather than inverting add/remove) also restores classes
-          // that tailwind-merge dropped implicitly — `px-4 py-2` losing to `p-6`.
+          // that tailwind-merge dropped implicitly: `px-4 py-2` losing to `p-6`.
           const beforeSet = new Set(before.split(/\s+/).filter(Boolean));
           const afterSet = new Set(after.split(/\s+/).filter(Boolean));
           const undoAdd = [...beforeSet].filter((c) => !afterSet.has(c));
@@ -134,7 +134,7 @@ export function VisualStylePanel({
             toast.error(
               err instanceof ApiError && err.message === "generation in progress"
                 ? "Can't edit while tau is building."
-                : "This element moved — select it again.",
+                : "This element moved: select it again.",
             );
             setSelection(null);
           } else {
@@ -156,7 +156,7 @@ export function VisualStylePanel({
         <p className="pb-1.5 text-[11px] text-[var(--silver-600)]">
           Writing{" "}
           <span className="font-mono text-[var(--silver-900)]">{variant}</span>{" "}
-          styles — these apply at {VARIANT_SCOPE[variant]}. Dimmed values are
+          styles: these apply at {VARIANT_SCOPE[variant]}. Dimmed values are
           inherited from all sizes and are left alone unless you change them.
         </p>
       )}
@@ -185,7 +185,7 @@ export function VisualStylePanel({
                     onClick={() => apply(group, option)}
                     title={
                       isInherited
-                        ? `${option.className} — inherited from all sizes`
+                        ? `${option.className}: inherited from all sizes`
                         : variant + option.className
                     }
                     aria-pressed={isActive}

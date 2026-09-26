@@ -30,7 +30,7 @@ export const CosmosContext = createContext<CosmosControls>(NOOP_CONTROLS);
 
 /**
  * Commands the backdrop. Safe to call from anywhere inside `CosmosProvider`,
- * including before the canvas mounts and under reduced motion — in those cases
+ * including before the canvas mounts and under reduced motion: in those cases
  * the calls are no-ops rather than errors, so callers never have to guard.
  */
 export function useCosmos(): CosmosControls {
@@ -54,14 +54,14 @@ export const CosmosRegistryContext = createContext<{
  * sliding under the text.
  *
  * This is context state rather than a `CosmosBackdrop` prop because the canvas
- * is mounted above the router outlet — the shell that knows which surface we're
+ * is mounted above the router outlet: the shell that knows which surface we're
  * on renders *below* it.
  */
 export interface CosmosScene {
   density: number;
   parallax: boolean;
   /**
-   * Occasional meteors across the upper viewport. Marketing only — a streak
+   * Occasional meteors across the upper viewport. Marketing only: a streak
    * crossing the page while someone is reading a reference table is exactly the
    * kind of thing §6 rules out.
    */

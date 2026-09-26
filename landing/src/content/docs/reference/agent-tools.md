@@ -9,7 +9,7 @@ updated: 2026-07-30
 The agent is a model with tools. When you see a tool line in the chat, this is
 what it was.
 
-Which tools are available depends on the [effort tier](/docs/build/effort-tiers) —
+Which tools are available depends on the [effort tier](/docs/build/effort-tiers) -
 sub-agent dispatch in particular is only useful where the budget allows parallel
 work.
 
@@ -35,7 +35,7 @@ work.
 | `list_dir` | Lists a directory |
 
 Every write goes through the same path your own editor saves use, and lands in
-your project's stored manifest — except for
+your project's stored manifest: except for
 [secret-shaped paths](/docs/ship/secrets), which are written to the sandbox but
 never persisted.
 
@@ -43,7 +43,7 @@ never persisted.
 
 | Tool | What it does |
 |---|---|
-| `run_command` | Runs a shell command — installs, builds, starting the dev server |
+| `run_command` | Runs a shell command: installs, builds, starting the dev server |
 | `tail_command_output` | Reads more output from a long-running command |
 | `wait_for_port` | Waits for the dev server to answer, which is what makes the preview appear |
 | `provision_sandbox` | Brings up a sandbox for the project |
@@ -65,8 +65,8 @@ than grey placeholder boxes.
 
 | Tool | What it does |
 |---|---|
-| `enable_ai` | Wires the [AI gateway](/docs/ai/overview) into your app — mints the key, injects the env vars, declares them in `.tau/deploy.json` |
-| `push_to_github` | Pushes your project — new PR, update PR, or direct |
+| `enable_ai` | Wires the [AI gateway](/docs/ai/overview) into your app: mints the key, injects the env vars, declares them in `.tau/deploy.json` |
+| `push_to_github` | Pushes your project: new PR, update PR, or direct |
 | `create_github_issue` | Opens an issue on your linked repo |
 
 → [AI quickstart](/docs/ai/quickstart) · [GitHub](/docs/ship/github)
@@ -78,14 +78,14 @@ than grey placeholder boxes.
 | `ask_user` | Stops and asks, instead of guessing |
 
 The job pauses and waits for your reply in the chat. It costs nothing while it
-waits, and the agent keeps its context — answering continues the same turn.
+waits, and the agent keeps its context: answering continues the same turn.
 
 → [Iterating](/docs/build/iterating)
 
 ## Sub-agents
 
 On higher tiers, the agent can dispatch specialists with their own isolated
-context. All three are **read-only** — they investigate and report, and the main
+context. All three are **read-only**: they investigate and report, and the main
 agent applies the findings.
 
 | Tool | What it does |
@@ -106,7 +106,7 @@ Parallel sub-agents by tier: **1** on Low, **3** on High, **5** on Max.
 - **Read your GitHub repo.** Pushing is one-directional.
 - **Persist a secret-shaped file.** See [Secrets](/docs/ship/secrets).
 - **Obtain a third-party credential on your behalf.**
-- **Edit the plan structurally** — no removing or relabelling a todo. On the
+- **Edit the plan structurally**: no removing or relabelling a todo. On the
   roadmap.
 
 ## Next

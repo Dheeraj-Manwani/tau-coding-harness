@@ -20,7 +20,7 @@ import {
  * read as a different product to anyone arriving from the landing page.
  *
  * One claim was also removed. The Free plan listed "Download your code
- * anytime", which §9 of the landing plan flags as **live today but not built** —
+ * anytime", which §9 of the landing plan flags as **live today but not built** -
  * there is no ZIP export. It has been replaced by what is genuinely true: you
  * push to a GitHub repo you own. Restore a download line only when export
  * actually exists.
@@ -33,8 +33,8 @@ import {
 const FREE_FEATURES = [
   `${FREE_SIGNUP_CREDITS} free credits (one-time, on signup)`,
   `Up to ${FREE_MAX_PROJECTS} projects`,
-  "Every effort tier, including Max",
-  "Live preview in a secure sandbox",
+  "Every effort level, including Max",
+  "Try your app while Tau builds it",
   "Push your code to your own GitHub repo",
 ];
 
@@ -110,7 +110,7 @@ export default function PricingPage() {
   useDocumentMeta({
     title: "Pricing",
     description:
-      `Start free with ${FREE_SIGNUP_CREDITS} credits — no card. PRO is ₹${PRO_PRICE_INR} a month for ` +
+      `Start free with ${FREE_SIGNUP_CREDITS} credits: no card. PRO is ₹${PRO_PRICE_INR} a month for ` +
       `${PRO_MONTHLY_CREDITS.toLocaleString()} credits, or top up with a credit pack any time.`,
     canonical: "/pricing",
   });
@@ -138,7 +138,7 @@ export default function PricingPage() {
           <PlanCard
             name="Free"
             price="₹0"
-            description="For individuals exploring AI-powered app building."
+            description="For turning your first few ideas into real apps."
             features={FREE_FEATURES}
             cta="Get started free"
             ctaHref={APP_SIGNUP}
@@ -147,7 +147,7 @@ export default function PricingPage() {
             name="PRO"
             price={`₹${PRO_PRICE_INR}`}
             period="month"
-            description="For power users who build frequently."
+            description="For people who build often and want more room to run."
             features={PRO_FEATURES}
             cta="Upgrade to PRO"
             ctaHref={APP_BILLING}
@@ -187,15 +187,15 @@ export default function PricingPage() {
             {[
               {
                 title: "What is a credit?",
-                body: "One metered unit of model work. The total depends on input, output, and effort, and is shown live while a build runs.",
+                body: "Credits pay for the work Tau does. Bigger requests and higher effort use more, and you can watch the total as Tau works.",
               },
               {
                 title: "One-time free credits",
-                body: `Free-tier users receive ${FREE_SIGNUP_CREDITS} credits once, when they sign up. There is no daily refill — when they run out, they can buy a pack, redeem a promo code, or upgrade to PRO.`,
+                body: `You get ${FREE_SIGNUP_CREDITS} credits when you sign up. They do not refill each day, but you can buy a pack, use a promo code, or move to PRO whenever you need more.`,
               },
               {
-                title: "PRO monthly grant",
-                body: `PRO users receive ${PRO_MONTHLY_CREDITS.toLocaleString()} credits on their billing date each month. Unused plan credits expire at the end of the billing cycle.`,
+                title: "Monthly PRO credits",
+                body: `PRO adds ${PRO_MONTHLY_CREDITS.toLocaleString()} credits on your billing date each month. Any unused monthly credits expire when the next month begins.`,
               },
             ].map(({ title, body }) => (
               <div key={title}>

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
  * here: the loop is bound to `active`, and it additionally suspends itself
  * whenever the document is hidden.
  *
- * Off-screen gating is the caller's half of the deal — pass `useIsVisible(ref)`
+ * Off-screen gating is the caller's half of the deal: pass `useIsVisible(ref)`
  * (below) into `active` for anything that isn't full-viewport.
  *
  * `callback` may change every render; only `active` restarts the loop.

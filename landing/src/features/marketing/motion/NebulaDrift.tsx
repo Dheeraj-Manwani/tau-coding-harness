@@ -4,7 +4,7 @@ import { cn } from "@/src/lib/utils";
 /**
  * Three enormous, barely-there colour clouds drifting behind the starfield.
  *
- * Pure CSS keyframes (see `.nebula-blob` in index.css) — no JS, no canvas, no
+ * Pure CSS keyframes (see `.nebula-blob` in index.css): no JS, no canvas, no
  * rAF. Counter-rotating periods of 40/55/70s mean the three never resynchronise,
  * so the background never visibly repeats.
  *
@@ -58,7 +58,7 @@ export function NebulaDrift({ className }: { className?: string }) {
             background: `radial-gradient(closest-side, ${blob.color}, transparent)`,
             animationDuration: blob.duration,
             animationDirection: blob.reverse ? "reverse" : "normal",
-            // A static frame, not a missing one — the clouds are still there,
+            // A static frame, not a missing one: the clouds are still there,
             // they just stop moving.
             animationPlayState: reduceMotion ? "paused" : "running",
           }}

@@ -12,7 +12,7 @@ import type { TocEntry } from "./loader";
  * scroll-listener does.
  *
  * The active heading is the last one to have crossed the top of that band, not
- * simply the topmost intersecting one — otherwise a short section sandwiched
+ * simply the topmost intersecting one: otherwise a short section sandwiched
  * between two long ones never lights up.
  */
 export function DocsToc({ entries }: { entries: TocEntry[] }) {

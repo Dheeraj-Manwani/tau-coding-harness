@@ -16,7 +16,7 @@ import { cn } from "@/src/lib/utils";
 export function AppShell() {
   const { pathname } = useLocation();
   const outlet = useOutlet();
-  // The project editor is a full-screen workspace — it hides the app navbar.
+  // The project editor is a full-screen workspace: it hides the app navbar.
   const isProject = pathname.startsWith("/project/");
   const isHome = pathname === APP_HOME;
 

@@ -32,7 +32,7 @@ function renderFeatureText(text: string) {
     );
 }
 
-/** Global "upgrade to PRO" modal — open it from anywhere via useUpgradeModalStore. */
+/** Global "upgrade to PRO" modal: open it from anywhere via useUpgradeModalStore. */
 export function UpgradeModal() {
   const open = useUpgradeModalStore((s) => s.open);
   const title = useUpgradeModalStore((s) => s.title);

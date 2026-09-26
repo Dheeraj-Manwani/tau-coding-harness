@@ -9,7 +9,7 @@ import { cn } from "@/src/lib/utils";
  * Shiki is loaded with a dynamic `import()` *inside the effect*, and with an
  * explicit list of languages, for two reasons: the highlighter never touches
  * the marketing chunk, and a docs page that contains no code never downloads it
- * at all. Highlighting is progressive — the block renders as plain monospace
+ * at all. Highlighting is progressive: the block renders as plain monospace
  * immediately and upgrades when the highlighter lands, so a slow network costs
  * you colour, not content.
  */

@@ -1,6 +1,6 @@
 ---
 title: OpenAI-compatible API
-description: POST /v1/chat/completions and GET /v1/models — point an existing OpenAI SDK at tau.
+description: POST /v1/chat/completions and GET /v1/models: point an existing OpenAI SDK at tau.
 section: ai
 order: 5
 updated: 2026-07-30
@@ -10,7 +10,7 @@ The `/v1` surface speaks OpenAI's dialect, so an existing SDK works with a base
 URL change and nothing else.
 
 **Base URL:** `https://api.usetau.dev/v1`
-**Auth:** `Authorization: Bearer $TAU_API_KEY` — the same
+**Auth:** `Authorization: Bearer $TAU_API_KEY`: the same
 [`tau_sk_live_…` key](/docs/ai/api-keys).
 
 ## When to use this instead of /ai
@@ -55,7 +55,7 @@ for await (const chunk of stream) {
 
 ## Models
 
-Aliases only — `tau-fast`, `tau-smart`, `tau-max`. Not vendor model ids.
+Aliases only: `tau-fast`, `tau-smart`, `tau-max`. Not vendor model ids.
 
 An unknown name is a `400` with code `model_not_found` listing the valid
 aliases. It is an allowlist, not a passthrough.
@@ -90,7 +90,7 @@ caller.
 | `max_tokens` / `max_completion_tokens` | **Clamped** to 4096, not rejected |
 | `temperature`, `top_p`, `stop`, `seed` | Passed through |
 | `tools`, `tool_choice` | Passed through |
-| `response_format` | Passed through — use it for JSON mode |
+| `response_format` | Passed through: use it for JSON mode |
 | `n` | Must be `1` |
 
 Two of these are worth reading twice.
@@ -110,7 +110,7 @@ cap sized for one, so the cost bound would stop holding.
 | `x-tau-credits-remaining` | Balance after the call. Non-streaming only |
 
 The balance is not known until a stream closes, and headers are long gone by
-then — so streaming responses carry the request id but not the balance.
+then: so streaming responses carry the request id but not the balance.
 
 ## Errors
 
@@ -139,13 +139,13 @@ decide whether a failure is a `BadRequestError`, a `RateLimitError`, an
 
 > [!NOTE]
 > An error that happens **after** streaming headers are flushed cannot become a
-> 4xx — the status code is already spent. It goes out as an SSE error frame,
+> 4xx: the status code is already spent. It goes out as an SSE error frame,
 > which the SDK parses mid-stream, rather than as a silent truncation your app
 > would read as a short answer.
 
 ## Limits
 
-The same limits as `/ai` — they are one gateway with two dialects. 60 requests
+The same limits as `/ai`: they are one gateway with two dialects. 60 requests
 per minute per key, 8 concurrent, a 20-credit daily cap by default, 4096 output
 tokens per request.
 
@@ -153,6 +153,6 @@ tokens per request.
 
 ## Next
 
-- [Chat API](/docs/ai/chat-api) — the dialect tau wires in by default
+- [Chat API](/docs/ai/chat-api): the dialect tau wires in by default
 - [Gateway billing](/docs/ai/billing)
 - [Errors](/docs/reference/errors)

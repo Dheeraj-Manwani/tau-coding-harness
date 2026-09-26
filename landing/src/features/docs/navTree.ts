@@ -33,7 +33,7 @@ const file = index as unknown as DocsIndexFile;
 
 export const NAV_TREE: NavSection[] = file.tree ?? [];
 
-/** Every page in sidebar order — the sequence prev/next walks. */
+/** Every page in sidebar order: the sequence prev/next walks. */
 export const FLAT_PAGES: Array<NavPage & { section: NavSection }> =
   NAV_TREE.flatMap((section) =>
     section.pages.map((page) => ({ ...page, section })),

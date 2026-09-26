@@ -14,13 +14,13 @@ That is the address. There is no ticket portal and no chatbot in front of it.
 
 Two pages answer most questions faster than an email round-trip:
 
-- **[Troubleshooting](/docs/help/troubleshooting)** — the things that go wrong, in
+- **[Troubleshooting](/docs/help/troubleshooting)**: the things that go wrong, in
   order of how often.
-- **[FAQ](/docs/help/faq)** — what tau does and doesn't do.
+- **[FAQ](/docs/help/faq)**: what tau does and doesn't do.
 
 If it is a billing question, your ledger is worth reading first. Every entry has a
-reason, and the two most common surprises — a Max build costing more than expected,
-and runtime spend from a deployed app — both show up there plainly.
+reason, and the two most common surprises: a Max build costing more than expected,
+and runtime spend from a deployed app: both show up there plainly.
 
 ## What to include
 
@@ -30,7 +30,7 @@ things:
 1. **What you expected, and what happened.** In that order.
 2. **The project**, if it is about a specific build. Its name is enough.
 3. **Roughly when.**
-4. **The exact error**, if there was one — the message and its `code`.
+4. **The exact error**, if there was one: the message and its `code`.
 5. **The relevant ledger entries**, for anything about credits.
 
 For a gateway problem, the `x-tau-request-id` from the response header is the
@@ -38,7 +38,7 @@ single most useful thing you can send. It identifies the exact call.
 
 ## What we can do
 
-**Fix credits.** If work failed for a reason on tau's side, that gets made right —
+**Fix credits.** If work failed for a reason on tau's side, that gets made right -
 usually with credits, which is faster and cleaner than a payment reversal.
 
 **Look at a specific build.** With a project and a rough time, a run can be traced

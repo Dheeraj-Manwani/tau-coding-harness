@@ -8,7 +8,7 @@ import { useRafLoop } from "./useRafLoop";
  *
  * Batched at 3 characters per frame rather than one, deliberately. One per
  * frame looks like a slow modem and, more importantly, ties the duration to the
- * refresh rate — the same code block would take twice as long on a 120Hz
+ * refresh rate: the same code block would take twice as long on a 120Hz
  * display. Batching by frame keeps it honest and keeps the cost to one state
  * write per frame regardless of how much text lands.
  *
@@ -46,7 +46,7 @@ export function Typewriter({
     onCompleteRef.current = onComplete;
   });
 
-  // Text that grows — a file streaming in chunk by chunk — must keep typing
+  // Text that grows: a file streaming in chunk by chunk: must keep typing
   // from where it was. Only a genuinely different string restarts the effect,
   // otherwise every arriving chunk would rewind the whole pane.
   const previousText = useRef("");

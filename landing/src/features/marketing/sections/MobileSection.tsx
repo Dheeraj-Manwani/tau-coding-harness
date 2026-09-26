@@ -5,22 +5,22 @@ import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
 
 /**
- * §4.10 — "Start it on the train. Finish it at your desk."
+ * §4.10: "Start it on the train. Finish it at your desk."
  *
  * The second column is the one that earns trust: it says plainly what mobile
  * does *not* do. The code editor and file tree are web-only, and saying so is
- * worth more than hiding it — a user who discovers a gap themselves assumes
+ * worth more than hiding it: a user who discovers a gap themselves assumes
  * there are others.
  */
 
 const PRESENT = [
-  "Projects and full chat, streaming live",
-  "Attachments — camera, photos, files",
-  "Effort selection",
-  "Preview",
-  "Billing and credit packs",
-  "API key management",
-  "GitHub",
+  "Your projects and conversations",
+  "Camera, photos, and files",
+  "Your choice of pace",
+  "Live app previews",
+  "Credits and billing",
+  "Your app's AI key",
+  "GitHub access",
 ];
 
 const ABSENT = [
@@ -92,7 +92,7 @@ export function MobileSection() {
           </ScrollReveal>
           <ScrollReveal>
             <h3 className="text-sm font-semibold text-silver-900">
-              What's deliberately not
+              Better on a bigger screen
             </h3>
             <ul className="mt-3 space-y-1.5 text-sm text-silver-600">
               {ABSENT.map((item) => (

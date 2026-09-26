@@ -17,7 +17,7 @@ import { APP_SIGNUP, signupPath } from "@/src/lib/routes";
 /**
  * The hero (§4.1).
  *
- * The centrepiece is a working replica of the real composer — the same
+ * The centrepiece is a working replica of the real composer: the same
  * `PromptComposer` chrome, the same `LightningComposer` wrapper, the same
  * `EffortDropdown`. A visitor can arm MAX and watch the bolt lap the border
  * exactly as it does inside the product, before they have an account. That is
@@ -34,7 +34,7 @@ import { APP_SIGNUP, signupPath } from "@/src/lib/routes";
  * would have nowhere to upload to.
  */
 
-/** Mirrors SUGGESTIONS in pages/Home.tsx — the same carousel, before signup. */
+/** Mirrors SUGGESTIONS in pages/Home.tsx: the same carousel, before signup. */
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
   "Create a landing page for my coffee shop…",
@@ -115,7 +115,7 @@ export function Hero() {
       </div>
 
       <p className="relative text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
-        Prompt → running app
+        Your idea → a working app
       </p>
 
       <h1 className="relative mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
@@ -139,9 +139,9 @@ export function Hero() {
       </h1>
 
       <p className="relative mt-5 max-w-xl text-pretty text-silver-600">
-        Tau turns a sentence into a real, running web app — planned, coded, and
-        previewed live in a secure cloud sandbox. Watch it work, edit the code,
-        push to GitHub. No setup, no scaffolding, no boilerplate.
+        Tell Tau what you have in mind. It plans the work, builds your app, and
+        lets you try it right away. You can watch it come together, make changes,
+        and keep every line of code. No setup required.
       </p>
 
       {/* The composer replica. */}

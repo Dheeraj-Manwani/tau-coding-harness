@@ -14,7 +14,7 @@ import type { Effort } from "@/src/features/project/types";
  *       through the env defaults DEEPSEEK_MODEL_FLASH / DEEPSEEK_MODEL in
  *       worker-service/src/lib/env.ts
  *
- * If a tier is retuned, change it there and mirror it here — a marketing page
+ * If a tier is retuned, change it there and mirror it here: a marketing page
  * quoting stale limits is a promise the product stops keeping.
  */
 
@@ -67,22 +67,22 @@ export const EFFORT_TIERS: EffortTier[] = [
     parallel: 5,
     wallClockMinutes: 90,
     spendCap: 50000,
-    bestFor: 'Big multi-file builds, "make it actually work"',
+    bestFor: "Big ideas and stubborn problems",
   },
 ];
 
-/** api/src/lib/pricing.ts — FREE_SIGNUP_GRANT_MICRO. */
+/** api/src/lib/pricing.ts: FREE_SIGNUP_GRANT_MICRO. */
 export const FREE_SIGNUP_CREDITS = 300;
-/** api/src/lib/pricing.ts — PRO_MONTHLY_ALLOTMENT_MICRO. */
+/** api/src/lib/pricing.ts: PRO_MONTHLY_ALLOTMENT_MICRO. */
 export const PRO_MONTHLY_CREDITS = 5000;
-/** api/src/lib/pricing.ts — FREE_PLAN_MAX_PROJECTS. */
+/** api/src/lib/pricing.ts: FREE_PLAN_MAX_PROJECTS. */
 export const FREE_MAX_PROJECTS = 3;
-/** api/src/lib/pricing.ts — MIN_SPEND_TO_START_MICRO. */
+/** api/src/lib/pricing.ts: MIN_SPEND_TO_START_MICRO. */
 export const MIN_CREDITS_TO_START = 1;
-/** api/src/services/billing.service.ts — the PRO plan price. */
+/** api/src/services/billing.service.ts: the PRO plan price. */
 export const PRO_PRICE_INR = 1499;
 
-/** api/src/services/billing.service.ts — CREDIT_PACKS. */
+/** api/src/services/billing.service.ts: CREDIT_PACKS. */
 export const CREDIT_PACKS = [
   { credits: 100, inr: 49 },
   { credits: 500, inr: 199 },

@@ -124,7 +124,7 @@ function DeviceSwitcher() {
 /**
  * Element picker toggle.
  *
- * Only offered once the in-iframe runtime has announced itself — an older
+ * Only offered once the in-iframe runtime has announced itself: an older
  * project whose sandbox predates the tagger has no runtime, and a dead toggle
  * is worse than no toggle. `visualEditReady` is reset on every iframe remount.
  *
@@ -171,8 +171,8 @@ function VisualEditToggle() {
  * feature at a different scale: one click here restyles every element that uses
  * a theme token, rather than the one element under the cursor.
  *
- * Unlike the picker this needs no in-iframe runtime — it edits `src/index.css`
- * directly — so it is offered whenever there is a preview at all.
+ * Unlike the picker this needs no in-iframe runtime: it edits `src/index.css`
+ * directly: so it is offered whenever there is a preview at all.
  */
 function ThemeToggle() {
   const open = useProjectStore((s) => s.themePanelOpen);
@@ -214,7 +214,7 @@ function UrlBar() {
   const hasUrl = Boolean(previewUrl);
 
   // While the user is typing, the input shows their draft; the committed path
-  // is only replaced on Enter. `null` means "not editing — show the real path".
+  // is only replaced on Enter. `null` means "not editing: show the real path".
   const [draft, setDraft] = useState<string | null>(null);
   const value = draft ?? previewPath;
 
@@ -257,10 +257,10 @@ function UrlBar() {
           disabled={!hasUrl}
           spellCheck={false}
           autoComplete="off"
-          // The origin is a generated sandbox hostname — not useful in the bar,
+          // The origin is a generated sandbox hostname: not useful in the bar,
           // but worth having on hover and for copy/paste.
           title={fullUrl ?? undefined}
-          placeholder={hasUrl ? "/" : "No preview yet — tau will build one"}
+          placeholder={hasUrl ? "/" : "No preview yet: tau will build one"}
           onChange={(e) => setDraft(e.target.value)}
           onFocus={(e) => e.currentTarget.select()}
           onKeyDown={(e) => {

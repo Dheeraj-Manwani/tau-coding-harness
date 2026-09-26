@@ -10,7 +10,7 @@ Errors you can hit, what each one means, and the fix.
 
 ## Builds and projects
 
-### `INSUFFICIENT_CREDITS` — 402
+### `INSUFFICIENT_CREDITS`: 402
 
 Your balance is too low to start a build. Tau refuses up front rather than
 starting one that dies immediately.
@@ -19,21 +19,21 @@ starting one that dies immediately.
 [promo code](/docs/billing/promo-codes), or upgrade to
 [PRO](/docs/billing/plans).
 
-### `CONCURRENT_JOB_LIMIT` — 429
+### `CONCURRENT_JOB_LIMIT`: 429
 
 You already have a build running. One job at a time per account.
 
 **Fix:** wait for it, or cancel it. There is also a cancel-all.
 
-This is deliberate — every build has a real sandbox and a real spend cap behind
+This is deliberate: every build has a real sandbox and a real spend cap behind
 it, and letting one account run several is how a balance empties by accident.
 
-### `PROJECT_LIMIT_REACHED` — 403
+### `PROJECT_LIMIT_REACHED`: 403
 
 Free accounts hold 3 projects at a time. You have 3.
 
-**Fix:** delete one you are done with — push it to GitHub first, deletion is not
-reversible — or upgrade to PRO for unlimited projects.
+**Fix:** delete one you are done with: push it to GitHub first, deletion is not
+reversible: or upgrade to PRO for unlimited projects.
 
 ### 409 on a file save
 
@@ -67,7 +67,7 @@ Every job ends with a reason, shown in the chat.
 
 None of these lose your files. A follow-up continues from where it stopped.
 
-## AI gateway — `/ai/*`
+## AI gateway: `/ai/*`
 
 Flat JSON: `{ "error": "...", "code": "..." }`.
 
@@ -83,7 +83,7 @@ Flat JSON: `{ "error": "...", "code": "..." }`.
 | 429 | `daily_cap_exceeded` | Over the key's daily cap | Wait for 00:00 UTC, or raise the cap |
 | 500 | `internal_error` | Tau-side failure | Retry; report it if it persists |
 
-## AI gateway — `/v1/*`
+## AI gateway: `/v1/*`
 
 OpenAI's envelope, because the SDK parses this shape to pick an exception class:
 
@@ -119,7 +119,7 @@ sized for one, so the cost bound would stop holding.
 ### `stream_timeout`
 
 A single stream is stopped after 5 minutes. On `/ai/chat/stream` this arrives as a
-frame with `done: true`, `error` and `code` — which is why the contract is *read
+frame with `done: true`, `error` and `code`: which is why the contract is *read
 frames until `done`* rather than *read until the socket closes*.
 
 ## Attachments

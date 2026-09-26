@@ -15,7 +15,7 @@ import { useProjectStore } from "@/src/stores/useProjectStore";
  * The theme variables the panel offers, grouped the way someone thinks about
  * them rather than the way the stylesheet declares them.
  *
- * Mirrors `THEME_TOKENS` in `server/src/api/lib/themeEdit.ts` — the server
+ * Mirrors `THEME_TOKENS` in `server/src/api/lib/themeEdit.ts`: the server
  * validates against its own list, so a name only in one place is a control that
  * always fails. Kept short on purpose: these are the knobs that visibly change
  * an app, not every variable the shadcn palette defines.
@@ -56,7 +56,7 @@ const GROUPS: { title: string; tokens: { name: string; label: string }[] }[] = [
   },
 ];
 
-/** Stepped, like the style vocabulary — one click, one commit, no drag state. */
+/** Stepped, like the style vocabulary: one click, one commit, no drag state. */
 const RADIUS_STEPS = [
   { label: "Square", value: "0" },
   { label: "SM", value: "0.25rem" },
@@ -91,12 +91,12 @@ function dropKey(
  *
  * The previous version put a 20px swatch and a text label inside a bare
  * `<label>` in a grid cell. A `<label>` forwards every click to its input, and
- * that one stretched the full column width — so clicking in the empty space
+ * that one stretched the full column width: so clicking in the empty space
  * beside "Border" opened the colour picker for it, with nothing on screen to
  * suggest it would. The click target was right; it was invisible.
  *
  * The fix is not to shrink the target but to draw it. The whole tile is
- * bordered, has a hover state, and shows the value it holds — so a large hit
+ * bordered, has a hover state, and shows the value it holds: so a large hit
  * area reads as generous rather than as a trap. Staged tiles keep the accent
  * border after the pointer leaves, which is the only thing on screen that says
  * what Save is about to write.
@@ -130,7 +130,7 @@ function SwatchTile({
       )}
     >
       {/* The native picker is the right control here: it is the one widget
-          users already know, and it only ever emits #rrggbb — exactly the form
+          users already know, and it only ever emits #rrggbb: exactly the form
           the server will accept. The pseudo-element rules strip the chrome
           browsers wrap it in so it reads as a swatch, not as an input. */}
       <input
@@ -170,14 +170,14 @@ function toPickerValue(value: string | undefined): string {
 }
 
 /**
- * Global theme editing — the one visual edit that isn't about an element.
+ * Global theme editing: the one visual edit that isn't about an element.
  *
  * Change `--primary` once and every `bg-primary`, `text-primary` and
  * `ring-primary` in the app moves with it. That is why the style panel offers
  * theme tokens ahead of raw palette colours: an element styled `bg-primary`
  * follows this panel, an element styled `bg-red-500` never will.
  *
- * Light and dark are edited separately and deliberately never together — they
+ * Light and dark are edited separately and deliberately never together: they
  * hold genuinely different values, so an "apply to both" convenience would
  * flatten light mode the first time anyone changed a background. The app ships
  * `<html class="dark">`, so dark is the default tab.
@@ -194,7 +194,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
    *
    * Staged rather than written as they are chosen. `<input type="color">` fires
    * its change event on every frame of a drag, and each write is a file write,
-   * an R2 write and a `USER_EDIT` message the agent reads on its next turn —
+   * an R2 write and a `USER_EDIT` message the agent reads on its next turn -
    * so an auto-committing panel turned choosing one colour into a commit
    * history nobody wanted, and choosing five into a race between their own
    * `baseHash` chains.
@@ -212,7 +212,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
    *
    * Not read from the query: after a successful edit the query's copy is stale
    * until its refetch lands, so sending it as `baseHash` would 409 every rapid
-   * second edit. The response carries the new hash, so track that instead — the
+   * second edit. The response carries the new hash, so track that instead: the
    * stale-file guard stays on, and it guards against the agent rather than
    * against us.
    */
@@ -244,7 +244,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
    * Write every staged value, one request each.
    *
    * Sequential, deliberately. The endpoint takes one token at a time and each
-   * response carries the new `contentHash`, so the requests form a chain —
+   * response carries the new `contentHash`, so the requests form a chain -
    * firing them together would have every one but the first sent with a
    * `baseHash` that stopped being current, and the stale-file guard would
    * reject them against us rather than against the agent it exists to catch.
@@ -278,7 +278,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
             data.reason === "token_not_found"
               ? "This app's theme doesn't define that colour."
               : data.reason === "no_theme_block"
-                ? "This app's theme has been rewritten — edit src/index.css directly."
+                ? "This app's theme has been rewritten: edit src/index.css directly."
                 : "That value isn't supported.",
           );
           break;
@@ -293,7 +293,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
           toast.error(
             err instanceof ApiError && err.message === "generation in progress"
               ? "Can't save while tau is building."
-              : "The theme changed underneath — reloading it.",
+              : "The theme changed underneath: reloading it.",
           );
           void theme.refetch();
         } else {
@@ -320,11 +320,11 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
 
   return (
     // Taller than the old flat list needed, but capped against the preview's
-    // own height — a panel that covers the app you are recolouring is worse
+    // own height: a panel that covers the app you are recolouring is worse
     // than one you have to scroll.
     <div className="absolute inset-x-0 bottom-0 max-h-[min(26rem,70%)] overflow-y-auto border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 pb-2">
       {/* Sticky, because the body scrolls and the palette you are editing has
-          to stay visible — with both palettes holding different values, an
+          to stay visible: with both palettes holding different values, an
           off-screen Dark/Light toggle is how you edit the wrong one. */}
       <div className="sticky top-0 z-10 -mx-3 flex items-center gap-2 border-b border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2">
         <SwatchBookIcon className="size-3.5 shrink-0 text-[var(--silver-600)]" />

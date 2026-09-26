@@ -7,7 +7,7 @@ export const accountKeys = {
 
 export interface ApiKeyView {
   exists: boolean;
-  /** Never the full key — only the safe-to-display prefix. */
+  /** Never the full key: only the safe-to-display prefix. */
   prefix: string | null;
   status: "ACTIVE" | "ROTATING" | "REVOKED" | null;
   createdAt: string | null;

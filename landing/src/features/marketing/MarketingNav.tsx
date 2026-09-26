@@ -7,14 +7,13 @@ import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { cn } from "@/src/lib/utils";
 import { APP_LOGIN, APP_SIGNUP } from "@/src/lib/routes";
 import { MagneticButton } from "@/src/features/marketing/motion/MagneticButton";
-import { useCosmos } from "@/src/features/marketing/motion/cosmos";
 
 /**
  * The marketing navbar (§4.0).
  *
  * Transparent over the hero, then it acquires glass past 80px of scroll. The
  * threshold is read from a `useScroll` subscription rather than a scroll
- * listener with `setState` on every frame — this only re-renders on the two
+ * listener with `setState` on every frame: this only re-renders on the two
  * frames where the state actually flips.
  */
 
@@ -27,7 +26,7 @@ const GLASS_AFTER_PX = 80;
  * Anchors resolve as the bands land (Phases 2-3) and the docs hrefs when Phase
  * 5 writes the pages; both are declared here now so the panel has one shape and
  * one place to maintain. `ready` gates whether an entry is rendered as a live
- * link — shipping a nav full of links to nothing is worse than a shorter nav.
+ * link: shipping a nav full of links to nothing is worse than a shorter nav.
  */
 interface Pillar {
   title: string;
@@ -60,8 +59,8 @@ const PILLARS: Pillar[] = [
     ready: false,
   },
   {
-    title: "AI gateway",
-    blurb: "Your generated app can call an LLM.",
+    title: "AI in your app",
+    blurb: "Add smart features without extra setup.",
     anchor: "/#ai-gateway",
     docs: "/docs/ai/overview",
     ready: false,
@@ -172,7 +171,6 @@ export function MarketingNav() {
   const { scrollY } = useScroll();
   const [glass, setGlass] = useState(false);
   const reduceMotion = useReduceMotion();
-  const cosmos = useCosmos();
 
   useMotionValueEvent(scrollY, "change", (value) => {
     const next = value > GLASS_AFTER_PX;
@@ -236,10 +234,6 @@ export function MarketingNav() {
           </Link>
           <MagneticButton
             to={APP_SIGNUP}
-            // A hover on the primary CTA kicks the starfield into a brief warp.
-            // It is the one place on the page that says "this thing moves"
-            // before you have committed to anything.
-            onPointerEnter={() => cosmos.warp(900)}
             className="rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Start building

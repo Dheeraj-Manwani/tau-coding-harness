@@ -15,7 +15,7 @@ import { NAV_TREE } from "./navTree";
  * The rule is one absolutely-positioned element whose offset and height are
  * measured from the active link and written straight to its style, with a CSS
  * transition doing the sliding. The obvious implementation is Framer's
- * `layoutId`, and it was the first one here — but `motion` is otherwise absent
+ * `layoutId`, and it was the first one here: but `motion` is otherwise absent
  * from the docs bundle, and pulling in 38KB gzipped of animation library on
  * every documentation page to slide a 2px bar is not a trade a reader would
  * make. Twenty lines of measurement is.
@@ -49,7 +49,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
       return;
     }
 
-    // `offsetTop` is already measured against `list` — it is the nearest
+    // `offsetTop` is already measured against `list`: it is the nearest
     // positioned ancestor, which is exactly why the list is `relative`.
     // Subtracting the list's own offset (as this first did) puts the rule at
     // the top of the sidebar regardless of which page is open.

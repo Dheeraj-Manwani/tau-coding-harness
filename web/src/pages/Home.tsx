@@ -144,7 +144,7 @@ function Home() {
 
   return (
     <div className="h-full overflow-y-auto pt-12">
-      {/* Ambient silver field — always on. In MAX, MaxStarField layers extra
+      {/* Ambient silver field: always on. In MAX, MaxStarField layers extra
           brand-colored stars on top of this same field so the base look stays
           consistent and MAX just adds a brand sparkle. */}
       {!reduceMotion && (

@@ -8,8 +8,8 @@
  * exactly, so it goes into the inspector's prompt box as one editable
  * sentence, and the user hits Enter.
  *
- * Note what is *not* here. The prose describing the element — file, line, tag,
- * current text and classes — is written by the API
+ * Note what is *not* here. The prose describing the element: file, line, tag,
+ * current text and classes: is written by the API
  * (`server/src/api/lib/visualContext.ts`) and travels beside the message
  * rather than inside it. That is what keeps the chat bubble to the sentence
  * the user actually typed, and it means model-facing wording lives in one
@@ -23,7 +23,7 @@ import type { VisualEditOpInput } from "@/src/stores/useProjectStore";
  * Which value the server declined to rewrite, in the vocabulary the API's
  * `visualContext` expects. Load-bearing: told only "apply `bg-red-500`", the
  * agent bolts a literal class onto an element whose `className` is built
- * elsewhere — the wrong fix, and one that looks right.
+ * elsewhere: the wrong fix, and one that looks right.
  */
 export type ComputedValue = "text" | "className" | "attribute";
 
@@ -38,7 +38,7 @@ export function computedValueFor(op: VisualEditOpInput): ComputedValue {
  *
  * Deliberately states the *intent* ("change the text to X") rather than the
  * mechanism, because the reason it was refused is that the mechanism doesn't
- * apply — the text comes from a variable, the classes from `cn(...)`.
+ * apply: the text comes from a variable, the classes from `cn(...)`.
  */
 export function describeRefusedEdit(op: VisualEditOpInput): string {
   if (op.kind === "text") {

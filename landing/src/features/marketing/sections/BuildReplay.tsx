@@ -22,7 +22,7 @@ import {
 } from "./replay/reduce";
 
 /**
- * §4.4 — "This is a real run, replayed."
+ * §4.4: "This is a real run, replayed."
  *
  * The highest-value band on the page, and the only one whose content we are not
  * allowed to write: it plays back a genuine recorded job. If no recording has
@@ -180,7 +180,7 @@ export function BuildReplay() {
 
   if (!hasRecording) return null;
 
-  // Before anyone has pressed play — and always, under reduced motion — the
+  // Before anyone has pressed play: and always, under reduced motion: the
   // band shows its finished frame rather than three empty panes.
   const shown = started ? view : finalView;
   const shownTime = started ? time : duration;
@@ -211,11 +211,11 @@ export function BuildReplay() {
           See a real build
         </p>
         <h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-          This is a real run, replayed.
+          Watch a real app come together.
         </h2>
         <p className="mt-4 font-mono text-xs text-silver-600">
-          {replay.meta.turns} turns · {replay.meta.files} files ·{" "}
-          {formatDuration(duration)} · {replay.meta.effort} effort
+          {replay.meta.files} files · {formatDuration(duration)} · built with{" "}
+          {replay.meta.effort.toLowerCase()} effort
         </p>
       </ScrollReveal>
 
@@ -295,7 +295,7 @@ export function BuildReplay() {
             </ul>
             <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-lg bg-space-void p-3">
               <p className="mb-2 font-mono text-[0.7rem] text-silver-400">
-                {shown.activeFile ?? "—"}
+                {shown.activeFile ?? "-"}
               </p>
               <pre className="overflow-hidden whitespace-pre-wrap break-all font-mono text-[0.7rem] leading-relaxed text-silver-600">
                 <Typewriter text={codeBody} active={started} />
@@ -319,7 +319,7 @@ export function BuildReplay() {
               {shown.previewUrl ? (
                 <PreviewReveal image={replay.meta.previewImage} />
               ) : (
-                <ChatLoader text="Waiting for the sandbox" />
+                <ChatLoader text="Getting the preview ready" />
               )}
             </div>
           </div>
@@ -413,7 +413,7 @@ function PreviewReveal({ image }: { image: string | null }) {
   if (!image) {
     return (
       <p className="px-4 text-center text-xs text-silver-600">
-        Live on a sandbox URL
+        Your app appears here as it comes to life
       </p>
     );
   }
@@ -421,7 +421,7 @@ function PreviewReveal({ image }: { image: string | null }) {
   return (
     <img
       src={image}
-      alt="The finished app running in its sandbox"
+      alt="The finished app running in Tau"
       loading="lazy"
       className="size-full object-cover object-top transition-[filter,opacity] duration-[400ms]"
       style={{

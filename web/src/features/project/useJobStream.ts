@@ -26,7 +26,7 @@ export function seedWatermark(jobId: string, index: number): void {
  * into the store. Handles:
  *   - resume-on-reconnect: the `lastEventIndex` query param makes the server
  *     replay only events newer than the highest `index` seen (no duplicates),
- *   - access-token expiry (refresh + reconnect) — we drive reconnection
+ *   - access-token expiry (refresh + reconnect): we drive reconnection
  *     ourselves instead of relying on EventSource auto-retry, which would keep
  *     reusing an expired token,
  *   - exponential backoff on transient drops.
@@ -130,7 +130,7 @@ export function useJobStream(): void {
         source?.close();
         if (disposed) return;
         // Terminal events clear currentJobId → the effect re-runs with no job
-        // and disposes; if we're still here, the drop was unexpected — retry.
+        // and disposes; if we're still here, the drop was unexpected: retry.
         if (useProjectStore.getState().currentJobId !== jobId) return;
         scheduleReconnect();
       };

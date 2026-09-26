@@ -1,6 +1,6 @@
 ---
 title: Plans
-description: Free versus PRO — what each includes, and what upgrading actually changes.
+description: Free versus PRO: what each includes, and what upgrading actually changes.
 section: billing
 order: 2
 updated: 2026-07-30
@@ -20,7 +20,7 @@ Two plans. Both have every feature; they differ in credits and project count.
 
 ## What Free actually gets you
 
-Everything. There is no feature behind the paywall — no locked effort tier, no
+Everything. There is no feature behind the paywall: no locked effort tier, no
 disabled gateway, no watermark.
 
 What you get less of is credits and project slots. 300 credits is enough for
@@ -35,7 +35,7 @@ experiments.
 ## What PRO changes
 
 **5,000 credits on your billing date, every cycle.** These are *plan* credits and
-they expire at the end of the cycle — they do not roll over. That is what makes
+they expire at the end of the cycle: they do not roll over. That is what makes
 them cheap per credit.
 
 **Unlimited projects.** No 3-project cap.
@@ -49,7 +49,7 @@ Everything else is identical, because everything else was already available.
 Upgrade when you are regularly out of credits or regularly deleting a project to
 make room. Those are the only two things the plan changes.
 
-If you build in bursts — a lot one week, nothing the next — [credit
+If you build in bursts: a lot one week, nothing the next: [credit
 packs](/docs/billing/credit-packs) are the better fit. Pack credits never expire;
 plan credits do.
 
@@ -73,7 +73,7 @@ stay until the cycle ends; they expire then, as always.
 ## Project cap on downgrade
 
 If you hold more than 3 projects and stop being PRO, the cap applies to
-*creating* new ones — existing projects are not deleted. You will not be able to
+*creating* new ones: existing projects are not deleted. You will not be able to
 create another until you are back under 3.
 
 > [!TIP]

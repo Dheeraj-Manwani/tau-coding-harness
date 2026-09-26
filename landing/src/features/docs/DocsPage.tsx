@@ -16,7 +16,7 @@ import { sectionBySlug } from "./sections";
  *
  * The body is fetched per page rather than bundled with the shell, so reading
  * one doc never downloads forty. While it is in flight the page keeps its
- * chrome — breadcrumb, title, meta line — and only the body shows a loader:
+ * chrome: breadcrumb, title, meta line: and only the body shows a loader:
  * the header is known from the nav index before the markdown arrives, so there
  * is nothing to wait for and nothing to shift.
  */
@@ -27,7 +27,7 @@ export function DocsPage() {
   /**
    * The loaded body is stored with the key it belongs to, so navigating to
    * another page discards the previous one by derivation rather than by an
-   * effect that clears state — which would render the old doc's body under the
+   * effect that clears state: which would render the old doc's body under the
    * new doc's title for a frame.
    */
   const [loaded, setLoaded] = useState<{

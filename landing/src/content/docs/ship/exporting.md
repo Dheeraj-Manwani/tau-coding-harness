@@ -1,6 +1,6 @@
 ---
 title: Exporting your code
-description: The one route out today is GitHub. There is no ZIP download — here is what to do.
+description: The one route out today is GitHub. There is no ZIP download: here is what to do.
 section: ship
 order: 3
 updated: 2026-07-30
@@ -42,7 +42,7 @@ in the repo. If your app needs a `.env`, recreate it. See
 
 **The AI gateway variables.** If tau wired AI into your app, it set `TAU_AI_URL`
 and `TAU_API_KEY` in the sandbox. Those are environment variables, not files in
-your repo — set them on whatever host you deploy to. See
+your repo: set them on whatever host you deploy to. See
 [API keys](/docs/ai/api-keys).
 
 **Your chat history.** The conversation stays in tau. The code is what is exported.
@@ -53,7 +53,7 @@ data directories.
 ## Before you delete a project
 
 Push it first. Deleting a project is not reversible and there are no
-checkpoints — a project you have not pushed exists only inside tau.
+checkpoints: a project you have not pushed exists only inside tau.
 
 > [!WARNING]
 > This is the one irreversible action in tau. Push, then delete.

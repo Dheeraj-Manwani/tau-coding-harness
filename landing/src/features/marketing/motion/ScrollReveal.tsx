@@ -18,7 +18,7 @@ interface ScrollRevealProps extends DivProps {
   /** Seconds to wait after the element enters view. */
   delay?: number;
   /**
-   * Set when this element is a child of a `<Stagger>` — the parent then owns
+   * Set when this element is a child of a `<Stagger>`: the parent then owns
    * the trigger and this one only supplies the variants.
    */
   asChildOfStagger?: boolean;

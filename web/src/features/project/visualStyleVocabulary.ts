@@ -8,7 +8,7 @@
  * Two rules:
  *
  *  1. **Theme tokens before raw colours.** `bg-primary` keeps the generated app
- *     coherent — restyle the theme later and the element follows. `bg-red-500`
+ *     coherent: restyle the theme later and the element follows. `bg-red-500`
  *     is a one-off that quietly breaks that. Tokens are offered first and are
  *     what the UI shows by default.
  *  2. **One choice per group.** Applying an option just adds its class; the
@@ -159,7 +159,7 @@ export function activeOption(
  *
  * Desktop maps to the *base* class rather than `lg:` deliberately. The device
  * toggle defaults to desktop, so anything else would silently turn every
- * ordinary styling click into a breakpoint-scoped one — an element restyled at
+ * ordinary styling click into a breakpoint-scoped one: an element restyled at
  * the default view would then look unstyled on a phone. Base is also what the
  * panel wrote before this existed, so the common path is unchanged.
  *
@@ -176,7 +176,7 @@ export const DEVICE_VARIANT: Record<string, string> = {
 /** How each frame's variant is described to the user. */
 export const VARIANT_SCOPE: Record<string, string> = {
   "max-md:": "phone widths only (under 768px)",
-  "md:": "768px and up — tablet and desktop",
+  "md:": "768px and up: tablet and desktop",
 };
 
 export interface ResolvedOption {
@@ -186,7 +186,7 @@ export interface ResolvedOption {
    * written for this breakpoint.
    *
    * The distinction is the whole feature. At `md:` an element with only `p-4`
-   * really is padded 4 — but that is inherited, and changing it must add
+   * really is padded 4: but that is inherited, and changing it must add
    * `md:p-6` rather than rewrite `p-4` and silently move the phone layout too.
    */
   inherited: boolean;

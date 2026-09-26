@@ -1,4 +1,4 @@
-# tau — https://tauai.pro
+# tau: https://tauai.pro
 #
 # The public surfaces are the landing page, /pricing, /changelog, /docs and the
 # legal pages. Auth and the product live on app.tauai.pro.

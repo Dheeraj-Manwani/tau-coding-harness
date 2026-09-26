@@ -10,9 +10,9 @@
  *
  * Getting the two arguments:
  *   • Start a build in the web app.
- *   • jobId — the network tab's `/jobs/<id>/stream` request, or the `jobId` in
+ *   • jobId: the network tab's `/jobs/<id>/stream` request, or the `jobId` in
  *     the response to `POST /project/init`.
- *   • token — in the browser console on the app, the in-memory access token is
+ *   • token: in the browser console on the app, the in-memory access token is
  *     what the stream URL already carries as `?token=`. Copy it from that URL.
  *
  * Options:
@@ -22,7 +22,7 @@
  *   --effort <tier> LOW | HIGH | MAX. Defaults to HIGH.
  *
  * What it scrubs: every id that identifies a real user, project, job or
- * sandbox — tool-call ids, preview hostnames, and any absolute sandbox paths.
+ * sandbox: tool-call ids, preview hostnames, and any absolute sandbox paths.
  * What it keeps: the shape and the timing, because those are the point.
  */
 

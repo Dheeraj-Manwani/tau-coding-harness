@@ -3,7 +3,7 @@ import { useEffect } from "react";
 /**
  * Per-route `<title>`, description, canonical and Open Graph tags.
  *
- * This is a client-rendered SPA, so these tags exist only after hydration —
+ * This is a client-rendered SPA, so these tags exist only after hydration -
  * crawlers that run JS will see them, ones that don't won't. Phase 7's
  * prerender step is what turns this hook into something a search engine can
  * actually read; until then it is still what makes a pasted link render a

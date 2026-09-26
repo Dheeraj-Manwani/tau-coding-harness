@@ -10,7 +10,7 @@ export interface AttachmentSummary {
   mimeType: string;
   sizeBytes: number;
   extractionError: string | null;
-  /** Chip preview text — populated for PASTED only. */
+  /** Chip preview text: populated for PASTED only. */
   preview: string | null;
   lineCount: number | null;
 }
@@ -18,7 +18,7 @@ export interface AttachmentSummary {
 /** A chip in the composer: the server summary plus client-only upload state. */
 export interface AttachmentDraft extends Omit<AttachmentSummary, "id"> {
   /** Stable identity assigned when the file is picked. Removal, patching and
-   *  React keys all use this — `id` arrives later and would race the upload. */
+   *  React keys all use this: `id` arrives later and would race the upload. */
   key: string;
   /** Server row id; null until the sign call returns. */
   id: string | null;

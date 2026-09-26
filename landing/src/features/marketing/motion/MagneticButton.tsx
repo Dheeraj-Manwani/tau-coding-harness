@@ -14,7 +14,7 @@ import { useCosmos } from "./cosmos";
  * tracks the pointer inside it, and clicking pops a particle burst out of the
  * shared starfield at the click point.
  *
- * Touch devices get none of that — there is no hover to anticipate — so they
+ * Touch devices get none of that: there is no hover to anticipate: so they
  * get a plain press-scale, which is the affordance that actually works with a
  * finger.
  *

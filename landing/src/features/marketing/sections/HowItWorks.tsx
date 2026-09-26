@@ -8,7 +8,7 @@ import { LightningArc } from "@/src/features/marketing/motion/LightningArc";
 import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
 
 /**
- * §4.3 — "How it works": four stages strung along a flight path.
+ * §4.3: "How it works": four stages strung along a flight path.
  *
  * The spine is a single `<path>` whose `d` is generated from the section's
  * *measured* box rather than a fixed viewBox. That is the detail that makes it
@@ -17,7 +17,7 @@ import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
  * coordinate system at every breakpoint.
  *
  * Scroll drives everything. The path draws itself, the comet sits at the
- * drawing tip, and each node lights as the comet reaches it — the user is
+ * drawing tip, and each node lights as the comet reaches it: the user is
  * flying the trajectory, not watching a video of it.
  */
 
@@ -29,24 +29,24 @@ interface Waypoint {
 
 const WAYPOINTS: Waypoint[] = [
   {
-    title: "Prompt",
-    copy: "You describe the app. Attach screenshots, PDFs, or paste a spec.",
-    detail: "Attachments · effort tier",
+    title: "Share your idea",
+    copy: "Tell Tau what you want to make. You can also share a picture or document.",
+    detail: "Start with your idea",
   },
   {
-    title: "Plan",
-    copy: "Tau writes a todo list before it writes code — and shows it to you.",
-    detail: "create_plan · add_todos · update_todos",
+    title: "See the steps",
+    copy: "Tau turns your idea into a clear plan and shows you what happens next.",
+    detail: "A simple step-by-step plan",
   },
   {
-    title: "Build",
-    copy: "An agent works in a real Linux sandbox: reads, writes, edits, runs commands, searches the web, installs packages.",
-    detail: "read · create · edit · run_command · web_search",
+    title: "Watch it come together",
+    copy: "Tau creates your app while you follow the progress from start to finish.",
+    detail: "Your idea becomes a working app",
   },
   {
-    title: "Preview",
-    copy: "The app boots on a live URL inside the sandbox. Iterate by just… saying what to change.",
-    detail: "wait_for_port · preview_ready",
+    title: "Try it and improve it",
+    copy: "Open your app, try it, and ask for changes in everyday language.",
+    detail: "Keep improving it by chatting",
   },
 ];
 
@@ -85,7 +85,7 @@ interface Point {
  *
  * Needed because the segments are not the same length: the first and last run
  * half a row, and the weave adds horizontal travel that varies per segment.
- * Assuming uniform fractions would light each waypoint at the wrong moment —
+ * Assuming uniform fractions would light each waypoint at the wrong moment -
  * the comet would visibly pass a node before, or after, it flashed.
  */
 function cubicLength(p0: Point, c1: Point, c2: Point, p3: Point): number {
@@ -150,7 +150,7 @@ export function HowItWorks() {
   const trackRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
-  // Stable handles for the one bolt on the page — Build → Preview.
+  // Stable handles for the one bolt on the page: Build → Preview.
   const buildNodeRef = useRef<HTMLDivElement | null>(null);
   const previewNodeRef = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReduceMotion();
@@ -190,7 +190,7 @@ export function HowItWorks() {
     >
       <ScrollReveal className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
-          The flight path
+          How it works
         </p>
         <h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
           Four stages, one sentence of input.
@@ -309,7 +309,7 @@ export function HowItWorks() {
       </div>
 
       {/* The "it's alive" moment: one bolt from Build to Preview, and only one
-          on the whole page at a time (§2 — lightning is punctuation). */}
+          on the whole page at a time (§2: lightning is punctuation). */}
       <LightningArc
         from={buildNodeRef}
         to={previewNodeRef}

@@ -6,7 +6,7 @@ import { ScrollReveal, Stagger } from "@/src/features/marketing/motion/ScrollRev
 import { UplinkArc } from "@/src/features/marketing/motion/UplinkArc";
 
 /**
- * §4.7 — "Push it to GitHub. Or just take it."
+ * §4.7: "Push it to GitHub. Or just take it."
  *
  * The headline claim of this band is the one worth being precise about:
  * secret-path filtering is a *hard floor*, applied before your project's own
@@ -14,22 +14,22 @@ import { UplinkArc } from "@/src/features/marketing/motion/UplinkArc";
  * that as shipped and safe to highlight, and the `.env` packet dissolving on
  * the shield is the animation that carries it.
  *
- * Note what this band does not say. There is no Deploy verb anywhere on it —
+ * Note what this band does not say. There is no Deploy verb anywhere on it -
  * §9 forbids one until deploying exists.
  */
 
 const COLUMNS = [
   {
     title: "Connect GitHub",
-    copy: "Authorise once, then push from inside the project. No tokens to paste, no CLI to install.",
+    copy: "Connect once, then send your code to GitHub right from your project. Nothing extra to install.",
   },
   {
-    title: "New PR, update a PR, or push direct",
-    copy: "Commits are built through GitHub's Git Data API — there is no git binary in the sandbox and none is needed.",
+    title: "Share it your way",
+    copy: "Start a pull request, update one you already have, or send changes straight to your project.",
   },
   {
-    title: "Secrets can't leak",
-    copy: "The tree builder filters secret paths first, as a hard floor, and only then applies your project's .gitignore. Deleting your .gitignore still cannot publish a key.",
+    title: "Your secrets stay secret",
+    copy: "Tau keeps passwords and private keys out of anything you send to GitHub.",
   },
 ];
 
@@ -76,8 +76,7 @@ export function ShipIt() {
 
       <ScrollReveal className="mt-10 text-sm text-silver-600">
         <p>
-          The agent can also open a GitHub issue for you, straight from the
-          conversation.
+          Tau can also open a GitHub issue for you, right from the conversation.
         </p>
       </ScrollReveal>
     </section>

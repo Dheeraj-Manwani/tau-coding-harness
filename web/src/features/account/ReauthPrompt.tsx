@@ -15,7 +15,7 @@ function errMessage(err: unknown, fallback: string): string {
  * "Confirm it's you" before an API key is revealed or rotated.
  *
  * Password accounts re-enter their password. Google-only accounts have no
- * password to re-enter, so they get a code by email — which proves control of
+ * password to re-enter, so they get a code by email: which proves control of
  * the address the account is bound to, without a full OAuth redirect round trip.
  */
 export function ReauthPrompt({

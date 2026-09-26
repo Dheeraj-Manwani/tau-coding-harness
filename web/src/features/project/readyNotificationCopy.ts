@@ -40,7 +40,7 @@ export function getReadyNotificationCopy(
           body: "Send another message to continue where it left off.",
         }
       : {
-          title: "Tau stopped — credits ran out",
+          title: "Tau stopped: credits ran out",
           body: "Add credits, then send another message to continue.",
         };
   }

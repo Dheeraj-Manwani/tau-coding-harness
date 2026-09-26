@@ -45,7 +45,7 @@ allotment, and a quiet month costs nothing.
 **Build most weeks?** PRO. 5,000 credits for ₹1,499 still costs less per credit than a pack,
 and it lifts the project cap.
 
-**Both?** That works — plan credits are spent before pack credits, so your
+**Both?** That works: plan credits are spent before pack credits, so your
 expiring allotment is always the one being drawn down. A pack is a reserve that
 survives the cycle.
 
@@ -54,7 +54,7 @@ survives the cycle.
 ## When a pack is the right move mid-build
 
 A build that stops because you ran out of credits has not lost anything. Buy a
-pack, then send a follow-up — the project picks up from where it stopped, same
+pack, then send a follow-up: the project picks up from where it stopped, same
 files, same sandbox if it is still alive.
 
 > [!TIP]
@@ -65,7 +65,7 @@ files, same sandbox if it is still alive.
 ## Refunds
 
 Credits are consumed as work is done. An unused pack purchase is a payment
-question, not a credit question — see [Refunds](/docs/billing/refunds).
+question, not a credit question: see [Refunds](/docs/billing/refunds).
 
 ## Next
 

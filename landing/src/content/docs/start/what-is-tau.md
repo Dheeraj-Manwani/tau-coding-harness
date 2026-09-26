@@ -1,6 +1,6 @@
 ---
 title: What is tau
-description: Tau turns a sentence into a real, running web app — planned, coded, and previewed live in a cloud sandbox.
+description: Tau turns a sentence into a real, running web app: planned, coded, and previewed live in a cloud sandbox.
 section: start
 order: 1
 updated: 2026-07-30
@@ -8,7 +8,7 @@ updated: 2026-07-30
 
 Tau turns a sentence into a running web app. You describe what you want; tau
 plans it, writes it, runs it in a secure cloud sandbox, and streams every step
-to your screen — the plan, the files, the code, and a live preview you can click.
+to your screen: the plan, the files, the code, and a live preview you can click.
 
 ## What actually happens
 
@@ -29,7 +29,7 @@ and the stream picks up where it left off.
 - **A plan before the code.** Tau writes a todo list first and shows it to you,
   ticking items off as it goes.
 - **The whole workspace.** Chat, the file tree, a real editor, and the live
-  preview — not just a finished artefact.
+  preview: not just a finished artefact.
 - **Your code.** Connect GitHub and push it to a repo you own, any time.
 
 ## What tau does not do yet
@@ -39,5 +39,5 @@ the sandbox; publishing is your call, from your own GitHub repo.
 
 ## Where to go next
 
-Pick an effort tier that matches the job — see [Effort tiers](/docs/build/effort-tiers) —
+Pick an effort tier that matches the job: see [Effort tiers](/docs/build/effort-tiers) -
 and read [Deploying](/docs/ship/deploying) before you plan a launch.

@@ -3,7 +3,7 @@ import { env } from "@/src/lib/env";
 
 /**
  * Starts Google OAuth by navigating to the API's redirect endpoint. This must be
- * a full-page navigation (not fetch/XHR), so it's a plain anchor — the API then
+ * a full-page navigation (not fetch/XHR), so it's a plain anchor: the API then
  * 302s back to /auth/callback with the access token in the URL fragment.
  */
 export function GoogleButton({

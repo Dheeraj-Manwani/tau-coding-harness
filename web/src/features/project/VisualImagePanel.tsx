@@ -25,14 +25,14 @@ const IMAGE_EXT = /\.(png|jpe?g|webp|gif|avif|svg|ico|bmp)$/i;
 const IMPORT_COPY: Record<AssetImportRefusal, string> = {
   bad_url: "That doesn't look like a web address.",
   blocked_host: "That address can't be reached from here.",
-  fetch_failed: "Couldn't download that image — check the link.",
+  fetch_failed: "Couldn't download that image: check the link.",
   not_an_image: "That link isn't an image.",
   too_large: "That image is too large (10 MB max).",
   empty: "That link returned an empty file.",
 };
 
 /**
- * Swap the picture behind a selected `<img>` — plan §6 Phase 6.
+ * Swap the picture behind a selected `<img>`: plan §6 Phase 6.
  *
  * Two ways in, and they end at the same place:
  *
@@ -85,7 +85,7 @@ export function VisualImagePanel({
   const applySrc = (src: string) => {
     if (busy) return;
     // The runtime reports the browser-resolved absolute URL, so it can't be the
-    // undo value — but the previous *source* text is what we'd need and we don't
+    // undo value: but the previous *source* text is what we'd need and we don't
     // have it. Deriving it from the resolved URL is right whenever the image is
     // one of ours, which is every image this panel can set.
     const previous = toProjectSrc(selection.src);
@@ -102,7 +102,7 @@ export function VisualImagePanel({
             if (data.reason === "dynamic_attribute") {
               const op = { kind: "attr", name: "src", value: src } as const;
               prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
-              toast("tau can do this — the request is ready above.", {
+              toast("tau can do this: the request is ready above.", {
                 icon: "💬",
               });
             } else {
@@ -129,7 +129,7 @@ export function VisualImagePanel({
             toast.error(
               err instanceof ApiError && err.message === "generation in progress"
                 ? "Can't edit while tau is building."
-                : "This element moved — select it again.",
+                : "This element moved: select it again.",
             );
             setSelection(null);
           } else {
@@ -157,7 +157,7 @@ export function VisualImagePanel({
           const status = err instanceof ApiError ? err.status : 0;
           toast.error(
             status === 429
-              ? "Too many image imports — try again shortly."
+              ? "Too many image imports: try again shortly."
               : "Couldn't import that image.",
           );
         },

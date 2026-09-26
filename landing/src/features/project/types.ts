@@ -19,7 +19,7 @@ import type { MessageAttachment } from "./attachment-types";
  * and this stays a description of what was clicked.
  */
 export interface VisualMessageContext {
-  /** `src/App.tsx:42:7` — path, 1-based line, 1-based column. */
+  /** `src/App.tsx:42:7`: path, 1-based line, 1-based column. */
   loc: string;
   tagName: string;
   className?: string;
@@ -35,7 +35,7 @@ export interface VisualMessageContext {
  * reading Vite's error overlay. Mirrors `buildErrorSchema` in the API.
  */
 export interface PreviewBuildError {
-  /** Vite's message — plugin, reason, and the source position. */
+  /** Vite's message: plugin, reason, and the source position. */
   message: string;
   file?: string;
   /** The offending source excerpt with its caret. */
@@ -44,7 +44,7 @@ export interface PreviewBuildError {
 
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
- *  store — we keep it `unknown` here rather than over-specifying. */
+ *  store: we keep it `unknown` here rather than over-specifying. */
 export interface ProjectMessage {
   id: string;
   role: "USER" | "ASSISTANT";
@@ -102,7 +102,7 @@ export interface ProjectDetail {
   project: ProjectSummary;
   messages: ProjectMessage[];
   latestFragment: Fragment | null;
-  /** Id of a still-running job, if any — used to resume the stream on reload. */
+  /** Id of a still-running job, if any: used to resume the stream on reload. */
   activeJobId: string | null;
   activeJobEventIndex: number | null;
   jobState: {
@@ -140,12 +140,12 @@ export interface AddMessageResponse {
   jobId: string;
 }
 
-/** `GET /project/:id/preview/status` — is the live E2B sandbox reachable? */
+/** `GET /project/:id/preview/status`: is the live E2B sandbox reachable? */
 export interface PreviewStatusResponse {
   alive: boolean;
 }
 
-/** `POST /project/:id/preview/restart` — the queued provision-only job. */
+/** `POST /project/:id/preview/restart`: the queued provision-only job. */
 export interface RestartPreviewResponse {
   jobId: string;
 }
@@ -158,13 +158,13 @@ export interface ProjectTree {
 
 /** `GET /project/:id/file?path=…` response.
  *  Text files return their `content`; binary assets (images, fonts, media)
- *  return a short-lived presigned `url` to preview instead — their bytes never
+ *  return a short-lived presigned `url` to preview instead: their bytes never
  *  round-trip through the text editor. */
 export type ProjectFileResponse =
   | {
       binary?: false;
       content: string;
-      /** Hash of the content served — echoed back on save for optimistic concurrency. */
+      /** Hash of the content served: echoed back on save for optimistic concurrency. */
       contentHash: string;
     }
   | {

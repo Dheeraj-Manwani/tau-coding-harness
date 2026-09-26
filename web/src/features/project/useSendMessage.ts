@@ -1,7 +1,7 @@
 /**
  * Starting a chat turn, in one place.
  *
- * There are two senders now — the composer and the visual-edit inspector — and
+ * There are two senders now: the composer and the visual-edit inspector: and
  * a send is more than a POST: an optimistic bubble that has to be rolled back,
  * a job to start streaming, and three failure modes that each need their own
  * treatment (out of credits, too many concurrent jobs, a generation already
@@ -30,7 +30,7 @@ import type {
 } from "@/src/features/project/types";
 
 export interface SendMessageOptions {
-  /** Defaults to the shared effort choice — see `useEffortChoice`. */
+  /** Defaults to the shared effort choice: see `useEffortChoice`. */
   effort?: Effort;
   attachmentIds?: string[];
   /** Chips to render on the optimistic bubble, so an attachment-only turn
@@ -59,8 +59,8 @@ export function useSendMessage(projectId: string | undefined) {
   const canSend = Boolean(projectId) && status !== "streaming" && !isSending;
 
   /**
-   * Fire a turn. Returns false when nothing was sent — the caller is blocked,
-   * or there was nothing to send — so it can keep its draft.
+   * Fire a turn. Returns false when nothing was sent: the caller is blocked,
+   * or there was nothing to send: so it can keep its draft.
    */
   const send = (content: string, options: SendMessageOptions = {}): boolean => {
     const attachmentIds = options.attachmentIds ?? [];
@@ -77,7 +77,7 @@ export function useSendMessage(projectId: string | undefined) {
     // callbacks `mutate` takes: those belong to the mutation *observer* and are
     // dropped if the component unmounts first. The inspector clears its
     // selection the moment a send is accepted, so it is always gone before the
-    // request lands — and with `mutate` that would mean `startJob` never
+    // request lands: and with `mutate` that would mean `startJob` never
     // running, leaving an optimistic bubble above a job nothing is streaming.
     void addMessage
       .mutateAsync({
@@ -101,7 +101,7 @@ export function useSendMessage(projectId: string | undefined) {
         } else {
           toast.error(
             err instanceof ApiError && err.status === 409
-              ? "A generation is already in progress."
+              ? "Tau is already working on this project."
               : err instanceof ApiError
                 ? err.message
                 : "Couldn't send your message",

@@ -9,7 +9,7 @@ import { useCosmosScene } from "@/src/features/marketing/motion/cosmos";
  * `/changelog`).
  *
  * Unlike `AppShell` this is a normal document-flow page, not a `100svh` box
- * with an inner scroller — the parallax and the glass-on-scroll navbar both
+ * with an inner scroller: the parallax and the glass-on-scroll navbar both
  * read `window.scrollY`, which only moves if the document itself scrolls.
  */
 export function MarketingShell() {

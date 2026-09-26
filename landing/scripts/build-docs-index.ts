@@ -2,7 +2,7 @@
  * Builds the docs navigation tree, the search index, and `sitemap.xml`.
  *
  * Runs in `predev` and `prebuild`, so writing a doc is only ever adding a
- * markdown file — no code edit, no registry to keep in sync.
+ * markdown file: no code edit, no registry to keep in sync.
  *
  * Three things come out of one walk:
  *   • the nav tree (section → ordered pages), which the sidebar renders,
@@ -10,7 +10,7 @@
  *     with body text truncated so the whole thing stays small enough to fetch
  *     lazily the first time someone presses ⌘K, and
  *   • `landing/public/sitemap.xml`, covering static public routes plus every
- *     doc page — from the same walk, so a page can never exist without being
+ *     doc page: from the same walk, so a page can never exist without being
  *     advertised or be advertised without existing (§7).
  *
  * Both outputs are generated, and gitignored. They are build artefacts, not
@@ -48,7 +48,7 @@ interface IndexedPage {
   order: number;
   updated: string;
   headings: string[];
-  /** Truncated, markdown-stripped body — search only. */
+  /** Truncated, markdown-stripped body: search only. */
   text: string;
 }
 
@@ -232,7 +232,7 @@ const sitemapEntries = [
   ...STATIC_ROUTES.map((route) =>
     urlEntry(route.path, TODAY, route.changefreq, route.priority),
   ),
-  // Docs are the long tail and the reason the sitemap exists at all — without it
+  // Docs are the long tail and the reason the sitemap exists at all: without it
   // a client-rendered SPA's 41 doc pages are reachable only by crawling links.
   ...pages.map((page) =>
     urlEntry(page.path, lastmodOf(page), "monthly", 0.7),

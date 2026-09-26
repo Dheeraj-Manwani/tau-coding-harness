@@ -2,7 +2,7 @@
  * SHA-256 of a UTF-8 string, hex-encoded.
  *
  * Must agree byte-for-byte with the server's `sha256Hex` (api/src/lib/projectFiles.ts
- * and the worker's equivalent) — the value is sent back as `baseHash` to decide
+ * and the worker's equivalent): the value is sent back as `baseHash` to decide
  * whether a file moved underneath the editor.
  *
  * `crypto.subtle` needs a secure context; that's satisfied by https in prod and

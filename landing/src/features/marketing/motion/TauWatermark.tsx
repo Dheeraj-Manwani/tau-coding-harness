@@ -8,8 +8,8 @@ import { cn } from "@/src/lib/utils";
  * The τ mark, drawn once behind the hero headline and then left as a watermark.
  *
  * Not `tauAnimation.tsx`: that one loops a comet around the outline forever,
- * which behind a headline is a distraction. This ignites — the stroke draws
- * itself over 1.4s — and then holds still at a few percent opacity, which is
+ * which behind a headline is a distraction. This ignites: the stroke draws
+ * itself over 1.4s: and then holds still at a few percent opacity, which is
  * what a watermark should do.
  *
  * The draw is a CSS transition on `stroke-dashoffset` rather than JS, so it

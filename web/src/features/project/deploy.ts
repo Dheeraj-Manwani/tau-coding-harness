@@ -7,7 +7,7 @@ import { api } from "@/src/lib/api-client";
  * Publishing a project. Talks to `/project/:id/deploy`.
  *
  * The build itself runs as a job and streams over the normal SSE channel, so
- * there is nothing to poll here in the usual case — the store invalidates this
+ * there is nothing to poll here in the usual case: the store invalidates this
  * query when the `deploy_ready` frame lands. `refetchInterval` covers only the
  * case where the panel is opened while a publish started in another tab.
  */
@@ -72,7 +72,7 @@ export function usePublishProject(projectId: string | null) {
         .post<PublishResult>(`/project/${projectId}/deploy`, {})
         .then((r) => r.data),
     onSuccess: () => {
-      toast.success("Publishing — building your app");
+      toast.success("Publishing: building your app");
       void qc.invalidateQueries({
         queryKey: deployKeys.status(projectId ?? ""),
       });
@@ -90,7 +90,7 @@ function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-/** "1.2 MB" / "840 KB" — sizes here are bundles, so KB is the smallest useful unit. */
+/** "1.2 MB" / "840 KB": sizes here are bundles, so KB is the smallest useful unit. */
 export function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;

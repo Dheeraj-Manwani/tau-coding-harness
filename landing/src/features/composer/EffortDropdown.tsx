@@ -16,14 +16,14 @@ const EFFORT_OPTIONS: { value: Effort; label: string; hint?: string }[] = [
   {
     value: "MAX",
     label: "Max",
-    hint: "May use excessive tokens resulting in long response times and may hit token limits. Use sparingly for the hardest tasks.",
+    hint: "For the toughest jobs. It takes longer and can use more credits.",
   },
 ];
 
 interface EffortDropdownProps {
   effort: Effort;
   onChange: (effort: Effort) => void;
-  /** Max spend per message (display credits) per tier — shown as a cost hint. */
+  /** Max spend per message (display credits) per tier: shown as a cost hint. */
   ceilings?: Partial<Record<Effort, number>>;
 }
 
@@ -39,10 +39,10 @@ export function EffortDropdown({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          aria-label="Generation effort"
+          aria-label="How much effort Tau should use"
           className="group flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
         >
-          <span className="text-[var(--silver-600)]">Effort:</span>
+          <span className="text-[var(--silver-600)]">Pace:</span>
           {current.value === "MAX" ? (
             <MaxShimmerLabel className="font-semibold" />
           ) : (

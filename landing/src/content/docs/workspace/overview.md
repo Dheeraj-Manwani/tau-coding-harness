@@ -26,7 +26,7 @@ cancel a job, and answer a question the agent asks.
 
 ## File tree
 
-Every file in your project, as it lands. Not a summary — the actual tree from the
+Every file in your project, as it lands. Not a summary: the actual tree from the
 sandbox, which is also what gets pushed to GitHub.
 
 ## Code editor
@@ -47,7 +47,7 @@ When the dev server answers on its port, this fills in.
 ## Why all four
 
 An agent that hands you a finished artefact is asking you to trust it. Most of
-the time that trust is misplaced in small ways — a file you would have named
+the time that trust is misplaced in small ways: a file you would have named
 differently, a dependency you did not want, a component that works but not the
 way you meant.
 
@@ -57,7 +57,7 @@ it precisely enough that tau fixes it in one turn instead of three.
 
 > [!NOTE]
 > The mobile app has chat, preview and everything around a build, but
-> deliberately not the file tree or the editor — those want a keyboard. See
+> deliberately not the file tree or the editor: those want a keyboard. See
 > [Mobile parity](/docs/mobile/parity).
 
 ## Projects

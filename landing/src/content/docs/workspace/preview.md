@@ -1,6 +1,6 @@
 ---
 title: Preview
-description: Your app running on a live URL — the sandbox lifecycle, Start preview, and why a URL can stop working.
+description: Your app running on a live URL: the sandbox lifecycle, Start preview, and why a URL can stop working.
 section: workspace
 order: 4
 updated: 2026-07-30
@@ -15,7 +15,7 @@ It is not a rendering of your code. It is your code, executing.
 
 During a build, tau starts your dev server and waits for it to answer on its
 port. When it does, the preview loads. If the server fails to start, tau sees
-that too — and usually fixes it, since a non-booting app is a failure it can read
+that too: and usually fixes it, since a non-booting app is a failure it can read
 the error from.
 
 ## Sandboxes are not permanent
@@ -23,7 +23,7 @@ the error from.
 A sandbox is a real Linux machine provisioned for your project, and it does not
 live forever. Idle ones go away.
 
-When that happens the preview URL stops working. Your **code is unaffected** —
+When that happens the preview URL stops working. Your **code is unaffected** -
 files are stored durably and independently of any sandbox.
 
 ## Start preview
@@ -36,13 +36,13 @@ agent:
 3. Install and start the dev server.
 4. Hand back a fresh URL.
 
-This is a job like any other, so you will see it in the chat — but it is not an
+This is a job like any other, so you will see it in the chat: but it is not an
 agent run. It is much cheaper: no model is thinking, it is just bringing a
 machine up.
 
 > [!TIP]
 > A dead preview is the normal case for a project you have not opened in a while.
-> Press **Start preview** rather than re-prompting — re-prompting spends credits
+> Press **Start preview** rather than re-prompting: re-prompting spends credits
 > on an agent you did not need.
 
 ## Why a URL stops working
@@ -56,7 +56,7 @@ machine up.
 
 ## Sharing a preview URL
 
-Don't, for anything that matters. A sandbox URL is temporary by nature — it will
+Don't, for anything that matters. A sandbox URL is temporary by nature: it will
 stop working, possibly within the hour, and it is not a production address.
 
 To share something durable, push to GitHub and deploy it. See
@@ -73,7 +73,7 @@ recognisable at a glance.
 The sandbox lifecycle is not fully modelled: some intermediate states exist in
 the schema and are never written, and sandboxes can leak rather than being
 reclaimed on a schedule. This is a tau-side operational issue, not something you
-need to manage — the user-visible symptom is only ever a preview URL that needs
+need to manage: the user-visible symptom is only ever a preview URL that needs
 **Start preview**.
 
 ## Next

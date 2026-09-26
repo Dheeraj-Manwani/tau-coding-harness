@@ -39,21 +39,21 @@ export default function PrivacyPage() {
       <Section title="2. Information we collect">
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <b>Account data</b> — email address and hashed password when you
+            <b>Account data</b>: email address and hashed password when you
             create an account, or your Google profile when you sign in with
             Google OAuth.
           </li>
           <li>
-            <b>Usage data</b> — the prompts you submit, the projects and files
+            <b>Usage data</b>: the prompts you submit, the projects and files
             generated for you, and AI token usage per job.
           </li>
           <li>
-            <b>Billing data</b> — subscription status and credit balance. Payment
+            <b>Billing data</b>: subscription status and credit balance. Payment
             card details are handled entirely by Razorpay and are never stored on
             our servers.
           </li>
           <li>
-            <b>Log data</b> — IP address, browser type, pages visited, and error
+            <b>Log data</b>: IP address, browser type, pages visited, and error
             reports collected automatically.
           </li>
         </ul>

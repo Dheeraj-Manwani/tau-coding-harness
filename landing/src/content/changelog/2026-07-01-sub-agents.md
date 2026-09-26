@@ -12,7 +12,7 @@ date: 2026-07-01
   **verifier** that checks changes compile and behave. They report; the main agent
   applies the findings.
 
-  The isolation is the point — a debugger churning through logs does not fill the
+  The isolation is the point: a debugger churning through logs does not fill the
   main conversation with them.
 - **`ask_user`.** When the agent hits a decision it should not make on your behalf,
   it stops and asks instead of guessing. The job waits, costs nothing while it

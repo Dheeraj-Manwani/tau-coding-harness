@@ -58,7 +58,7 @@ describe("empty preview state", () => {
         interruptedForCredits: true,
       }),
     ).toMatchObject({
-      title: "Build paused — out of credits",
+      title: "Build paused: out of credits",
       action: "add_credits",
       animated: false,
     });

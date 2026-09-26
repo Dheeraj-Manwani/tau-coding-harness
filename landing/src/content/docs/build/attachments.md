@@ -1,6 +1,6 @@
 ---
 title: Attachments
-description: Images, PDFs and pasted content in the composer — what tau does with them, the size limits, and what mobile omits.
+description: Images, PDFs and pasted content in the composer: what tau does with them, the size limits, and what mobile omits.
 section: build
 order: 5
 updated: 2026-07-30
@@ -12,9 +12,9 @@ than a spec you retype.
 
 ## What you can attach
 
-- **Images** — screenshots, mockups, photos of a whiteboard.
-- **Documents** — PDFs and text files.
-- **Pasted content** — paste a table, a log, or a block of text straight into the
+- **Images**: screenshots, mockups, photos of a whiteboard.
+- **Documents**: PDFs and text files.
+- **Pasted content**: paste a table, a log, or a block of text straight into the
   composer and it becomes an attachment instead of a wall of prompt.
 
 ## Limits
@@ -31,7 +31,7 @@ rather than silently truncated.
 ## What happens to them
 
 1. The file uploads directly to storage from your browser.
-2. Tau extracts its text content — a PDF becomes text, an image is described.
+2. Tau extracts its text content: a PDF becomes text, an image is described.
 3. You see the chip go from **Extracting** to **Ready**.
 4. When you send, the extracted text is folded into the message the agent reads.
 
@@ -62,7 +62,7 @@ a picture than from a description of the picture.
 
 The mobile app supports camera, photo library, and file attachments.
 
-It deliberately does **not** support paste-to-attach — that is a web-only
+It deliberately does **not** support paste-to-attach: that is a web-only
 affordance. On mobile, paste goes into the prompt text like any other paste.
 
 ## Housekeeping
@@ -74,5 +74,5 @@ sense when you scroll back to it.
 ## Next
 
 - [Writing prompts](/docs/build/writing-prompts)
-- [Mobile parity](/docs/mobile/parity) — everything the app leaves out, and why
+- [Mobile parity](/docs/mobile/parity): everything the app leaves out, and why
 - [Limits](/docs/billing/limits)

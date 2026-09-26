@@ -9,7 +9,7 @@ import { authKeys } from "@/src/features/auth/queries";
 
 /**
  * Landing route for Google OAuth. The API redirects here with the access token
- * in the URL *fragment* (`#access_token=…`) — which never reaches a server. We
+ * in the URL *fragment* (`#access_token=…`): which never reaches a server. We
  * read it, store it in memory, scrub it from history, then resolve `me`.
  */
 function OAuthCallback() {

@@ -9,7 +9,7 @@ import { useIsVisible } from "./useRafLoop";
  * that occasionally runs down it and fades out.
  *
  * The meteor is a CSS transition on a single absolutely-positioned span rather
- * than a rAF loop — one moving element every 6-11s does not deserve a frame
+ * than a rAF loop: one moving element every 6-11s does not deserve a frame
  * budget. It only schedules itself while the divider is on screen.
  */
 

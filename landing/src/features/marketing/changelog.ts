@@ -5,8 +5,8 @@
  * `content/changelog/`, flat-scalar frontmatter, `import.meta.glob` per file.
  * Writing an entry is adding a file.
  *
- * Unlike docs, every entry renders on one page — a changelog is read by
- * scrolling, not by navigating — so this loads all of them at once. That is
+ * Unlike docs, every entry renders on one page: a changelog is read by
+ * scrolling, not by navigating: so this loads all of them at once. That is
  * affordable because entries are short and there is no per-entry route to
  * code-split against. Revisit if the corpus gets long enough that the page
  * itself becomes the cost.

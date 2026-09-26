@@ -8,22 +8,22 @@ import { Typewriter } from "@/src/features/marketing/motion/Typewriter";
 import { useIsVisible } from "@/src/features/marketing/motion/useRafLoop";
 
 /**
- * §4.8 — "Your generated app can call an LLM."
+ * §4.8: "Your generated app can call an LLM."
  *
  * Carries a **Beta** chip, and that is a deliberate decision, not decoration.
  * §13's open question #2 said to label this Beta until the end-to-end run in
  * `AI_FOR_GENERATED_APPS.md` §9 Phase A is green, and as of writing that
- * document still records "no end-to-end agent run has happened — every piece is
+ * document still records "no end-to-end agent run has happened: every piece is
  * verified alone". Every part of this ships; nothing has yet driven the whole
  * path. The chip is what makes the difference honest. Remove it when the run
  * goes green, not before.
  *
  * The code block is lifted from the shipped recipe in that same document rather
- * than written from memory — including `{ prompt }` in and `data.text` out,
+ * than written from memory: including `{ prompt }` in and `data.text` out,
  * which is the shape the gateway actually serves.
  */
 
-const SNIPPET = `// server/index.ts — inside the app tau built for you
+const SNIPPET = `// server/index.ts: inside the app tau built for you
 const res = await fetch(\`\${process.env.TAU_AI_URL}/chat\`, {
   method: 'POST',
   headers: {
@@ -37,16 +37,16 @@ const { text: summary } = await res.json()`;
 
 const FACTS = [
   {
-    title: "One credential",
-    copy: "A tau_sk_… key, encrypted at rest, rotatable with a grace window, and a daily cap you set yourself.",
+    title: "One key, handled safely",
+    copy: "Tau gives your app one protected key. You can replace it or set a daily spending limit whenever you like.",
   },
   {
-    title: "Two dialects",
-    copy: "/ai/chat and /ai/chat/stream are what your app uses — one prompt in, one string out. /v1/chat/completions is OpenAI-compatible, for pointing an existing SDK at tau from outside.",
+    title: "Easy to add",
+    copy: "Ask Tau to add AI to your app and it handles the connection for you. Existing OpenAI-style apps can connect too.",
   },
   {
-    title: "Metered separately",
-    copy: "Gateway usage bills as runtime spend and is shown apart from build spend on your billing page.",
+    title: "Clear spending",
+    copy: "Your billing page shows what you spent building and what your app spent using AI, separately.",
   },
 ];
 
@@ -63,19 +63,19 @@ export function AiGateway() {
     >
       <ScrollReveal className="text-center">
         <p className="flex items-center justify-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
-          The part nobody else does
+          AI for the apps you build
           <span className="rounded-full border border-silver-400 px-2 py-0.5 text-[0.6rem] tracking-normal text-silver-600">
             Beta
           </span>
         </p>
         <h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-          Your generated app can call an LLM.
+          Give your app a little intelligence.
           <br />
-          No SDK. No key of your own.
+          No extra account. No fiddly setup.
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-silver-600">
-          Ask tau to add AI and it wires it up: tau mints you a key, injects it
-          into the sandbox, and serves the inference itself — billed against the
+          Ask Tau to add AI and it takes care of the connection, the key, and the
+          setup. Everything is billed against the
           same credits that paid for the build.
         </p>
       </ScrollReveal>
@@ -96,11 +96,11 @@ export function AiGateway() {
           <div className="rounded-2xl border border-silver-200 bg-space-surface p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-silver-400">
-                Your gateway key
+                Your app's AI key
               </p>
               <span className="flex items-center gap-1 rounded-full border border-silver-400 px-2 py-0.5 text-[0.6rem] text-silver-600">
                 <LockIcon className="size-2.5" />
-                Requires re-auth
+                Confirm to reveal
               </span>
             </div>
             <button
@@ -114,8 +114,8 @@ export function AiGateway() {
               {revealed ? "tau_sk_live_ab12cd34" : "tau_sk_live_••••••••"}
             </button>
             <p className="mt-2 text-xs text-silver-600">
-              Rotate it any time — the old key keeps working through a grace
-              window so a running app never breaks mid-request.
+              Replace it any time. Tau keeps the old one working briefly so your
+              app does not suddenly stop.
             </p>
           </div>
 

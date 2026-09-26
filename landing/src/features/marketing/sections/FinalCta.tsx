@@ -9,11 +9,11 @@ import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
 import { useCosmos } from "@/src/features/marketing/motion/cosmos";
 
 /**
- * §4.12 — "Full burn".
+ * §4.12: "Full burn".
  *
  * The composer comes back with the border always on, and the starfield warps
- * when the CTA is hovered. Warp is used in exactly two places on the page — the
- * nav CTA and here — because a warp that fires everywhere stops meaning
+ * when the CTA is hovered. Warp is used in exactly two places on the page: the
+ * nav CTA and here: because a warp that fires everywhere stops meaning
  * "forward" and starts meaning "background".
  *
  * The headline is deliberately the same sentence as the real app's Home

@@ -13,7 +13,7 @@ import { noise2D } from "./noise";
  * a bolt lapping the MAX composer are the same phenomenon.
  *
  * Rendered into a fixed, full-viewport SVG because the two endpoints are
- * arbitrary elements anywhere on the page — there is no shared positioned
+ * arbitrary elements anywhere on the page: there is no shared positioned
  * ancestor to draw inside.
  *
  * Reduced motion renders nothing at all. A lightning strike has no meaningful
@@ -24,7 +24,7 @@ import { noise2D } from "./noise";
 const SEGMENTS = 14;
 /** Peak lateral displacement, as a fraction of the endpoint distance. */
 const AMPLITUDE = 0.12;
-/** The polyline is reseeded this often during the hold — that's the crackle. */
+/** The polyline is reseeded this often during the hold: that's the crackle. */
 const RESEED_MS = 40;
 
 const FLASH_IN_MS = 60;
@@ -38,7 +38,7 @@ interface Point {
 }
 
 /**
- * A jagged line from `a` to `b`, fat in the middle and pinned at both ends —
+ * A jagged line from `a` to `b`, fat in the middle and pinned at both ends -
  * `sin(πt)` is what keeps the ends from wandering off their anchors.
  */
 function boltPoints(a: Point, b: Point, seed: number): Point[] {

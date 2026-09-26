@@ -14,7 +14,7 @@ function messageFor(err: unknown): string {
       // server's message distinguishes them and both are actionable as-is.
       return err.message === "generation in progress"
         ? "Can't save while tau is building."
-        : "This file changed since you opened it — reopen it to get the latest.";
+        : "This file changed since you opened it: reopen it to get the latest.";
     }
     return err.message;
   }
@@ -75,7 +75,7 @@ export function useFileSave(projectId: string | undefined) {
     [flush],
   );
 
-  // Don't leave a pending autosave behind on unmount — but do let an in-flight
+  // Don't leave a pending autosave behind on unmount: but do let an in-flight
   // request finish; the mutation isn't tied to this component's lifetime.
   useEffect(() => {
     const pending = timers.current;

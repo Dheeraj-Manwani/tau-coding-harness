@@ -1,5 +1,5 @@
 ---
-title: Effort tiers — Low, High and Max
+title: Effort tiers: Low, High and Max
 date: 2026-07-09
 ---
 
@@ -14,7 +14,7 @@ One control, chosen per message, that decides how hard tau works.
 | Wall clock | 20 min | 45 min | 90 min |
 | Spend cap per build | 15 credits | 50 credits | 100 credits |
 
-Effort is **per message**, not per project — so you can build the hard part on Max
+Effort is **per message**, not per project: so you can build the hard part on Max
 and send the polish on Low. Every tier is available on every plan.
 
 → [Effort tiers](/docs/build/effort-tiers)

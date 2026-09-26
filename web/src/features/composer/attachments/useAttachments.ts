@@ -129,7 +129,7 @@ export function useAttachments(): UseAttachments {
 
   const addFiles = useCallback(
     (files: File[], userMessage?: string) => {
-      // Kept outside the state updater — StrictMode invokes it twice.
+      // Kept outside the state updater: StrictMode invokes it twice.
       const room = MAX_ATTACHMENTS - attachments.length;
       if (room <= 0) {
         toast.error(`You can attach at most ${MAX_ATTACHMENTS} items.`);

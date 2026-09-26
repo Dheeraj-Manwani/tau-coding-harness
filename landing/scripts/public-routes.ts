@@ -3,7 +3,7 @@
  *
  * Both `build-docs-index.ts` (which emits `sitemap.xml`) and `prerender.ts`
  * (which writes static HTML) read from here. Keeping the list in one module is
- * what stops the sitemap advertising a URL the prerender never rendered — the
+ * what stops the sitemap advertising a URL the prerender never rendered: the
  * failure mode being a crawler served an empty shell for a page it was told
  * about.
  *

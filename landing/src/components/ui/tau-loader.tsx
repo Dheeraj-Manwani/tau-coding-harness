@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/src/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Constants — the τ glyph is drawn as a single SVG path, stroke-animated.
+// Constants: the τ glyph is drawn as a single SVG path, stroke-animated.
 // ---------------------------------------------------------------------------
 
 const TAU_PATH_D =
@@ -72,7 +72,7 @@ function ensureKeyframes() {
 }
 
 // ---------------------------------------------------------------------------
-// TauIcon — animated SVG τ path
+// TauIcon: animated SVG τ path
 // ---------------------------------------------------------------------------
 
 interface TauIconProps {
@@ -134,14 +134,14 @@ export const TauIcon = React.forwardRef<SVGSVGElement, TauIconProps>(
 TauIcon.displayName = "TauIcon";
 
 // ---------------------------------------------------------------------------
-// ShimmerText — animated shimmer span
+// ShimmerText: animated shimmer span
 // ---------------------------------------------------------------------------
 
 interface ShimmerTextProps {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
-  /** x-offset (px) of this text within its shimmer row — keeps the travelling
+  /** x-offset (px) of this text within its shimmer row: keeps the travelling
    *  band continuous with a logo to its left. 0 when used on its own. */
   shiftPx?: number;
 }
@@ -163,7 +163,7 @@ function ShimmerText({
 }
 
 // ---------------------------------------------------------------------------
-// ShimmerLogo — the brand τ logo (logo.png) filled with the shimmer gradient
+// ShimmerLogo: the brand τ logo (logo.png) filled with the shimmer gradient
 // via a CSS mask, sweeping in sync with ShimmerText.
 // ---------------------------------------------------------------------------
 
@@ -195,11 +195,11 @@ function ShimmerLogo({
 }
 
 // ---------------------------------------------------------------------------
-// ChatLoader — inline τ + shimmer label, for the "tau is working" chat bubble.
+// ChatLoader: inline τ + shimmer label, for the "tau is working" chat bubble.
 // ---------------------------------------------------------------------------
 
 const LOGO_SIZE = 20;
-const ROW_GAP = 10; // px — must match the `gap-2.5` (0.625rem) on the row below.
+const ROW_GAP = 10; // px: must match the `gap-2.5` (0.625rem) on the row below.
 
 export function ChatLoader({
   text = "Processing",
@@ -224,7 +224,7 @@ export function ChatLoader({
 }
 
 // ---------------------------------------------------------------------------
-// TauSplash — large centered τ animation, for the empty preview pane.
+// TauSplash: large centered τ animation, for the empty preview pane.
 // ---------------------------------------------------------------------------
 
 export function TauSplash({

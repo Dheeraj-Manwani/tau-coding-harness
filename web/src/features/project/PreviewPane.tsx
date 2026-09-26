@@ -69,7 +69,7 @@ const DEVICE_WIDTH: Record<string, number> = {
 const BUILD_TIPS = [
   {
     title: "Keep your work on GitHub",
-    copy: "Use the GitHub button in the top bar to connect a repository and push your project whenever you want.",
+    copy: "Use the GitHub button in the top bar to connect your project and save your code there whenever you want.",
     icon: GithubMark,
     iconClass: "text-[var(--silver-900)]",
   },
@@ -310,7 +310,7 @@ function PreviewPlaceholder({
   );
 }
 
-/** Shown when the live sandbox has gone down — lets the user reboot it from the
+/** Shown when the live sandbox has gone down: lets the user reboot it from the
  *  persisted project files without spending a chat turn. While the restart is
  *  in flight the button itself shows the progress (no full-pane shimmer). */
 function PreviewStopped({
@@ -365,7 +365,7 @@ function PreviewStopped({
  * The bridge to the visual-edit runtime inside the preview.
  *
  * The preview is served from `https://5173-<sandboxId>.e2b.app`, a different
- * origin from this app, so there is no DOM access — postMessage is the whole
+ * origin from this app, so there is no DOM access: postMessage is the whole
  * channel. Every inbound frame is checked against the sandbox origin before it
  * is trusted: without that, any page could post a fake selection carrying an
  * arbitrary file path and we would happily open it.
@@ -451,7 +451,7 @@ function useVisualEditBridge(
    * Re-highlight an element after our own edit.
    *
    * Editing writes the sandbox, Vite pushes an HMR update, and React replaces
-   * the DOM node — taking the highlight with it. The element's source position
+   * the DOM node: taking the highlight with it. The element's source position
    * is unchanged (only its text child moved), so the runtime can find it again
    * by `loc`.
    *
@@ -495,7 +495,7 @@ function useVisualEditBridge(
  * The stack holds inverse *operations*, not file contents, so an undo runs
  * through the same endpoint and the same guards as the edit it reverses. If the
  * source has moved since (the agent rewrote the file), the server's tag check
- * rejects it — at which point the rest of the stack is stale too, so we drop it
+ * rejects it: at which point the rest of the stack is stale too, so we drop it
  * rather than let a later undo apply somewhere unintended.
  */
 function useVisualUndo(onReselect: (loc: string) => void) {
@@ -513,7 +513,7 @@ function useVisualUndo(onReselect: (loc: string) => void) {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "z" || !(e.ctrlKey || e.metaKey) || e.shiftKey) return;
 
-      // Never steal undo from a real text field — the inspector's own text box
+      // Never steal undo from a real text field: the inspector's own text box
       // included; there Ctrl+Z should undo typing.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
@@ -539,8 +539,8 @@ function useVisualUndo(onReselect: (loc: string) => void) {
             onReselect(entry.loc);
 
             // The inspector is now showing pre-undo values. Both are known
-            // exactly — a text undo restores `op.value`, and the server returns
-            // the merged class list — so correct them in place rather than
+            // exactly: a text undo restores `op.value`, and the server returns
+            // the merged class list: so correct them in place rather than
             // dropping the selection and leaving the iframe highlighting an
             // element the inspector no longer describes.
             const sel = useProjectStore.getState().visualSelection;
@@ -553,7 +553,7 @@ function useVisualUndo(onReselect: (loc: string) => void) {
           },
           onError: () => {
             clearUndo();
-            toast.error("Can't undo — the file has changed since.");
+            toast.error("Can't undo: the file has changed since.");
           },
         },
       );
@@ -569,8 +569,8 @@ function useVisualUndo(onReselect: (loc: string) => void) {
  *
  * Two stages, in the order that matches what is on screen: with an element
  * picked it drops the selection, and a second press turns the picker off. Only
- * fires when focus is in the tau page — a keypress inside the preview belongs
- * to the iframe's own runtime, which handles Escape itself — so the visible
+ * fires when focus is in the tau page: a keypress inside the preview belongs
+ * to the iframe's own runtime, which handles Escape itself: so the visible
  * "Done" button, not this, is what makes the mode reliably escapable.
  */
 function useVisualEditEscape(): void {
@@ -578,7 +578,7 @@ function useVisualEditEscape(): void {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
 
-      // Never steal Escape from a text field — the inspector's prompt box uses
+      // Never steal Escape from a text field: the inspector's prompt box uses
       // it to clear the selection, and its own handler has already run.
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
@@ -607,8 +607,8 @@ const SANDBOX_APP_DIR = "/home/user/app/";
  * Which file broke, for the banner's label.
  *
  * Path only, no line. Vite's `.file` line number frequently belongs to its own
- * bundle rather than to the user's source — the overlay in the report that
- * prompted this said `Hero.tsx:3661:23` for an eleven-line file — and a
+ * bundle rather than to the user's source: the overlay in the report that
+ * prompted this said `Hero.tsx:3661:23` for an eleven-line file: and a
  * confidently wrong line is worse than none. The agent gets the full message,
  * where the real position is.
  */
@@ -626,8 +626,8 @@ function errorLocation(error: PreviewBuildError): string | null {
  * Sending a build failure to the agent.
  *
  * Shared by the modal and the banner it collapses to, because they are two
- * presentations of one action and the interesting part — what the agent
- * actually receives — must not differ between them.
+ * presentations of one action and the interesting part: what the agent
+ * actually receives: must not differ between them.
  *
  * The whole error goes in a block the model reads and the transcript doesn't
  * (`server/src/api/lib/visualContext.ts`), so the chat bubble says "Fix the
@@ -645,8 +645,8 @@ function useFixWithTau(error: PreviewBuildError) {
     if (!canSend) return;
     const sent = send(
       where
-        ? `Fix the build error in \`${where}\` — the preview isn't compiling.`
-        : "Fix the build error — the preview isn't compiling.",
+        ? `Fix the build error in \`${where}\`: the preview isn't compiling.`
+        : "Fix the build error: the preview isn't compiling.",
       {
         buildError: {
           message: error.message,
@@ -671,7 +671,7 @@ function useFixWithTau(error: PreviewBuildError) {
  * What is behind this is Vite's error overlay: a red wall of parse output,
  * absolute sandbox paths and `node_modules` stack frames. It is accurate, and
  * to the person this product is for it is a crash. A modal is the honest shape
- * for it — the app is not running, there is nothing else to do in this pane,
+ * for it: the app is not running, there is nothing else to do in this pane,
  * and the one useful action should not be a 100px button in a strip that reads
  * like a notification.
  *
@@ -780,7 +780,7 @@ function PreviewErrorModal({ error }: { error: PreviewBuildError }) {
 /**
  * What the modal collapses to.
  *
- * Dismissing must not mean "and now there is no way to fix it" — the app is
+ * Dismissing must not mean "and now there is no way to fix it": the app is
  * still broken, and the button that repairs it has to stay somewhere. Clicking
  * the strip reopens the full dialog.
  */
@@ -825,7 +825,7 @@ function PreviewErrorBanner({ error }: { error: PreviewBuildError }) {
  * The "you are in selection mode" banner.
  *
  * Selection mode swallows clicks inside the preview, so a user who has
- * forgotten it is on experiences their own app as broken — and until now the
+ * forgotten it is on experiences their own app as broken: and until now the
  * only way out was a 28px icon in the toolbar above, lit in a colour that
  * reads as decoration. This says what is happening and offers the way out in
  * the place the user is already looking. The toolbar toggle is unchanged and
@@ -857,22 +857,22 @@ function VisualEditBanner() {
 /**
  * Human copy for each reason the server can decline a deterministic edit.
  *
- * The three `dynamic_*` reasons are handled before they get here — each caller
- * turns them into a staged request in the prompt box instead — but the map is
+ * The three `dynamic_*` reasons are handled before they get here: each caller
+ * turns them into a staged request in the prompt box instead: but the map is
  * exhaustive over `VisualEditRefusal` on purpose, so a new reason has to be
  * given copy rather than silently falling through to `undefined`.
  */
 const REFUSAL_COPY: Record<VisualEditRefusal, string> = {
   dynamic_children:
-    "This text comes from code — ask tau to change it in the box above.",
+    "This text comes from code: ask tau to change it in the box above.",
   empty_value: "Text can't be empty.",
   multiline_value: "Keep it to a single line.",
-  bad_loc: "Couldn't locate this element — try selecting it again.",
+  bad_loc: "Couldn't locate this element: try selecting it again.",
   dynamic_classname:
-    "This element's styles are set in code — ask tau in the box above.",
+    "This element's styles are set in code: ask tau in the box above.",
   invalid_class: "That style isn't supported.",
   dynamic_attribute:
-    "This image's source is set in code — ask tau in the box above.",
+    "This image's source is set in code: ask tau in the box above.",
   invalid_attr_value: "That isn't a usable image address.",
 };
 
@@ -888,7 +888,7 @@ function autosize(el: HTMLTextAreaElement | null): void {
  *
  * This is what a selection is *for*. The deterministic editor below covers
  * text, seven style groups and image swaps; everything else anyone wants to do
- * to an element — "make this a dropdown", "center these cards" — only the agent
+ * to an element: "make this a dropdown", "center these cards": only the agent
  * can do, and until now the selection was thrown away before it could help.
  *
  * The box is autofocused on every new selection, so the whole interaction is
@@ -904,14 +904,14 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
 
   const [draft, setDraft] = useState("");
   // Which value the deterministic path refused, when this draft came from one.
-  // A fact about the element, not part of the request — so it travels in the
+  // A fact about the element, not part of the request: so it travels in the
   // context rather than in what the user sees.
   const [computed, setComputed] = useState<ComputedValue | undefined>(
     undefined,
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // A new element was picked — empty box, and the old refusal no longer
+  // A new element was picked: empty box, and the old refusal no longer
   // describes anything.
   const [lastLoc, setLastLoc] = useState(selection.loc);
   if (lastLoc !== selection.loc) {
@@ -925,7 +925,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
   }, [selection.loc]);
 
   // After the value has actually been written, not during the event that
-  // changed it — `scrollHeight` before the commit describes the old content.
+  // changed it: `scrollHeight` before the commit describes the old content.
   useEffect(() => {
     autosize(inputRef.current);
   }, [draft]);
@@ -957,7 +957,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
 
     // Only the user's own words go in the message. Everything the agent needs
     // to find the element travels beside it, and the API turns that into a
-    // block the model reads and the transcript never shows — so the bubble
+    // block the model reads and the transcript never shows: so the bubble
     // stays the sentence they typed. doc/VISUAL_EDIT_PROMPTING.md §7.
     const sent = send(request, {
       visualContext: {
@@ -976,7 +976,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
 
     setChatOpen(true);
     // The job is about to rewrite this file, so every source position we are
-    // holding is about to be stale — this selection and the whole undo stack
+    // holding is about to be stale: this selection and the whole undo stack
     // alike. Same reasoning as the 409 path in VISUAL_EDIT_PLAN.md §6 Phase 4.
     clearUndo();
     setSelection(null);
@@ -1004,7 +1004,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
             setSelection(null);
           }
           // The in-iframe runtime listens for Escape too, and Ctrl+Z is the
-          // visual-edit undo — neither should fire while this box has focus.
+          // visual-edit undo: neither should fire while this box has focus.
           e.stopPropagation();
         }}
         aria-label="Ask tau about this element"
@@ -1044,7 +1044,7 @@ function TextEditor({
 
   const [draft, setDraft] = useState(selection.text);
 
-  // A new element was picked — show its text, not the previous one's.
+  // A new element was picked: show its text, not the previous one's.
   const [lastLoc, setLastLoc] = useState(selection.loc);
   if (lastLoc !== selection.loc) {
     setLastLoc(selection.loc);
@@ -1081,13 +1081,13 @@ function TextEditor({
 
           setDraft(selection.text);
 
-          // Not something we can do deterministically — write the request into
+          // Not something we can do deterministically: write the request into
           // the prompt box directly above, where the user can edit it and hit
           // Enter, rather than leaving them at a dead end.
           if (data.reason === "dynamic_children") {
             const op = { kind: "text", value: draft } as const;
             prefillVisualPrompt(describeRefusedEdit(op), computedValueFor(op));
-            toast("tau can edit this — the request is ready above.", {
+            toast("tau can edit this: the request is ready above.", {
               icon: "💬",
             });
             return;
@@ -1101,7 +1101,7 @@ function TextEditor({
               err instanceof ApiError &&
                 err.message === "generation in progress"
                 ? "Can't edit while tau is building."
-                : "This element moved — select it again.",
+                : "This element moved: select it again.",
             );
             setSelection(null);
           } else {
@@ -1162,7 +1162,7 @@ function TextEditor({
  * to a dead end for everything except a colour swap.
  *
  * `manualPanelOpen` lives in the store rather than here because it is sticky
- * for the session — someone doing a styling pass clicks it once, not once per
+ * for the session: someone doing a styling pass clicks it once, not once per
  * element.
  */
 function VisualInspector({
@@ -1185,19 +1185,19 @@ function VisualInspector({
 
   const path = locToPath(selection.loc);
   // The tagger emits paths relative to the app root, which is the same key
-  // space the file manifest uses — but a file the agent has not persisted yet
+  // space the file manifest uses: but a file the agent has not persisted yet
   // won't be there, and opening a tab for it would render an empty editor.
   const known = Boolean(files[path]);
 
   return (
     <div className="absolute inset-x-0 bottom-0 bg-[var(--space-surface)]">
-      {/* One source line, many rendered nodes — say so plainly rather than
+      {/* One source line, many rendered nodes: say so plainly rather than
           letting the user discover it by changing six cards at once. */}
       {selection.siblingCount > 1 && (
         <div className="flex items-center gap-1.5 border-t border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600">
           <LayersIcon className="size-3 shrink-0" />
           This element is rendered {selection.siblingCount} times from one place
-          in the code — a change here applies to all {selection.siblingCount}.
+          in the code: a change here applies to all {selection.siblingCount}.
         </div>
       )}
 
@@ -1212,7 +1212,7 @@ function VisualInspector({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-1.5 text-xs">
             <span
               className="shrink-0 text-[11px] text-[var(--silver-600)]"
-              title="Applied straight to the source — no model call, no credits"
+              title="Changed instantly, with no credits used"
             >
               Edit directly · free
             </span>
@@ -1287,7 +1287,7 @@ function VisualInspector({
               type="button"
               onClick={() => setManualOpen(!manualOpen)}
               aria-pressed={manualOpen}
-              title="Edit this element yourself — free and instant"
+              title="Edit this element yourself: free and instant"
               className={cn(
                 "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
                 manualOpen
@@ -1451,7 +1451,7 @@ export function PreviewPane({
           <>
             <iframe
               // The nonce is bumped by both reload and any path change, so the
-              // frame remounts either way — re-entering the current path still
+              // frame remounts either way: re-entering the current path still
               // re-navigates instead of being a no-op.
               key={`${previewUrl}-${previewNonce}`}
               ref={iframeRef}

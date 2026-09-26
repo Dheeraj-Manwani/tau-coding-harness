@@ -23,7 +23,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
 
 /**
  * Protected zone. Guests are sent to /login (remembering where they were);
- * authenticated-but-unverified users can't enter the platform — they're routed
+ * authenticated-but-unverified users can't enter the platform: they're routed
  * to /verify-pending until they confirm their email.
  */
 export function RequireAuth() {
@@ -35,7 +35,7 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-/** Public-only zone: authenticated users can't see login/signup — send home. */
+/** Public-only zone: authenticated users can't see login/signup: send home. */
 export function RequireGuest() {
   const { data: user, isLoading } = useMe();
   const location = useLocation();

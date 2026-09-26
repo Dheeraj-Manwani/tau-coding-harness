@@ -3,7 +3,7 @@
  *
  * `landing/` is a client-only Vite SPA, so the landing page and doc pages
  * ship as an empty `<div id="root">` plus a script tag. A crawler that does not
- * run JS sees nothing — no headings, no prose, no `<title>`, no canonical. The
+ * run JS sees nothing: no headings, no prose, no `<title>`, no canonical. The
  * docs are, to that crawler, one blank page.
  *
  * This walks the built `dist/` with a real browser and writes what it rendered
@@ -41,7 +41,7 @@ import { STATIC_ROUTES, siteOrigin } from "./public-routes.ts";
  * Resolve playwright at run time rather than importing it at the top.
  *
  * It is declared in this package, but it is also a `worker-service` dependency
- * (project screenshots) and installs here are per-package — so a checkout that
+ * (project screenshots) and installs here are per-package: so a checkout that
  * has only installed `worker-service/` would otherwise fail with a bare
  * module-not-found and no hint about which install fixes it.
  *
@@ -59,7 +59,7 @@ async function loadChromium(): Promise<typeof import("playwright")["chromium"]> 
     try {
       const resolved = createRequire(anchor).resolve("playwright");
       // Playwright is CommonJS. Under Node's ESM interop its exports land on
-      // `.default`, while Bun surfaces them as named — hence both.
+      // `.default`, while Bun surfaces them as named: hence both.
       const mod = (await import(pathToFileURL(resolved).href)) as {
         chromium?: typeof import("playwright")["chromium"];
         default?: { chromium?: typeof import("playwright")["chromium"] };
@@ -87,7 +87,7 @@ const DOCS_INDEX = resolve(HERE, "..", "src", "content", "docs-index.json");
  *
  * Deliberately **not** `waitUntil: "networkidle"`. A docs page fetches its
  * markdown chunk after first paint and then shiki fetches a grammar and the wasm
- * regex engine, so "no requests for 500ms" arrives late and unpredictably — it
+ * regex engine, so "no requests for 500ms" arrives late and unpredictably: it
  * timed out on a different five routes on each run. Playwright discourages it
  * for exactly this reason.
  *
@@ -103,7 +103,7 @@ const SETTLE_TIMEOUT_MS = 20_000;
  *
  * Syntax highlighting upgrades a code block once shiki lands. Snapshotting a
  * moment later captures the highlighted markup, which is strictly nicer in the
- * static HTML — but it is a bonus, so this waits briefly and never fails on it.
+ * static HTML: but it is a bonus, so this waits briefly and never fails on it.
  */
 const POLISH_MS = 1_200;
 
@@ -135,7 +135,7 @@ const MIME: Record<string, string> = {
  * and starts synchronously.
  *
  * The fallback is served from the `shell` passed in, **not** re-read from disk.
- * `/`'s output is written to `dist/index.html`, which is also the fallback — so
+ * `/`'s output is written to `dist/index.html`, which is also the fallback: so
  * reading it per request would serve the already-prerendered landing page as the
  * starting document for every subsequent route, and React would hydrate over
  * another page's markup. That is what it did on the first version of this
@@ -200,7 +200,7 @@ function docRoutes(): string[] {
 /**
  * The selector that proves a route rendered its own content.
  *
- * Waiting on `#root` having children is not enough — the shell mounts before the
+ * Waiting on `#root` having children is not enough: the shell mounts before the
  * page's own chunk resolves, so that would snapshot a nav bar and a loader.
  */
 function settleSelector(route: string): string {
@@ -242,7 +242,7 @@ async function prerender(
 
     // Rewrite the canonical and og:url from the local origin to the real one.
     // `useDocumentMeta` derives them from `window.location.origin`, which during
-    // prerendering is 127.0.0.1 — shipping that would tell crawlers every page's
+    // prerendering is 127.0.0.1: shipping that would tell crawlers every page's
     // canonical URL is on localhost.
     out.set(route, html.replaceAll(origin, siteOrigin()));
 
@@ -259,7 +259,7 @@ async function prerender(
   }
 }
 
-/** True when `dist/index.html` still has an empty `#root` — i.e. a fresh build. */
+/** True when `dist/index.html` still has an empty `#root`: i.e. a fresh build. */
 function isPristineShell(html: string): boolean {
   return /<div id="root">\s*<\/div>/.test(html);
 }
@@ -314,7 +314,7 @@ async function main(): Promise<void> {
 
   console.error(
     `[prerender] ${routes.length - failed}/${routes.length} routes written` +
-      (failed ? ` — ${failed} failed` : ""),
+      (failed ? `: ${failed} failed` : ""),
   );
   // A silently half-prerendered site is worse than a failed build: the routes
   // that failed still ship, as empty shells, and nothing says so.

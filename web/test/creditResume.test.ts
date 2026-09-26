@@ -8,7 +8,7 @@ import {
 const outOfCredits = {
   role: "ai" as const,
   content:
-    "⚠️ Out of credits — this run was stopped before the task finished. Add credits, then send another message to continue.",
+    "⚠️ Out of credits: this run was stopped before the task finished. Add credits, then send another message to continue.",
 };
 
 describe("credit resume", () => {

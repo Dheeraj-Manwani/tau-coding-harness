@@ -3,8 +3,8 @@ import type { Transition, Variants } from "motion/react";
 /**
  * The one reveal in the design system.
  *
- * Every band on the landing page and every docs section enters the same way —
- * rise, unblur, fade — so scrolling reads as one continuous motion rather than
+ * Every band on the landing page and every docs section enters the same way -
+ * rise, unblur, fade: so scrolling reads as one continuous motion rather than
  * a dozen components each showing off. If a section needs something different,
  * that is a design decision, not a local override.
  */
@@ -35,14 +35,14 @@ export const revealVariants: Variants = {
   },
 };
 
-/** Parent of several `revealVariants` children — cascades them 70ms apart. */
+/** Parent of several `revealVariants` children: cascades them 70ms apart. */
 export const staggerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: STAGGER_CHILDREN } },
 };
 
 /**
- * The reduced-motion substitute. Not "no animation" — the composed final frame,
+ * The reduced-motion substitute. Not "no animation": the composed final frame,
  * applied instantly, so a reduced-motion visitor sees a finished page rather
  * than a page that never arrived.
  */

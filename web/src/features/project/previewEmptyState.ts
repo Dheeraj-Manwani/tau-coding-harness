@@ -60,7 +60,7 @@ export function getEmptyPreviewState({
       };
     }
     return {
-      title: "Build paused — out of credits",
+      title: "Build paused: out of credits",
       description: "Add credits to continue without losing the work already completed.",
       action: "add_credits",
       actionLabel: "Add credits",
@@ -90,7 +90,7 @@ export function getEmptyPreviewState({
     if (isStalled) {
       return {
         title: "Build may be stuck",
-        description: "tau has not reported progress for a while.",
+        description: "Tau has been quiet for a while.",
         action: "stop",
         actionLabel: "Stop build",
         animated: false,
@@ -117,8 +117,8 @@ export function getEmptyPreviewState({
 
   if (status === "error") {
     return {
-      title: "Build stopped with an error",
-      description: "Ask tau to inspect the existing work and try again.",
+      title: "Tau hit a snag",
+      description: "Ask Tau to look over the work and try again.",
       action: "continue",
       actionLabel: "Try again",
       animated: false,
@@ -129,7 +129,7 @@ export function getEmptyPreviewState({
   if (status === "done") {
     return {
       title: "No preview was created",
-      description: "Continue the task and ask tau to finish a runnable preview.",
+      description: "Ask Tau to finish the app so you can try it here.",
       action: "continue",
       actionLabel: "Finish the app",
       animated: false,

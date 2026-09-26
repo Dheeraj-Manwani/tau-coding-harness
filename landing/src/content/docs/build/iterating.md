@@ -11,8 +11,8 @@ one after the first message.
 
 ## Follow-ups
 
-Send another message in the same chat. Tau picks up the same project — same
-files, same sandbox — and works from there.
+Send another message in the same chat. Tau picks up the same project: same
+files, same sandbox: and works from there.
 
 ```text
 The header overlaps the content on mobile. Fix the spacing.
@@ -33,7 +33,7 @@ the polish on Low.
 Hit cancel and the job stops mid-turn. There is also a cancel-all, for when
 you have started something across several projects and want everything to stop.
 
-You are charged for the work that actually happened — the turns that ran, the
+You are charged for the work that actually happened: the turns that ran, the
 tokens they used. You are not charged for the turns that never ran.
 
 Cancel when:
@@ -91,7 +91,7 @@ and a follow-up continues from there.
 ## Editing by hand mid-conversation
 
 You can open the editor and change code yourself between jobs. Tau is told what
-you changed — it receives the diff before its next turn — so your edit is not
+you changed: it receives the diff before its next turn: so your edit is not
 quietly overwritten.
 
 Editing is blocked while a job is running, because you and the agent writing the

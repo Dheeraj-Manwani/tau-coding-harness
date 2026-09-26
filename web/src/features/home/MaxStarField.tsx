@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 
-// Mirrors the ambient field's palette in Home.tsx — same regular white/silver
+// Mirrors the ambient field's palette in Home.tsx: same regular white/silver
 // stars, so this layer just adds *more* of the same rather than a new look.
 const STAR_COLORS = [
   "rgba(203, 213, 225, 0.7)",
@@ -18,7 +18,7 @@ const STAR_COLORS = [
  * Extra star layer for MAX effort on Home. It reuses the exact same
  * SparkleParticles config as the ambient field (same white/silver stars, size,
  * twinkle and drift) and simply packs in more of them, so MAX reads as "the same
- * sky, just denser" — a second layer that behaves identically to the ambient one
+ * sky, just denser": a second layer that behaves identically to the ambient one
  * (no glitch/shake). Only the fade in/out on toggle is added. Render inside
  * <AnimatePresence> so that fade plays.
  */

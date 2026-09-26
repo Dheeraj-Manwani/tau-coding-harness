@@ -32,7 +32,7 @@ export function useIsAdmin(): boolean {
  * Health for the admin strip on Home.
  *
  * `/admin/*` accepts the ordinary access token as a bearer credential, so this
- * goes through the same axios instance as everything else — no separate client
+ * goes through the same axios instance as everything else: no separate client
  * and no admin cookie needed just to read a status dot.
  *
  * `retry: false` is deliberate: the interesting failure is 403 (the role was
@@ -49,7 +49,7 @@ export function useAdminHealth(enabled: boolean) {
   });
 }
 
-/** Absolute URL of the server-rendered console — it lives on the API origin. */
+/** Absolute URL of the server-rendered console: it lives on the API origin. */
 export const ADMIN_CONSOLE_URL = `${env.API_URL}/admin/ui`;
 
 /**
@@ -64,7 +64,7 @@ export const ADMIN_CONSOLE_URL = `${env.API_URL}/admin/ui`;
  * reject `window.open` once it is no longer inside the click handler's call
  * stack. We then point it at the console once the cookie is set.
  *
- * Every failure here is non-fatal — the console renders its own login box when
+ * Every failure here is non-fatal: the console renders its own login box when
  * the cookie is missing, so the worst case is that the operator types a
  * password.
  */
@@ -77,7 +77,7 @@ export async function openAdminConsole(): Promise<void> {
     // SameSite=Lax, which still rides a top-level navigation to /admin/ui.
     await api.post("/admin/session", {});
   } catch {
-    /* fall through — the console will ask for a password instead */
+    /* fall through: the console will ask for a password instead */
   }
 
   if (tab) tab.location.href = ADMIN_CONSOLE_URL;

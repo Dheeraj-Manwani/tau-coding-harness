@@ -26,8 +26,8 @@ import {
 /**
  * The Publish button and its panel.
  *
- * Deliberately the same shape as the GitHub panel next to it — a status dot on
- * a round trigger, a popover with the current state and one primary action —
+ * Deliberately the same shape as the GitHub panel next to it: a status dot on
+ * a round trigger, a popover with the current state and one primary action -
  * because they answer the same question ("where has this code gone?") and
  * should not need to be learned twice.
  */
@@ -125,7 +125,7 @@ function PanelBody({
       ) : (
         <p className="text-xs leading-relaxed text-silver-600">
           Publish your app to a public URL anyone can open. No account, no setup
-          — we build it and host the result.
+          needed. Tau builds it and puts it online for you.
         </p>
       )}
 

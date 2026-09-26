@@ -90,7 +90,7 @@ function showInAppNotification(
 export async function sendReadyNotificationTest(): Promise<void> {
   const copy = {
     title: "Tau notifications are ready",
-    body: "You’ll get an alert when an agent run finishes.",
+    body: "You’ll get an alert when Tau finishes working.",
   };
   await primeNotificationSound();
   playNotificationSound();

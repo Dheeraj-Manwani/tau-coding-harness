@@ -16,19 +16,19 @@ export function showConcurrentJobLimitToast(): void {
     (t) => (
       <div className="flex flex-col gap-2">
         <span>
-          You already have the maximum number of generations running.
+          Tau is already busy with as many builds as your plan allows.
         </span>
         <button
           type="button"
           onClick={() => {
             toast.dismiss(t.id);
             void toast.promise(cancelAllJobs(), {
-              loading: "Stopping running generations…",
+              loading: "Stopping your active builds…",
               success: ({ cancelled }) =>
                 cancelled > 0
-                  ? `Freed ${cancelled} generation slot${cancelled === 1 ? "" : "s"}. You can start a new one now.`
-                  : "No active generations to stop.",
-              error: "Couldn't stop the running generations. Please try again.",
+                  ? `Stopped ${cancelled} active build${cancelled === 1 ? "" : "s"}. You can start a new one now.`
+                  : "There were no active builds to stop.",
+              error: "Couldn't stop your active builds. Please try again.",
             });
           }}
           className="self-start rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90"

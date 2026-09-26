@@ -9,13 +9,13 @@ import { ScrollReveal } from "@/src/features/marketing/motion/ScrollReveal";
 import { REVEAL_VIEWPORT } from "@/src/features/marketing/motion/variants";
 
 /**
- * §4.6 — "You get the whole machine, not just the output."
+ * §4.6: "You get the whole machine, not just the output."
  *
  * The four panels dock in from off-screen like modules mating, then six pins
  * pulse on the assembled mock. Hovering or tapping a pin opens its card.
  *
  * The mock is drawn in CSS rather than shipped as a screenshot: it stays sharp
- * at any density, costs nothing to download, and — the real reason — a
+ * at any density, costs nothing to download, and: the real reason: a
  * screenshot of the workspace goes stale the moment the workspace changes,
  * which is exactly the kind of quiet lie §9 exists to prevent.
  *
@@ -54,10 +54,10 @@ export function WorkspaceTour() {
     <section id="workspace" className="mx-auto w-full max-w-6xl px-6 py-24">
       <ScrollReveal className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
-          Not a black box
+          Nothing hidden
         </p>
         <h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-          You get the whole machine, not just the output.
+          Watch your idea become something real.
         </h2>
       </ScrollReveal>
 
@@ -144,7 +144,7 @@ export function WorkspaceTour() {
             </>
           ) : (
             <p className="text-sm text-silver-600">
-              Hover a numbered pin to see what that part of the workspace does.
+              Hover over a number to see how Tau keeps you in the loop.
             </p>
           )}
         </div>

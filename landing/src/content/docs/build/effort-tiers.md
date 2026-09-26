@@ -10,7 +10,7 @@ Effort is the single control that decides how hard tau works on a build. It sets
 four things at once: which model runs, how many turns the agent gets, how wide
 it can fan out into sub-agents, and the ceiling on what one build may spend.
 
-Every tier is available on every plan. You are not buying access to Max — you
+Every tier is available on every plan. You are not buying access to Max: you
 are paying for the work it does.
 
 ## The tiers
@@ -26,9 +26,9 @@ are paying for the work it does.
 
 ## Choosing one
 
-- **Low** — tweaks, a single page, copy changes. Fast and cheap.
-- **High** — most real apps. This is the sensible default.
-- **Max** — big multi-file builds, and anything you have already tried once and
+- **Low**: tweaks, a single page, copy changes. Fast and cheap.
+- **High**: most real apps. This is the sensible default.
+- **Max**: big multi-file builds, and anything you have already tried once and
   want done properly.
 
 > [!TIP]
@@ -38,7 +38,7 @@ are paying for the work it does.
 ## What the caps mean
 
 **Wall clock** is a backstop, not a target. Agent turns bound a loop that is
-making progress; they cannot stop one wedged inside a single turn — a model
+making progress; they cannot stop one wedged inside a single turn: a model
 stream that stalls, or a command that never returns. The wall clock can.
 
 **Spend cap** is the most a single build may consume before tau stops and tells
@@ -46,5 +46,5 @@ you. It is a ceiling, not a price: a small build on Max costs what it costs, not
 50,000 credits.
 
 > [!WARNING]
-> Running out mid-build stops the job cleanly — nothing is lost — but it does
+> Running out mid-build stops the job cleanly: nothing is lost: but it does
 > stop it. If you are starting something large, check your balance first.

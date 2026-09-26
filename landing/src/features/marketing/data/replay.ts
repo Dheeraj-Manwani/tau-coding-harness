@@ -5,7 +5,7 @@ import raw from "./replay.json";
  * The recorded transcript behind §4.4.
  *
  * **This fixture must be recorded, never written.** §9's first hard rule bans
- * invented proof, and a hand-authored "real build" is exactly that — it would
+ * invented proof, and a hand-authored "real build" is exactly that: it would
  * be a fabricated demo presented as a genuine run. `scripts/capture-replay.ts`
  * records one from a live job's SSE stream and scrubs the ids out.
  *

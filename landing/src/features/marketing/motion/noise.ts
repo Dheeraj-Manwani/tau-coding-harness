@@ -2,7 +2,7 @@
  * The fractal-noise kernel behind every jagged, crackling stroke in the product.
  *
  * Extracted verbatim from `components/ui/electric-border.tsx` so the landing
- * page's lightning and the composer's border are literally the same math — a
+ * page's lightning and the composer's border are literally the same math: a
  * bolt drawn on the marketing page and a bolt drawn around the MAX composer
  * have to look like the same phenomenon. `ElectricBorder` imports from here.
  *
@@ -10,7 +10,7 @@
  * they are safe to call once per sample inside a rAF draw loop.
  */
 
-/** Deterministic hash-noise in roughly (-1, 1). Not uniform — that's fine. */
+/** Deterministic hash-noise in roughly (-1, 1). Not uniform: that's fine. */
 export function random(x: number): number {
   return (Math.sin(x * 12.9898) * 43758.5453) % 1;
 }

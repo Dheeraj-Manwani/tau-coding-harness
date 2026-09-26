@@ -131,8 +131,8 @@ export function applyReplayEvent(view: ReplayView, entry: ReplayEvent): void {
       view.thinking = null;
       break;
 
-    // Everything else — tool plumbing, credit ledger updates, context
-    // compaction, errors — is real but not part of the story this band tells.
+    // Everything else: tool plumbing, credit ledger updates, context
+    // compaction, errors: is real but not part of the story this band tells.
     default:
       break;
   }
@@ -141,8 +141,8 @@ export function applyReplayEvent(view: ReplayView, entry: ReplayEvent): void {
 /**
  * A detached copy, safe to hand to React.
  *
- * `applyReplayEvent` mutates — it appends to the last assistant message, ticks
- * a todo, pushes a shell line — so the accumulator can never itself be state.
+ * `applyReplayEvent` mutates: it appends to the last assistant message, ticks
+ * a todo, pushes a shell line: so the accumulator can never itself be state.
  * Everything the panes read is copied here, and everything else is a primitive.
  */
 export function snapshotView(view: ReplayView): ReplayView {

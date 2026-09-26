@@ -1,6 +1,6 @@
 ---
 title: Core concepts
-description: Projects, jobs, sandboxes, messages and credits — the five words the rest of these docs assume.
+description: Projects, jobs, sandboxes, messages and credits: the five words the rest of these docs assume.
 section: start
 order: 3
 updated: 2026-07-30
@@ -14,7 +14,7 @@ documentation reads as detail.
 A project is one app. It owns a chat history, a file tree, a sandbox, and
 optionally a linked GitHub repo.
 
-Projects are created by your first prompt — there is no "new project" form to
+Projects are created by your first prompt: there is no "new project" form to
 fill in. Free-plan accounts can hold **3** projects at a time; PRO is
 unlimited. Deleting a project removes its files and its history.
 
@@ -24,8 +24,8 @@ A job is one run of the agent. Every message you send starts a job; so does
 pressing **Start preview**.
 
 A job has a status, a turn count, and a spend ceiling set by its effort tier. It
-ends for one of several reasons — finished, cancelled, out of credits, out of
-turns, out of wall clock — and the workspace tells you which.
+ends for one of several reasons: finished, cancelled, out of credits, out of
+turns, out of wall clock: and the workspace tells you which.
 
 > [!NOTE]
 > Effort is chosen per job, not per project. A project can have a Low job, then a
@@ -39,7 +39,7 @@ package manager, a shell, and a port that can serve your app to a URL.
 The agent works *inside* it: reads and writes files there, runs commands there,
 starts your dev server there. The preview you click is that server.
 
-Sandboxes are not permanent. Your files are — they are stored separately, and a
+Sandboxes are not permanent. Your files are: they are stored separately, and a
 new sandbox is rehydrated from them. What a dead sandbox costs you is the
 running process, not your code.
 
@@ -54,9 +54,9 @@ before its next turn.
 
 ## Credit
 
-A credit is the unit of work. Everything tau does for you — every model call on
+A credit is the unit of work. Everything tau does for you: every model call on
 a build, and every call your generated app makes through the
-[AI gateway](/docs/ai/overview) — is metered in credits.
+[AI gateway](/docs/ai/overview): is metered in credits.
 
 Two kinds of spend are tracked separately:
 

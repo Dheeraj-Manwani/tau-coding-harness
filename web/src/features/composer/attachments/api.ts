@@ -18,7 +18,7 @@ export function signUpload(input: {
     .then((r) => r.data);
 }
 
-/** Bare `fetch`, not the axios instance — its interceptor would add an
+/** Bare `fetch`, not the axios instance: its interceptor would add an
  *  Authorization header and break the signature. */
 export async function uploadToR2(
   uploadUrl: string,
@@ -86,7 +86,7 @@ export function deleteAttachment(id: string): Promise<void> {
   return api.delete(`/attachments/${id}`).then(() => undefined);
 }
 
-/** SHA-256 of arbitrary bytes, hex — mirrors `lib/hash.ts` for binary input. */
+/** SHA-256 of arbitrary bytes, hex: mirrors `lib/hash.ts` for binary input. */
 export async function sha256Bytes(buffer: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", buffer);
   return Array.from(new Uint8Array(digest))

@@ -8,14 +8,14 @@ import { useIsVisible, useRafLoop } from "./useRafLoop";
  * Files flying from tau to GitHub along a dotted arc (§4.7).
  *
  * Two things happen on the same path. Most packets make the trip and land, and
- * the arriving glyph pulses. One packet — the `.env` — hits a shield midway,
+ * the arriving glyph pulses. One packet: the `.env`: hits a shield midway,
  * flashes red and dissolves. That second beat is the whole point of the band:
  * the secret-path filter is a hard floor that runs *before* your own
  * `.gitignore`, so deleting your `.gitignore` still cannot publish a key.
  *
  * Drawn in one canvas sized to its container, with the loop gated on
  * visibility. Reduced motion renders the static arc, the shield and a landed
- * packet — the diagram, minus the flight.
+ * packet: the diagram, minus the flight.
  */
 
 /** Bezier in normalised container space, so it scales with the box. */

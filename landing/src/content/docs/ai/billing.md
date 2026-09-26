@@ -7,7 +7,7 @@ updated: 2026-07-30
 ---
 
 Gateway calls are billed to the same credits that pay for builds, at the same
-per-token rates as the underlying model — and tracked separately, so the two
+per-token rates as the underlying model: and tracked separately, so the two
 never blur together.
 
 ## Two kinds of spend
@@ -40,7 +40,7 @@ one usage record per request.
 ## What a call costs
 
 Cost is per token, at the rate for whichever model actually served it. Input and
-output are priced differently — output is roughly four times input.
+output are priced differently: output is roughly four times input.
 
 For a sense of scale: a short summarise call on `tau-fast` with a few hundred
 input tokens and a hundred out is a small fraction of one credit. Credits are
@@ -59,12 +59,12 @@ Every response tells you exactly:
 ```
 
 `creditsSpent` is what was actually taken, reported by the transaction that took
-it — not a figure recomputed afterwards. On a nearly-empty balance those two can
+it: not a figure recomputed afterwards. On a nearly-empty balance those two can
 differ, and reporting the recomputed number would bill your app's UI for credits
 you were never charged.
 
 If a `tau-max` request degrades to a lower model because the top model is
-unavailable, it is metered on the model that actually ran — you are billed at the
+unavailable, it is metered on the model that actually ran: you are billed at the
 lower rate.
 
 ## Attribution
@@ -87,7 +87,7 @@ problem worth solving. It is attribution, not authorisation.
 | Min balance to serve | 0.1 credits | Against overshooting an empty account |
 
 The daily cap resets at **00:00 UTC** and is the one you should set deliberately.
-Your deployed app's endpoints are public — the cap is what turns "someone found
+Your deployed app's endpoints are public: the cap is what turns "someone found
 my endpoint" from a billing event into a `429`.
 
 → [API keys](/docs/ai/api-keys) to change it.
@@ -113,7 +113,7 @@ to leave headroom.
 ## One accounting note
 
 There is a narrow window where a burst of concurrent requests can overshoot a
-nearly-empty balance slightly — tau checks the balance before the call and debits
+nearly-empty balance slightly: tau checks the balance before the call and debits
 after it. The overshoot is bounded by the per-request token ceiling and the
 concurrency limit, and tau absorbs the difference rather than billing you past
 zero.

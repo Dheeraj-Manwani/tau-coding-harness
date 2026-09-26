@@ -1,14 +1,14 @@
 ---
 title: AI gateway overview
-description: The app tau builds you can call an LLM — no SDK, no key of your own, billed to the same credits.
+description: The app tau builds you can call an LLM: no SDK, no key of your own, billed to the same credits.
 section: ai
 order: 1
 updated: 2026-07-30
 ---
 
 > [!NOTE]
-> **Beta.** Every piece of the gateway is built and shipped, but the whole path —
-> asking tau to build an AI app and running it end to end — has not been driven
+> **Beta.** Every piece of the gateway is built and shipped, but the whole path -
+> asking tau to build an AI app and running it end to end: has not been driven
 > yet. Expect it to work; report it if it doesn't.
 
 Ask tau to add AI to your app and it wires it up. You do not sign up for a model
@@ -16,11 +16,11 @@ provider, you do not obtain an API key, and you do not install an SDK.
 
 ## What tau does for you
 
-1. **Mints you a credential** — one `tau_sk_live_…` key per account.
-2. **Injects it into the sandbox** — as `TAU_API_KEY`, alongside `TAU_AI_URL`,
+1. **Mints you a credential**: one `tau_sk_live_…` key per account.
+2. **Injects it into the sandbox**: as `TAU_API_KEY`, alongside `TAU_AI_URL`,
    re-injected on every provision so it survives a rebuild.
-3. **Serves the inference itself** — your app calls tau, tau calls the model.
-4. **Bills it to your credits** — as *runtime* spend, shown separately from build
+3. **Serves the inference itself**: your app calls tau, tau calls the model.
+4. **Bills it to your credits**: as *runtime* spend, shown separately from build
    spend.
 
 ```text
@@ -44,7 +44,7 @@ nothing installed, while an existing codebase can keep its SDK.
 
 ## Model aliases, not vendor names
 
-You ask for `tau-fast`, `tau-smart` or `tau-max` — never a vendor model id.
+You ask for `tau-fast`, `tau-smart` or `tau-max`: never a vendor model id.
 
 | Alias | What it is |
 |---|---|
@@ -88,6 +88,6 @@ UTC.
 
 ## Next
 
-- [Quickstart](/docs/ai/quickstart) — ask tau to add AI, and see what it wires up
+- [Quickstart](/docs/ai/quickstart): ask tau to add AI, and see what it wires up
 - [API keys](/docs/ai/api-keys)
 - [Chat API](/docs/ai/chat-api)

@@ -2,7 +2,7 @@
  * Loads one doc's markdown, on demand.
  *
  * `import.meta.glob` without `eager` gives Vite a module per file, so a docs
- * page fetches only its own body — the difference between a docs site that
+ * page fetches only its own body: the difference between a docs site that
  * ships every page to every visitor and one that doesn't. It also means adding
  * a page needs no registration: the glob picks it up.
  */
@@ -30,7 +30,7 @@ export interface LoadedDoc {
  * into the browser bundle to read four keys.
  *
  * Exposed untyped as well as through `parseFrontmatter` so other markdown
- * surfaces — the changelog — can read their own keys without either duplicating
+ * surfaces: the changelog: can read their own keys without either duplicating
  * this or widening `DocFrontmatter` with fields docs pages never use.
  */
 export function parseFrontmatterFields(source: string): {

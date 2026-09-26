@@ -18,7 +18,7 @@ interface BorderGlowProps {
   glowIntensity?: number;
   coneSpread?: number;
   animated?: boolean;
-  /** Continuously loop the border sweep animation — no hover required. */
+  /** Continuously loop the border sweep animation: no hover required. */
   autoAnimate?: boolean;
   /** Duration in ms for one full border loop when autoAnimate is true. */
   autoAnimateDuration?: number;
@@ -138,7 +138,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   colors = ["#c084fc", "#f472b6", "#38bdf8"],
   fillOpacity = 0.5,
 }) => {
-  // Reduced motion: no sweep at all — render a calm, static bordered surface.
+  // Reduced motion: no sweep at all: render a calm, static bordered surface.
   const reduceMotion = useReduceMotion();
   const animated = reduceMotion ? false : animatedProp;
   const autoAnimate = reduceMotion ? false : autoAnimateProp;

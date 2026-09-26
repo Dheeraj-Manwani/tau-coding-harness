@@ -40,10 +40,10 @@ builds.
 Tau creates a project, provisions a Linux sandbox, and starts an agent. From
 here everything streams to your screen as it happens:
 
-1. **A plan** — a todo list, written before any code, ticking over as it goes.
-2. **Files** — appearing in the tree as they land.
-3. **Commands** — installs and builds, with their output.
-4. **A preview** — your app on a live URL inside the sandbox, in an iframe you
+1. **A plan**: a todo list, written before any code, ticking over as it goes.
+2. **Files**: appearing in the tree as they land.
+3. **Commands**: installs and builds, with their output.
+4. **A preview**: your app on a live URL inside the sandbox, in an iframe you
    can click.
 
 You can close the tab. Come back and the stream resumes where it was.
@@ -56,7 +56,7 @@ Type a follow-up in the same chat:
 Make the search filter as I type instead of on submit.
 ```
 
-Tau picks up the existing project — same sandbox, same files — and edits it.
+Tau picks up the existing project: same sandbox, same files: and edits it.
 Effort is per message, so you can send this one on a different tier.
 
 You can also open a file in the editor and change it yourself. Tau is told what
@@ -65,7 +65,7 @@ you edited, so your change survives its next turn. See
 
 ## 6. Take the code
 
-Connect GitHub from inside the project, then push — a new pull request, an
+Connect GitHub from inside the project, then push: a new pull request, an
 update to an existing one, or straight to a branch.
 
 Tau does not deploy for you. Once the code is in your repo, deploy it from
@@ -73,14 +73,14 @@ there. See [Deploying](/docs/ship/deploying).
 
 ## When something goes wrong
 
-- **The build stopped early.** Check your balance — a build stops cleanly when
+- **The build stopped early.** Check your balance: a build stops cleanly when
   it hits its spend cap or your credits run out.
 - **The preview URL is dead.** Sandboxes do not live forever. Hit
   **Start preview** to rebuild one from your files.
-- **Anything else** — [Troubleshooting](/docs/help/troubleshooting).
+- **Anything else**: [Troubleshooting](/docs/help/troubleshooting).
 
 ## Next
 
-- [Core concepts](/docs/start/core-concepts) — the five words that explain the rest of these docs.
-- [Your first prompt](/docs/start/your-first-prompt) — a worked example, start to finish.
-- [Effort tiers](/docs/build/effort-tiers) — what Low, High and Max actually change.
+- [Core concepts](/docs/start/core-concepts): the five words that explain the rest of these docs.
+- [Your first prompt](/docs/start/your-first-prompt): a worked example, start to finish.
+- [Effort tiers](/docs/build/effort-tiers): what Low, High and Max actually change.

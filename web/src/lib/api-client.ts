@@ -8,7 +8,7 @@ import { env } from "./env";
  *   - single-flight 401 → /auth/refresh → replay (response interceptor),
  *   - error normalization into a typed {@link ApiError}.
  *
- * The access token lives in memory only (never localStorage) — an XSS can't read
+ * The access token lives in memory only (never localStorage): an XSS can't read
  * it and it dies with the tab. The refresh token is an httpOnly cookie scoped to
  * `/auth`, so the browser sends it automatically to `/auth/refresh`.
  */

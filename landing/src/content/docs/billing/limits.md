@@ -78,7 +78,7 @@ inference cannot starve builds. Hitting it returns a `429` asking you to retry.
 ## Context
 
 A build has a token budget for its conversation. As it approaches the limit, tau
-compacts the history — trimming old tool output and summarising earlier turns —
+compacts the history: trimming old tool output and summarising earlier turns -
 rather than failing.
 
 You will not normally notice. On a very long build, the effect is that tau
@@ -103,6 +103,6 @@ happen, but you will need to resubmit.
 
 ## Next
 
-- [Errors](/docs/reference/errors) — what each refusal looks like
+- [Errors](/docs/reference/errors): what each refusal looks like
 - [Credits](/docs/billing/credits)
 - [Effort tiers](/docs/build/effort-tiers)

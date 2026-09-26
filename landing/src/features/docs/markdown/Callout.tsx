@@ -8,7 +8,7 @@ import type { CalloutKind } from "./calloutKind";
  * GitHub-flavoured alerts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`.
  *
  * Authors already type this syntax out of habit, and it renders as a plain
- * blockquote anywhere else — on GitHub, in an editor preview — so the source
+ * blockquote anywhere else: on GitHub, in an editor preview: so the source
  * stays readable outside our renderer.
  */
 

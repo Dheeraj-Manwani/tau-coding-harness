@@ -8,7 +8,7 @@ import { useDocsSearchHotkey } from "./useDocsSearchHotkey";
 import { NAV_TREE, FLAT_PAGES } from "./navTree";
 
 /**
- * `/docs` — the front door.
+ * `/docs`: the front door.
  *
  * A card per section, each listing what it actually contains. Sections with no
  * pages yet do not appear at all: the tree is built from the content directory,

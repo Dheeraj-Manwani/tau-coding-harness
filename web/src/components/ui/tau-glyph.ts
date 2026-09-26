@@ -2,7 +2,7 @@
  * The τ mark as a single closed SVG path, in a 735×751 viewBox.
  *
  * Extracted so the marketing hero's watermark and `tauAnimation.tsx` draw the
- * same glyph — if the logo is ever redrawn, it changes in one place. Importing
+ * same glyph: if the logo is ever redrawn, it changes in one place. Importing
  * only this constant also keeps the ~9KB path out of any chunk that just needs
  * the outline, without dragging the animated component along with it.
  */

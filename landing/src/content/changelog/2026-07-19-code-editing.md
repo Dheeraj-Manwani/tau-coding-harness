@@ -7,7 +7,7 @@ The code pane is now a real editor, not a viewer.
 
 - **Type in it.** CodeMirror 6, with multiple tabs and a dirty indicator.
 - **Autosave** on `⌘S`, on blur, and after 2 seconds idle. A save writes the live
-  sandbox, durable storage, and your project's manifest — the same path the
+  sandbox, durable storage, and your project's manifest: the same path the
   agent's own writes use.
 - **Tau is told what you changed.** Your edit is recorded as a diff the agent reads
   before its next turn, so a hand-edit survives instead of being quietly

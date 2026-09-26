@@ -3,7 +3,7 @@
  *
  * Order here is the order they appear in the sidebar and on `/docs`. Pages
  * inside a section are ordered by their frontmatter `order`, resolved at build
- * time by `scripts/build-docs-index.ts` — this file only knows about sections,
+ * time by `scripts/build-docs-index.ts`: this file only knows about sections,
  * so adding a page never means editing code.
  *
  * Shared with the index builder, which imports it to lay the tree out in the

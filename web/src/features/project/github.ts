@@ -103,7 +103,7 @@ export function usePushToGithub(projectId: string | null) {
         res.mode === "direct"
           ? "Committed to GitHub"
           : res.prUrl
-            ? "Pushed — pull request ready"
+            ? "Pushed: pull request ready"
             : "Pushed to GitHub",
       );
       void invalidate();

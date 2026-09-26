@@ -6,7 +6,7 @@ import { TauWatermark } from "@/src/features/marketing/motion/TauWatermark";
 /**
  * The catch-all 404.
  *
- * Was an unstyled `<h1>` and a link — off-brand in a way that reads as broken
+ * Was an unstyled `<h1>` and a link: off-brand in a way that reads as broken
  * rather than as a missing page, which matters now that `/` is a public link
  * people paste and mistype. Mirrors `DocsNotFound` so the two feel like one site,
  * but offers the three destinations a stranger is most likely to want rather than

@@ -35,8 +35,8 @@ placeholder files are actually safe.
 
 A push filters in this order, and the order is the whole design:
 
-1. **The secret floor** — the patterns above, unconditionally.
-2. **Your project's root `.gitignore`** — build output, `node_modules`, on-disk
+1. **The secret floor**: the patterns above, unconditionally.
+2. **Your project's root `.gitignore`**: build output, `node_modules`, on-disk
    data directories, anything else you have excluded.
 
 > [!NOTE]
@@ -49,7 +49,7 @@ tau template writes any, and the floor covers the case that matters.
 
 ## What this means in the sandbox
 
-The agent can still *write* a `.env` in the sandbox — your app may genuinely need
+The agent can still *write* a `.env` in the sandbox: your app may genuinely need
 one to run, and the preview needs it to work.
 
 What happens is that the file exists on the machine and is not persisted. Tau
@@ -67,7 +67,7 @@ If your app needs a Stripe key, an OpenAI key, or anything else of yours:
 
 - Set it in the sandbox for the preview to work.
 - Expect to set it again after a rebuild.
-- Set it on your host when you deploy — the sandbox's copy does not travel.
+- Set it on your host when you deploy: the sandbox's copy does not travel.
 
 Tau's own AI credential is the exception, because tau manages it. See
 [API keys](/docs/ai/api-keys).
@@ -79,7 +79,7 @@ pasted into `src/config.ts` is an ordinary source file as far as tau is
 concerned, and it will be pushed.
 
 > [!WARNING]
-> Do not hardcode credentials in source. The floor cannot help you there — read
+> Do not hardcode credentials in source. The floor cannot help you there: read
 > from the environment instead, and tell tau to do the same.
 
 ## Next

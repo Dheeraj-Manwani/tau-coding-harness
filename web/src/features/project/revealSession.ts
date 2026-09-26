@@ -5,7 +5,7 @@ export function markFreshBuild(projectId: string): void {
   freshBuilds.add(projectId);
 }
 
-/** Pure read — safe to call from a render / useState initializer. */
+/** Pure read: safe to call from a render / useState initializer. */
 export function hasFreshBuild(projectId: string): boolean {
   return freshBuilds.has(projectId);
 }

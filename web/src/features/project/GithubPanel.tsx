@@ -65,7 +65,7 @@ export function GithubPanel() {
   const { data: info, isLoading } = useGithubProject(projectId);
 
   const [open, setOpen] = useState(false);
-  // While a confirmation modal is up, keep the popover open — otherwise its
+  // While a confirmation modal is up, keep the popover open: otherwise its
   // content (and the modal rendered inside it) would unmount on focus-outside.
   const [confirmActive, setConfirmActive] = useState(false);
 
@@ -465,7 +465,7 @@ function LinkedRepo({
               <span className="font-medium text-silver-900">
                 {repo.fullName}
               </span>
-              . The repository and its history stay on GitHub — only the link
+              . The repository and its history stay on GitHub: only the link
               from this project is removed. You can relink or push again later.
             </AlertDialogDescription>
           </AlertDialogHeader>

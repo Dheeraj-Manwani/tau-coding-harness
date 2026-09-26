@@ -23,7 +23,7 @@ import { useRafLoop } from "./useRafLoop";
  * The one starfield behind every public page.
  *
  * Mounted once, above the router's public outlet, so navigating from the
- * landing page to the docs does not reseed the sky — the stars stay exactly
+ * landing page to the docs does not reseed the sky: the stars stay exactly
  * where they were. Everything that wants to affect it (a MAX effort selector
  * ramping density, a CTA firing a warp, a button popping a burst) goes through
  * `useCosmos()` rather than mounting a second canvas of its own.
@@ -57,7 +57,7 @@ const LAYERS: LayerConfig[] = [
 const MAX_DENSITY_BOOST = 1.6;
 /** Stars fade in over this many indices, so a density ramp isn't a pop. */
 const DENSITY_FADE_BAND = 8;
-/** Time constant for the density ramp — ~400ms to settle. */
+/** Time constant for the density ramp: ~400ms to settle. */
 const DENSITY_RAMP_MS = 400;
 
 /** `[r,g,b]` weights from Home.tsx's STAR_COLORS. */
@@ -87,7 +87,7 @@ const BURST_COLOR = "rgb(96, 165, 250)"; // --blue-500
 /**
  * Five preset meteor tracks, as fractions of the viewport. Fixed tracks rather
  * than fully random ones because random angles produce the occasional streak
- * that reads as a rendering glitch — heading straight up, or crawling along the
+ * that reads as a rendering glitch: heading straight up, or crawling along the
  * horizontal. All five run down-and-across, which is what a meteor looks like.
  *
  * `startY` stays inside the top 60vh (§4.1): a meteor at eye level while you're
@@ -354,7 +354,7 @@ export function CosmosBackdrop({ className }: { className?: string }) {
           ctx.fillStyle = star.color;
 
           if (warp > 0) {
-            // Streak length scales with depth, so the near layer smears most —
+            // Streak length scales with depth, so the near layer smears most -
             // that's what sells forward motion.
             const reach = warp * WARP_REACH * layer.parallax;
             const tailX = x + (centerX - x) * reach;
@@ -466,7 +466,7 @@ export function CosmosBackdrop({ className }: { className?: string }) {
 
   // Seeding and sizing. Deliberately independent of `draw`: `draw` changes
   // identity whenever the scene does, and reseeding on a scene change would
-  // make the whole sky jump the moment you click through to the docs — the one
+  // make the whole sky jump the moment you click through to the docs: the one
   // thing mounting this canvas above the router was meant to prevent.
   useEffect(() => {
     resize(true);

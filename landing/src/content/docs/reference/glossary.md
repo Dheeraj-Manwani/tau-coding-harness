@@ -13,7 +13,7 @@ the chat is the agent working. → [Agent tools](/docs/reference/agent-tools)
 
 ## Alias (model alias)
 
-The name your app asks the AI gateway for — `tau-fast`, `tau-smart`, `tau-max` —
+The name your app asks the AI gateway for: `tau-fast`, `tau-smart`, `tau-max` -
 rather than a vendor model id. The indirection means tau can change provider
 without breaking deployed apps. → [AI overview](/docs/ai/overview)
 
@@ -39,8 +39,8 @@ Stopping a running job mid-turn. You pay for the work done, not the budget.
 
 ## Credit
 
-The unit of work. Everything tau does — every model call on a build, every gateway
-call from your app — is metered in credits. → [Credits](/docs/billing/credits)
+The unit of work. Everything tau does: every model call on a build, every gateway
+call from your app: is metered in credits. → [Credits](/docs/billing/credits)
 
 ## Daily cap
 
@@ -50,7 +50,7 @@ credits. The backstop against a public endpoint draining your balance.
 
 ## Effort
 
-The tier chosen per message — Low, High or Max — setting which model runs, how
+The tier chosen per message: Low, High or Max: setting which model runs, how
 many turns the agent gets, how wide it can fan out, and the spend ceiling for that
 build. → [Effort tiers](/docs/build/effort-tiers)
 
@@ -78,7 +78,7 @@ preview**. Has a status, a turn count, and a spend ceiling.
 
 ## Manifest
 
-Your project's file list — path, content hash, size — stored in tau's database.
+Your project's file list: path, content hash, size: stored in tau's database.
 The bytes themselves live in object storage. It is the manifest a GitHub push
 publishes. → [Files and the editor](/docs/workspace/files-and-editor)
 
@@ -99,7 +99,7 @@ cycle, spent before bonus credits.
 ## Preview
 
 Your app running on a live URL inside the sandbox, in an iframe you can click. Not
-a rendering — the actual dev server. → [Preview](/docs/workspace/preview)
+a rendering: the actual dev server. → [Preview](/docs/workspace/preview)
 
 ## Project
 
@@ -114,7 +114,7 @@ A redeemable code granting credits into the bonus bucket.
 ## Re-auth
 
 Confirming who you are a second time, while already signed in, for a sensitive
-action — revealing or rotating your API key.
+action: revealing or rotating your API key.
 → [API keys](/docs/ai/api-keys)
 
 ## Rotation grace window
@@ -124,7 +124,7 @@ before the old key dies. → [API keys](/docs/ai/api-keys)
 
 ## Runtime spend
 
-Credits consumed by your finished app calling the AI gateway — its traffic, your
+Credits consumed by your finished app calling the AI gateway: its traffic, your
 credits. Shown separately from build spend.
 → [Gateway billing](/docs/ai/billing)
 
@@ -142,7 +142,7 @@ and therefore never pushed. Applied before your `.gitignore`, as a hard floor.
 
 ## Spend cap
 
-The most one build may consume, set by its effort tier — 5,000, 25,000 or 50,000 credits. A
+The most one build may consume, set by its effort tier: 5,000, 25,000 or 50,000 credits. A
 ceiling, not a price.
 
 ## Spend split
@@ -151,18 +151,18 @@ The build-versus-runtime breakdown on your billing page.
 
 ## Sub-agent
 
-A read-only specialist the agent dispatches with its own isolated context —
+A read-only specialist the agent dispatches with its own isolated context -
 explorer, debugger, or verifier. It investigates and reports; the main agent
 applies the findings. → [Agent tools](/docs/reference/agent-tools)
 
 ## Turn
 
 One cycle of the agent: think, call tools, read results. Each tier has a turn
-budget — 80, 200 or 300.
+budget: 80, 200 or 300.
 
 ## Wall clock
 
-The time limit on a single build — 20, 45 or 90 minutes by tier. A backstop
+The time limit on a single build: 20, 45 or 90 minutes by tier. A backstop
 against a run wedged inside one turn, which the turn budget cannot catch.
 
 ## Next

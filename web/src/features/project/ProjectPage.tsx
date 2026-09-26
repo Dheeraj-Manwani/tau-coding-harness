@@ -112,7 +112,7 @@ function useProjectBootstrap() {
   // path; fetch the full transcript only when this small snapshot disagrees.
   //
   // When the server *does* still call the job active, that used to be the end of
-  // it — the poll simply re-confirmed the shimmer every 6s, forever, which is
+  // it: the poll simply re-confirmed the shimmer every 6s, forever, which is
   // what made a stranded job look like an eternally-thinking project. Now a job
   // that has sent nothing for STALL_AFTER_MS is flagged as stalled so the UI can
   // say so and offer the stop button, rather than shimmering indefinitely.

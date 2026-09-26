@@ -10,7 +10,7 @@ Before tau writes a line of code on a non-trivial build, it writes a plan: an
 ordered todo list, rendered in the chat, ticking over as it goes.
 
 This is not decoration. It is the agent's actual working list, and it is the
-cheapest place for you to catch a misunderstanding — a wrong plan costs you one
+cheapest place for you to catch a misunderstanding: a wrong plan costs you one
 glance, a wrong build costs you a build.
 
 ## What a plan looks like
@@ -25,7 +25,7 @@ glance, a wrong build costs you a build.
 ```
 
 As work proceeds, items move to in-progress and then to done. Items can be added
-mid-build when tau discovers something the plan missed — a dependency that needs
+mid-build when tau discovers something the plan missed: a dependency that needs
 configuring, a file that needs splitting.
 
 ## Read the plan
@@ -65,7 +65,7 @@ sequencing to matter.
 
 ## What you cannot do yet
 
-You cannot edit the plan directly — reorder it, delete an item, or rewrite one.
+You cannot edit the plan directly: reorder it, delete an item, or rewrite one.
 The plan is the agent's, and your influence over it is through the chat: send a
 message and the next turn takes it into account.
 
@@ -73,6 +73,6 @@ Plan editing is on the roadmap. Until it exists, this page will keep saying so.
 
 ## Next
 
-- [Iterating](/docs/build/iterating) — follow-ups, cancel, resume, and being asked
-- [Live chat stream](/docs/workspace/chat) — how the plan reaches your screen
-- [Agent tools](/docs/reference/agent-tools) — the tools behind the plan
+- [Iterating](/docs/build/iterating): follow-ups, cancel, resume, and being asked
+- [Live chat stream](/docs/workspace/chat): how the plan reaches your screen
+- [Agent tools](/docs/reference/agent-tools): the tools behind the plan

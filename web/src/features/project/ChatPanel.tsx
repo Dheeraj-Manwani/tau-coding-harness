@@ -176,7 +176,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
         )}
         {!!meta?.todos?.length && (
           <div className="space-y-1 pt-1">
-            <div>Todo:</div>
+            <div>Next steps:</div>
             {meta.todos.map((todo, i) => {
               const item =
                 typeof todo === "string"
@@ -260,7 +260,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
       );
     }
 
-    // Reload path — only sno + status available.
+    // Reload path: only sno + status available.
     if (meta?.sno !== undefined) {
       const s = (meta.status ?? "pending") as keyof typeof TODO_STATUS_CFG;
       const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
@@ -492,7 +492,7 @@ const USER_MSG_LINE_CLAMP = 4;
  *
  * The alternative was what shipped first: the file, line, tag, text and classes
  * prepended to the user's own message, so a one-sentence request rendered as a
- * five-line paragraph of bookkeeping. All of that still reaches the model — it
+ * five-line paragraph of bookkeeping. All of that still reaches the model: it
  * just travels in a block the transcript doesn't read
  * (`server/src/api/lib/visualContext.ts`), leaving this to say the same thing
  * in the space it deserves.
@@ -562,7 +562,7 @@ function ChatBubble({
           </div>
         )}
         {message.element && <ElementChip element={message.element} />}
-        {/* Attachment-only turns have no text of their own — render the chips
+        {/* Attachment-only turns have no text of their own: render the chips
             and the timestamp, but no empty bubble. */}
         {message.content && (
           <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--space-overlay)] px-3.5 py-2 text-sm leading-relaxed text-[var(--silver-900)]">
@@ -638,14 +638,14 @@ function ChatBubble({
 }
 
 // While tau works, surface its live activity as a flat icon + shimmer-label row
-// (no bubble) — matching the inline "step" rows in the conversation flow.
+// (no bubble): matching the inline "step" rows in the conversation flow.
 function TypingBubble({
   activity,
   stalled = false,
   onStop,
 }: {
   activity: string | null;
-  /** The run has gone quiet past the stall threshold — say so instead of
+  /** The run has gone quiet past the stall threshold: say so instead of
    *  shimmering indefinitely at a job that may never speak again. */
   stalled?: boolean;
   onStop?: (() => void) | null;
@@ -658,7 +658,7 @@ function TypingBubble({
         exit={{ opacity: 0 }}
         className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
       >
-        <span>This run has gone quiet — it may have stopped responding.</span>
+        <span>Tau has gone quiet. It may need a fresh start.</span>
         {onStop && (
           <button
             type="button"
@@ -684,15 +684,9 @@ function TypingBubble({
   );
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
-  return String(n);
-}
-
 function ContextDivider({ meta }: { meta: DividerMeta }) {
   const [open, setOpen] = useState(false);
   const hasSummary = meta.summary.trim().length > 0;
-  const hasStat = meta.tokensBefore > 0;
 
   return (
     <div className="my-1">
@@ -705,13 +699,7 @@ function ContextDivider({ meta }: { meta: DividerMeta }) {
           className="flex items-center gap-1.5 rounded-full bg-[var(--space-surface)] px-2.5 py-1 text-[11px] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-default disabled:hover:text-[var(--silver-600)]"
         >
           <ScrollTextIcon className="size-3 shrink-0 opacity-60" />
-          <span>Earlier conversation summarized</span>
-          {hasStat && (
-            <span className="opacity-50">
-              ≈{formatTokens(meta.tokensBefore)} →{" "}
-              {formatTokens(meta.tokensAfter)} tokens
-            </span>
-          )}
+          <span>Earlier conversation tucked away</span>
           {hasSummary &&
             (open ? (
               <ChevronUpIcon className="size-3 shrink-0" />
@@ -943,7 +931,7 @@ export function ChatPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   // Messages present on first render get a staggered entrance; later ones don't.
   const [initialCount] = useState(messages.length);
-  // Tracks message IDs prepended via pagination — they skip the entrance animation.
+  // Tracks message IDs prepended via pagination: they skip the entrance animation.
   const [prependedIds, setPrependedIds] = useState(() => new Set<string>());
   // Scroll height snapshot taken just before prepending, used to hold position.
   const scrollHeightBeforePrependRef = useRef<number | null>(null);
@@ -1016,7 +1004,7 @@ export function ChatPanel({
   ]);
 
   // When the loaded messages don't fill the viewport there is no scroll event
-  // to trigger the normal scroll-up pagination — auto-load until they do.
+  // to trigger the normal scroll-up pagination: auto-load until they do.
   useEffect(() => {
     if (isStreaming || isLoadingOlder || !hasMoreMessages) return;
     const el = scrollRef.current;
@@ -1058,7 +1046,7 @@ export function ChatPanel({
     const content = draft.trim();
     if (attachments.isBusy) return;
 
-    // Snapshot for rollback — a failed send shouldn't eat the attachments.
+    // Snapshot for rollback: a failed send shouldn't eat the attachments.
     const sentAttachments = attachments.attachments;
     const sent = send(content, {
       effort,

@@ -22,6 +22,10 @@ import {
 
 import { cn } from "@/src/lib/utils";
 import { tourSelector, type TourStepDef } from "@/src/features/tour/tours";
+import {
+  placePopover,
+  type PlacementInput,
+} from "@/src/features/tour/placement";
 import type { TourOutcome } from "@/src/features/settings/preferences";
 
 interface TourCardContext {
@@ -166,7 +170,7 @@ export default function ProjectTour({
         // The card renders title and body from `defs`; this is only the
         // fallback the library would show without a ContentComponent.
         content: step.title,
-        position: step.position,
+        position: (props: PlacementInput) => placePopover(step.position, props),
       })),
     [steps],
   );

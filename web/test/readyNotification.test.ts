@@ -12,6 +12,38 @@ test("input notifications include a concise version of the question", () => {
   });
 });
 
+describe("notification copy names the project", () => {
+  test("uses the project's name when there is one", () => {
+    expect(getReadyNotificationCopy({ kind: "done" }, "done", "Todo app")).toEqual({
+      title: "Todo app is ready",
+      body: "Tau has finished working on it.",
+    });
+    expect(
+      getReadyNotificationCopy({ kind: "error", message: "boom" }, "error", "Todo app")
+        ?.title,
+    ).toBe("Tau couldn’t finish Todo app");
+    expect(getInputNotificationCopy("Grid or list?", "Todo app").title).toBe(
+      "Todo app needs your input",
+    );
+  });
+
+  test("keeps every letter of the name, collapsing only whitespace", () => {
+    expect(
+      getReadyNotificationCopy({ kind: "done" }, "done", "  Sales   dashboard ")
+        ?.title,
+    ).toBe("Sales dashboard is ready");
+  });
+
+  test("shortens a very long name and falls back when it's blank", () => {
+    const title = getReadyNotificationCopy({ kind: "done" }, "done", "x".repeat(80))
+      ?.title;
+    expect(title?.startsWith(`${"x".repeat(39)}…`)).toBe(true);
+    expect(getReadyNotificationCopy({ kind: "done" }, "done", "   ")?.title).toBe(
+      "Your Tau project is ready",
+    );
+  });
+});
+
 describe("getReadyNotificationCopy", () => {
   test("covers successful completion", () => {
     expect(getReadyNotificationCopy({ kind: "done" }, "done")).toEqual({

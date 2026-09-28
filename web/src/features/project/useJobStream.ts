@@ -145,6 +145,7 @@ export function useJobStream(): void {
 
     // Let the chat panel cancel the job over the regular authed HTTP API.
     setCanceller(() => {
+      useProjectStore.getState().markUserCancelled(jobId);
       void api.post(`/jobs/${encodeURIComponent(jobId)}/cancel`);
     });
 

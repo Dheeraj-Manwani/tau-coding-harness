@@ -39,6 +39,40 @@ describe("project store lifecycle reconciliation", () => {
     expect(useProjectStore.getState().isAiTyping).toBe(false);
   });
 
+  test("a preview restart's status line does not show the chat shimmer", () => {
+    useProjectStore.getState().initProject("preview-shimmer");
+    useProjectStore.getState().startPreviewJob("preview-job");
+
+    useProjectStore.getState().applyEvent({
+      type: "thinking",
+      message: "Starting preview",
+      index: 0,
+    });
+
+    expect(useProjectStore.getState()).toMatchObject({
+      currentJobId: "preview-job",
+      status: "streaming",
+      isAiTyping: false,
+      activity: null,
+    });
+  });
+
+  test("a generation job's status line still shows the chat shimmer", () => {
+    useProjectStore.getState().initProject("gen-shimmer");
+    useProjectStore.getState().startJob("gen-job");
+
+    useProjectStore.getState().applyEvent({
+      type: "thinking",
+      message: "Reading files",
+      index: 0,
+    });
+
+    expect(useProjectStore.getState()).toMatchObject({
+      isAiTyping: true,
+      activity: "Reading files",
+    });
+  });
+
   test("preview_ready makes the new iframe usable before the restart job ends", () => {
     useProjectStore.getState().initProject("preview-project");
     queryClient.setQueryData(

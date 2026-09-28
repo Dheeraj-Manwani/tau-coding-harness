@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { Switch } from "radix-ui";
-import { BellRingIcon, CompassIcon } from "lucide-react";
+import { BellRingIcon, CompassIcon, Volume2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import {
@@ -18,6 +18,10 @@ import {
   requestReadyNotificationPermission,
   sendReadyNotificationTest,
 } from "@/src/features/project/useReadyNotification";
+import {
+  playNotificationSound,
+  primeNotificationSound,
+} from "@/src/features/project/notificationSound";
 
 /** Global Settings modal: open it from anywhere via useSettingsStore.openSettings(). */
 export function SettingsModal() {
@@ -29,7 +33,17 @@ export function SettingsModal() {
     setReduceMotion,
     notifyWhenReady,
     setNotifyWhenReady,
+    notificationSound,
+    setNotificationSound,
   } = useSettings();
+
+  const changeSound = async (enabled: boolean) => {
+    setNotificationSound(enabled);
+    if (!enabled) return;
+    // Let them hear what they just turned on, at the volume they'll hear most.
+    await primeNotificationSound();
+    playNotificationSound("soft");
+  };
   // Tours point at the project workspace, so they can only replay there.
   const inProject = useLocation().pathname.startsWith("/project/");
   const notificationsSupported = browserNotificationsSupported();
@@ -96,11 +110,11 @@ export function SettingsModal() {
               <BellRingIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-silver-900">
-                  Notify when ready
+                  Desktop notifications
                 </span>
                 <span className="text-xs text-silver-600">
-                  Automatically notify you when a project run finishes. Keep
-                  Tau open in a browser tab.
+                  Get a system notification when a build finishes or needs
+                  you while Tau is in the background. Keep Tau open in a tab.
                 </span>
                 {!notificationsSupported && (
                   <span className="text-xs text-amber-400">
@@ -148,6 +162,33 @@ export function SettingsModal() {
               Send test notification
             </button>
           )}
+
+          <label
+            htmlFor="notification-sound"
+            className="flex items-start justify-between gap-4 rounded-lg border border-silver-400/25 bg-space-surface p-3"
+          >
+            <span className="flex gap-2.5">
+              <Volume2Icon className="mt-0.5 size-4 shrink-0 text-silver-600" />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-silver-900">
+                  Sound
+                </span>
+                <span className="text-xs text-silver-600">
+                  A soft chime when a build finishes or needs you; louder when
+                  you&rsquo;re in another tab.
+                </span>
+              </span>
+            </span>
+
+            <Switch.Root
+              id="notification-sound"
+              checked={notificationSound}
+              onCheckedChange={(enabled) => void changeSound(enabled)}
+              className="relative mt-0.5 h-5 w-9 shrink-0 cursor-pointer rounded-full bg-space-overlay ring-1 ring-silver-400/40 outline-none transition-colors data-[state=checked]:bg-brand"
+            >
+              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px]" />
+            </Switch.Root>
+          </label>
 
           <div className="flex items-start justify-between gap-4 rounded-lg border border-silver-400/25 bg-space-surface p-3">
             <span className="flex gap-2.5">

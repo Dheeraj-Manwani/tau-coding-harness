@@ -14,7 +14,7 @@ import { useSettingsStore } from "@/src/stores/useSettingsStore";
  *
  *   account (server, follows the user): reduceMotion, hasSeenMotionIntro,
  *                                       lastEffort, tours
- *   device  (localStorage):             notifyWhenReady
+ *   device  (localStorage):             notifyWhenReady, notificationSound
  *
  * Callers should not need to know which is which; moving a setting between the
  * two is a change here, not at every call site.
@@ -24,6 +24,8 @@ export function useSettings() {
   const { mutate } = useUpdatePreferences();
   const notifyWhenReady = useSettingsStore((s) => s.notifyWhenReady);
   const setNotifyWhenReady = useSettingsStore((s) => s.setNotifyWhenReady);
+  const notificationSound = useSettingsStore((s) => s.notificationSound);
+  const setNotificationSound = useSettingsStore((s) => s.setNotificationSound);
 
   const setReduceMotion = useCallback(
     (reduceMotion: boolean) => mutate({ reduceMotion }),
@@ -50,11 +52,13 @@ export function useSettings() {
     lastEffort: preferences.lastEffort ?? null,
     tours: preferences.tours ?? {},
     notifyWhenReady,
+    notificationSound,
 
     setReduceMotion,
     markMotionIntroSeen,
     setLastEffort,
     recordTour,
     setNotifyWhenReady,
+    setNotificationSound,
   };
 }

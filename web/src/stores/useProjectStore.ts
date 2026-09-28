@@ -961,6 +961,9 @@ interface ProjectState {
 
   // Cancellation hook, registered by the active SSE stream.
   cancelStream: (() => void) | null;
+  /** The job this tab's user pressed Stop on, so its "cancelled" ending is
+   *  not announced back to the person who caused it. */
+  userCancelledJobId: string | null;
 
   // UI (local, not server-derived)
   isChatOpen: boolean;
@@ -1049,6 +1052,7 @@ interface ProjectState {
   /** Flag/clear the "this run has gone quiet" presentation state. */
   setStalled: (stalled: boolean) => void;
   setCanceller: (fn: (() => void) | null) => void;
+  markUserCancelled: (jobId: string) => void;
   answerPendingQuestion: (questionId: string, answer: string) => void;
 
   toggleChat: () => void;
@@ -1122,6 +1126,7 @@ const FRESH = {
   previewPath: "/",
   previewNonce: 0,
   cancelStream: null,
+  userCancelledJobId: null as string | null,
   activeTab: "preview" as Tab,
   openFiles: [] as string[],
   activeFileId: "",
@@ -1370,6 +1375,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setStalled: (stalled) => set({ isStalled: stalled }),
 
   setCanceller: (fn) => set({ cancelStream: fn }),
+  markUserCancelled: (jobId) => set({ userCancelledJobId: jobId }),
   answerPendingQuestion: (questionId, answer) =>
     set((s) => ({
       ...(s.pendingQuestion?.id === questionId
@@ -1567,6 +1573,11 @@ function flushPendingActions(s: ProjectState): {
 function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
   switch (event.type) {
     case "thinking":
+      // Preview restarts and deploys aren't chat turns: the preview pane and
+      // the Publish panel show their own progress, so their status lines
+      // ("Starting preview", "Preparing your app") must not raise the chat's
+      // τ shimmer. See `startPreviewJob`.
+      if (get().isPreviewJob) return;
       set({ isAiTyping: true, status: "streaming", activity: event.message });
       return;
 

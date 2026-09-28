@@ -1166,11 +1166,7 @@ export function ChatPanel({
 
       <div className="border-[var(--silver-200)] p-3" data-tour="composer">
         {!pendingQuestion && readyNotification?.showPrompt && (
-          <button
-            type="button"
-            onClick={() => void readyNotification.enable()}
-            className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--silver-400)]/50 hover:bg-[var(--space-overlay)]"
-          >
+          <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
               <BellIcon className="size-3.5" />
             </span>
@@ -1182,10 +1178,22 @@ export function ChatPanel({
                 You can switch tabs while Tau works
               </span>
             </span>
-            <span className="shrink-0 rounded-md bg-[var(--space-overlay)] px-2 py-1 text-[11px] font-medium text-[var(--silver-900)]">
+            <button
+              type="button"
+              onClick={readyNotification.snooze}
+              title="Hide this for 3 days"
+              className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
+            >
+              Not now
+            </button>
+            <button
+              type="button"
+              onClick={() => void readyNotification.enable()}
+              className="shrink-0 rounded-md bg-[var(--space-overlay)] px-2 py-1 text-[11px] font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--silver-200)]"
+            >
               Notify me
-            </span>
-          </button>
+            </button>
+          </div>
         )}
         {pendingQuestion && currentJobId && projectId ? (
           <AskUserPrompt

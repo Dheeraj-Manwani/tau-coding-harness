@@ -10,6 +10,12 @@ import {
   READY_NOTIFICATION_PROMPT_DELAY_MS,
   shouldShowReadyNotificationPrompt,
 } from "@/src/features/project/readyNotificationPrompt";
+import {
+  chooseDelivery,
+  isUserAttentive,
+  shouldNotifyForRun,
+} from "@/src/features/project/readyNotificationRouting";
+import { clearTitleBadge, showTitleBadge } from "@/src/features/project/titleBadge";
 import type { TerminalOutcome } from "@/src/features/project/types";
 import {
   playNotificationSound,
@@ -24,15 +30,24 @@ export type ReadyNotificationController = {
   armed: boolean;
   showPrompt: boolean;
   enable: () => Promise<void>;
+  /** "Not now": hide the opt-in bar on this device for a few days. */
+  snooze: () => void;
 };
 
 type ReadyNotificationOptions = {
   projectId?: string;
+  projectName?: string | null;
   currentJobId: string | null;
   status: JobStatus;
+  /** The running job is a preview restart or deploy, not a build. */
+  isPreviewJob: boolean;
   terminalOutcome: TerminalOutcome | null;
   pendingQuestion: { id: string; question: string } | null;
+  /** The job this tab's user pressed Stop on. */
+  userCancelledJobId: string | null;
 };
+
+type NotificationEvent = "finished" | "input";
 
 export function browserNotificationsSupported() {
   return typeof window !== "undefined" && "Notification" in window;
@@ -54,7 +69,7 @@ export async function requestReadyNotificationPermission() {
 function showBrowserNotification(
   copy: ReadyNotificationCopy,
   projectId: string | undefined,
-  event: "finished" | "input",
+  event: NotificationEvent,
 ): boolean {
   try {
     const notification = new Notification(copy.title, {
@@ -74,27 +89,17 @@ function showBrowserNotification(
   }
 }
 
-function showInAppNotification(
-  copy: ReadyNotificationCopy,
-  projectId: string | undefined,
-  event: "finished" | "input",
-) {
-  toast(`${copy.title}: ${copy.body}`, {
-    id: `tau-project-${event}-${projectId ?? "project"}`,
-    icon: event === "input" ? "🔔" : "✓",
-    duration: event === "input" ? 8_000 : 6_000,
-  });
-}
-
 /** User-initiated smoke test exposed in Settings. */
 export async function sendReadyNotificationTest(): Promise<void> {
   const copy = {
     title: "Tau notifications are ready",
-    body: "You’ll get an alert when Tau finishes working.",
+    body: "You’ll get an alert when Tau finishes working while you’re away.",
   };
   await primeNotificationSound();
-  playNotificationSound();
-  showInAppNotification(copy, undefined, "finished");
+  if (useSettingsStore.getState().notificationSound) playNotificationSound();
+  // The one toast left in this feature: the user just asked for proof, and an
+  // OS "focus" mode can swallow the system notification silently.
+  toast(`${copy.title}: ${copy.body}`, { id: "tau-notification-test" });
   if (
     browserNotificationsSupported() &&
     Notification.permission === "granted"
@@ -104,87 +109,137 @@ export async function sendReadyNotificationTest(): Promise<void> {
 }
 
 /**
- * Owns the opt-in for one active build.
+ * Alerts for the build on this project page.
+ *
+ * Deliberately scoped to the page: leaving the project ends the watch. How
+ * loud an alert is depends on where the user's attention is (see
+ * `chooseDelivery`); in short, a soft chime if they're looking at the project,
+ * a system notification + title badge if they're not. Nothing is shown as an
+ * in-app toast, because a user looking at the project can already see it.
  *
  * The project page (rather than ChatPanel) owns this hook because ChatPanel is
  * remounted when a new project grows from chat-only into the full workspace.
  */
 export function useReadyNotification({
   projectId,
+  projectName,
   currentJobId,
   status,
+  isPreviewJob,
   terminalOutcome,
   pendingQuestion,
+  userCancelledJobId,
 }: ReadyNotificationOptions): ReadyNotificationController {
   const supported = browserNotificationsSupported();
   const notificationsEnabled = useSettingsStore((s) => s.notifyWhenReady);
+  const soundEnabled = useSettingsStore((s) => s.notificationSound);
+  const snoozedUntil = useSettingsStore((s) => s.notifyPromptSnoozedUntil);
   const setNotifyWhenReady = useSettingsStore((s) => s.setNotifyWhenReady);
-  const [promptJobId, setPromptJobId] = useState<string | null>(null);
+  const snoozeNotifyPrompt = useSettingsStore((s) => s.snoozeNotifyPrompt);
+  // Which job crossed the prompt threshold, and when. The time is taken in the
+  // timer callback rather than during render, which must stay pure.
+  const [threshold, setThreshold] = useState<{ jobId: string; at: number } | null>(
+    null,
+  );
   const previousStatusRef = useRef(status);
-  const armedRef = useRef(false);
+  // What was running, remembered past the terminal event: by the time a run
+  // has ended the store has already cleared `currentJobId` and `isPreviewJob`.
+  const runRef = useRef<{ jobId: string | null; isPreviewJob: boolean }>({
+    jobId: null,
+    isPreviewJob: false,
+  });
   const notifiedQuestionRef = useRef<string | null>(null);
   const permissionGranted =
     supported && Notification.permission === "granted";
-  const armed = Boolean(
-    currentJobId && permissionGranted && notificationsEnabled,
-  );
+  const systemEnabled = permissionGranted && notificationsEnabled;
+  const armed = Boolean(currentJobId && systemEnabled);
   const showPrompt = shouldShowReadyNotificationPrompt({
     currentJobId,
-    thresholdJobId: promptJobId,
+    thresholdJobId: threshold?.jobId ?? null,
     status,
+    isPreviewJob,
     notificationsEnabled,
     permissionGranted,
     supported,
+    snoozedUntil,
+    now: threshold?.at ?? 0,
   });
 
   useEffect(() => registerNotificationSoundUnlock(), []);
+  // Leaving the project ends the watch, including any "while you were away"
+  // badge it put on the tab title.
+  useEffect(() => clearTitleBadge, []);
 
-  // Track the five-second threshold independently from the setting. This means
-  // turning notifications off after a long run has already crossed the
-  // threshold reveals the bar immediately instead of starting a fresh timer.
-  // The timer lives with ProjectPage rather than ChatPanel, so the chat-only →
-  // workspace remount cannot restart it.
+  const deliver = useCallback(
+    (copy: ReadyNotificationCopy, event: NotificationEvent) => {
+      const delivery = chooseDelivery({
+        attentive: isUserAttentive(),
+        systemEnabled,
+        soundEnabled,
+      });
+      if (delivery.sound) playNotificationSound(delivery.sound);
+      if (delivery.system) showBrowserNotification(copy, projectId, event);
+      if (delivery.badge) showTitleBadge(copy.title);
+    },
+    [projectId, soundEnabled, systemEnabled],
+  );
+
+  // Track the threshold independently from the setting. This means turning
+  // notifications off after a long run has already crossed the threshold
+  // reveals the bar immediately instead of starting a fresh timer. The timer
+  // lives with ProjectPage rather than ChatPanel, so the chat-only → workspace
+  // remount cannot restart it.
   useEffect(() => {
-    if (!currentJobId || status !== "streaming" || !supported) return;
+    if (!currentJobId || status !== "streaming" || !supported || isPreviewJob) {
+      return;
+    }
     const timer = window.setTimeout(
-      () => setPromptJobId(currentJobId),
+      () => setThreshold({ jobId: currentJobId, at: Date.now() }),
       READY_NOTIFICATION_PROMPT_DELAY_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [currentJobId, status, supported]);
+  }, [currentJobId, status, supported, isPreviewJob]);
 
   useEffect(() => {
     const wasRunning = previousStatusRef.current === "streaming";
-    const wasArmed = armedRef.current;
     previousStatusRef.current = status;
-    armedRef.current = armed;
 
+    if (status === "streaming") {
+      runRef.current = { jobId: currentJobId, isPreviewJob };
+      return;
+    }
     if (!wasRunning) return;
 
-    const copy = getReadyNotificationCopy(terminalOutcome, status);
-    if (!copy) return;
+    const run = runRef.current;
+    const notify = shouldNotifyForRun({
+      wasPreviewJob: run.isPreviewJob,
+      cancelledByUser: run.jobId !== null && run.jobId === userCancelledJobId,
+      outcome: terminalOutcome,
+      status,
+    });
+    if (!notify) return;
 
-    // The in-app toast is unconditional so a foreground tab always shows an
-    // observable completion even when browser permission is off or blocked.
-    showInAppNotification(copy, projectId, "finished");
-
-    if (wasArmed) {
-      playNotificationSound();
-      showBrowserNotification(copy, projectId, "finished");
-    }
-  }, [armed, projectId, status, terminalOutcome]);
+    const copy = getReadyNotificationCopy(terminalOutcome, status, projectName);
+    if (copy) deliver(copy, "finished");
+  }, [
+    currentJobId,
+    deliver,
+    isPreviewJob,
+    projectName,
+    status,
+    terminalOutcome,
+    userCancelledJobId,
+  ]);
 
   useEffect(() => {
     if (!pendingQuestion) return;
     if (notifiedQuestionRef.current === pendingQuestion.id) return;
     notifiedQuestionRef.current = pendingQuestion.id;
-    const copy = getInputNotificationCopy(pendingQuestion.question);
-    showInAppNotification(copy, projectId, "input");
-    if (armed) {
-      playNotificationSound();
-      showBrowserNotification(copy, projectId, "input");
-    }
-  }, [armed, pendingQuestion, projectId]);
+    deliver(
+      getInputNotificationCopy(pendingQuestion.question, projectName),
+      "input",
+    );
+  }, [deliver, pendingQuestion, projectName]);
 
   const enable = useCallback(async () => {
     if (!projectId || !currentJobId || status !== "streaming") return;
@@ -209,5 +264,6 @@ export function useReadyNotification({
     armed,
     showPrompt,
     enable,
+    snooze: snoozeNotifyPrompt,
   };
 }

@@ -201,6 +201,8 @@ export default function ProjectPage() {
   const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
   const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const isStalled = useProjectStore((s) => s.isStalled);
+  const isPreviewJob = useProjectStore((s) => s.isPreviewJob);
+  const userCancelledJobId = useProjectStore((s) => s.userCancelledJobId);
   const layoutMode = resolveProjectLayout({
     liveBuildStarted: storeProjectId === projectId && buildStarted,
     workspaceStartedAt: detail?.project.workspaceStartedAt,
@@ -224,15 +226,19 @@ export default function ProjectPage() {
   );
   const readyNotification = useReadyNotification({
     projectId,
+    projectName: detail?.project.name,
     currentJobId,
     status,
+    isPreviewJob,
     terminalOutcome,
     pendingQuestion,
+    userCancelledJobId,
   });
   useAgentFavicon({
     status,
     pendingQuestion: pendingQuestion != null,
     stalled: isStalled,
+    previewJob: isPreviewJob,
   });
 
   const chatPanelRef = useRef<PanelImperativeHandle | null>(null);

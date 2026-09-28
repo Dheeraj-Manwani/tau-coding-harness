@@ -11,6 +11,7 @@ type AgentFaviconOptions = {
   status: JobStatus;
   pendingQuestion: boolean;
   stalled: boolean;
+  previewJob?: boolean;
 };
 
 const BLINK_INTERVAL_MS = 650;

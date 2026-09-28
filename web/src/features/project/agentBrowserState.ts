@@ -12,6 +12,9 @@ type AgentBrowserStateInput = {
   status: JobStatus;
   pendingQuestion: boolean;
   stalled: boolean;
+  /** A preview restart or deploy: background housekeeping, not agent work,
+   *  so the tab shouldn't blink as if tau were building. */
+  previewJob?: boolean;
 };
 
 /** Reduce the project lifecycle to the small state machine shown in the tab. */
@@ -19,8 +22,10 @@ export function resolveAgentBrowserState({
   status,
   pendingQuestion,
   stalled,
+  previewJob = false,
 }: AgentBrowserStateInput): AgentBrowserState {
   if (status === "streaming") {
+    if (previewJob) return "idle";
     if (pendingQuestion) return "waiting";
     if (stalled) return "stalled";
     return "working";

@@ -25,15 +25,21 @@ export async function primeNotificationSound(): Promise<void> {
   }
 }
 
+/** Peak gain per volume. "soft" is for a user already looking at the project:
+ *  an acknowledgement, not an alarm. */
+const PEAK_GAIN = { soft: 0.045, full: 0.13 } as const;
+
 /** Play a short two-note completion chime. Returns false when audio is blocked. */
-export function playNotificationSound(): boolean {
+export function playNotificationSound(
+  volume: keyof typeof PEAK_GAIN = "full",
+): boolean {
   const context = audioContext;
   if (!context || context.state !== "running") return false;
 
   const start = context.currentTime;
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.13, start + 0.025);
+  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN[volume], start + 0.025);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.52);
   gain.connect(context.destination);
 

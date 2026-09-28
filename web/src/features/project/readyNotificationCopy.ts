@@ -14,9 +14,20 @@ function concise(message: string): string {
     : normalized;
 }
 
-export function getInputNotificationCopy(question: string): ReadyNotificationCopy {
+/** A project name fit for a notification title, or null to use generic copy. */
+function titleName(projectName: string | null | undefined): string | null {
+  const name = projectName?.replace(/\s+/g, " ").trim();
+  if (!name) return null;
+  return name.length > 40 ? `${name.slice(0, 39).trimEnd()}…` : name;
+}
+
+export function getInputNotificationCopy(
+  question: string,
+  projectName?: string | null,
+): ReadyNotificationCopy {
+  const name = titleName(projectName);
   return {
-    title: "Tau needs your input",
+    title: name ? `${name} needs your input` : "Tau needs your input",
     body: concise(question),
   };
 }
@@ -25,12 +36,17 @@ export function getInputNotificationCopy(question: string): ReadyNotificationCop
 export function getReadyNotificationCopy(
   outcome: TerminalOutcome | null,
   status: JobStatus,
+  projectName?: string | null,
 ): ReadyNotificationCopy | null {
+  const name = titleName(projectName);
+
   if (outcome?.kind === "done" || (!outcome && status === "done")) {
-    return {
-      title: "Your Tau project is ready",
-      body: "Tau has finished working on your project.",
-    };
+    return name
+      ? { title: `${name} is ready`, body: "Tau has finished working on it." }
+      : {
+          title: "Your Tau project is ready",
+          body: "Tau has finished working on your project.",
+        };
   }
 
   if (outcome?.kind === "credits") {
@@ -47,21 +63,23 @@ export function getReadyNotificationCopy(
 
   if (outcome?.kind === "cancelled" || (!outcome && status === "cancelled")) {
     return {
-      title: "Tau stopped",
+      title: name ? `Tau stopped working on ${name}` : "Tau stopped",
       body: "The run was cancelled before it finished.",
     };
   }
 
+  const failedTitle = name ? `Tau couldn’t finish ${name}` : "Tau couldn’t finish";
+
   if (outcome?.kind === "error") {
     return {
-      title: "Tau couldn’t finish",
+      title: failedTitle,
       body: concise(outcome.message),
     };
   }
 
   if (status === "error") {
     return {
-      title: "Tau couldn’t finish",
+      title: failedTitle,
       body: "Open Tau to see what went wrong.",
     };
   }

@@ -6,12 +6,31 @@ const base = {
   currentJobId: "job-1",
   thresholdJobId: "job-1",
   status: "streaming" as const,
+  isPreviewJob: false,
   notificationsEnabled: false,
   permissionGranted: false,
   supported: true,
+  snoozedUntil: null,
+  now: 1_000_000,
 };
 
 describe("shouldShowReadyNotificationPrompt", () => {
+  test("never offers itself for a preview restart", () => {
+    expect(
+      shouldShowReadyNotificationPrompt({ ...base, isPreviewJob: true }),
+    ).toBe(false);
+  });
+
+  test("'Not now' hides it until the snooze runs out, then it returns", () => {
+    const snoozedUntil = base.now + 3 * 24 * 60 * 60 * 1000;
+    expect(
+      shouldShowReadyNotificationPrompt({ ...base, snoozedUntil }),
+    ).toBe(false);
+    expect(
+      shouldShowReadyNotificationPrompt({ ...base, snoozedUntil, now: snoozedUntil }),
+    ).toBe(true);
+  });
+
   test("shows after the threshold when notifications are off", () => {
     expect(shouldShowReadyNotificationPrompt(base)).toBe(true);
   });

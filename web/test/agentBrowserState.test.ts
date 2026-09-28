@@ -19,6 +19,17 @@ describe("resolveAgentBrowserState", () => {
     ).toBe("working");
   });
 
+  test("stays idle while a preview restart or deploy runs", () => {
+    expect(
+      resolveAgentBrowserState({
+        status: "streaming",
+        pendingQuestion: false,
+        stalled: false,
+        previewJob: true,
+      }),
+    ).toBe("idle");
+  });
+
   test("prioritizes user input and stalled states over generic work", () => {
     expect(
       resolveAgentBrowserState({

@@ -12,7 +12,7 @@ project with its own dependencies and lockfile.
 > **One backend, one process.** `server/` is the entire backend: the API, the job
 > runner and the SSE stream all run in a single Bun process against Postgres.
 > There is no Redis and no separate gateway. It used to be four services; see
-> `doc/SERVICE_MERGE_PLAN.md` for how and why that changed.
+> `doc/archive/SERVICE_MERGE_PLAN.md` for how and why that changed.
 
 ## How a request flows through the system
 

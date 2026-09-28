@@ -750,6 +750,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
             <DropdownMenu.Trigger asChild>
               <button
                 type="button"
+                data-tour="project-switcher"
                 className="group flex items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
               >
                 <span ref={nameRef} className="max-w-[220px] truncate">
@@ -1076,6 +1077,7 @@ export function ChatPanel({
               onClick={toggleChat}
               whileHover={{ scale: 1.1 }}
               aria-label="Collapse chat"
+              data-tour="collapse-chat"
               className="flex size-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
             >
               <PanelLeftCloseIcon className="size-4.5" />
@@ -1085,7 +1087,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden" data-tour="chat-thread">
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -1162,7 +1164,7 @@ export function ChatPanel({
         </AnimatePresence>
       </div>
 
-      <div className="border-[var(--silver-200)] p-3">
+      <div className="border-[var(--silver-200)] p-3" data-tour="composer">
         {!pendingQuestion && readyNotification?.showPrompt && (
           <button
             type="button"

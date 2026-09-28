@@ -18,7 +18,7 @@
  * read as text by a model, so it must be self-delimiting and its attributes
  * must be escaped.
  *
- * See doc/VISUAL_EDIT_PROMPTING.md §7.
+ * See doc/archive/VISUAL_EDIT_PROMPTING.md §7.
  */
 import { escapeAttr } from "./attachments";
 import { parseLoc } from "./visualEdit";

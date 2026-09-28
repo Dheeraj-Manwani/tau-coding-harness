@@ -1,5 +1,5 @@
 /**
- * Visual edit for projects that predate it — doc/VISUAL_EDIT_PLAN.md §6 Phase 5.
+ * Visual edit for projects that predate it — doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 5.
  *
  * Phases 1–4 ship the tagger inside the E2B template images, so every project
  * created after the image rebuild can be clicked and edited. Projects created

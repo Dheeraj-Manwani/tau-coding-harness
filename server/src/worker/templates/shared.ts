@@ -467,7 +467,7 @@ export const VITE_ALLOWED_HOSTS_LINE = `    allowedHosts: ['.e2b.app'],`;
 export const VITE_TAILWIND_IMPORT_LINE = `import tailwindcss from '@tailwindcss/vite'`;
 export const VITE_PLUGINS_PREFIX = `  plugins: [react(), tailwindcss()`;
 
-// ── Visual edit (doc/VISUAL_EDIT_PLAN.md) ────────────────────────────────────
+// ── Visual edit (doc/archive/VISUAL_EDIT_PLAN.md) ────────────────────────────────────
 
 /**
  * Import + plugin entries that switch visual edit on in `vite.config.ts`.

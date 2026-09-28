@@ -1,3 +1,5 @@
+import type { Preferences } from "@/src/features/settings/preferences";
+
 export type Role = "USER" | "ADMIN";
 
 export interface AuthUser {
@@ -11,6 +13,8 @@ export interface AuthUser {
    */
   role: Role;
   createdAt: string;
+  /** Account-level UI preferences. See features/settings/preferences.ts. */
+  preferences: Preferences;
 }
 
 /** Shape returned by /auth/login and /auth/register. */

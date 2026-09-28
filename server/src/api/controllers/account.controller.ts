@@ -2,6 +2,9 @@ import type { Request, Response, NextFunction } from "express";
 import { requireUserId } from "../middleware/auth.middleware";
 import * as accountService from "../services/account.service";
 import * as reauthService from "../services/reauth.service";
+import * as preferencesService from "../services/preferences.service";
+import { patchPreferencesSchema } from "../schemas/preferences.schema";
+import { parse } from "../lib/utils";
 
 /**
  * The re-auth token travels in a header, not the body.
@@ -137,6 +140,29 @@ export async function setDailyCap(
       return;
     }
     res.json(await accountService.setDailyCap(requireUserId(req), raw));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /account/preferences — merge a partial update into the account's
+ * preferences and return the full result. Unknown keys are rejected rather than
+ * stored, so the column only ever holds what the schema describes.
+ */
+export async function updatePreferences(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const patch = parse(patchPreferencesSchema, req.body ?? {});
+    res.json({
+      preferences: await preferencesService.updatePreferences(
+        requireUserId(req),
+        patch,
+      ),
+    });
   } catch (err) {
     next(err);
   }

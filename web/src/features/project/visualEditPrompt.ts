@@ -15,7 +15,7 @@
  * the user actually typed, and it means model-facing wording lives in one
  * codebase rather than two.
  *
- * See doc/VISUAL_EDIT_PROMPTING.md §7.
+ * See doc/archive/VISUAL_EDIT_PROMPTING.md §7.
  */
 import type { VisualEditOpInput } from "@/src/stores/useProjectStore";
 

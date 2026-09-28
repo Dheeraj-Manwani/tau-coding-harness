@@ -16,7 +16,7 @@
  *     groups don't need to know about each other, and `text-xl` vs
  *     `text-red-500` resolve independently even though both start with `text-`.
  *
- * See doc/VISUAL_EDIT_PLAN.md §6 Phase 3.
+ * See doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 3.
  */
 
 export interface StyleOption {
@@ -148,7 +148,7 @@ export function activeOption(
   return group.options.find((o) => present.has(variant + o.className));
 }
 
-// ── Responsive variants (doc/VISUAL_EDIT_PLAN.md §6 Phase 6) ─────────────────
+// ── Responsive variants (doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 6) ─────────────────
 
 /**
  * The Tailwind variant each preview frame writes.

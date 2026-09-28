@@ -46,7 +46,7 @@
     // service's tsconfig and so were never typechecked; merging pulled them in
     // and surfaced 15 pre-existing strictness errors. Excluded to preserve the
     // status quo rather than silently changing it. They are candidates for
-    // deletion — see doc/SERVICE_MERGE_PLAN.md open decision #9 — at which
+    // deletion — see doc/archive/SERVICE_MERGE_PLAN.md open decision #9 — at which
     // point this entry goes too.
     "scripts/spike-*"
   ]

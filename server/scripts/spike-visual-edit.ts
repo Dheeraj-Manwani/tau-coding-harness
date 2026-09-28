@@ -1,5 +1,5 @@
 /**
- * End-to-end check for visual edit (doc/VISUAL_EDIT_PLAN.md §6).
+ * End-to-end check for visual edit (doc/archive/VISUAL_EDIT_PLAN.md §6).
  *
  * Started life as the Phase 0 spike and is now the standing verification for
  * the tagger. It answers:

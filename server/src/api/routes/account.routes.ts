@@ -9,6 +9,7 @@ import {
   revokeApiKeys,
   rotateApiKey,
   setDailyCap,
+  updatePreferences,
 } from "../controllers/account.controller";
 import {
   reauthRateLimiter,
@@ -36,5 +37,9 @@ router.post("/api-key/reveal", revealRateLimiter, revealApiKey);
 router.post("/api-key/rotate", revealRateLimiter, rotateApiKey);
 router.post("/api-key/revoke", revokeApiKeys);
 router.put("/api-key/cap", setDailyCap);
+
+// Account-level UI preferences (tours, motion, last effort). Reads ride along on
+// GET /auth/me; this is the only write path.
+router.patch("/preferences", updatePreferences);
 
 export default router;

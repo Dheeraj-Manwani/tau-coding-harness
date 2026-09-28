@@ -19,7 +19,7 @@
  *     caller turns that into a chat fallback (plan §6 Phase 4). Corrupting a
  *     file to avoid saying "no" is the worst outcome available.
  *
- * See doc/VISUAL_EDIT_PLAN.md §5.3.
+ * See doc/archive/VISUAL_EDIT_PLAN.md §5.3.
  */
 import ts from "typescript";
 import { twMerge } from "tailwind-merge";

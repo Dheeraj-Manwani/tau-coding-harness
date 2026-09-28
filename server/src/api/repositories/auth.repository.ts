@@ -22,6 +22,40 @@ export function createUser(data: {
   return prisma.user.create({ data });
 }
 
+/**
+ * Merge a preferences patch into the stored object in one statement.
+ *
+ * A Prisma read-modify-write would let two tabs saving different keys drop one
+ * another's change. Instead Postgres does the merge: top-level keys via `||`,
+ * and `tours` one level deeper so finishing one tour never erases another.
+ * Returns the merged object, or null if the user no longer exists.
+ */
+export async function mergeUserPreferences(
+  userId: string,
+  top: Record<string, unknown>,
+  tours: Record<string, unknown> | undefined,
+): Promise<unknown | null> {
+  const topJson = JSON.stringify(top);
+  const toursJson = JSON.stringify(tours ?? {});
+  const rows = await prisma.$queryRaw<{ preferences: unknown }[]>`
+    UPDATE "User"
+    SET "preferences" =
+      COALESCE("preferences", '{}'::jsonb)
+      || ${topJson}::jsonb
+      || CASE WHEN ${toursJson}::jsonb = '{}'::jsonb THEN '{}'::jsonb
+         ELSE jsonb_build_object(
+           'tours',
+           CASE WHEN jsonb_typeof("preferences"->'tours') = 'object'
+             THEN "preferences"->'tours' ELSE '{}'::jsonb END
+           || ${toursJson}::jsonb
+         )
+         END
+    WHERE "id" = ${userId}
+    RETURNING "preferences"
+  `;
+  return rows[0]?.preferences ?? null;
+}
+
 export function markEmailVerified(userId: string): Promise<User> {
   return prisma.user.update({
     where: { id: userId },

@@ -49,6 +49,7 @@ export type UserCountAggregateOutputType = {
   emailVerifiedAt: number
   role: number
   createdAt: number
+  preferences: number
   _all: number
 }
 
@@ -78,6 +79,7 @@ export type UserCountAggregateInputType = {
   emailVerifiedAt?: true
   role?: true
   createdAt?: true
+  preferences?: true
   _all?: true
 }
 
@@ -160,6 +162,7 @@ export type UserGroupByOutputType = {
   emailVerifiedAt: Date | null
   role: $Enums.Role
   createdAt: Date
+  preferences: runtime.JsonValue
   _count: UserCountAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
@@ -190,6 +193,7 @@ export type UserWhereInput = {
   emailVerifiedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   role?: Prisma.EnumRoleFilter<"User"> | $Enums.Role
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  preferences?: Prisma.JsonFilter<"User">
   oauthAccounts?: Prisma.OAuthAccountListRelationFilter
   refreshTokens?: Prisma.RefreshTokenListRelationFilter
   projects?: Prisma.ProjectListRelationFilter
@@ -208,6 +212,7 @@ export type UserOrderByWithRelationInput = {
   emailVerifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
   oauthAccounts?: Prisma.OAuthAccountOrderByRelationAggregateInput
   refreshTokens?: Prisma.RefreshTokenOrderByRelationAggregateInput
   projects?: Prisma.ProjectOrderByRelationAggregateInput
@@ -229,6 +234,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   emailVerifiedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   role?: Prisma.EnumRoleFilter<"User"> | $Enums.Role
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  preferences?: Prisma.JsonFilter<"User">
   oauthAccounts?: Prisma.OAuthAccountListRelationFilter
   refreshTokens?: Prisma.RefreshTokenListRelationFilter
   projects?: Prisma.ProjectListRelationFilter
@@ -247,6 +253,7 @@ export type UserOrderByWithAggregationInput = {
   emailVerifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
@@ -262,6 +269,7 @@ export type UserScalarWhereWithAggregatesInput = {
   emailVerifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   role?: Prisma.EnumRoleWithAggregatesFilter<"User"> | $Enums.Role
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  preferences?: Prisma.JsonWithAggregatesFilter<"User">
 }
 
 export type UserCreateInput = {
@@ -271,6 +279,7 @@ export type UserCreateInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -289,6 +298,7 @@ export type UserUncheckedCreateInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -307,6 +317,7 @@ export type UserUpdateInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -325,6 +336,7 @@ export type UserUncheckedUpdateInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -343,6 +355,7 @@ export type UserCreateManyInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserUpdateManyMutationInput = {
@@ -352,6 +365,7 @@ export type UserUpdateManyMutationInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -361,6 +375,7 @@ export type UserUncheckedUpdateManyInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -370,6 +385,7 @@ export type UserCountOrderByAggregateInput = {
   emailVerifiedAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -548,6 +564,7 @@ export type UserCreateWithoutOauthAccountsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutUserInput
@@ -565,6 +582,7 @@ export type UserUncheckedCreateWithoutOauthAccountsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutUserInput
@@ -598,6 +616,7 @@ export type UserUpdateWithoutOauthAccountsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutUserNestedInput
@@ -615,6 +634,7 @@ export type UserUncheckedUpdateWithoutOauthAccountsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutUserNestedInput
@@ -632,6 +652,7 @@ export type UserCreateWithoutRefreshTokensInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutUserInput
@@ -649,6 +670,7 @@ export type UserUncheckedCreateWithoutRefreshTokensInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutUserInput
@@ -682,6 +704,7 @@ export type UserUpdateWithoutRefreshTokensInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutUserNestedInput
@@ -699,6 +722,7 @@ export type UserUncheckedUpdateWithoutRefreshTokensInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutUserNestedInput
@@ -716,6 +740,7 @@ export type UserCreateWithoutProjectsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutUserInput
@@ -733,6 +758,7 @@ export type UserUncheckedCreateWithoutProjectsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutUserInput
@@ -766,6 +792,7 @@ export type UserUpdateWithoutProjectsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutUserNestedInput
@@ -783,6 +810,7 @@ export type UserUncheckedUpdateWithoutProjectsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutUserNestedInput
@@ -800,6 +828,7 @@ export type UserCreateWithoutAttachmentsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -817,6 +846,7 @@ export type UserUncheckedCreateWithoutAttachmentsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -850,6 +880,7 @@ export type UserUpdateWithoutAttachmentsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -867,6 +898,7 @@ export type UserUncheckedUpdateWithoutAttachmentsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -884,6 +916,7 @@ export type UserCreateWithoutTokenUsageInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -901,6 +934,7 @@ export type UserUncheckedCreateWithoutTokenUsageInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -934,6 +968,7 @@ export type UserUpdateWithoutTokenUsageInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -951,6 +986,7 @@ export type UserUncheckedUpdateWithoutTokenUsageInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -968,6 +1004,7 @@ export type UserCreateWithoutBillingInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -985,6 +1022,7 @@ export type UserUncheckedCreateWithoutBillingInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -1018,6 +1056,7 @@ export type UserUpdateWithoutBillingInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -1035,6 +1074,7 @@ export type UserUncheckedUpdateWithoutBillingInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -1052,6 +1092,7 @@ export type UserCreateWithoutPromoRedeemsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -1069,6 +1110,7 @@ export type UserUncheckedCreateWithoutPromoRedeemsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -1102,6 +1144,7 @@ export type UserUpdateWithoutPromoRedeemsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -1119,6 +1162,7 @@ export type UserUncheckedUpdateWithoutPromoRedeemsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -1136,6 +1180,7 @@ export type UserCreateWithoutSubscriptionsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -1153,6 +1198,7 @@ export type UserUncheckedCreateWithoutSubscriptionsInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -1186,6 +1232,7 @@ export type UserUpdateWithoutSubscriptionsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -1203,6 +1250,7 @@ export type UserUncheckedUpdateWithoutSubscriptionsInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -1220,6 +1268,7 @@ export type UserCreateWithoutApiKeysInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectCreateNestedManyWithoutUserInput
@@ -1237,6 +1286,7 @@ export type UserUncheckedCreateWithoutApiKeysInput = {
   emailVerifiedAt?: Date | string | null
   role?: $Enums.Role
   createdAt?: Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedCreateNestedManyWithoutUserInput
   refreshTokens?: Prisma.RefreshTokenUncheckedCreateNestedManyWithoutUserInput
   projects?: Prisma.ProjectUncheckedCreateNestedManyWithoutUserInput
@@ -1270,6 +1320,7 @@ export type UserUpdateWithoutApiKeysInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUpdateManyWithoutUserNestedInput
@@ -1287,6 +1338,7 @@ export type UserUncheckedUpdateWithoutApiKeysInput = {
   emailVerifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   oauthAccounts?: Prisma.OAuthAccountUncheckedUpdateManyWithoutUserNestedInput
   refreshTokens?: Prisma.RefreshTokenUncheckedUpdateManyWithoutUserNestedInput
   projects?: Prisma.ProjectUncheckedUpdateManyWithoutUserNestedInput
@@ -1398,6 +1450,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   emailVerifiedAt?: boolean
   role?: boolean
   createdAt?: boolean
+  preferences?: boolean
   oauthAccounts?: boolean | Prisma.User$oauthAccountsArgs<ExtArgs>
   refreshTokens?: boolean | Prisma.User$refreshTokensArgs<ExtArgs>
   projects?: boolean | Prisma.User$projectsArgs<ExtArgs>
@@ -1417,6 +1470,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   emailVerifiedAt?: boolean
   role?: boolean
   createdAt?: boolean
+  preferences?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1426,6 +1480,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   emailVerifiedAt?: boolean
   role?: boolean
   createdAt?: boolean
+  preferences?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -1435,9 +1490,10 @@ export type UserSelectScalar = {
   emailVerifiedAt?: boolean
   role?: boolean
   createdAt?: boolean
+  preferences?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "emailVerifiedAt" | "role" | "createdAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "emailVerifiedAt" | "role" | "createdAt" | "preferences", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   oauthAccounts?: boolean | Prisma.User$oauthAccountsArgs<ExtArgs>
   refreshTokens?: boolean | Prisma.User$refreshTokensArgs<ExtArgs>
@@ -1473,6 +1529,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     emailVerifiedAt: Date | null
     role: $Enums.Role
     createdAt: Date
+    /**
+     * Account-level UI preferences and onboarding state, shaped and validated by
+     * `api/schemas/preferences.schema.ts`. Device-local settings stay in the
+     * browser. Written only through `updatePreferences` (atomic jsonb merge).
+     */
+    preferences: runtime.JsonValue
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -1911,6 +1973,7 @@ export interface UserFieldRefs {
   readonly emailVerifiedAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly role: Prisma.FieldRef<"User", 'Role'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly preferences: Prisma.FieldRef<"User", 'Json'>
 }
     
 

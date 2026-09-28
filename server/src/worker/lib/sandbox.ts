@@ -336,7 +336,7 @@ export async function provisionSandbox(
       ? requestedTemplateKey
       : toTemplateKey(project.templateKey);
 
-  // Visual edit (doc/VISUAL_EDIT_PLAN.md §6 Phase 5). Projects seeded before the
+  // Visual edit (doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 5). Projects seeded before the
   // tagger shipped carry a vite.config.ts that never loads it, and rehydration
   // would faithfully write that old config onto the new sandbox. Patch the
   // manifest first so the right bytes land once. Never fatal: a working boot is

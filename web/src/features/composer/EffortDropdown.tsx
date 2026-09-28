@@ -40,6 +40,7 @@ export function EffortDropdown({
         <button
           type="button"
           aria-label="How much effort Tau should use"
+          data-tour="effort"
           className="group flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
         >
           <span className="text-[var(--silver-600)]">Effort:</span>

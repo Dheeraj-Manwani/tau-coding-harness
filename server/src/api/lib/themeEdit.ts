@@ -1,5 +1,5 @@
 /**
- * Global theme edits — the other half of visual edit (doc/VISUAL_EDIT_PLAN.md §6
+ * Global theme edits — the other half of visual edit (doc/archive/VISUAL_EDIT_PLAN.md §6
  * Phase 6).
  *
  * Everything else in this feature edits one element. This edits one *variable*

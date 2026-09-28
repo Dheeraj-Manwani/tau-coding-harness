@@ -1011,7 +1011,7 @@ export async function saveProjectFile(
  * list). That is a normal outcome the UI turns into a chat fallback, not an
  * error. Genuine problems — a moved file, a missing one — still throw.
  *
- * See doc/VISUAL_EDIT_PLAN.md §5.3.
+ * See doc/archive/VISUAL_EDIT_PLAN.md §5.3.
  */
 export async function applyVisualEditToProject(
   projectId: string,

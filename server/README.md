@@ -79,6 +79,6 @@ best covered. CI runs them on every push and PR (`.github/workflows/ci.yml`).
   The Prisma schema and generated client are no longer among them. Changing one
   copy without the other is the standing drift risk here, and
   `test/drift.test.ts` at the repo root now fails the build when it happens.
-  See `doc/SERVICE_MERGE_PLAN.md` phase 4 for the plan to finish deduping them.
+  See `doc/archive/SERVICE_MERGE_PLAN.md` phase 4 for the plan to finish deduping them.
 - See `doc/interview_prep/06-authentication.md` and `07-credits-and-billing.md`
   for the reasoning behind the auth and credit models.

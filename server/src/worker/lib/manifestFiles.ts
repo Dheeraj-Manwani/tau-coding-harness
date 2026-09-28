@@ -3,7 +3,7 @@
  *
  * Deterministic transforms over an existing project — `migrateTemplate`
  * (frontend → fullstack) and `retrofitVisualEdit` (Phase 5 of
- * doc/VISUAL_EDIT_PLAN.md) — all need the same two operations: pull one file's
+ * doc/archive/VISUAL_EDIT_PLAN.md) — all need the same two operations: pull one file's
  * bytes out of R2, and put one file's bytes back into R2 + the `ProjectFile`
  * manifest. They live here so there is one copy rather than one per transform.
  */

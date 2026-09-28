@@ -274,7 +274,7 @@ export function useVisualEdit(projectId: string | undefined) {
   });
 }
 
-// ── Theme editing (doc/VISUAL_EDIT_PLAN.md §6 Phase 6) ───────────────────────
+// ── Theme editing (doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 6) ───────────────────────
 
 /** Which palette a token belongs to: `:root` is light, `.dark` is dark. */
 export type ThemeScope = "root" | "dark";

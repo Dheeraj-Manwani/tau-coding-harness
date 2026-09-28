@@ -26,6 +26,10 @@ model User {
   emailVerifiedAt DateTime?
   role            Role      @default(USER)
   createdAt       DateTime  @default(now())
+  /// Account-level UI preferences and onboarding state, shaped and validated by
+  /// `api/schemas/preferences.schema.ts`. Device-local settings stay in the
+  /// browser. Written only through `updatePreferences` (atomic jsonb merge).
+  preferences     Json      @default("{}")
 
   oauthAccounts OAuthAccount[]
   refreshTokens RefreshToken[]

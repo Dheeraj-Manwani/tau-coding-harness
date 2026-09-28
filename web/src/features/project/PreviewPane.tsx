@@ -370,7 +370,7 @@ function PreviewStopped({
  * is trusted: without that, any page could post a fake selection carrying an
  * arbitrary file path and we would happily open it.
  *
- * See doc/VISUAL_EDIT_PLAN.md §4.
+ * See doc/archive/VISUAL_EDIT_PLAN.md §4.
  */
 function useVisualEditBridge(
   iframeRef: React.RefObject<HTMLIFrameElement | null>,
@@ -892,7 +892,7 @@ function autosize(el: HTMLTextAreaElement | null): void {
  * can do, and until now the selection was thrown away before it could help.
  *
  * The box is autofocused on every new selection, so the whole interaction is
- * click, type, Enter. See doc/VISUAL_EDIT_PROMPTING.md §2.
+ * click, type, Enter. See doc/archive/VISUAL_EDIT_PROMPTING.md §2.
  */
 function ElementPrompt({ selection }: { selection: VisualSelection }) {
   const projectId = useProjectStore((s) => s.projectId);
@@ -958,7 +958,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
     // Only the user's own words go in the message. Everything the agent needs
     // to find the element travels beside it, and the API turns that into a
     // block the model reads and the transcript never shows: so the bubble
-    // stays the sentence they typed. doc/VISUAL_EDIT_PROMPTING.md §7.
+    // stays the sentence they typed. doc/archive/VISUAL_EDIT_PROMPTING.md §7.
     const sent = send(request, {
       visualContext: {
         loc: selection.loc,

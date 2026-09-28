@@ -202,7 +202,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
    * The trade this makes: the preview no longer changes until Save. Nothing
    * here can push a value into the iframe without writing the file, so live
    * feedback and one-commit-per-intent cannot both be had until the runtime
-   * learns to preview a theme (doc/VISUAL_EDIT_PROMPTING.md §7.7).
+   * learns to preview a theme (doc/archive/VISUAL_EDIT_PROMPTING.md §7.7).
    */
   const [pending, setPending] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);

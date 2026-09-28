@@ -1,5 +1,5 @@
 /**
- * Fetch a remote image into the project (doc/VISUAL_EDIT_PLAN.md §6 Phase 6).
+ * Fetch a remote image into the project (doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 6).
  *
  * The API equivalent of the agent's `download_asset` tool, and it exists for the
  * same reason that tool does: a `src` pointing at someone else's server is a

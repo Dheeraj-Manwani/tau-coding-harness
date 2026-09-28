@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
@@ -26,6 +26,11 @@ import {
 import { useReadyNotification } from "@/src/features/project/useReadyNotification";
 import { useAgentFavicon } from "@/src/features/project/useAgentFavicon";
 import { resolveProjectLayout } from "@/src/features/project/projectLayout";
+import { useProjectTours } from "@/src/features/tour/useProjectTours";
+import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+
+// Only fetched once a tour is actually due: most visits never need it.
+const ProjectTour = lazy(() => import("@/src/features/tour/ProjectTour"));
 
 /**
  * How long an "active" job may send nothing before the UI calls it stalled.
@@ -204,6 +209,19 @@ export default function ProjectPage() {
     freshBuild: cameFromHome,
   });
   const centered = layoutMode === "chat";
+  const tours = useProjectTours(layoutMode);
+  const reduceMotion = useReduceMotion();
+  const running = tours.running;
+  const tour = running && (
+    <Suspense fallback={null}>
+      <ProjectTour
+        key={running.key}
+        steps={running.steps}
+        reduceMotion={reduceMotion}
+        onEnd={(outcome) => tours.end(running.id, outcome)}
+      />
+    </Suspense>
+  );
   const readyNotification = useReadyNotification({
     projectId,
     currentJobId,
@@ -245,48 +263,52 @@ export default function ProjectPage() {
             readyNotification={readyNotification}
           />
         </div>
+        {tour}
       </div>
     );
   }
 
   return (
-    <Group orientation="horizontal" className="h-full w-full">
-      {/* Strings (without units) = percentages in v4; numbers = pixels. */}
-      <Panel
-        panelRef={chatPanelRef}
-        defaultSize="25"
-        minSize="18"
-        collapsible
-        collapsedSize="0"
-        onResize={() => {
-          const collapsed = chatPanelRef.current?.isCollapsed() ?? false;
-          setChatOpen(!collapsed);
-        }}
-      >
-        <ChatPanel readyNotification={readyNotification} />
-      </Panel>
-
-      <Separator
-        className={cn(
-          "group relative w-px shrink-0 cursor-col-resize",
-          "bg-[var(--silver-200)] transition-colors",
-          "hover:bg-[var(--blue-500)]",
-        )}
-      >
-        {/* Wide invisible grab zone so the 1px line is easy to grab. */}
-        <div className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2" />
-      </Separator>
-
-      <Panel minSize="30" className="min-w-0">
-        <motion.div
-          initial={{ x: "100%", opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={WORKSPACE_SPRING}
-          className="h-full w-full"
+    <>
+      <Group orientation="horizontal" className="h-full w-full">
+        {/* Strings (without units) = percentages in v4; numbers = pixels. */}
+        <Panel
+          panelRef={chatPanelRef}
+          defaultSize="25"
+          minSize="18"
+          collapsible
+          collapsedSize="0"
+          onResize={() => {
+            const collapsed = chatPanelRef.current?.isCollapsed() ?? false;
+            setChatOpen(!collapsed);
+          }}
         >
-          <RightPanel />
-        </motion.div>
-      </Panel>
-    </Group>
+          <ChatPanel readyNotification={readyNotification} />
+        </Panel>
+
+        <Separator
+          className={cn(
+            "group relative w-px shrink-0 cursor-col-resize",
+            "bg-[var(--silver-200)] transition-colors",
+            "hover:bg-[var(--blue-500)]",
+          )}
+        >
+          {/* Wide invisible grab zone so the 1px line is easy to grab. */}
+          <div className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2" />
+        </Separator>
+
+        <Panel minSize="30" className="min-w-0">
+          <motion.div
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={WORKSPACE_SPRING}
+            className="h-full w-full"
+          >
+            <RightPanel />
+          </motion.div>
+        </Panel>
+      </Group>
+      {tour}
+    </>
   );
 }

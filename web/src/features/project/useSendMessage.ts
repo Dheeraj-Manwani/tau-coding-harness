@@ -12,7 +12,7 @@
  * What stays with the caller is what the caller owns: its draft, its
  * attachments, and putting both back if the send fails (`onFailed`).
  *
- * See doc/VISUAL_EDIT_PROMPTING.md §3 Phase 8.0.
+ * See doc/archive/VISUAL_EDIT_PROMPTING.md §3 Phase 8.0.
  */
 import toast from "react-hot-toast";
 

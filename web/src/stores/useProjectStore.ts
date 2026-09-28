@@ -115,7 +115,7 @@ export type PreviewDevice = "mobile" | "tablet" | "desktop";
  * One element picked in the preview, as reported by the in-iframe runtime
  * (`worker-service/src/templates/visual-edit/runtime.js`).
  *
- * See doc/VISUAL_EDIT_PLAN.md.
+ * See doc/archive/VISUAL_EDIT_PLAN.md.
  */
 export interface VisualSelection {
   /** `src/App.tsx:42:7`: path, 1-based line, 1-based column. */

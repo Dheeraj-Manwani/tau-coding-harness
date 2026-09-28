@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DropdownMenu, Popover, Checkbox } from "radix-ui";
 import {
   AlertTriangleIcon,
   CheckIcon,
+  ChevronRightIcon,
+  CompassIcon,
   LogOutIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -15,10 +17,12 @@ import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
+import { useSettings } from "@/src/hooks/useSettings";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import { openAdminConsole } from "@/src/features/admin/api";
 import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
+import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 
 const LOW_CREDITS = 10;
 
@@ -29,9 +33,9 @@ export function UserMenu() {
   const { data: balance, isLoading: balanceLoading } = useBalance();
 
   const openSettings = useSettingsStore((s) => s.openSettings);
-  const hasSeenMotionIntro = useSettingsStore((s) => s.hasSeenMotionIntro);
-  const markMotionIntroSeen = useSettingsStore((s) => s.markMotionIntroSeen);
-  const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
+  const requestTour = useSettingsStore((s) => s.requestTour);
+  const inProject = useLocation().pathname.startsWith("/project/");
+  const { hasSeenMotionIntro, markMotionIntroSeen } = useSettings();
   const [introChecked, setIntroChecked] = useState(false);
 
   if (!user) return null;
@@ -39,8 +43,9 @@ export function UserMenu() {
   const initials = user.email.slice(0, 2).toUpperCase();
 
   const dismissIntro = () => {
-    if (introChecked) setReduceMotion(true);
-    markMotionIntroSeen();
+    // One write for both flags, so the intro can't be marked seen while the
+    // motion choice made in it is lost.
+    markMotionIntroSeen(introChecked ? { reduceMotion: true } : undefined);
   };
 
   return (
@@ -60,6 +65,7 @@ export function UserMenu() {
             <button
               type="button"
               aria-label="Account menu"
+              data-tour="account-menu"
               className="cursor-pointer rounded-full outline-none transition-opacity hover:opacity-90"
             >
               <Avatar>
@@ -133,6 +139,39 @@ export function UserMenu() {
                 <ShieldCheckIcon className="size-4 text-brand" />
                 Ops console
               </DropdownMenu.Item>
+            )}
+
+            {/* Tours point at the project workspace, so they're only offered there. */}
+            {inProject && (
+              <DropdownMenu.Sub>
+                <DropdownMenu.SubTrigger className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay data-[state=open]:bg-space-overlay">
+                  <CompassIcon className="size-4" />
+                  Take a tour
+                  <ChevronRightIcon className="ml-auto size-3.5 text-silver-600" />
+                </DropdownMenu.SubTrigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.SubContent
+                    sideOffset={6}
+                    alignOffset={-4}
+                    className="z-50 min-w-52 rounded-lg border border-silver-400/30 bg-space-surface p-1 text-left shadow-xl"
+                  >
+                    {TOUR_IDS.map((id) => (
+                      <DropdownMenu.Item
+                        key={id}
+                        onSelect={() => requestTour(id)}
+                        className="flex cursor-pointer flex-col gap-0.5 rounded-md px-3 py-2 outline-none select-none data-[highlighted]:bg-space-overlay"
+                      >
+                        <span className="text-sm text-silver-900">
+                          {TOUR_INFO[id].label}
+                        </span>
+                        <span className="text-xs text-silver-600">
+                          {TOUR_INFO[id].summary}
+                        </span>
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.SubContent>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Sub>
             )}
 
             <DropdownMenu.Item

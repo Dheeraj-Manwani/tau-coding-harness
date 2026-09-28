@@ -7,6 +7,10 @@ import type { IssuedTokens } from "../lib/tokens";
 import { sendVerificationEmail, verifyEmailToken } from "../lib/email";
 import { AppError, Errors } from "../lib/errors";
 import { ensureBillingAccount } from "@/lib/credits";
+import {
+  readPreferences,
+  type Preferences,
+} from "../schemas/preferences.schema";
 
 const ARGON2_OPTIONS: argon2.Options = {
   type: argon2.argon2id,
@@ -27,6 +31,8 @@ export interface SafeUser {
    */
   role: Role;
   createdAt: Date;
+  /** Account-level UI preferences, sanitised on the way out. */
+  preferences: Preferences;
 }
 
 export interface AuthResult {
@@ -41,6 +47,7 @@ function toSafeUser(user: User): SafeUser {
     emailVerifiedAt: user.emailVerifiedAt,
     role: user.role,
     createdAt: user.createdAt,
+    preferences: readPreferences(user.preferences),
   };
 }
 

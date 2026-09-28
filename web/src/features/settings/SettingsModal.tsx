@@ -1,5 +1,6 @@
+import { useLocation } from "react-router-dom";
 import { Switch } from "radix-ui";
-import { BellRingIcon } from "lucide-react";
+import { BellRingIcon, CompassIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import {
@@ -9,6 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
+import { useSettings } from "@/src/hooks/useSettings";
+import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import {
   browserNotificationsSupported,
@@ -20,10 +23,15 @@ import {
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const close = useSettingsStore((s) => s.closeSettings);
-  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
-  const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
-  const notifyWhenReady = useSettingsStore((s) => s.notifyWhenReady);
-  const setNotifyWhenReady = useSettingsStore((s) => s.setNotifyWhenReady);
+  const requestTour = useSettingsStore((s) => s.requestTour);
+  const {
+    reduceMotion,
+    setReduceMotion,
+    notifyWhenReady,
+    setNotifyWhenReady,
+  } = useSettings();
+  // Tours point at the project workspace, so they can only replay there.
+  const inProject = useLocation().pathname.startsWith("/project/");
   const notificationsSupported = browserNotificationsSupported();
   const notificationPermission = notificationsSupported
     ? Notification.permission
@@ -50,7 +58,8 @@ export function SettingsModal() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Preferences are saved on this device.
+            Saved to your account, except notifications, which are set per
+            device.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,6 +148,37 @@ export function SettingsModal() {
               Send test notification
             </button>
           )}
+
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-silver-400/25 bg-space-surface p-3">
+            <span className="flex gap-2.5">
+              <CompassIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-silver-900">
+                  Product tours
+                </span>
+                <span className="text-xs text-silver-600">
+                  {inProject
+                    ? "Replay a quick walkthrough of the project workspace."
+                    : "Open a project to replay its walkthroughs."}
+                </span>
+              </span>
+            </span>
+
+            <span className="flex shrink-0 gap-1.5">
+              {TOUR_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={!inProject}
+                  title={TOUR_INFO[id].summary}
+                  onClick={() => requestTour(id)}
+                  className="rounded-md border border-silver-400/30 px-2.5 py-1.5 text-xs font-medium text-silver-700 transition-colors hover:border-silver-400/60 hover:text-silver-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {TOUR_INFO[id].short}
+                </button>
+              ))}
+            </span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

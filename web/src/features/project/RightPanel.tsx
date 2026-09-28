@@ -60,7 +60,10 @@ function TabToggle() {
   const isWriting = useProjectStore((s) => s.writingPath !== null);
 
   return (
-    <div className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1">
+    <div
+      data-tour="view-tabs"
+      className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+    >
       {TABS.map(({ id, icon: Icon }) => (
         <button
           key={id}
@@ -99,7 +102,10 @@ function DeviceSwitcher() {
   const setPreviewDevice = useProjectStore((s) => s.setPreviewDevice);
 
   return (
-    <div className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1">
+    <div
+      data-tour="device-switcher"
+      className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+    >
       {DEVICES.map(({ id, icon: Icon, label }) => (
         <motion.button
           key={id}
@@ -129,7 +135,7 @@ function DeviceSwitcher() {
  * is worse than no toggle. `visualEditReady` is reset on every iframe remount.
  *
  * The copy says "ask about" rather than "edit": what a selection does first is
- * open a prompt box (doc/VISUAL_EDIT_PROMPTING.md), with the deterministic
+ * open a prompt box (doc/archive/VISUAL_EDIT_PROMPTING.md), with the deterministic
  * editor one click further in.
  */
 function VisualEditToggle() {
@@ -148,6 +154,7 @@ function VisualEditToggle() {
           whileTap={{ scale: 0.92 }}
           onClick={() => setEnabled(!enabled)}
           aria-label="Select an element"
+          data-tour="select-element"
           aria-pressed={enabled}
           className={cn(
             "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
@@ -190,6 +197,7 @@ function ThemeToggle() {
           whileTap={{ scale: 0.92 }}
           onClick={() => setOpen(!open)}
           aria-label="Edit theme"
+          data-tour="theme-editor"
           aria-pressed={open}
           className={cn(
             "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
@@ -233,6 +241,7 @@ function UrlBar() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
       className="flex flex-1 items-center gap-2"
+      data-tour="url-bar"
     >
       <Tooltip>
         <TooltipTrigger asChild>
@@ -336,6 +345,7 @@ export function RightPanel() {
         <div
           className="flex items-center gap-1"
           aria-label="Project sharing and publishing"
+          data-tour="ship"
         >
           <GithubPanel />
           <DeployPanel />

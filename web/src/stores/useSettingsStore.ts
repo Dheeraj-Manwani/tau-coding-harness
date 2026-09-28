@@ -2,17 +2,17 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import type { Effort } from "@/src/features/project/types";
+import type { TourId } from "@/src/features/settings/preferences";
 
+/**
+ * Device-local and transient settings only. Anything that should follow the
+ * account across devices (motion, last effort, tours) is a server preference:
+ * see features/settings/preferences.ts, and read both through `useSettings`.
+ */
 interface SettingsState {
-  /** User-forced calm mode. OR'd with the OS `prefers-reduced-motion`. */
-  reduceMotion: boolean;
-  /** Whether the first-visit "reduce motion" intro popover has been dismissed. */
-  hasSeenMotionIntro: boolean;
-  /** Automatically arm browser notifications when a project run starts. */
+  /** Automatically arm browser notifications when a project run starts.
+   *  Per-device on purpose: notification permission is granted per browser. */
   notifyWhenReady: boolean;
-  /** Last effort the user explicitly picked, restored on next visit. Null until
-   *  they pick one, which is what lets {@link planDefault} apply. */
-  lastEffort: Effort | null;
   /** What this account's plan defaults to before the user has chosen (paid
    *  plans start at HIGH). Derived from the balance, so not persisted: and
    *  deliberately not written into `lastEffort`, where it would masquerade as a
@@ -20,46 +20,43 @@ interface SettingsState {
   planDefault: Effort | null;
   /** Settings modal visibility (not persisted). */
   settingsOpen: boolean;
+  /** A tour the user asked to replay from Settings (not persisted). */
+  tourRequest: TourId | null;
 
-  setReduceMotion: (v: boolean) => void;
   setNotifyWhenReady: (v: boolean) => void;
-  markMotionIntroSeen: () => void;
-  setLastEffort: (e: Effort) => void;
   setPlanDefault: (e: Effort) => void;
   openSettings: () => void;
   closeSettings: () => void;
+  requestTour: (id: TourId) => void;
+  clearTourRequest: () => void;
 }
 
-/**
- * Persisted client preferences survive reloads via localStorage; transient UI
- * (`settingsOpen` and the plan-derived effort default) does not.
- */
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      reduceMotion: false,
-      hasSeenMotionIntro: false,
       notifyWhenReady: false,
-      lastEffort: null,
       planDefault: null,
       settingsOpen: false,
+      tourRequest: null,
 
-      setReduceMotion: (v) => set({ reduceMotion: v }),
       setNotifyWhenReady: (v) => set({ notifyWhenReady: v }),
-      markMotionIntroSeen: () => set({ hasSeenMotionIntro: true }),
-      setLastEffort: (e) => set({ lastEffort: e }),
       setPlanDefault: (e) => set({ planDefault: e }),
       openSettings: () => set({ settingsOpen: true }),
       closeSettings: () => set({ settingsOpen: false }),
+      requestTour: (id) => set({ tourRequest: id, settingsOpen: false }),
+      clearTourRequest: () => set({ tourRequest: null }),
     }),
     {
       name: "tau-settings",
-      partialize: (s) => ({
-        reduceMotion: s.reduceMotion,
-        hasSeenMotionIntro: s.hasSeenMotionIntro,
-        notifyWhenReady: s.notifyWhenReady,
-        lastEffort: s.lastEffort,
+      // v1 moved motion, motion intro and last effort to the server. Drop them
+      // from storage so stale device values never shadow the account's.
+      version: 1,
+      migrate: (persisted) => ({
+        notifyWhenReady:
+          (persisted as { notifyWhenReady?: unknown } | null)?.notifyWhenReady ===
+          true,
       }),
+      partialize: (s) => ({ notifyWhenReady: s.notifyWhenReady }),
     },
   ),
 );

@@ -25,7 +25,7 @@ import { join, relative } from "node:path";
 //      the day it is added, rather than being noticed months later — and a
 //      merged or deleted one fails too, as a reminder to update the manifest.
 //
-// See doc/SERVICE_MERGE_PLAN.md. As each file is deduped, delete its entry
+// See doc/archive/SERVICE_MERGE_PLAN.md. As each file is deduped, delete its entry
 // here. When the manifest is empty, delete this file.
 
 const ROOT = join(import.meta.dir, "..");
@@ -166,7 +166,7 @@ describe("duplicated lib files", () => {
     const resolved = declared.filter((f) => !duplicated.includes(f));
 
     // A new duplicate: either share it properly, or add it to the manifest
-    // with a reason. Do not add it without reading doc/SERVICE_MERGE_PLAN.md.
+    // with a reason. Do not add it without reading doc/archive/SERVICE_MERGE_PLAN.md.
     expect({ undeclared }).toEqual({ undeclared: [] });
 
     // One copy is gone — the file was merged or deleted. Good news: drop its

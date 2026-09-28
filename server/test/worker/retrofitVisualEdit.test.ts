@@ -10,7 +10,7 @@ import {
   writeViteConfigContent,
 } from "@/worker/templates/shared.ts";
 
-// Phase 5 of doc/VISUAL_EDIT_PLAN.md: projects created before the tagger shipped
+// Phase 5 of doc/archive/VISUAL_EDIT_PLAN.md: projects created before the tagger shipped
 // have a vite.config.ts that never loads it. Retrofitting them is a deterministic
 // edit over the manifest, and these cover the two files it rewrites.
 //

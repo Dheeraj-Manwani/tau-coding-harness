@@ -19,6 +19,7 @@ import { PREVIEW_PORT } from "./agent/config";
 import { buildAndUpload, DeployError } from "./lib/deploy";
 import { publicSiteUrl } from "@/lib/sites";
 import { invalidateSiteLookup } from "@/api/lib/siteLookup";
+import { isDraining } from "@/lib/lifecycle";
 import {
   DeploymentStatus,
   FinishReason,
@@ -471,6 +472,25 @@ async function markFailed(
   );
 }
 
+/** Shown to a user whose job was queued, but not started, when a deploy began. */
+const RESTARTING_MESSAGE =
+  "tau is restarting for an update. Please send that again in a minute.";
+
+/** Set by {@link startRunner}; see {@link drainRunner}. */
+let drain: ((timeoutMs: number) => Promise<number>) | null = null;
+
+/**
+ * Stop the runner for a graceful shutdown: jobs waiting in the queue are failed
+ * now (their holds released, their browsers told why), and jobs already running
+ * get up to `timeoutMs` to finish. Resolves with the number still running when
+ * it gave up — 0 means a clean drain. Whatever is left is reaped on next boot.
+ *
+ * The caller must have called `startDraining()` first so nothing new starts.
+ */
+export function drainRunner(timeoutMs: number): Promise<number> {
+  return drain ? drain(timeoutMs) : Promise.resolve(0);
+}
+
 /**
  * Start the in-process job runner (economy): consume dispatched jobs with a
  * concurrency limit and one retry, replacing the BullMQ worker. No Redis, no
@@ -508,7 +528,7 @@ export function startRunner(): void {
     });
 
   const pump = (): void => {
-    while (active < env.WORKER_CONCURRENCY && queue.length > 0) {
+    while (!isDraining() && active < env.WORKER_CONCURRENCY && queue.length > 0) {
       const payload = queue.shift();
       if (!payload) break;
       active += 1;
@@ -530,7 +550,8 @@ export function startRunner(): void {
       const n = (attempts.get(payload.jobId) ?? 0) + 1;
       // A cancelled job is already terminal — retrying it would resurrect a run
       // the user explicitly stopped.
-      if (n < MAX_ATTEMPTS && !bus.isCancelled(payload.jobId)) {
+      // No retry while draining either: it would only be queued and dropped.
+      if (n < MAX_ATTEMPTS && !bus.isCancelled(payload.jobId) && !isDraining()) {
         attempts.set(payload.jobId, n);
         captureException(err, {
           jobId: payload.jobId,
@@ -565,9 +586,31 @@ export function startRunner(): void {
   };
 
   bus.onDispatch((payload) => {
+    // A request that slipped in on a kept-alive connection after SIGTERM. It
+    // would never start, so end it now rather than leave it for the reaper.
+    if (isDraining()) {
+      void markFailed(payload.jobId, new Error("server draining"), RESTARTING_MESSAGE);
+      return;
+    }
     queue.push(payload);
     pump();
   });
+
+  drain = async (timeoutMs) => {
+    const waiting = queue.splice(0);
+    publishStats();
+    await Promise.all(
+      waiting.map((p) =>
+        markFailed(p.jobId, new Error("server draining"), RESTARTING_MESSAGE),
+      ),
+    );
+
+    const deadline = Date.now() + timeoutMs;
+    while (active > 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return active;
+  };
 
   publishStats();
   log.info("runner.ready", {
@@ -576,13 +619,14 @@ export function startRunner(): void {
   });
 }
 
-async function shutdown(signal: string): Promise<void> {
-  log.info("runner.shutdown", { signal });
-  await prisma.$disconnect();
-  process.exit(0);
+// Signal handling lives in src/index.ts, which owns the whole process and drains
+// the runner before exiting. This standalone entry only needs a plain exit.
+if (import.meta.main) {
+  startRunner();
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, () => {
+      log.info("runner.shutdown", { signal });
+      void prisma.$disconnect().finally(() => process.exit(0));
+    });
+  }
 }
-
-process.on("SIGINT", () => void shutdown("SIGINT"));
-process.on("SIGTERM", () => void shutdown("SIGTERM"));
-
-if (import.meta.main) startRunner();

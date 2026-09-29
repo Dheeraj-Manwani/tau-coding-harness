@@ -1,9 +1,28 @@
 import { Resend } from "resend";
 import jwt from "jsonwebtoken";
 import { env } from "@/lib/env";
-import { Errors } from "./errors";
+import { AppError, Errors } from "./errors";
 
-const resend = new Resend(env.RESEND_API_KEY ?? "");
+// Built only when a key is set: the SDK throws on an empty key at construction,
+// which used to take the whole server down at import time for a variable the
+// schema calls optional. Unset now fails the individual send instead.
+const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+
+function mailer(): Resend {
+  if (!resend) throw new AppError("Email is not configured on this server", 503);
+  return resend;
+}
+
+/**
+ * Send, and throw if Resend refused. The SDK reports API failures (bad key,
+ * unverified sender domain, rate limit) as a returned `{ error }` rather than
+ * a rejection, so an unchecked send told the caller "sent" for mail that never
+ * left.
+ */
+async function send(message: Parameters<Resend["emails"]["send"]>[0]): Promise<void> {
+  const { error } = await mailer().emails.send(message);
+  if (error) throw new Error(`Resend refused the email: ${error.message}`);
+}
 const FROM = env.EMAIL_FROM;
 const APP_URL = env.APP_URL;
 const VERIFICATION_SECRET = env.ACCESS_TOKEN_SECRET;
@@ -92,7 +111,7 @@ export async function sendVerificationEmail(input: {
   );
   const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
 
-  const res = await resend.emails.send({
+  await send({
     from: FROM,
     to: input.email,
     subject: "Verify your email",
@@ -150,7 +169,7 @@ export async function sendReauthCodeEmail(input: {
   code: string;
   minutes: number;
 }): Promise<void> {
-  await resend.emails.send({
+  await send({
     from: FROM,
     to: input.email,
     subject: `Your tau confirmation code: ${input.code}`,

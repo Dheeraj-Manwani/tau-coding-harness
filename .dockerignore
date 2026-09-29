@@ -1,11 +1,22 @@
 # Keep the build context small and force fresh, lockfile-pinned installs.
+# The Dockerfile only COPYs server/, so everything else here just keeps it out
+# of the context upload.
 node_modules
 **/node_modules
 .git
+.github
 doc
 web
 cli
+landing
+mobile
+test
+graphify-out
+**/graphify-out
 **/.env
 **/dist
+**/src/generated
 _*.log
 _*.ts
+*.txt
+dev.ps1

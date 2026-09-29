@@ -30,6 +30,8 @@ import { reapStaleJobs } from "./lib/jobs";
 import { runAlertCheck } from "./lib/alerts";
 import { sweepAttachments } from "./services/attachment.service";
 import { runDeploySweep } from "./lib/deploySweep";
+import { prisma } from "@/lib/prisma";
+import { isDraining } from "@/lib/lifecycle";
 
 /**
  * Terminate jobs whose owning process is gone, then settle the holds left behind
@@ -109,6 +111,35 @@ export function buildApp(
   mountExtra?: (app: express.Express) => void,
 ): express.Express {
   const app = express();
+
+  // Behind Caddy / Nginx / a load balancer every request arrives from the
+  // proxy's address. Without this, `req.ip` is the proxy for everyone: all
+  // users share one rate-limit bucket and session IPs are all the same. The
+  // value is the number of proxy hops to trust, so a client cannot spoof its
+  // way past the limiter with its own X-Forwarded-For.
+  app.set("trust proxy", env.TRUST_PROXY_HOPS);
+
+  // Liveness + database reachability for Docker, the proxy and uptime
+  // monitors. Unauthenticated and above the request logger on purpose: it is
+  // polled every few seconds and says nothing an outsider could use. 503 while
+  // draining so traffic moves off an instance that is shutting down.
+  app.get("/healthz", async (_req, res) => {
+    if (isDraining()) {
+      res.status(503).json({ ok: false, reason: "draining" });
+      return;
+    }
+    try {
+      await Promise.race([
+        prisma.$queryRaw`SELECT 1`,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("db timeout")), 3_000),
+        ),
+      ]);
+      res.json({ ok: true });
+    } catch {
+      res.status(503).json({ ok: false, reason: "database" });
+    }
+  });
 
   app.use(requestLogger);
 

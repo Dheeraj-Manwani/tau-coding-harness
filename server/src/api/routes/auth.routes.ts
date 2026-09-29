@@ -17,28 +17,41 @@ import { Errors } from "../lib/errors";
 import { env } from "@/lib/env";
 import { signMobileOAuthState } from "../lib/mobileLink";
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
-      callbackURL: env.GOOGLE_CALLBACK_URL,
-    },
-    async (accessToken, refreshToken, profile, done: VerifyCallback) => {
-      try {
-        const user = await authService.findOrCreateGoogleUser({
-          providerAccountId: profile.id,
-          email: profile.emails?.[0]?.value,
-          accessToken,
-          refreshToken,
-        });
-        done(null, user);
-      } catch (err) {
-        done(err as Error);
-      }
-    },
-  ),
+// Registered only when configured: the strategy throws on an empty clientID at
+// construction, which used to crash the server at import time for variables the
+// schema calls optional. Without it the Google routes 404 (see `requireGoogle`).
+const googleConfigured = Boolean(
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
 );
+
+if (googleConfigured) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: env.GOOGLE_CLIENT_ID!,
+        clientSecret: env.GOOGLE_CLIENT_SECRET!,
+        callbackURL: env.GOOGLE_CALLBACK_URL,
+      },
+      async (accessToken, refreshToken, profile, done: VerifyCallback) => {
+        try {
+          const user = await authService.findOrCreateGoogleUser({
+            providerAccountId: profile.id,
+            email: profile.emails?.[0]?.value,
+            accessToken,
+            refreshToken,
+          });
+          done(null, user);
+        } catch (err) {
+          done(err as Error);
+        }
+      },
+    ),
+  );
+}
+
+function requireGoogle(_req: Request, _res: Response, next: NextFunction): void {
+  next(googleConfigured ? undefined : Errors.notFound("Google sign-in is not configured"));
+}
 
 const router = Router();
 
@@ -64,6 +77,7 @@ router.post("/logout-all", requireAuth, authController.logoutAll);
 // Without the param this is byte-for-byte the previous behaviour.
 router.get(
   "/google",
+  requireGoogle,
   (req: Request, res: Response, next: NextFunction) => {
     passport.authenticate("google", {
       scope: ["profile", "email"],
@@ -80,6 +94,7 @@ router.post("/google/exchange", authRateLimiter, authController.googleExchange);
 
 router.get(
   "/google/callback",
+  requireGoogle,
   (req: Request, res: Response, next: NextFunction) => {
     passport.authenticate(
       "google",

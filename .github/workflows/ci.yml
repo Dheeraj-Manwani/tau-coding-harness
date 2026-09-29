@@ -23,11 +23,9 @@ env:
   # even load without these. Nothing here reaches the network: no test opens a
   # database connection or calls an external API.
   #
-  # `RESEND_API_KEY` is the subtle one. zod marks it `.optional()`, but
-  # `src/api/lib/email.ts` constructs `new Resend(env.RESEND_API_KEY)` at module
-  # scope and the SDK throws on an empty key — so a run without it fails with
-  # `Missing API key`, not with a validation error. Same trap
-  # deploy/README.md documents under "boot-required env".
+  # `RESEND_API_KEY` and `GOOGLE_CLIENT_*` are genuinely optional now (the
+  # server boots without them); they stay here so the email and Google auth
+  # code paths load the same way they do in production.
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
   ACCESS_TOKEN_SECRET: ci-access-token-secret-not-a-real-key
   DEEPSEEK_API_KEY: ci-dummy
@@ -78,6 +76,31 @@ jobs:
         working-directory: server
       - run: bun test
         working-directory: server
+
+  docker:
+    name: docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Build only, no push: catches a broken Dockerfile or .dockerignore here
+      # instead of on the server during a deploy.
+      - run: docker build -t tau-server:ci .
+      # The image must boot far enough to validate its own environment. With
+      # no database, /healthz answering 503 still proves the process is up.
+      - name: smoke test
+        run: |
+          docker run -d --name tau --init -p 8080:8080 \
+            -e DATABASE_URL -e ACCESS_TOKEN_SECRET -e DEEPSEEK_API_KEY \
+            -e E2B_API_KEY -e TAVILY_API_KEY -e R2_ACCOUNT_ID \
+            -e R2_ACCESS_KEY_ID -e R2_SECRET_ACCESS_KEY -e R2_BUCKET \
+            -e MAX_AGENT_DEPTH tau-server:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/healthz || true)
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then echo "healthz: $code"; exit 0; fi
+            sleep 2
+          done
+          docker logs tau
+          exit 1
 
   web:
     name: web unit tests

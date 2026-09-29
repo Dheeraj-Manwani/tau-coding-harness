@@ -18,6 +18,10 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
+  // Reverse-proxy hops in front of this process (Express "trust proxy"). 1 for
+  // a single Caddy/Nginx/Render proxy; 2 if Cloudflare's orange cloud sits in
+  // front of that; 0 when exposed directly.
+  TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(1),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 

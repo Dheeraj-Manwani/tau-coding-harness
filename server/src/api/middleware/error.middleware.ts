@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../lib/errors";
 import { captureException } from "../lib/log";
+import { redactUrl } from "./logger.middleware";
 
 export function errorHandler(
   err: unknown,
@@ -15,7 +16,7 @@ export function errorHandler(
 
   captureException(err, {
     method: req.method,
-    path: req.originalUrl,
+    path: redactUrl(req.originalUrl),
     userId: (req as { user?: { id?: string } }).user?.id,
   });
   res.status(500).json({ error: "Internal server error" });

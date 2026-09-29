@@ -21,16 +21,56 @@ Serves HTTP + SSE on `PORT` (default 8080):
 
 ## Docker (Render or EC2 — same image)
 
+Build from the **repo root** (the Dockerfile lives there and copies `server/`):
+
 ```sh
 docker build -t tau-economy .
-docker run -p 8080:8080 --env-file server/.env tau-economy
+docker run --init --stop-timeout 60 -p 8080:8080 --env-file server/.env tau-economy
 ```
 
 - **Render:** deploy as a Docker web service; set the env vars from
-  `server/.env.example`; expose port 8080.
-- **EC2:** `docker run` as above (add `-d --restart unless-stopped` for a daemon).
+  `server/.env.example`; expose port 8080; health check path `/healthz`.
+- **EC2:** `docker run` as above (add `-d --restart unless-stopped` for a daemon),
+  or Docker Compose — see the service shape below.
 
 Only a Postgres `DATABASE_URL` is required as external infra.
+
+With Compose, the app service needs three settings the image can't carry:
+
+```yaml
+  app:
+    image: ghcr.io/<you>/tau-server:${TAG:-latest}
+    env_file: .env
+    init: true               # reap Chromium's child processes (Bun is PID 1)
+    stop_grace_period: 60s   # Docker's default is 10s; see "Shutdown" below
+    restart: unless-stopped
+```
+
+### Health check
+
+`GET /healthz` is unauthenticated: `200 {"ok":true}` when the process is up and
+Postgres answers `SELECT 1` within 3s, `503` otherwise, and `503
+{"reason":"draining"}` after SIGTERM. The image's `HEALTHCHECK` uses it; point
+the proxy and any uptime monitor at it too. (`/admin/health` is the detailed,
+admin-only view.)
+
+### Behind a proxy
+
+Set `TRUST_PROXY_HOPS` to the number of reverse proxies in front of the server —
+`1` (the default) for Caddy, Nginx or Render; `2` if Cloudflare's orange cloud
+sits in front of that; `0` if the port is exposed directly. Too low and every
+user shares the proxy's rate-limit bucket; too high and clients can spoof their
+IP with their own `X-Forwarded-For`.
+
+### Shutdown
+
+On SIGTERM the server stays up but stops starting jobs: prompts still waiting in
+the queue (and any that arrive during the drain) are failed with a "tau is
+restarting" message and their credit holds released; jobs already running get
+`SHUTDOWN_GRACE_MS` (default 50s) to finish, then the process exits. Anything
+still running at the deadline is reaped on next boot. Keep the grace period
+below the container stop timeout (`stop_grace_period` / `--stop-timeout` /
+systemd `TimeoutStopSec`), or the process is SIGKILLed mid-drain.
 
 ## EC2 without Docker (server-only checkout)
 
@@ -63,7 +103,8 @@ sudo systemctl restart tau
 ```
 
 Run `bun run start` under systemd (or another process supervisor), not in an
-interactive SSH session. Keep secrets in `server/.env` with mode `0600`, or use
+interactive SSH session. Set `TimeoutStopSec=60` in the unit so a restart waits
+for the graceful drain (see "Shutdown" above). Keep secrets in `server/.env` with mode `0600`, or use
 an external systemd `EnvironmentFile`; never commit them. Put Nginx or an AWS
 Application Load Balancer in front for TLS and health checks.
 
@@ -86,6 +127,34 @@ Set backend `APP_URL=https://app.tauai.pro` and
 `OAUTH_SUCCESS_REDIRECT=https://app.tauai.pro/auth/callback`.
 
 Live streaming now rides the api origin over SSE, so **`VITE_WS_URL` is gone**.
+
+### Hosting on Vercel
+
+Two Vercel projects from this repo, one per app: Root Directory `web` (domain
+`app.tauai.pro`) and Root Directory `landing` (domain `tauai.pro`). Each has a
+`vercel.json` that:
+
+- rewrites every path with no matching file to `/index.html`, so refreshing a
+  client route like `/project/123` doesn't 404. Real files, including the
+  prerendered `dist/<route>/index.html` pages, are served first;
+- caches the content-hashed `/assets/*` for a year.
+
+Set the `VITE_*` variables above as Vercel environment variables. They're read
+at **build** time, so changing one needs a redeploy.
+
+- **Use the custom domain, never `*.vercel.app`, for the web app.** The refresh
+  cookie is `SameSite=Strict`, which works only because `app.tauai.pro` and
+  `api.tauai.pro` are the same site. From a `vercel.app` origin, login refresh
+  breaks, and CORS rejects it anyway, since the API allows only `APP_URL`.
+  Preview deployments of `web` can therefore render but can't sign in.
+- **Landing prerender:** Vercel's own build runs `pnpm build` only, which ships
+  a working SPA with no prerendered HTML. The prerender step needs Playwright's
+  Chromium and its system libraries, which Vercel's build image isn't set up
+  for. To ship prerendered pages, build in GitHub Actions instead: install
+  Chromium with `npx playwright install --with-deps chromium`, run `vercel
+  build` with the build command set to `pnpm build && node
+  scripts/prerender.ts` (so the prerender runs before Vercel copies
+  `dist/`), then `vercel deploy --prebuilt --prod`.
 
 ### Build order
 
@@ -125,16 +194,19 @@ Notes:
 
 ## Notes / tradeoffs
 
-- **No job durability:** the runner is pure in-memory; a process restart drops
-  queued/in-flight jobs (rows stay `QUEUED`/`RUNNING`, user re-submits).
-- **Single instance only:** the in-process bus doesn't span replicas. For
-  horizontal scale, use the Redis-based `master` build instead.
-- **Boot-required env:** `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`,
-  `GOOGLE_CLIENT_SECRET` are constructed at import and must be set (even though
-  the schema marks them optional).
-- **Optional URL vars must be commented out, not left empty.** An empty string
-  fails zod's `.url()` (which `.optional()` doesn't rescue) and the api exits on
-  boot. Applies to `R2_PUBLIC_BASE_URL` and friends.
+- **No job durability:** the runner is pure in-memory. A graceful restart
+  (SIGTERM) lets running jobs finish within `SHUTDOWN_GRACE_MS` and fails queued
+  ones cleanly; a crash or SIGKILL drops them, and the boot-time reaper marks
+  the orphaned rows failed. Deploy at quiet times.
+- **Single instance only:** the in-process bus and job queue don't span
+  replicas, so there is no zero-downtime rolling deploy.
+- **Email and Google sign-in are optional.** Without `RESEND_API_KEY`,
+  verification and confirmation-code emails fail with a 503; without both
+  `GOOGLE_CLIENT_*` values, `/auth/google` returns 404. The server boots either way.
+- **Optional vars must be commented out, not left empty.** An empty string
+  is not "unset": it fails zod's `.url()` (which `.optional()` doesn't rescue)
+  and the server exits on boot. `.env.example` ships every optional value
+  commented out for this reason.
 - **`KIMI_API_KEY` degrades silently, it doesn't fail loudly.** Without it, MAX
   effort quietly falls back to `DEEPSEEK_MODEL` and image/document attachments
   record a per-attachment extraction failure. Both services read the same key
@@ -158,18 +230,23 @@ Notes:
 
 ## Migrations
 
-The Docker image does **not** run migrations. Apply them explicitly before the
-first boot of a new deploy and after every schema change:
+The Docker image does **not** run migrations. Apply them explicitly, with the
+new image, before starting it — on the first deploy and after every schema
+change. The image carries the Prisma CLI, the schema and the migrations:
 
 ```sh
+# plain Docker
+docker run --rm --env-file server/.env tau-economy \
+  sh -c "cd server && bunx prisma migrate deploy"
+
+# Compose (service named `app`, as above)
 docker compose run --rm app sh -c "cd server && bunx prisma migrate deploy"
 ```
 
-There is one schema and one migration history, at `prisma/` in the repo root.
-`cd api` only picks an installed Prisma CLI — both services' `prisma.config.ts`
-point at the same shared files, so it does not matter which one you run this
-from. The image builds both clients from that schema with a single
-`prisma generate`.
+Without Docker, run `bunx prisma migrate deploy` from `server/`.
+
+There is one schema and one migration history, at `server/prisma/`, read via
+`server/prisma.config.ts`; a single `prisma generate` builds the client.
 
 ## Admin
 

@@ -30,9 +30,24 @@ interface RazorpayOptions {
   modal?: { ondismiss?: () => void };
 }
 
+interface RazorpayPaymentFailedResponse {
+  error: {
+    code: string;
+    description: string;
+    source?: string;
+    step?: string;
+    reason?: string;
+    metadata?: { order_id?: string; payment_id?: string };
+  };
+}
+
 declare class RazorpayCheckout {
   constructor(options: RazorpayOptions);
   open(): void;
+  on(
+    event: "payment.failed",
+    handler: (response: RazorpayPaymentFailedResponse) => void,
+  ): void;
 }
 
 interface Window {

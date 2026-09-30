@@ -122,7 +122,13 @@ function openRazorpayCheckout(
       onSuccess();
     },
   });
+  rzp.on("payment.failed", toastPaymentFailed);
   rzp.open();
+}
+
+/** Checkout stays open after a failed attempt so the user can retry; just say why. */
+function toastPaymentFailed(resp: RazorpayPaymentFailedResponse) {
+  toast.error(resp.error.description || "Payment failed. Please try again.");
 }
 
 // ── Sub-components ───────────────────────────────────────────────────────────
@@ -405,6 +411,7 @@ function TopUpSection() {
           },
           modal: { ondismiss: () => setPendingPack(null) },
         });
+        rzp.on("payment.failed", toastPaymentFailed);
         rzp.open();
       },
       onError: (err) => {

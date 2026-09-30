@@ -55,10 +55,15 @@ jobs:
             cd /opt/tau
             export TAG=${{ github.sha }}
             docker compose pull app
-            docker compose run --rm app sh -c "cd server && bunx prisma migrate deploy"
+            # Migrations go over Neon's DIRECT connection; the pooler can't hold their lock.
+            docker compose run --rm app sh -c 'cd server && DATABASE_URL="${DIRECT_URL:?DIRECT_URL is missing from .env}" bunx prisma migrate deploy'
             docker compose up -d app
             for i in $(seq 1 30); do
-              if curl -fsS https://api.tauai.pro/healthz; then exit 0; fi
+              if curl -fsS https://api.tauai.pro/healthz; then
+                # Each old version is ~3 GB on disk. They stay on GHCR for rollbacks.
+                docker image prune -af
+                exit 0
+              fi
               sleep 5
             done
             echo "Health check failed"; docker compose logs --tail 100 app; exit 1

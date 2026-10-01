@@ -73,7 +73,7 @@ const DEVICE_WIDTH: Record<string, number> = {
 const BUILD_TIPS = [
   {
     title: "Help shape tau",
-    copy: "Share feedback or a suggestion and unlock EXTRA100 for 100 extra credits, once per account.",
+    copy: "Share feedback or a suggestion to help shape what we build next.",
     icon: HeartIcon,
     iconClass: "text-amber-400",
   },

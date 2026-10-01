@@ -634,10 +634,10 @@ export default function BillingPage() {
         </a>{" "}
         · Questions?{" "}
         <a
-          href="mailto:support@usetau.dev"
+          href="mailto:iammadfortech@gmail.com"
           className="underline hover:text-foreground"
         >
-          support@usetau.dev
+          iammadfortech@gmail.com
         </a>
       </p>
     </div>

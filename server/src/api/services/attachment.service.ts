@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createHash } from "node:crypto";
 import { env } from "@/lib/env";
 import { Errors } from "../lib/errors";
 import {
@@ -7,6 +8,7 @@ import {
   objectExists,
   presignGet,
   presignPut,
+  putAttachmentBytes,
 } from "@/lib/s3";
 import {
   isAllowedUpload,
@@ -27,6 +29,23 @@ export interface SignResult {
   attachmentId: string;
   uploadUrl: string | null;
   alreadyUploaded: boolean;
+}
+
+/** Accept only the exact bytes signed by this user for an unsent attachment. */
+export async function uploadBytes(userId: string, attachmentId: string, body: Buffer): Promise<void> {
+  if (!env.ATTACHMENTS_ENABLED) throw Errors.forbidden("ATTACHMENTS_DISABLED");
+  const row = await requireOwned(userId, attachmentId);
+  if (row.messageId || row.feedbackId || row.status !== AttachmentStatus.PENDING) {
+    throw Errors.conflict("ATTACHMENT_ALREADY_SENT_OR_PROCESSING");
+  }
+  if (!Buffer.isBuffer(body) || body.length !== row.sizeBytes || body.length > maxBytesForMime(row.mimeType)) {
+    throw Errors.badRequest("UPLOAD_SIZE_MISMATCH");
+  }
+  const hash = createHash("sha256").update(body).digest("hex");
+  if (hash !== row.contentHash || row.blobKey !== attachmentKey(userId, hash)) {
+    throw Errors.badRequest("UPLOAD_CONTENT_MISMATCH");
+  }
+  await putAttachmentBytes(row.blobKey, body, row.mimeType);
 }
 
 export async function signUpload(

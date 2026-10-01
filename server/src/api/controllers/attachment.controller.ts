@@ -9,6 +9,17 @@ import {
 import * as attachmentService from "../services/attachment.service";
 import { requireUserId } from "../middleware/auth.middleware";
 
+export const uploadBytes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = requireUserId(req);
+    const { attachmentId } = parse(attachmentIdParamSchema, req.params);
+    await attachmentService.uploadBytes(userId, attachmentId, req.body);
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const signUpload = async (
   req: Request,
   res: Response,

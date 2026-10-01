@@ -89,25 +89,6 @@ function showBrowserNotification(
   }
 }
 
-/** User-initiated smoke test exposed in Settings. */
-export async function sendReadyNotificationTest(): Promise<void> {
-  const copy = {
-    title: "Tau notifications are ready",
-    body: "You’ll get an alert when Tau finishes working while you’re away.",
-  };
-  await primeNotificationSound();
-  if (useSettingsStore.getState().notificationSound) playNotificationSound();
-  // The one toast left in this feature: the user just asked for proof, and an
-  // OS "focus" mode can swallow the system notification silently.
-  toast(`${copy.title}: ${copy.body}`, { id: "tau-notification-test" });
-  if (
-    browserNotificationsSupported() &&
-    Notification.permission === "granted"
-  ) {
-    showBrowserNotification(copy, undefined, "finished");
-  }
-}
-
 /**
  * Alerts for the build on this project page.
  *

@@ -31,51 +31,63 @@ export function MotionIntroDialog() {
         // Any close (Continue, Esc, clicking outside) counts as "seen". One
         // write for both flags, so the choice can't be lost while the intro is
         // marked seen.
-        if (!open) markMotionIntroSeen(reduce ? { reduceMotion: true } : undefined);
+        if (!open)
+          markMotionIntroSeen(reduce ? { reduceMotion: true } : undefined);
       }}
     >
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>Make Tau comfortable for you</DialogTitle>
-          <DialogDescription>
-            Tau uses animated effects. If they bother you, or you just prefer a
-            calmer interface, you can turn them off. Change this anytime in
-            Settings.
+      <DialogContent
+        showCloseButton={false}
+        className="gap-6 border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 sm:max-w-sm"
+      >
+        <DialogHeader className="items-center gap-3 text-center">
+          {/* <div aria-hidden="true" className="flex size-12 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900">
+            <SparklesIcon className="size-5 text-zinc-200" />
+          </div> */}
+          <DialogTitle className="text-lg leading-snug">
+            Make tau comfortable for you
+          </DialogTitle>
+          <DialogDescription className="text-zinc-400">
+            Prefer a calmer interface? Reduce animations and visual effects.
           </DialogDescription>
         </DialogHeader>
 
         <label
           htmlFor="motion-intro-reduce"
-          className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-silver-400/25 bg-space-surface p-3"
+          className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition-colors hover:bg-zinc-900 has-[[data-state=checked]]:border-zinc-500"
         >
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-silver-900">
+          <span className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-zinc-100">
               Reduce motion
             </span>
-            <span className="text-xs text-silver-600">
-              Turn off effects like the lightning border and glitch stars.
+            <span className="text-xs leading-relaxed text-zinc-400">
+              Turn off lightning borders and animated stars.
             </span>
           </span>
           <Checkbox.Root
             id="motion-intro-reduce"
             checked={reduce}
             onCheckedChange={(v) => setReduce(v === true)}
-            className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border border-silver-400/60 bg-space-overlay outline-none focus-visible:ring-2 focus-visible:ring-brand/60 data-[state=checked]:border-brand data-[state=checked]:bg-brand"
+            className="flex size-5 shrink-0 items-center justify-center rounded-md border border-zinc-600 bg-zinc-950 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 data-[state=checked]:border-zinc-100 data-[state=checked]:bg-zinc-100"
           >
             <Checkbox.Indicator>
-              <CheckIcon className="size-3 text-white" />
+              <CheckIcon className="size-3.5 text-zinc-950" />
             </Checkbox.Indicator>
           </Checkbox.Root>
         </label>
 
-        <DialogClose asChild>
-          <button
-            type="button"
-            className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-popover"
-          >
-            Continue
-          </button>
-        </DialogClose>
+        <div className="space-y-3">
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="h-11 w-full cursor-pointer rounded-lg bg-zinc-100 px-4 text-sm font-medium text-zinc-950 outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            >
+              Continue
+            </button>
+          </DialogClose>
+          <p className="text-center text-xs leading-relaxed text-zinc-500">
+            You can change this anytime in Settings.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );

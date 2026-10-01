@@ -24,12 +24,24 @@ export async function uploadToR2(
   uploadUrl: string,
   file: File | Blob,
   mimeType: string,
+  attachmentId?: string,
 ): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": mimeType },
-  });
+  let res: Response;
+  try {
+    res = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": mimeType },
+    });
+  } catch (error) {
+    // CORS failures surface as a network TypeError. The authenticated API can
+    // upload the same bytes server-side, where browser CORS does not apply.
+    if (!attachmentId || !(error instanceof TypeError)) throw error;
+    await api.put(`/attachments/${attachmentId}/upload`, file, {
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+    return;
+  }
   if (!res.ok) {
     throw new Error(`Upload failed (${res.status})`);
   }

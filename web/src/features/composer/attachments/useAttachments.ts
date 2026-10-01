@@ -108,7 +108,7 @@ export function useAttachments(): UseAttachments {
         patch(key, { id: signed.attachmentId });
 
         if (signed.uploadUrl) {
-          await uploadToR2(signed.uploadUrl, file, mimeType);
+          await uploadToR2(signed.uploadUrl, file, mimeType, signed.attachmentId);
         }
         await completeUpload(signed.attachmentId, userMessage);
 

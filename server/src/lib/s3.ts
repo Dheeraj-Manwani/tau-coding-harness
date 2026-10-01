@@ -54,6 +54,11 @@ export function attachmentKey(userId: string, hash: string): string {
   return `${ATTACHMENT_PREFIX}/${userId}/${hash}`;
 }
 
+/** Server-side fallback when the bucket's CORS policy blocks browser PUTs. */
+export async function putAttachmentBytes(key: string, body: Buffer, mimeType: string): Promise<void> {
+  await r2.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: mimeType }));
+}
+
 export async function deleteObject(key: string): Promise<void> {
   await r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
 }

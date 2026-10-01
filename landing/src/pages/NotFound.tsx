@@ -50,7 +50,7 @@ function NotFound() {
           Read the docs
         </Link>
         <a
-          href="mailto:support@usetau.dev"
+          href="mailto:iammadfortech@gmail.com"
           className="text-blue-500 hover:underline"
         >
           Report a broken link

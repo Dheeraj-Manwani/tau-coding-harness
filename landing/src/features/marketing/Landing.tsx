@@ -58,7 +58,7 @@ function Divider() {
 
 export function Landing() {
   useDocumentMeta({
-    title: "tau: turn a sentence into a running web app",
+    title: "tau: describe it. build it.",
     exactTitle: true,
     description:
       "Describe what you want and Tau turns it into a working app while you watch. Start free with 300 credits and no card.",

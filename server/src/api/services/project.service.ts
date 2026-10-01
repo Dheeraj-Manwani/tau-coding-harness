@@ -224,18 +224,18 @@ async function buildUserMessage(
   return { content: blocks, resolved };
 }
 
-/** The `messageId: null` guard makes this a no-op if a concurrent request
- *  claimed the attachments first. */
+/** Claim attachments atomically; a competing send rolls back this transaction. */
 async function linkAttachments(
   tx: Prisma.TransactionClient,
   attachmentIds: string[],
   messageId: string,
 ): Promise<void> {
   if (attachmentIds.length === 0) return;
-  await tx.attachment.updateMany({
-    where: { id: { in: attachmentIds }, messageId: null },
+  const claimed = await tx.attachment.updateMany({
+    where: { id: { in: attachmentIds }, messageId: null, feedbackId: null },
     data: { messageId },
   });
+  if (claimed.count !== attachmentIds.length) throw Errors.conflict("ATTACHMENT_ALREADY_USED");
 }
 
 /** Job.prompt is informational — the loop reads history, not this — but it

@@ -57,6 +57,7 @@ export const ModelName = {
   Project: 'Project',
   Message: 'Message',
   Attachment: 'Attachment',
+  Feedback: 'Feedback',
   ToolCall: 'ToolCall',
   Job: 'Job',
   ProjectFile: 'ProjectFile',
@@ -195,11 +196,26 @@ export const AttachmentScalarFieldEnum = {
   extractionModel: 'extractionModel',
   extractionTokens: 'extractionTokens',
   messageId: 'messageId',
+  feedbackId: 'feedbackId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type AttachmentScalarFieldEnum = (typeof AttachmentScalarFieldEnum)[keyof typeof AttachmentScalarFieldEnum]
+
+
+export const FeedbackScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  rating: 'rating',
+  kind: 'kind',
+  message: 'message',
+  projectId: 'projectId',
+  source: 'source',
+  createdAt: 'createdAt'
+} as const
+
+export type FeedbackScalarFieldEnum = (typeof FeedbackScalarFieldEnum)[keyof typeof FeedbackScalarFieldEnum]
 
 
 export const ToolCallScalarFieldEnum = {

@@ -118,7 +118,7 @@ export function Hero() {
       <h1 className="relative mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
         {reduceMotion ? (
           <>
-            Describe it. <span className="text-cosmic">tau builds it.</span>
+            describe it. <span className="text-cosmic">build it.</span>
           </>
         ) : (
           <TextAnimate
@@ -130,7 +130,7 @@ export function Hero() {
             duration={0.6}
             className="inline"
           >
-            Describe it. tau builds it.
+            describe it. build it.
           </TextAnimate>
         )}
       </h1>

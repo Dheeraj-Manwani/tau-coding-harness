@@ -52,6 +52,7 @@ export type AttachmentMinAggregateOutputType = {
   extractionModel: string | null
   extractionTokens: number | null
   messageId: string | null
+  feedbackId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -72,6 +73,7 @@ export type AttachmentMaxAggregateOutputType = {
   extractionModel: string | null
   extractionTokens: number | null
   messageId: string | null
+  feedbackId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -92,6 +94,7 @@ export type AttachmentCountAggregateOutputType = {
   extractionModel: number
   extractionTokens: number
   messageId: number
+  feedbackId: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -124,6 +127,7 @@ export type AttachmentMinAggregateInputType = {
   extractionModel?: true
   extractionTokens?: true
   messageId?: true
+  feedbackId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -144,6 +148,7 @@ export type AttachmentMaxAggregateInputType = {
   extractionModel?: true
   extractionTokens?: true
   messageId?: true
+  feedbackId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -164,6 +169,7 @@ export type AttachmentCountAggregateInputType = {
   extractionModel?: true
   extractionTokens?: true
   messageId?: true
+  feedbackId?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -271,6 +277,7 @@ export type AttachmentGroupByOutputType = {
   extractionModel: string | null
   extractionTokens: number
   messageId: string | null
+  feedbackId: string | null
   createdAt: Date
   updatedAt: Date
   _count: AttachmentCountAggregateOutputType | null
@@ -314,10 +321,12 @@ export type AttachmentWhereInput = {
   extractionModel?: Prisma.StringNullableFilter<"Attachment"> | string | null
   extractionTokens?: Prisma.IntFilter<"Attachment"> | number
   messageId?: Prisma.StringNullableFilter<"Attachment"> | string | null
+  feedbackId?: Prisma.StringNullableFilter<"Attachment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   message?: Prisma.XOR<Prisma.MessageNullableScalarRelationFilter, Prisma.MessageWhereInput> | null
+  feedback?: Prisma.XOR<Prisma.FeedbackNullableScalarRelationFilter, Prisma.FeedbackWhereInput> | null
 }
 
 export type AttachmentOrderByWithRelationInput = {
@@ -336,10 +345,12 @@ export type AttachmentOrderByWithRelationInput = {
   extractionModel?: Prisma.SortOrderInput | Prisma.SortOrder
   extractionTokens?: Prisma.SortOrder
   messageId?: Prisma.SortOrderInput | Prisma.SortOrder
+  feedbackId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   message?: Prisma.MessageOrderByWithRelationInput
+  feedback?: Prisma.FeedbackOrderByWithRelationInput
 }
 
 export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
@@ -361,10 +372,12 @@ export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
   extractionModel?: Prisma.StringNullableFilter<"Attachment"> | string | null
   extractionTokens?: Prisma.IntFilter<"Attachment"> | number
   messageId?: Prisma.StringNullableFilter<"Attachment"> | string | null
+  feedbackId?: Prisma.StringNullableFilter<"Attachment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   message?: Prisma.XOR<Prisma.MessageNullableScalarRelationFilter, Prisma.MessageWhereInput> | null
+  feedback?: Prisma.XOR<Prisma.FeedbackNullableScalarRelationFilter, Prisma.FeedbackWhereInput> | null
 }, "id">
 
 export type AttachmentOrderByWithAggregationInput = {
@@ -383,6 +396,7 @@ export type AttachmentOrderByWithAggregationInput = {
   extractionModel?: Prisma.SortOrderInput | Prisma.SortOrder
   extractionTokens?: Prisma.SortOrder
   messageId?: Prisma.SortOrderInput | Prisma.SortOrder
+  feedbackId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.AttachmentCountOrderByAggregateInput
@@ -411,6 +425,7 @@ export type AttachmentScalarWhereWithAggregatesInput = {
   extractionModel?: Prisma.StringNullableWithAggregatesFilter<"Attachment"> | string | null
   extractionTokens?: Prisma.IntWithAggregatesFilter<"Attachment"> | number
   messageId?: Prisma.StringNullableWithAggregatesFilter<"Attachment"> | string | null
+  feedbackId?: Prisma.StringNullableWithAggregatesFilter<"Attachment"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Attachment"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Attachment"> | Date | string
 }
@@ -433,6 +448,7 @@ export type AttachmentCreateInput = {
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAttachmentsInput
   message?: Prisma.MessageCreateNestedOneWithoutAttachmentsInput
+  feedback?: Prisma.FeedbackCreateNestedOneWithoutAttachmentsInput
 }
 
 export type AttachmentUncheckedCreateInput = {
@@ -451,6 +467,7 @@ export type AttachmentUncheckedCreateInput = {
   extractionModel?: string | null
   extractionTokens?: number
   messageId?: string | null
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -473,6 +490,7 @@ export type AttachmentUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAttachmentsNestedInput
   message?: Prisma.MessageUpdateOneWithoutAttachmentsNestedInput
+  feedback?: Prisma.FeedbackUpdateOneWithoutAttachmentsNestedInput
 }
 
 export type AttachmentUncheckedUpdateInput = {
@@ -491,6 +509,7 @@ export type AttachmentUncheckedUpdateInput = {
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
   messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -511,6 +530,7 @@ export type AttachmentCreateManyInput = {
   extractionModel?: string | null
   extractionTokens?: number
   messageId?: string | null
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -549,6 +569,7 @@ export type AttachmentUncheckedUpdateManyInput = {
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
   messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -579,6 +600,7 @@ export type AttachmentCountOrderByAggregateInput = {
   extractionModel?: Prisma.SortOrder
   extractionTokens?: Prisma.SortOrder
   messageId?: Prisma.SortOrder
+  feedbackId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -604,6 +626,7 @@ export type AttachmentMaxOrderByAggregateInput = {
   extractionModel?: Prisma.SortOrder
   extractionTokens?: Prisma.SortOrder
   messageId?: Prisma.SortOrder
+  feedbackId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -624,6 +647,7 @@ export type AttachmentMinOrderByAggregateInput = {
   extractionModel?: Prisma.SortOrder
   extractionTokens?: Prisma.SortOrder
   messageId?: Prisma.SortOrder
+  feedbackId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -725,6 +749,48 @@ export type EnumAttachmentStatusFieldUpdateOperationsInput = {
   set?: $Enums.AttachmentStatus
 }
 
+export type AttachmentCreateNestedManyWithoutFeedbackInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput> | Prisma.AttachmentCreateWithoutFeedbackInput[] | Prisma.AttachmentUncheckedCreateWithoutFeedbackInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutFeedbackInput | Prisma.AttachmentCreateOrConnectWithoutFeedbackInput[]
+  createMany?: Prisma.AttachmentCreateManyFeedbackInputEnvelope
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+}
+
+export type AttachmentUncheckedCreateNestedManyWithoutFeedbackInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput> | Prisma.AttachmentCreateWithoutFeedbackInput[] | Prisma.AttachmentUncheckedCreateWithoutFeedbackInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutFeedbackInput | Prisma.AttachmentCreateOrConnectWithoutFeedbackInput[]
+  createMany?: Prisma.AttachmentCreateManyFeedbackInputEnvelope
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+}
+
+export type AttachmentUpdateManyWithoutFeedbackNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput> | Prisma.AttachmentCreateWithoutFeedbackInput[] | Prisma.AttachmentUncheckedCreateWithoutFeedbackInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutFeedbackInput | Prisma.AttachmentCreateOrConnectWithoutFeedbackInput[]
+  upsert?: Prisma.AttachmentUpsertWithWhereUniqueWithoutFeedbackInput | Prisma.AttachmentUpsertWithWhereUniqueWithoutFeedbackInput[]
+  createMany?: Prisma.AttachmentCreateManyFeedbackInputEnvelope
+  set?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  disconnect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  delete?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  update?: Prisma.AttachmentUpdateWithWhereUniqueWithoutFeedbackInput | Prisma.AttachmentUpdateWithWhereUniqueWithoutFeedbackInput[]
+  updateMany?: Prisma.AttachmentUpdateManyWithWhereWithoutFeedbackInput | Prisma.AttachmentUpdateManyWithWhereWithoutFeedbackInput[]
+  deleteMany?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
+}
+
+export type AttachmentUncheckedUpdateManyWithoutFeedbackNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput> | Prisma.AttachmentCreateWithoutFeedbackInput[] | Prisma.AttachmentUncheckedCreateWithoutFeedbackInput[]
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutFeedbackInput | Prisma.AttachmentCreateOrConnectWithoutFeedbackInput[]
+  upsert?: Prisma.AttachmentUpsertWithWhereUniqueWithoutFeedbackInput | Prisma.AttachmentUpsertWithWhereUniqueWithoutFeedbackInput[]
+  createMany?: Prisma.AttachmentCreateManyFeedbackInputEnvelope
+  set?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  disconnect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  delete?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  connect?: Prisma.AttachmentWhereUniqueInput | Prisma.AttachmentWhereUniqueInput[]
+  update?: Prisma.AttachmentUpdateWithWhereUniqueWithoutFeedbackInput | Prisma.AttachmentUpdateWithWhereUniqueWithoutFeedbackInput[]
+  updateMany?: Prisma.AttachmentUpdateManyWithWhereWithoutFeedbackInput | Prisma.AttachmentUpdateManyWithWhereWithoutFeedbackInput[]
+  deleteMany?: Prisma.AttachmentScalarWhereInput | Prisma.AttachmentScalarWhereInput[]
+}
+
 export type AttachmentCreateWithoutUserInput = {
   id?: string
   kind: $Enums.AttachmentKind
@@ -742,6 +808,7 @@ export type AttachmentCreateWithoutUserInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   message?: Prisma.MessageCreateNestedOneWithoutAttachmentsInput
+  feedback?: Prisma.FeedbackCreateNestedOneWithoutAttachmentsInput
 }
 
 export type AttachmentUncheckedCreateWithoutUserInput = {
@@ -759,6 +826,7 @@ export type AttachmentUncheckedCreateWithoutUserInput = {
   extractionModel?: string | null
   extractionTokens?: number
   messageId?: string | null
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -808,6 +876,7 @@ export type AttachmentScalarWhereInput = {
   extractionModel?: Prisma.StringNullableFilter<"Attachment"> | string | null
   extractionTokens?: Prisma.IntFilter<"Attachment"> | number
   messageId?: Prisma.StringNullableFilter<"Attachment"> | string | null
+  feedbackId?: Prisma.StringNullableFilter<"Attachment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
 }
@@ -829,6 +898,7 @@ export type AttachmentCreateWithoutMessageInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAttachmentsInput
+  feedback?: Prisma.FeedbackCreateNestedOneWithoutAttachmentsInput
 }
 
 export type AttachmentUncheckedCreateWithoutMessageInput = {
@@ -846,6 +916,7 @@ export type AttachmentUncheckedCreateWithoutMessageInput = {
   preview?: string | null
   extractionModel?: string | null
   extractionTokens?: number
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -876,6 +947,72 @@ export type AttachmentUpdateManyWithWhereWithoutMessageInput = {
   data: Prisma.XOR<Prisma.AttachmentUpdateManyMutationInput, Prisma.AttachmentUncheckedUpdateManyWithoutMessageInput>
 }
 
+export type AttachmentCreateWithoutFeedbackInput = {
+  id?: string
+  kind: $Enums.AttachmentKind
+  status?: $Enums.AttachmentStatus
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  blobKey?: string | null
+  contentHash?: string | null
+  extractedText?: string | null
+  extractionError?: string | null
+  preview?: string | null
+  extractionModel?: string | null
+  extractionTokens?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutAttachmentsInput
+  message?: Prisma.MessageCreateNestedOneWithoutAttachmentsInput
+}
+
+export type AttachmentUncheckedCreateWithoutFeedbackInput = {
+  id?: string
+  userId: string
+  kind: $Enums.AttachmentKind
+  status?: $Enums.AttachmentStatus
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  blobKey?: string | null
+  contentHash?: string | null
+  extractedText?: string | null
+  extractionError?: string | null
+  preview?: string | null
+  extractionModel?: string | null
+  extractionTokens?: number
+  messageId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type AttachmentCreateOrConnectWithoutFeedbackInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput>
+}
+
+export type AttachmentCreateManyFeedbackInputEnvelope = {
+  data: Prisma.AttachmentCreateManyFeedbackInput | Prisma.AttachmentCreateManyFeedbackInput[]
+  skipDuplicates?: boolean
+}
+
+export type AttachmentUpsertWithWhereUniqueWithoutFeedbackInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  update: Prisma.XOR<Prisma.AttachmentUpdateWithoutFeedbackInput, Prisma.AttachmentUncheckedUpdateWithoutFeedbackInput>
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutFeedbackInput, Prisma.AttachmentUncheckedCreateWithoutFeedbackInput>
+}
+
+export type AttachmentUpdateWithWhereUniqueWithoutFeedbackInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateWithoutFeedbackInput, Prisma.AttachmentUncheckedUpdateWithoutFeedbackInput>
+}
+
+export type AttachmentUpdateManyWithWhereWithoutFeedbackInput = {
+  where: Prisma.AttachmentScalarWhereInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateManyMutationInput, Prisma.AttachmentUncheckedUpdateManyWithoutFeedbackInput>
+}
+
 export type AttachmentCreateManyUserInput = {
   id?: string
   kind: $Enums.AttachmentKind
@@ -891,6 +1028,7 @@ export type AttachmentCreateManyUserInput = {
   extractionModel?: string | null
   extractionTokens?: number
   messageId?: string | null
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -912,6 +1050,7 @@ export type AttachmentUpdateWithoutUserInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   message?: Prisma.MessageUpdateOneWithoutAttachmentsNestedInput
+  feedback?: Prisma.FeedbackUpdateOneWithoutAttachmentsNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutUserInput = {
@@ -929,6 +1068,7 @@ export type AttachmentUncheckedUpdateWithoutUserInput = {
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
   messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -948,6 +1088,7 @@ export type AttachmentUncheckedUpdateManyWithoutUserInput = {
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
   messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -967,6 +1108,7 @@ export type AttachmentCreateManyMessageInput = {
   preview?: string | null
   extractionModel?: string | null
   extractionTokens?: number
+  feedbackId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -988,6 +1130,7 @@ export type AttachmentUpdateWithoutMessageInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAttachmentsNestedInput
+  feedback?: Prisma.FeedbackUpdateOneWithoutAttachmentsNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutMessageInput = {
@@ -1005,6 +1148,7 @@ export type AttachmentUncheckedUpdateWithoutMessageInput = {
   preview?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1024,6 +1168,87 @@ export type AttachmentUncheckedUpdateManyWithoutMessageInput = {
   preview?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  feedbackId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type AttachmentCreateManyFeedbackInput = {
+  id?: string
+  userId: string
+  kind: $Enums.AttachmentKind
+  status?: $Enums.AttachmentStatus
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  blobKey?: string | null
+  contentHash?: string | null
+  extractedText?: string | null
+  extractionError?: string | null
+  preview?: string | null
+  extractionModel?: string | null
+  extractionTokens?: number
+  messageId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type AttachmentUpdateWithoutFeedbackInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumAttachmentKindFieldUpdateOperationsInput | $Enums.AttachmentKind
+  status?: Prisma.EnumAttachmentStatusFieldUpdateOperationsInput | $Enums.AttachmentStatus
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  blobKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractedText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  preview?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutAttachmentsNestedInput
+  message?: Prisma.MessageUpdateOneWithoutAttachmentsNestedInput
+}
+
+export type AttachmentUncheckedUpdateWithoutFeedbackInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumAttachmentKindFieldUpdateOperationsInput | $Enums.AttachmentKind
+  status?: Prisma.EnumAttachmentStatusFieldUpdateOperationsInput | $Enums.AttachmentStatus
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  blobKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractedText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  preview?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type AttachmentUncheckedUpdateManyWithoutFeedbackInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumAttachmentKindFieldUpdateOperationsInput | $Enums.AttachmentKind
+  status?: Prisma.EnumAttachmentStatusFieldUpdateOperationsInput | $Enums.AttachmentStatus
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  blobKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractedText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  preview?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  extractionTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  messageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1046,10 +1271,12 @@ export type AttachmentSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   extractionModel?: boolean
   extractionTokens?: boolean
   messageId?: boolean
+  feedbackId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1068,10 +1295,12 @@ export type AttachmentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   extractionModel?: boolean
   extractionTokens?: boolean
   messageId?: boolean
+  feedbackId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1090,10 +1319,12 @@ export type AttachmentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   extractionModel?: boolean
   extractionTokens?: boolean
   messageId?: boolean
+  feedbackId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
 export type AttachmentSelectScalar = {
@@ -1112,22 +1343,26 @@ export type AttachmentSelectScalar = {
   extractionModel?: boolean
   extractionTokens?: boolean
   messageId?: boolean
+  feedbackId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AttachmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "kind" | "status" | "filename" | "mimeType" | "sizeBytes" | "blobKey" | "contentHash" | "extractedText" | "extractionError" | "preview" | "extractionModel" | "extractionTokens" | "messageId" | "createdAt" | "updatedAt", ExtArgs["result"]["attachment"]>
+export type AttachmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "kind" | "status" | "filename" | "mimeType" | "sizeBytes" | "blobKey" | "contentHash" | "extractedText" | "extractionError" | "preview" | "extractionModel" | "extractionTokens" | "messageId" | "feedbackId" | "createdAt" | "updatedAt", ExtArgs["result"]["attachment"]>
 export type AttachmentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }
 export type AttachmentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }
 export type AttachmentIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   message?: boolean | Prisma.Attachment$messageArgs<ExtArgs>
+  feedback?: boolean | Prisma.Attachment$feedbackArgs<ExtArgs>
 }
 
 export type $AttachmentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1135,6 +1370,7 @@ export type $AttachmentPayload<ExtArgs extends runtime.Types.Extensions.Internal
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
     message: Prisma.$MessagePayload<ExtArgs> | null
+    feedback: Prisma.$FeedbackPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1152,6 +1388,7 @@ export type $AttachmentPayload<ExtArgs extends runtime.Types.Extensions.Internal
     extractionModel: string | null
     extractionTokens: number
     messageId: string | null
+    feedbackId: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["attachment"]>
@@ -1550,6 +1787,7 @@ export interface Prisma__AttachmentClient<T, Null = never, ExtArgs extends runti
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   message<T extends Prisma.Attachment$messageArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$messageArgs<ExtArgs>>): Prisma.Prisma__MessageClient<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  feedback<T extends Prisma.Attachment$feedbackArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$feedbackArgs<ExtArgs>>): Prisma.Prisma__FeedbackClient<runtime.Types.Result.GetResult<Prisma.$FeedbackPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1594,6 +1832,7 @@ export interface AttachmentFieldRefs {
   readonly extractionModel: Prisma.FieldRef<"Attachment", 'String'>
   readonly extractionTokens: Prisma.FieldRef<"Attachment", 'Int'>
   readonly messageId: Prisma.FieldRef<"Attachment", 'String'>
+  readonly feedbackId: Prisma.FieldRef<"Attachment", 'String'>
   readonly createdAt: Prisma.FieldRef<"Attachment", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Attachment", 'DateTime'>
 }
@@ -2013,6 +2252,25 @@ export type Attachment$messageArgs<ExtArgs extends runtime.Types.Extensions.Inte
    */
   include?: Prisma.MessageInclude<ExtArgs> | null
   where?: Prisma.MessageWhereInput
+}
+
+/**
+ * Attachment.feedback
+ */
+export type Attachment$feedbackArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Feedback
+   */
+  select?: Prisma.FeedbackSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Feedback
+   */
+  omit?: Prisma.FeedbackOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FeedbackInclude<ExtArgs> | null
+  where?: Prisma.FeedbackWhereInput
 }
 
 /**

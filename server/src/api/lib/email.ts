@@ -20,7 +20,7 @@ function mailer(): Resend {
  * left.
  */
 async function send(message: Parameters<Resend["emails"]["send"]>[0]): Promise<void> {
-  const { error } = await mailer().emails.send(message);
+  const { error } = await mailer().emails.send({ ...message, replyTo: "iammadfortech@gmail.com" });
   if (error) throw new Error(`Resend refused the email: ${error.message}`);
 }
 const FROM = env.EMAIL_FROM;

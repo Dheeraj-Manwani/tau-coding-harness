@@ -466,6 +466,7 @@ export async function waitForExtraction(
     extractionError: true,
     userId: true,
     messageId: true,
+    feedbackId: true,
   } as const;
 
   for (;;) {
@@ -481,7 +482,7 @@ export async function waitForExtraction(
       throw new Error("ATTACHMENT_FORBIDDEN");
     }
     // Stops one upload being replayed into many messages.
-    if (rows.some((r) => r.messageId !== null)) {
+    if (rows.some((r) => r.messageId !== null || r.feedbackId != null)) {
       throw new Error("ATTACHMENT_ALREADY_USED");
     }
 

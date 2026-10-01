@@ -48,6 +48,11 @@ export type Message = Prisma.MessageModel
  */
 export type Attachment = Prisma.AttachmentModel
 /**
+ * Model Feedback
+ * 
+ */
+export type Feedback = Prisma.FeedbackModel
+/**
  * Model ToolCall
  * 
  */

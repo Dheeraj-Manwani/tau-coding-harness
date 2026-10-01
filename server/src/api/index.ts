@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
 import attachmentRoutes from "./routes/attachment.routes";
 import creditsRoutes from "./routes/credits.routes";
+import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
 import billingRoutes from "./routes/billing.routes";
 import webhookRoutes from "./routes/webhook.routes";
@@ -224,6 +225,7 @@ export function buildApp(
   app.use("/account", accountRoutes);
   app.use("/attachments", attachmentRoutes);
   app.use("/credits", creditsRoutes);
+  app.use("/feedback", feedbackRoutes);
   app.use("/billing", billingRoutes);
 
   app.use(notFoundHandler);

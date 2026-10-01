@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { createPromoCode } from "../controllers/credits.controller";
+import { listFeedback } from "../services/feedback.service";
+import { z } from "zod";
+import { parse } from "../lib/utils";
+import { renderAdminFeedback } from "../views/adminFeedback";
 import {
   reconcileUser,
   reconcileAll,
@@ -25,6 +29,15 @@ import {
 } from "../controllers/admin.controller";
 
 const router = Router();
+
+router.get("/feedback/ui", (_req, res) => res.type("html").send(renderAdminFeedback()));
+
+router.get("/feedback", async (req, res, next) => {
+  try {
+    const { cursor } = parse(z.object({ cursor: z.uuid().optional() }), req.query);
+    res.json(await listFeedback(cursor));
+  } catch (error) { next(error); }
+});
 
 router.get("/promo-codes", promoCodesUi);
 router.post("/promo-codes", createPromoCode);

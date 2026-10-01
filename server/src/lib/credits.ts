@@ -571,6 +571,10 @@ export async function redeem(
 ): Promise<RedeemResult> {
   const code = rawCode.trim().toUpperCase();
   return prisma.$transaction(async (tx) => {
+    // The feedback reward must be earned by this account before redemption.
+    if (code === "EXTRA100" && !await tx.feedback.findFirst({ where: { userId }, select: { id: true } })) {
+      throw new PromoCodeInvalidError("Share feedback to unlock EXTRA100");
+    }
     // Lock the PromoCode row to prevent concurrent over-redemption.
     await tx.$executeRaw`SELECT 1 FROM "PromoCode" WHERE code = ${code} FOR UPDATE`;
     const promo = await tx.promoCode.findUnique({ where: { code } });

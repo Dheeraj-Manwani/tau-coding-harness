@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { MeteorDivider } from "@/src/features/marketing/motion/MeteorDivider";
+import { SupportTauButton } from "@/src/components/SupportTauButton";
 
 /**
  * The marketing footer (§4.13): columns over a faint horizon glow: the planet
@@ -47,7 +48,11 @@ const COLUMNS: FooterColumn[] = [
       { label: "Quickstart", href: "/docs/start/quickstart", ready: true },
       { label: "Effort tiers", href: "/docs/build/effort-tiers", ready: true },
       { label: "API reference", href: "/docs/reference/api", ready: true },
-      { label: "Troubleshooting", href: "/docs/help/troubleshooting", ready: true },
+      {
+        label: "Troubleshooting",
+        href: "/docs/help/troubleshooting",
+        ready: true,
+      },
     ],
   },
   {
@@ -64,7 +69,7 @@ const COLUMNS: FooterColumn[] = [
   {
     title: "Company",
     links: [
-      { label: "Contact", href: "mailto:support@usetau.dev", ready: true },
+      { label: "Contact", href: "mailto:iammadfortech@gmail.com", ready: true },
     ],
   },
   {
@@ -83,7 +88,12 @@ const LINK_CLASS =
 function FooterEntry({ link }: { link: FooterLink }) {
   if (link.href.startsWith("mailto:") || link.href.startsWith("http")) {
     return (
-      <a href={link.href} className={LINK_CLASS}>
+      <a
+        href={link.href}
+        className={LINK_CLASS}
+        target={link.href.startsWith("http") ? "_blank" : undefined}
+        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+      >
         {link.label}
       </a>
     );
@@ -108,8 +118,16 @@ export function MarketingFooter() {
       <div className="relative mx-auto w-full max-w-6xl px-6 py-14">
         <div className="flex flex-col gap-12 md:flex-row md:justify-between">
           <div className="max-w-xs">
-            <Link to="/" className="flex items-center gap-2" aria-label="tau home">
-              <span className="logo-mark size-6" role="img" aria-hidden="true" />
+            <Link
+              to="/"
+              className="flex items-center gap-2"
+              aria-label="tau home"
+            >
+              <span
+                className="logo-mark size-6"
+                role="img"
+                aria-hidden="true"
+              />
               <span className="text-sm font-semibold text-silver-900">tau</span>
             </Link>
             <p className="mt-3 text-sm text-silver-600">
@@ -133,6 +151,11 @@ export function MarketingFooter() {
                       <FooterEntry link={link} />
                     </li>
                   ))}
+                  {column.title === "Company" && (
+                    <li>
+                      <SupportTauButton className={`cursor-pointer ${LINK_CLASS}`} />
+                    </li>
+                  )}
                 </ul>
               </div>
             ))}

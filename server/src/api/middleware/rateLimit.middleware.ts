@@ -1,6 +1,15 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request } from "express";
 
+export const feedbackRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: { error: "Too many feedback submissions. Please try again later." },
+});
+
 // Economy (Redis-free): express-rate-limit's built-in in-memory store. Correct
 // for a single-process deployment; would need a shared store if ever scaled out.
 export const authRateLimiter = rateLimit({

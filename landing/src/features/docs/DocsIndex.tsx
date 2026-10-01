@@ -63,10 +63,10 @@ export function DocsIndex() {
         <p className="mt-12 text-sm text-silver-600">
           The guides are being written. In the meantime,{" "}
           <a
-            href="mailto:support@usetau.dev"
+            href="mailto:iammadfortech@gmail.com"
             className="text-blue-500 hover:underline"
           >
-            support@usetau.dev
+            iammadfortech@gmail.com
           </a>{" "}
           reaches a human.
         </p>

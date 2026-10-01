@@ -16,7 +16,6 @@ import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import {
   browserNotificationsSupported,
   requestReadyNotificationPermission,
-  sendReadyNotificationTest,
 } from "@/src/features/project/useReadyNotification";
 import {
   playNotificationSound,
@@ -152,16 +151,6 @@ export function SettingsModal() {
               <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px]" />
             </Switch.Root>
           </label>
-
-          {notifyWhenReady && notificationPermission === "granted" && (
-            <button
-              type="button"
-              onClick={() => void sendReadyNotificationTest()}
-              className="ml-auto block rounded-md border border-silver-400/30 px-2.5 py-1.5 text-xs font-medium text-silver-700 transition-colors hover:border-silver-400/60 hover:text-silver-900"
-            >
-              Send test notification
-            </button>
-          )}
 
           <label
             htmlFor="notification-sound"

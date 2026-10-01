@@ -4,7 +4,9 @@ import {
   AlertTriangleIcon,
   ChevronRightIcon,
   CompassIcon,
+  CoffeeIcon,
   LogOutIcon,
+  MessageSquareIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ZapIcon,
@@ -20,6 +22,9 @@ import { openAdminConsole } from "@/src/features/admin/api";
 import { APP_BILLING } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
+import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
+import { useProjectStore } from "@/src/stores/useProjectStore";
+import { useSupportStore } from "@/src/features/support/useSupportStore";
 
 const LOW_CREDITS = 10;
 
@@ -32,6 +37,8 @@ export function UserMenu() {
   const openSettings = useSettingsStore((s) => s.openSettings);
   const requestTour = useSettingsStore((s) => s.requestTour);
   const inProject = useLocation().pathname.startsWith("/project/");
+  const openFeedback = useFeedbackStore((s) => s.open);
+  const openSupport = useSupportStore((s) => s.open);
 
   if (!user) return null;
 
@@ -152,11 +159,27 @@ export function UserMenu() {
           )}
 
           <DropdownMenu.Item
+            onSelect={() => openFeedback("account", inProject ? useProjectStore.getState().projectId ?? undefined : undefined)}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
+          >
+            <MessageSquareIcon className="size-4" />
+            Feedback &amp; suggestions
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Item
             onSelect={() => openSettings()}
             className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
           >
             <SettingsIcon className="size-4" />
             Settings
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Item
+            onSelect={openSupport}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
+          >
+            <CoffeeIcon className="size-4" />
+            Support tau
           </DropdownMenu.Item>
 
           <DropdownMenu.Item

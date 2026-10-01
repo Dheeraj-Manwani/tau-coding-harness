@@ -5,6 +5,8 @@ import { OutOfCreditsModal } from "@/src/features/billing/OutOfCreditsModal";
 import { UpgradeModal } from "@/src/features/billing/UpgradeModal";
 import { SettingsModal } from "@/src/features/settings/SettingsModal";
 import { MotionIntroDialog } from "@/src/features/settings/MotionIntroDialog";
+import { FeedbackModal } from "@/src/features/feedback/FeedbackModal";
+import { SupportTauModal } from "@/src/features/support/SupportTauModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
@@ -48,6 +50,8 @@ export function AppShell() {
       <UpgradeModal />
       <SettingsModal />
       <MotionIntroDialog />
+      <FeedbackModal />
+      <SupportTauModal />
     </div>
   );
 }

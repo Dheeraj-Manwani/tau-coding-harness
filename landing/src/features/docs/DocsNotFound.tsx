@@ -34,7 +34,7 @@ export function DocsNotFound() {
           Back to the docs
         </Link>
         <a
-          href="mailto:support@usetau.dev"
+          href="mailto:iammadfortech@gmail.com"
           className="text-blue-500 hover:underline"
         >
           Tell us what you were looking for

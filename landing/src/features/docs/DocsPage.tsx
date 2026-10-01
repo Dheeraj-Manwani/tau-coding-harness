@@ -160,7 +160,7 @@ export function DocsPage() {
         <p className="mt-10 text-sm text-silver-600">
           Still stuck?{" "}
           <a
-            href="mailto:support@usetau.dev"
+            href="mailto:iammadfortech@gmail.com"
             className="text-blue-500 hover:underline"
           >
             Email support

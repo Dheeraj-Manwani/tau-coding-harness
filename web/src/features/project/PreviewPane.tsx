@@ -18,10 +18,14 @@ import {
   TriangleAlertIcon,
   WrenchIcon,
   XIcon,
+  HeartIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
+import { PreviewCoffee } from "@/src/features/project/PreviewCoffee";
+import { isCoffeePreviewReady } from "@/src/features/project/previewCoffeeReady";
+import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
 import BorderGlow from "@/src/components/ui/glow-loader";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { GithubMark } from "@/src/components/ui/github-mark";
@@ -67,6 +71,12 @@ const DEVICE_WIDTH: Record<string, number> = {
 };
 
 const BUILD_TIPS = [
+  {
+    title: "Help shape tau",
+    copy: "Share feedback or a suggestion and unlock EXTRA100 for 100 extra credits, once per account.",
+    icon: HeartIcon,
+    iconClass: "text-amber-400",
+  },
   {
     title: "Keep your work on GitHub",
     copy: "Use the GitHub button in the top bar to connect your project and save your code there whenever you want.",
@@ -253,7 +263,7 @@ function PreviewPlaceholder({
           </div>
 
           <div className="mt-4">
-            <div className="relative min-h-24 overflow-hidden text-center">
+            <div className="relative min-h-32 overflow-hidden text-center">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={tipIndex}
@@ -272,6 +282,22 @@ function PreviewPlaceholder({
                   <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[var(--silver-600)]">
                     {tip.copy}
                   </p>
+                  {tipIndex === 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        useFeedbackStore
+                          .getState()
+                          .open(
+                            "preview",
+                            useProjectStore.getState().projectId ?? undefined,
+                          )
+                      }
+                      className="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-amber-300 underline underline-offset-4 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      Give feedback
+                    </button>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -338,7 +364,9 @@ function PreviewStopped({
       <span className="relative flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)] shadow-lg">
         <PowerOffIcon className="size-4.5" />
       </span>
-      <span className="relative text-xs text-[var(--silver-900)]">Preview stopped</span>
+      <span className="relative text-xs text-[var(--silver-900)]">
+        Preview stopped
+      </span>
       <button
         type="button"
         disabled={starting}
@@ -1352,6 +1380,7 @@ export function PreviewPane({
   const cancelStream = useProjectStore((s) => s.cancelStream);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const previewReadyJobId = useProjectStore((s) => s.previewReadyJobId);
+  const feedbackOpen = useFeedbackStore((s) => s.isOpen);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
   const { data: balance } = useBalance();
   const { send } = useSendMessage(projectId ?? undefined);
@@ -1436,6 +1465,17 @@ export function PreviewPane({
 
   return (
     <div className="flex h-full items-center justify-center overflow-auto bg-black p-6">
+      {projectId && (
+        <PreviewCoffee
+          key={projectId}
+          projectId={projectId}
+          ready={isCoffeePreviewReady({
+            active, loaded: previewLoaded, status, currentJobId, previewReadyJobId,
+            starting, down: isDown, error: Boolean(previewError), feedbackOpen,
+            stalled: isStalled, waitingForAnswer: pendingQuestion !== null,
+          })}
+        />
+      )}
       <motion.div
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
@@ -1469,9 +1509,7 @@ export function PreviewPane({
               }}
               className={cn(
                 "h-full w-full border-0 bg-black transition-opacity duration-200",
-                previewLoaded
-                  ? "visible opacity-100"
-                  : "invisible opacity-0",
+                previewLoaded ? "visible opacity-100" : "invisible opacity-0",
               )}
               style={{ colorScheme: "dark", backgroundColor: "black" }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"

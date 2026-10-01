@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SupportTauButton } from "@/src/components/SupportTauButton";
 
 export function SiteFooter() {
   return (
@@ -6,6 +7,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>© {new Date().getFullYear()} Tau. All rights reserved.</span>
         <nav className="flex flex-wrap items-center gap-4">
+          <SupportTauButton className="cursor-pointer hover:text-foreground" />
           <Link to="/pricing" className="hover:text-foreground">
             Pricing
           </Link>
@@ -15,7 +17,7 @@ export function SiteFooter() {
           <Link to="/terms" className="hover:text-foreground">
             Terms &amp; Cancellation
           </Link>
-          <a href="mailto:support@usetau.dev" className="hover:text-foreground">
+          <a href="mailto:iammadfortech@gmail.com" className="hover:text-foreground">
             Contact
           </a>
         </nav>

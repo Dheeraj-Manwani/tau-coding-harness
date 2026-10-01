@@ -221,8 +221,8 @@ export default function PricingPage() {
               Privacy Policy
             </Link>{" "}
             · Questions?{" "}
-            <a href="mailto:support@usetau.dev" className="hover:underline">
-              support@usetau.dev
+            <a href="mailto:iammadfortech@gmail.com" className="hover:underline">
+              iammadfortech@gmail.com
             </a>
           </p>
         </div>

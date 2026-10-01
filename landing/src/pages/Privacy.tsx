@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 
-const CONTACT_EMAIL = "support@usetau.dev";
+const CONTACT_EMAIL = "iammadfortech@gmail.com";
 const EFFECTIVE_DATE = "June 29, 2025";
 
 export default function PrivacyPage() {

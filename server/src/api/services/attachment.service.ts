@@ -218,9 +218,10 @@ export async function deleteAttachment(
   attachmentId: string,
 ): Promise<void> {
   const row = await requireOwned(userId, attachmentId);
-  if (row.messageId) throw Errors.conflict("ATTACHMENT_ALREADY_SENT");
+  if (row.messageId || row.feedbackId) throw Errors.conflict("ATTACHMENT_ALREADY_SENT");
 
-  await prisma.attachment.delete({ where: { id: attachmentId } });
+  const deleted = await prisma.attachment.deleteMany({ where: { id: attachmentId, messageId: null, feedbackId: null } });
+  if (!deleted.count) throw Errors.conflict("ATTACHMENT_ALREADY_SENT");
   // Content-addressed, so the same image dropped twice shares one blob.
   await deleteBlobIfUnreferenced(row.blobKey);
 }
@@ -259,6 +260,7 @@ export async function sweepAttachments(): Promise<SweepResult> {
   const orphans = await prisma.attachment.findMany({
     where: {
       messageId: null,
+      feedbackId: null,
       createdAt: { lt: new Date(Date.now() - ORPHAN_TTL_MS) },
     },
     select: { id: true, blobKey: true },
@@ -267,7 +269,8 @@ export async function sweepAttachments(): Promise<SweepResult> {
 
   for (const o of orphans) {
     try {
-      await prisma.attachment.delete({ where: { id: o.id } });
+      const deleted = await prisma.attachment.deleteMany({ where: { id: o.id, messageId: null, feedbackId: null } });
+      if (!deleted.count) continue;
       await deleteBlobIfUnreferenced(o.blobKey);
       orphansDeleted++;
     } catch (err) {

@@ -98,6 +98,7 @@ export function renderAdminConsole(): string {
     <h1>tau ops</h1>
     <a href="/admin/costs" style="color:var(--accent);text-decoration:none">cost calculator</a>
     <a href="/admin/promo-codes" style="color:var(--accent);text-decoration:none">promo codes</a>
+    <a href="/admin/feedback/ui" style="color:var(--accent);text-decoration:none">feedback</a>
     <div class="row grow">
       <select id="statusFilter">
         <option value="active">active (default)</option>

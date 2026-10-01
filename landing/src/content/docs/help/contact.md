@@ -6,7 +6,7 @@ order: 3
 updated: 2026-07-30
 ---
 
-**[support@usetau.dev](mailto:support@usetau.dev)**
+**[iammadfortech@gmail.com](mailto:iammadfortech@gmail.com)**
 
 That is the address. There is no ticket portal and no chatbot in front of it.
 

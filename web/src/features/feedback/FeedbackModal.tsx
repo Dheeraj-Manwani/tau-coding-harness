@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2Icon, ChevronDownIcon, PaperclipIcon } from "lucide-react";
 import {
@@ -9,7 +9,6 @@ import {
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
 import { api } from "@/src/lib/api-client";
-import { celebratePromoRedemption } from "@/src/lib/confetti";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,22 +28,6 @@ type Reward = {
   credits: number;
   alreadyRedeemed: boolean;
 };
-
-const modalTheme = {
-  "--background": "#09090b",
-  "--foreground": "#fafafa",
-  "--popover": "#09090b",
-  "--popover-foreground": "#fafafa",
-  "--muted": "#18181b",
-  "--muted-foreground": "#a1a1aa",
-  "--border": "#27272a",
-  "--input": "#27272a",
-  "--primary": "#fafafa",
-  "--primary-foreground": "#09090b",
-  "--accent": "#18181b",
-  "--accent-foreground": "#fafafa",
-  "--ring": "#71717a",
-} as CSSProperties;
 
 function FeedbackForm() {
   const source = useFeedbackStore((s) => s.source);
@@ -78,13 +61,15 @@ function FeedbackForm() {
   if (submit.data) {
     const rewarded = submit.data.alreadyRedeemed || redeem.isSuccess;
     return (
-      <div className="grid gap-6 py-4 text-center">
-        <div className="flex flex-col items-center gap-3">
+      <div className="grid gap-4 py-6 text-center">
+        <div className="flex flex-col items-center gap-4">
           <CheckCircle2Icon className="size-8 text-zinc-200" />
-          <h3 className="font-medium">Feedback received</h3>
-          <p className="text-sm text-muted-foreground">
-            Thanks for helping us improve tau.
-          </p>
+          <div className="space-y-1.5">
+            <DialogTitle>Feedback received</DialogTitle>
+            <DialogDescription>
+              Thanks for helping us improve tau.
+            </DialogDescription>
+          </div>
         </div>
         {rewarded ? (
           <p role="status" className="mx-auto w-full max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -117,13 +102,7 @@ function FeedbackForm() {
             <Button
               className="w-full"
               disabled={redeem.isPending}
-              onClick={() => redeem.mutate(submit.data!.promoCode, {
-                onSuccess: (data) => {
-                  if (!submit.data!.alreadyRedeemed && data.creditsGranted === 100) {
-                    celebratePromoRedemption();
-                  }
-                },
-              })}
+              onClick={() => redeem.mutate(submit.data!.promoCode)}
             >
               {redeem.isPending ? "Redeeming…" : "Redeem 100 credits"}
             </Button>
@@ -139,6 +118,13 @@ function FeedbackForm() {
   }
 
   return (
+    <>
+      <div className="pr-7 space-y-1.5">
+        <DialogTitle>Help shape tau</DialogTitle>
+        <DialogDescription>
+          Share your experience or an idea for what’s next.
+        </DialogDescription>
+      </div>
     <form
       className="space-y-4"
       onSubmit={(event) => {
@@ -165,8 +151,7 @@ function FeedbackForm() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            style={modalTheme}
-            className="w-[var(--radix-dropdown-menu-trigger-width)]"
+            className="dialog-theme w-[var(--radix-dropdown-menu-trigger-width)]"
           >
             <DropdownMenuRadioGroup
               value={kind}
@@ -265,6 +250,7 @@ function FeedbackForm() {
               : "Send feedback"}
       </Button>
     </form>
+    </>
   );
 }
 
@@ -280,7 +266,6 @@ export function FeedbackModal() {
       }}
     >
       <DialogContent
-        style={modalTheme}
         showCloseButton={!submitting}
         className="max-h-[calc(100dvh-2rem)] overflow-y-auto border border-zinc-800 p-6 sm:max-w-md [&>button[data-slot=dialog-close]]:top-4 [&>button[data-slot=dialog-close]]:right-4"
         onEscapeKeyDown={(e) => {
@@ -290,14 +275,6 @@ export function FeedbackModal() {
           if (submitting) e.preventDefault();
         }}
       >
-        <div className="pr-7">
-          <div className="space-y-1.5">
-            <DialogTitle>Help shape tau</DialogTitle>
-            <DialogDescription>
-              Share your experience or an idea for what’s next.
-            </DialogDescription>
-          </div>
-        </div>
         {isOpen && <FeedbackForm />}
       </DialogContent>
     </Dialog>

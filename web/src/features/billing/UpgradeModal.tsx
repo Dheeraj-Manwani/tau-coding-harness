@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
-import { UpgradeProButton } from "./UpgradeProButton";
+import { Button } from "@/src/components/ui/button";
 import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 import { APP_BILLING } from "@/src/lib/routes";
 import { PRO_PRICE_INR } from "@/src/lib/pricing";
@@ -51,7 +51,7 @@ export function UpgradeModal() {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-xl border border-brand/50 bg-brand/5 p-4">
+        <div className="rounded-xl border border-border bg-muted/30 p-4">
           <span className="mb-3 inline-block rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
             PRO
           </span>
@@ -73,9 +73,9 @@ export function UpgradeModal() {
           </ul>
         </div>
 
-        <UpgradeProButton className="w-full" onClick={handleUpgrade}>
+        <Button className="h-11 w-full" onClick={handleUpgrade}>
           Upgrade to PRO
-        </UpgradeProButton>
+        </Button>
       </DialogContent>
     </Dialog>
   );

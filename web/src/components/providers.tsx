@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 
 import { queryClient } from "@/src/lib/query-client";
 import { TooltipProvider } from "./ui/tooltip";
+import { SuccessCelebration } from "./SuccessCelebration";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
           }}
         />
         {children}
+        <SuccessCelebration />
       </TooltipProvider>
 
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

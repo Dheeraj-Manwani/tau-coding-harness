@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { SearchIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
-import { OrbitRing } from "@/src/features/marketing/motion/OrbitRing";
 import { loadSearchIndex, searchDocs, type SearchDoc } from "./search";
 
 /**
@@ -46,7 +45,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center bg-space-void/70 px-4 pt-[12vh] backdrop-blur-sm"
+      className="dialog-theme fixed inset-0 z-[70] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Search the documentation"
@@ -54,7 +53,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-silver-200 bg-space-surface shadow-2xl">
+      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
         <div className="flex items-center gap-3 border-b border-silver-200 px-4">
           <SearchIcon className="size-4 shrink-0 text-silver-400" />
           <input
@@ -90,7 +89,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
 
         {query.trim() === "" ? (
           <div className="flex flex-col items-center gap-3 py-12 text-sm text-silver-600">
-            <OrbitRing size={72} periodSeconds={22} />
+            <SearchIcon className="size-8 text-muted-foreground" aria-hidden="true" />
             <p>Search guides, reference and limits.</p>
           </div>
         ) : hits.length === 0 ? (

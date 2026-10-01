@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/src/lib/api-client";
+import { celebrateSuccess } from "@/src/lib/confetti";
 
 export const billingKeys = {
   balance: ["billing", "balance"] as const,
@@ -166,7 +167,8 @@ export function useRedeemCode() {
           available: number;
         }>("/credits/redeem", { code })
         .then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      celebrateSuccess(`+${data.creditsGranted.toLocaleString()} credits added!`);
       void qc.invalidateQueries({ queryKey: billingKeys.balance });
       void qc.invalidateQueries({ queryKey: ["billing", "history"] });
     },
@@ -212,7 +214,8 @@ export function useVerifyCreditPayment() {
           available: number;
         }>("/billing/credits/verify", input)
         .then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      celebrateSuccess(`+${data.creditsGranted.toLocaleString()} credits added!`);
       void qc.invalidateQueries({ queryKey: billingKeys.balance });
       void qc.invalidateQueries({ queryKey: ["billing", "history"] });
     },

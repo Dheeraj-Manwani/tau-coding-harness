@@ -63,7 +63,7 @@ function TourCard({
       role="dialog"
       aria-labelledby={TITLE_ID}
       aria-describedby={BODY_ID}
-      className="w-72 rounded-xl border border-silver-400/30 bg-space-surface p-4 text-left shadow-2xl"
+      className="dialog-theme w-72 rounded-xl border border-border bg-background p-6 text-left shadow-2xl"
     >
       <p className="text-[11px] font-medium text-silver-600" aria-live="polite">
         {currentStep + 1} of {steps.length}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { celebratePromoRedemption } from "@/src/lib/confetti";
+import { celebrateSuccess } from "@/src/lib/confetti";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -118,7 +118,7 @@ function openRazorpayCheckout(
     prefill: { email: userEmail },
     theme: { color: "#6366f1" },
     handler: () => {
-      toast.success("Payment successful! Your PRO plan is being activated.");
+      celebrateSuccess("Payment successful! Your PRO plan is being activated.");
       onSuccess();
     },
   });
@@ -329,9 +329,7 @@ function RedeemSection() {
     const trimmed = code.trim();
     if (!trimmed) return;
     redeemCode.mutate(trimmed, {
-      onSuccess: (data) => {
-        celebratePromoRedemption();
-        toast.success(`+${fmt(data.creditsGranted)} credits added!`);
+      onSuccess: () => {
         setCode("");
       },
       onError: (err) => {
@@ -400,11 +398,9 @@ function TopUpSection() {
                 signature: resp.razorpay_signature,
               },
               {
-                onSuccess: (data) =>
-                  toast.success(`+${fmt(data.creditsGranted)} credits added!`),
                 // The webhook backstop will still land the credits: don't alarm.
                 onError: () =>
-                  toast.success("Payment received: credits will appear shortly."),
+                  celebrateSuccess("Payment received: credits will appear shortly."),
                 onSettled: () => setPendingPack(null),
               },
             );

@@ -16,7 +16,6 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_BILLING } from "@/src/lib/routes";
-import { celebratePromoRedemption } from "@/src/lib/confetti";
 
 export function OutOfCreditsModal() {
   const open = useBillingStore((s) => s.outOfCreditsOpen);
@@ -29,9 +28,7 @@ export function OutOfCreditsModal() {
     const trimmed = code.trim();
     if (!trimmed) return;
     redeemCode.mutate(trimmed, {
-      onSuccess: (data) => {
-        celebratePromoRedemption();
-        toast.success(`+${data.creditsGranted.toFixed(1)} credits added!`);
+      onSuccess: () => {
         close();
         setCode("");
       },

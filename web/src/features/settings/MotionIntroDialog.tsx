@@ -39,7 +39,7 @@ export function MotionIntroDialog() {
         showCloseButton={false}
         className="gap-6 border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 sm:max-w-sm"
       >
-        <DialogHeader className="items-center gap-3 text-center">
+        <DialogHeader className="items-center gap-3 pr-0 text-center">
           {/* <div aria-hidden="true" className="flex size-12 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900">
             <SparklesIcon className="size-5 text-zinc-200" />
           </div> */}

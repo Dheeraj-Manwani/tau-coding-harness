@@ -715,3 +715,46 @@ a:hover > .logo-shimmer {
     @apply font-sans;
   }
 }
+
+/* Scoped neutral palette for dialogs and their custom content. */
+.dialog-theme {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --popover: #09090b;
+  --popover-foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --input: #27272a;
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #18181b;
+  --secondary-foreground: #fafafa;
+  --accent: #18181b;
+  --accent-foreground: #fafafa;
+  --ring: #71717a;
+  --brand: #fafafa;
+  --blue-500: #fafafa;
+  --blue-300: #d4d4d8;
+  --space-void: #09090b;
+  --space-surface: #09090b;
+  --space-overlay: #18181b;
+  --silver-900: #fafafa;
+  --silver-700: #d4d4d8;
+  --silver-600: #a1a1aa;
+  --silver-400: #71717a;
+  --silver-200: #27272a;
+  --brand-violet: #fafafa;
+  --brand-violet-light: #d4d4d8;
+  --brand-violet-deep: #a1a1aa;
+  --brand-violet-dim: #71717a;
+  --color-space-void: var(--space-void);
+  --color-space-surface: var(--space-surface);
+  --color-space-overlay: var(--space-overlay);
+  --color-silver-900: var(--silver-900);
+  --color-silver-600: var(--silver-600);
+  --color-silver-400: var(--silver-400);
+  --color-silver-200: var(--silver-200);
+}

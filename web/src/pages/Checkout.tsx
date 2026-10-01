@@ -4,6 +4,7 @@ import { AlertTriangleIcon, ArrowLeftIcon, Wallet } from "lucide-react";
 
 import { env } from "@/src/lib/env";
 import { Button } from "@/src/components/ui/button";
+import { celebrateSuccess } from "@/src/lib/confetti";
 
 /**
  * Razorpay checkout surface for the **mobile** app.
@@ -89,6 +90,7 @@ export default function CheckoutPage() {
       prefill: email ? { email } : undefined,
       theme: { color: "#6366f1" },
       handler: () => {
+        celebrateSuccess("Payment received! Your credits will appear shortly.");
         setDone("success");
         returnToApp("success");
       },

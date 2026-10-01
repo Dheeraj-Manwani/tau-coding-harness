@@ -71,7 +71,7 @@ export function DeleteProjectDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter className="border-t border-silver-200 bg-space-void/60">
+        <AlertDialogFooter className="border-t border-border pt-4">
           <AlertDialogCancel
             variant="outline"
             className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900"

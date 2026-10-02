@@ -12,9 +12,10 @@ import { bus } from "@/lib/bus";
 import {
   ADMIN_COOKIE,
   assertAdmin,
-  issueAdminSession,
+  setAdminSessionCookie,
 } from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
+import * as overviewService from "../services/adminOverview.service";
 import { renderAdminConsole } from "../views/adminConsole";
 import { renderAdminCostCalculator } from "../views/adminCosts";
 import { renderAdminPromoCodes } from "../views/adminPromoCodes";
@@ -58,14 +59,7 @@ export const createSession = handler(async (req, res) => {
     ? await assertAdmin(req)
     : await admin.authenticateAdmin(body.email, body.password);
 
-  const { token, expiresAt } = issueAdminSession(operator.id);
-  res.cookie(ADMIN_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
-    expires: expiresAt,
-    path: "/admin",
-  });
+  const expiresAt = setAdminSessionCookie(res, operator.id);
   return { ok: true, expiresAt, email: operator.email };
 });
 
@@ -151,7 +145,33 @@ export function stream(req: Request, res: Response): void {
   });
 }
 
+/**
+ * The ops console's whole dashboard in one cached snapshot. `?fresh=1` asks for
+ * a recompute (honoured at most every 10 s).
+ */
+export const overview = handler((req) =>
+  overviewService.getOverview(req.query.fresh === "1"),
+);
+
+/** Grouped warn/error lines since this process started. */
+export const errors = handler(() => overviewService.getErrors());
+
+/** E2B's running sandboxes joined to projects; orphans and stale rows flagged. */
+export const liveSandboxes = handler((req) =>
+  overviewService.getLiveSandboxes(req.query.fresh === "1"),
+);
+
+export const searchUsers = handler((req) =>
+  overviewService.searchUsers(
+    typeof req.query.q === "string" ? req.query.q : undefined,
+  ),
+);
+
 // ── incident tools ───────────────────────────────────────────────────────────
+
+export const killSandbox = handler((req) =>
+  overviewService.killOrphanSandbox(String(req.params.id)),
+);
 
 export const killJob = handler((req) => admin.killJob(String(req.params.id)));
 

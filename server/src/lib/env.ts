@@ -138,6 +138,18 @@ const envSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v === "true"),
+  // Origin of the standalone ops console (admin/), e.g. https://admin.tauai.pro.
+  // Unset = the console is not deployed: no CORS grant on /admin and no
+  // `?client=admin` Google sign-in. Must share a registrable domain with this
+  // API so the SameSite=Lax admin cookie reaches it.
+  ADMIN_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((v) => v?.replace(/\/+$/, "")),
+  // DeepSeek balance (in the account's currency) below which the console flags
+  // an anomaly and the hourly sweep pages. Every build stops when it hits zero.
+  DEEPSEEK_LOW_BALANCE: z.coerce.number().nonnegative().default(5),
   // Where operational alerts go (Slack/Discord incoming webhook). Unset = the
   // sweep still computes and logs the numbers, it just doesn't page anyone.
   ALERT_WEBHOOK_URL: z.string().url().optional(),

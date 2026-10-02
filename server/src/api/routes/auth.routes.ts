@@ -15,7 +15,7 @@ import {
 } from "../middleware/rateLimit.middleware";
 import { Errors } from "../lib/errors";
 import { env } from "@/lib/env";
-import { signMobileOAuthState } from "../lib/mobileLink";
+import { signOAuthClientState } from "../lib/mobileLink";
 
 // Registered only when configured: the strategy throws on an empty clientID at
 // construction, which used to crash the server at import time for variables the
@@ -81,12 +81,19 @@ router.get(
   "/google",
   requireGoogle,
   (req: Request, res: Response, next: NextFunction) => {
+    // `?client=admin` is the standalone ops console's sign-in. It is only
+    // honoured when ADMIN_URL is configured: the callback redirects there, and
+    // with nowhere to send the operator the round trip would dead-end.
+    const client =
+      req.query["client"] === "mobile"
+        ? "mobile"
+        : req.query["client"] === "admin" && env.ADMIN_URL
+          ? "admin"
+          : null;
     passport.authenticate("google", {
       scope: ["profile", "email"],
       session: false,
-      ...(req.query["client"] === "mobile"
-        ? { state: signMobileOAuthState() }
-        : {}),
+      ...(client ? { state: signOAuthClientState(client) } : {}),
     })(req, res, next);
   },
 );

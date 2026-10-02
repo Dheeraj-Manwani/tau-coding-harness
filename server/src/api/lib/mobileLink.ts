@@ -47,40 +47,57 @@ export function withParam(url: string, key: string, value: string): string {
 const OAUTH_STATE_PURPOSE = "oauth_client";
 const OAUTH_STATE_TTL_SECONDS = 600; // 10 minutes to complete consent
 
+/**
+ * Which non-default client started the consent. Absent (or unverifiable) means
+ * the web app — the pre-existing behaviour.
+ *   - `mobile`: finish on a `tau://` deep link with a one-shot code.
+ *   - `admin`:  finish on ADMIN_URL with only the `/admin`-scoped cookie.
+ */
+export type OAuthClient = "mobile" | "admin";
+
 interface OAuthStatePayload {
   purpose: typeof OAUTH_STATE_PURPOSE;
-  client: "mobile";
+  client: OAuthClient;
 }
 
 /**
- * Mark an OAuth round trip as mobile-initiated.
+ * Mark an OAuth round trip as started by a particular client.
  *
  * Signed, not a plain `?client=mobile` echo: the callback picks a redirect
- * *scheme* from this, so an attacker-supplied value would be an open redirect
+ * target from this, so an attacker-supplied value would be an open redirect
  * into an arbitrary app. Google returns `state` verbatim, so signing it here is
  * the only thing that makes it trustworthy on the way back.
  */
-export function signMobileOAuthState(): string {
-  const payload: OAuthStatePayload = {
-    purpose: OAUTH_STATE_PURPOSE,
-    client: "mobile",
-  };
+export function signOAuthClientState(client: OAuthClient): string {
+  const payload: OAuthStatePayload = { purpose: OAUTH_STATE_PURPOSE, client };
   return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
     algorithm: "HS256",
     expiresIn: OAUTH_STATE_TTL_SECONDS,
   });
 }
 
-/** Did this callback come from a mobile-initiated consent? Anything unsigned,
- *  expired, or absent reads as web — the pre-existing behaviour. */
-export function isMobileOAuthState(state: unknown): boolean {
-  if (typeof state !== "string" || state.length === 0) return false;
+/** The client a callback's `state` attests to. Anything unsigned, expired, or
+ *  absent is null — i.e. web. */
+export function oauthClientFromState(state: unknown): OAuthClient | null {
+  if (typeof state !== "string" || state.length === 0) return null;
   try {
     const decoded = jwt.verify(state, env.ACCESS_TOKEN_SECRET, {
       algorithms: ["HS256"],
     }) as OAuthStatePayload;
-    return decoded.purpose === OAUTH_STATE_PURPOSE && decoded.client === "mobile";
+    if (decoded.purpose !== OAUTH_STATE_PURPOSE) return null;
+    return decoded.client === "mobile" || decoded.client === "admin"
+      ? decoded.client
+      : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function signMobileOAuthState(): string {
+  return signOAuthClientState("mobile");
+}
+
+/** Did this callback come from a mobile-initiated consent? */
+export function isMobileOAuthState(state: unknown): boolean {
+  return oauthClientFromState(state) === "mobile";
 }

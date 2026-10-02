@@ -29,6 +29,12 @@ USER bun
 
 ENV NODE_ENV=production
 ENV PORT=8080
+
+# The commit this image was built from, shown in the ops console and tagged on
+# error reports. Declared after the install layer so a new SHA never busts the
+# dependency cache. Empty for local builds that don't pass it.
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 EXPOSE 8080
 
 # Bun is already in the image; no curl needed. /healthz pings the database and

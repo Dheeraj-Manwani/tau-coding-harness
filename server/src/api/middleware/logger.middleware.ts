@@ -1,5 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import { log } from "../lib/log";
+import { normaliseRoute, recordRequest } from "@/lib/telemetry";
+import { slugFromHost } from "@/lib/sites";
+
+/**
+ * The telemetry route key for a request. Two folds on top of path
+ * normalisation keep the key space bounded by *our* routes rather than by what
+ * the internet sends:
+ *   - every published-site request is one key — their paths are the user's app;
+ *   - every 404 is one key per method — scanners probe thousands of paths.
+ */
+export function telemetryRoute(req: Request, status: number): string {
+  if (slugFromHost(req.headers.host)) return `${req.method} (published site)`;
+  if (status === 404) return `${req.method} (not found)`;
+  return normaliseRoute(req.method, req.originalUrl);
+}
 
 /**
  * Query params that carry a credential. The SSE stream takes the access token
@@ -29,6 +44,7 @@ export function requestLogger(
   res.on("finish", () => {
     if (req.method === "OPTIONS") return;
     const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    recordRequest(telemetryRoute(req, res.statusCode), res.statusCode, durationMs);
     log.info("http.request", {
       method: req.method,
       path: redactUrl(req.originalUrl),

@@ -111,3 +111,27 @@ describe("deep links", () => {
     );
   });
 });
+
+const { signOAuthClientState, oauthClientFromState } = await import("@/api/lib/mobileLink");
+
+describe("admin OAuth state", () => {
+  test("round-trips an admin marker, distinct from mobile", () => {
+    const state = signOAuthClientState("admin");
+    expect(oauthClientFromState(state)).toBe("admin");
+    expect(isMobileOAuthState(state)).toBe(false);
+  });
+
+  test("a forged admin marker reads as web", () => {
+    const forged = jwt.sign({ purpose: "oauth_client", client: "admin" }, "not-the-secret", {
+      algorithm: "HS256",
+    });
+    expect(oauthClientFromState(forged)).toBeNull();
+  });
+
+  test("an unknown client in a validly signed state reads as web", () => {
+    const odd = jwt.sign({ purpose: "oauth_client", client: "evil" }, env.ACCESS_TOKEN_SECRET, {
+      algorithm: "HS256",
+    });
+    expect(oauthClientFromState(odd)).toBeNull();
+  });
+});

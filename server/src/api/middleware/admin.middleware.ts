@@ -60,6 +60,27 @@ export function issueAdminSession(userId: string): {
   return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
 
+/**
+ * Mint a session and set it as the `/admin`-scoped HttpOnly cookie. Shared by
+ * the password/bearer exchange and the Google round trip so the two can never
+ * disagree on cookie attributes.
+ *
+ * `SameSite=Lax` is what lets the standalone console at ADMIN_URL use it: that
+ * origin and the API are the same *site* (e.g. admin.tauai.pro / api.tauai.pro),
+ * so the cookie rides along on its credentialed fetches.
+ */
+export function setAdminSessionCookie(res: Response, userId: string): Date {
+  const { token, expiresAt } = issueAdminSession(userId);
+  res.cookie(ADMIN_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: env.NODE_ENV === "production",
+    expires: expiresAt,
+    path: "/admin",
+  });
+  return expiresAt;
+}
+
 /** Returns the user id a session cookie attests to, or null if it doesn't verify. */
 function verifyAdminSession(token: string): string | null {
   const [userId, exp, mac] = token.split(".");

@@ -7,6 +7,7 @@ node_modules
 .github
 doc
 web
+admin
 cli
 landing
 mobile

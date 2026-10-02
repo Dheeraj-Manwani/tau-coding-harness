@@ -352,6 +352,9 @@ export interface WindowMetrics {
   finishReasons: Record<string, number>;
   p50DurationSeconds: number | null;
   p95DurationSeconds: number | null;
+  /** queued → started: how long a user stared at "queued" before work began. */
+  p50QueueWaitSeconds: number | null;
+  p95QueueWaitSeconds: number | null;
   avgTurns: number | null;
   credits: number;
   creditsPerJob: number | null;
@@ -390,12 +393,14 @@ async function metricsForWindow(
       finishReason: true,
       currentTurn: true,
       costMicro: true,
+      queuedAt: true,
       startedAt: true,
       completedAt: true,
     },
   });
 
   const durations: number[] = [];
+  const waits: number[] = [];
   const finishReasons: Record<string, number> = {};
   const byEffort: Record<string, { jobs: number; credits: number }> = {};
   let succeeded = 0;
@@ -416,6 +421,9 @@ async function metricsForWindow(
     if (j.startedAt && j.completedAt) {
       durations.push((j.completedAt.getTime() - j.startedAt.getTime()) / 1000);
     }
+    if (j.startedAt) {
+      waits.push((j.startedAt.getTime() - j.queuedAt.getTime()) / 1000);
+    }
     if (j.currentTurn > 0) {
       turnSum += j.currentTurn;
       turnCount++;
@@ -428,6 +436,7 @@ async function metricsForWindow(
   }
 
   durations.sort((a, b) => a - b);
+  waits.sort((a, b) => a - b);
   const terminal = succeeded + failed + cancelled;
 
   const tools = await prisma.toolCall.groupBy({
@@ -467,6 +476,8 @@ async function metricsForWindow(
     finishReasons,
     p50DurationSeconds: round(percentile(durations, 0.5)),
     p95DurationSeconds: round(percentile(durations, 0.95)),
+    p50QueueWaitSeconds: round(percentile(waits, 0.5)),
+    p95QueueWaitSeconds: round(percentile(waits, 0.95)),
     avgTurns: turnCount > 0 ? round(turnSum / turnCount) : null,
     credits: toCredits(costTotal),
     creditsPerJob: jobs.length > 0 ? round(toCredits(costTotal) / jobs.length) : null,

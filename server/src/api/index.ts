@@ -34,6 +34,7 @@ import { sweepAttachments } from "./services/attachment.service";
 import { runDeploySweep } from "./lib/deploySweep";
 import { prisma } from "@/lib/prisma";
 import { isDraining } from "@/lib/lifecycle";
+import { startTelemetry } from "@/lib/telemetry";
 
 /**
  * Terminate jobs whose owning process is gone, then settle the holds left behind
@@ -92,6 +93,10 @@ async function runAttachmentSweep(): Promise<void> {
  * project's shimmer and 409 every future prompt on it, forever.
  */
 export function startApiBackground(): void {
+  // In-memory request/error/event-loop stats for the ops console. Started here
+  // rather than at import so tests that build the app never start the timer.
+  startTelemetry();
+
   void runSweep(true);
   setInterval(() => void runSweep(), 60 * 60 * 1000);
 
@@ -153,6 +158,17 @@ export function buildApp(
   // are cross-origin. It is inert unless SITES_DOMAIN is set.
   app.use(siteHostMiddleware());
   app.use(siteRoutes);
+
+  // The standalone ops console lives on its own origin (ADMIN_URL). Its grant
+  // is scoped to /admin on purpose — that origin must never be able to call
+  // /auth, /project or /billing with an operator's credentials.
+  //
+  // It has to be mounted BEFORE the global policy below: that one answers every
+  // preflight itself and ends it, without an allow-origin header for an origin
+  // it doesn't know, so a later grant would never get to run.
+  if (env.ADMIN_URL) {
+    app.use("/admin", cors({ origin: env.ADMIN_URL, credentials: true }));
+  }
 
   app.use(
     cors({

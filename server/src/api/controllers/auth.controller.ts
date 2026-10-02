@@ -13,7 +13,10 @@ import * as authRepository from "../repositories/auth.repository";
 import { Errors } from "../lib/errors";
 import { env } from "@/lib/env";
 import { consumeHandoff, signHandoff } from "../lib/handoff";
-import { isMobileOAuthState, mobileDeepLink } from "../lib/mobileLink";
+import { oauthClientFromState, mobileDeepLink } from "../lib/mobileLink";
+import { setAdminSessionCookie } from "../middleware/admin.middleware";
+import { log } from "../lib/log";
+import { Role } from "@/generated/prisma/enums";
 import { parse } from "../lib/utils";
 
 const REFRESH_COOKIE = "refresh_token";
@@ -162,9 +165,28 @@ export async function googleCallback(
     // refresh token, and no way to read a URL fragment out of an in-app browser
     // tab it doesn't control. So it gets a one-shot code to exchange instead —
     // which also keeps the refresh token out of a redirect URL entirely.
-    if (isMobileOAuthState(req.query["state"])) {
+    const client = oauthClientFromState(req.query["state"]);
+
+    if (client === "mobile") {
       const { token } = signHandoff("google_exchange", user.id);
       res.redirect(`${mobileDeepLink("callback")}?code=${encodeURIComponent(token)}`);
+      return;
+    }
+
+    // The standalone ops console. It gets the `/admin`-scoped cookie and
+    // nothing else — no refresh token, no product session, no token in a URL —
+    // so signing into ops never doubles as signing into the app. The role is
+    // checked here for a clean "not an admin" screen; `requireAdmin` re-reads
+    // it on every request regardless, so this is UX, not the gate.
+    if (client === "admin" && env.ADMIN_URL) {
+      if (user.role !== Role.ADMIN) {
+        log.warn("admin.session.denied", { userId: user.id, via: "google", ip: req.ip });
+        res.redirect(`${env.ADMIN_URL}/login?error=not_admin`);
+        return;
+      }
+      setAdminSessionCookie(res, user.id);
+      log.info("admin.session.start", { userId: user.id, via: "google", ip: req.ip });
+      res.redirect(`${env.ADMIN_URL}/`);
       return;
     }
 

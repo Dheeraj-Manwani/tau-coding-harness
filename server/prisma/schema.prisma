@@ -295,6 +295,9 @@ model ToolCall {
 
   @@index([messageId])
   @@index([toolCallId])
+  // The admin metrics/alert rollups group tool calls by time window; without
+  // this every one of them is a sequential scan of the whole table.
+  @@index([createdAt])
 }
 
 enum ToolCallStatus {

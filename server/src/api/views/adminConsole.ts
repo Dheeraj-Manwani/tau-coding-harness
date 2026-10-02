@@ -111,7 +111,7 @@ export function renderAdminConsole(): string {
       </select>
       <button id="refresh">refresh</button>
       <button id="reconcile">reconcile stuck</button>
-      <label class="dim"><input type="checkbox" id="auto" checked style="cursor:pointer" /> auto 5s</label>
+      <label class="dim"><input type="checkbox" id="auto" style="cursor:pointer" /> auto 5s</label>
       <span id="updated" class="dim"></span>
     </div>
     <button id="signout">sign out</button>
@@ -289,8 +289,9 @@ $("reconcile").onclick = async () => {
   refresh();
 };
 
-// Only poll while signed in — a hidden login box means the cookie is gone and
-// every tick would just 403.
+// Off by default: every tick re-runs the 7-day metrics scan against the same
+// database users are on. Opt in during an incident. Only polls while signed in
+// — a hidden login box means the cookie is gone and every tick would just 403.
 setInterval(() => {
   if ($("auto").checked && $("login").classList.contains("hide")) refresh();
 }, 5000);

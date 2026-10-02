@@ -1,136 +1,70 @@
 import { env } from "@/lib/env";
+import { prisma } from "@/lib/prisma";
 import { log, captureException } from "./log";
-import { getHealth, getMetrics } from "../services/admin.service";
+import {
+  getHealth,
+  getMetrics,
+  type AdminHealth,
+  type WindowMetrics,
+} from "../services/admin.service";
+import {
+  deepseekAnomalies,
+  jobAnomalies,
+  sortAnomalies,
+  webhookAnomalies,
+  type Anomaly,
+} from "./anomalies";
+import { deepseekBalance } from "./providers";
 
 /**
  * Operational alerting, evaluated from the hourly sweep that already runs — no
  * new scheduler, no second process.
  *
  * These are the alarms whose absence let a job sit RUNNING for days with a
- * user's project bricked behind it (doc/STUCK_THINKING_AND_TOOL_MESSAGES.md §5.6).
- * Every one of them alerts on a **count or a rate**, once per sweep — never per
- * row. An alert that fires a thousand times is an alert nobody reads.
+ * user's project bricked behind it (doc/STUCK_THINKING_AND_TOOL_MESSAGES.md §5.6),
+ * plus the two that cost money silently: the LLM account running dry, and a
+ * payment webhook that never got processed.
+ *
+ * The rules themselves live in `anomalies.ts`, shared with the ops console so
+ * the two never disagree. Only `warn` and `critical` page; `info` is
+ * console-only.
  */
 
 export type Severity = "warn" | "critical";
 
-export interface Alert {
-  key: string;
+export interface Alert extends Anomaly {
   severity: Severity;
-  message: string;
-  value: number;
 }
 
-/** Rates below this sample size are noise, not signal. */
-const MIN_SAMPLE = 20;
+/** A webhook unprocessed for this long has failed, not merely queued. */
+export const WEBHOOK_STALE_MS = 10 * 60_000;
 
-const THRESHOLDS = {
-  jobFailureRate: 0.1,
-  sandboxProvisionFailureRate: 0.05,
-  toolFailureRate: 0.1,
-  p95DurationSeconds: 900,
-};
+export function countStaleWebhooks(): Promise<number> {
+  return prisma.webhookEvent.count({
+    where: { processedAt: null, createdAt: { lt: new Date(Date.now() - WEBHOOK_STALE_MS) } },
+  });
+}
 
-export async function evaluateAlerts(): Promise<Alert[]> {
-  const alerts: Alert[] = [];
-  const [health, metrics] = await Promise.all([getHealth(), getMetrics()]);
+/**
+ * @param pre health/metrics the caller already computed (the console's
+ *            overview), so they aren't computed twice.
+ */
+export async function evaluateAlerts(
+  pre: { health?: AdminHealth; metrics?: WindowMetrics[] } = {},
+): Promise<Alert[]> {
+  const [health, metrics, deepseek, staleWebhooks] = await Promise.all([
+    pre.health ?? getHealth(),
+    pre.metrics ?? getMetrics(),
+    deepseekBalance(),
+    countStaleWebhooks(),
+  ]);
 
-  // 1 — the alarm that would have caught the original bug.
-  if (health.stuckJobs > 0) {
-    alerts.push({
-      key: "stuck_jobs",
-      severity: "critical",
-      value: health.stuckJobs,
-      message: `${health.stuckJobs} job(s) non-terminal with a cold heartbeat — their projects are refusing new prompts`,
-    });
-  }
-
-  // 2 — leaked concurrency: holds outliving the job they were taken for.
-  if (health.orphanHolds > 0) {
-    alerts.push({
-      key: "orphan_holds",
-      severity: "warn",
-      value: health.orphanHolds,
-      message: `${health.orphanHolds} ACTIVE credit hold(s) behind a terminal job — concurrency slots leaked`,
-    });
-  }
-
-  const hour = metrics.find((m) => m.window === "1h");
-  if (hour && hour.jobs >= MIN_SAMPLE) {
-    // 3a — overall failure rate.
-    const failureRate =
-      hour.successRate === null ? null : 1 - hour.successRate;
-    if (failureRate !== null && failureRate > THRESHOLDS.jobFailureRate) {
-      alerts.push({
-        key: "job_failure_rate",
-        severity: "critical",
-        value: failureRate,
-        message: `${(failureRate * 100).toFixed(1)}% of jobs failed in the last hour (${hour.failed}/${hour.jobs})`,
-      });
-    }
-
-    // 3b — provisioning separately: §2.3 made these failures silent, so a
-    // blended rate would hide them behind ordinary agent errors.
-    if (
-      hour.sandboxProvisionFailureRate !== null &&
-      hour.sandboxProvisionFailureRate > THRESHOLDS.sandboxProvisionFailureRate
-    ) {
-      alerts.push({
-        key: "sandbox_provision_failure_rate",
-        severity: "critical",
-        value: hour.sandboxProvisionFailureRate,
-        message: `${(hour.sandboxProvisionFailureRate * 100).toFixed(1)}% of jobs failed with a sandbox error in the last hour`,
-      });
-    }
-
-    // 4 — per-tool: the early warning for a broken template or sandbox change.
-    if (
-      hour.toolFailureRate !== null &&
-      hour.toolCalls >= MIN_SAMPLE &&
-      hour.toolFailureRate > THRESHOLDS.toolFailureRate
-    ) {
-      const worst = hour.topFailingTools
-        .map((t) => `${t.tool} ${t.failures}/${t.calls}`)
-        .join(", ");
-      alerts.push({
-        key: "tool_failure_rate",
-        severity: "warn",
-        value: hour.toolFailureRate,
-        message: `tool failure rate ${(hour.toolFailureRate * 100).toFixed(1)}% in the last hour — ${worst}`,
-      });
-    }
-
-    // 5 — duration/cost drift, the standing blind spot behind the cost items in
-    // ISSUES_AND_SUGGESTIONS §2.2/2.4.
-    if (
-      hour.p95DurationSeconds !== null &&
-      hour.p95DurationSeconds > THRESHOLDS.p95DurationSeconds
-    ) {
-      alerts.push({
-        key: "p95_duration",
-        severity: "warn",
-        value: hour.p95DurationSeconds,
-        message: `p95 job duration ${Math.round(hour.p95DurationSeconds / 60)}m in the last hour`,
-      });
-    }
-
-    const day = metrics.find((m) => m.window === "24h");
-    if (
-      hour.creditsPerJob !== null &&
-      day?.creditsPerJob != null &&
-      day.creditsPerJob > 0 &&
-      hour.creditsPerJob > day.creditsPerJob * 2
-    ) {
-      alerts.push({
-        key: "cost_per_job",
-        severity: "warn",
-        value: hour.creditsPerJob,
-        message: `credits/job ${hour.creditsPerJob.toFixed(2)} this hour vs ${day.creditsPerJob.toFixed(2)} over 24h`,
-      });
-    }
-  }
-
-  return alerts;
+  const all = [
+    ...jobAnomalies(health, metrics),
+    ...deepseekAnomalies(deepseek, env.DEEPSEEK_LOW_BALANCE),
+    ...webhookAnomalies(staleWebhooks),
+  ];
+  return sortAnomalies(all).filter((a): a is Alert => a.severity !== "info");
 }
 
 /**
@@ -149,7 +83,7 @@ export async function runAlertCheck(): Promise<Alert[]> {
   if (alerts.length === 0) return alerts;
 
   for (const a of alerts) {
-    log.warn("alert", { key: a.key, severity: a.severity, value: a.value });
+    log.warn("alert", { key: a.key, severity: a.severity, value: a.value, detail: a.message });
   }
 
   if (!env.ALERT_WEBHOOK_URL) return alerts;

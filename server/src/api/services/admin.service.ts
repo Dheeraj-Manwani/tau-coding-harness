@@ -557,11 +557,18 @@ export async function releaseUserHolds(
 export async function getUserDetail(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, createdAt: true },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      role: true,
+      emailVerifiedAt: true,
+      createdAt: true,
+    },
   });
   if (!user) throw Errors.notFound("User not found");
 
-  const [billing, holds, jobs, projects, spend, gatewaySpend, apiKeys] =
+  const [billing, holds, jobs, projects, projectList, spend, gatewaySpend, apiKeys] =
     await Promise.all([
     prisma.billingAccount.findUnique({ where: { userId } }),
     prisma.creditHold.findMany({
@@ -585,6 +592,23 @@ export async function getUserDetail(userId: string) {
       },
     }),
     prisma.project.count({ where: { userId } }),
+    // The most recently touched projects, so a support lookup can jump straight
+    // to the one the user is asking about.
+    prisma.project.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      take: 25,
+      select: {
+        id: true,
+        name: true,
+        templateKey: true,
+        sandboxStatus: true,
+        slug: true,
+        liveDeploymentId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
     prisma.tokenUsage.groupBy({
       by: ["model"],
       where: { userId, recordedAt: { gte: new Date(Date.now() - 604_800_000) } },
@@ -617,6 +641,7 @@ export async function getUserDetail(userId: string) {
   return {
     user,
     projects,
+    projectList,
     billing: billing
       ? {
           plan: billing.plan,

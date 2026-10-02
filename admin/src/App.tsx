@@ -1,122 +1,144 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from "react";
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useAuth } from "./auth";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { MenuIcon } from "./components/icons";
+import { Loading } from "./components/ui";
+import { API_URL } from "./lib/api";
+import Login from "./pages/Login";
+import Overview from "./pages/Overview";
+import Jobs from "./pages/Jobs";
+import JobDetail from "./pages/JobDetail";
+import Sandboxes from "./pages/Sandboxes";
+import Errors from "./pages/Errors";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
+import ProjectDetail from "./pages/ProjectDetail";
+import Gateway from "./pages/Gateway";
+import Feedback from "./pages/Feedback";
+import Tools from "./pages/Tools";
 
-function App() {
-  const [count, setCount] = useState(0)
+const NAV = [
+  { to: "/", label: "Overview", end: true },
+  { to: "/jobs", label: "Jobs" },
+  { to: "/sandboxes", label: "Sandboxes" },
+  { to: "/errors", label: "Errors" },
+  { to: "/users", label: "Users" },
+  { to: "/gateway", label: "AI gateway" },
+  { to: "/feedback", label: "Feedback" },
+  { to: "/tools", label: "Tools" },
+];
+
+export default function App() {
+  const { state, signOut } = useAuth();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  if (state.status === "loading") {
+    return (
+      <div className="grid min-h-dvh place-items-center">
+        <Loading label="Checking session…" />
+      </div>
+    );
+  }
+  if (state.status === "out") return <Login reason={state.reason} />;
+
+  const host = API_URL.replace(/^https?:\/\//, "");
+
+  const nav = (
+    <nav className="flex flex-col gap-0.5" aria-label="Main">
+      {NAV.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          onClick={() => setMenuOpen(false)}
+          className={({ isActive }) =>
+            `rounded-lg px-3 py-1.5 text-sm transition-colors ${
+              isActive ? "bg-accent-soft font-medium text-accent" : "text-fg-2 hover:bg-surface-2 hover:text-fg"
+            }`
+          }
+        >
+          {item.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+
+  const footer = (
+    <div className="border-t border-line pt-3 text-xs">
+      <div className="truncate text-fg-2" title={state.me.email}>
+        {state.me.email}
+      </div>
+      <div className="mt-0.5 truncate text-fg-3" title={API_URL}>
+        {host}
+      </div>
+      <button type="button" onClick={() => void signOut()} className="mt-2 text-fg-2 hover:text-critical-text">
+        Sign out
+      </button>
+    </div>
+  );
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
+    <div className="min-h-dvh lg:grid lg:grid-cols-[13rem_1fr]">
+      {/* Desktop sidebar */}
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line bg-surface px-3 py-5 lg:flex">
+        <Brand />
+        <div className="flex-1">{nav}</div>
+        {footer}
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-surface px-4 py-3 lg:hidden">
+        <Brand />
         <button
           type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          onClick={() => setMenuOpen((o) => !o)}
+          className="rounded-lg border border-line p-1.5 text-fg-2"
+          aria-expanded={menuOpen}
+          aria-label="Menu"
         >
-          Count is {count}
+          <MenuIcon className="size-5" />
         </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      </div>
+      {menuOpen && (
+        <div className="sticky top-[57px] z-10 border-b border-line bg-surface px-3 py-3 lg:hidden">
+          {nav}
+          <div className="mt-3">{footer}</div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px]">
+          <ErrorBoundary key={location.pathname}>
+            <Routes>
+              <Route path="/" element={<Overview />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/jobs/:id" element={<JobDetail />} />
+              <Route path="/sandboxes" element={<Sandboxes />} />
+              <Route path="/errors" element={<Errors />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/users/:id" element={<UserDetail />} />
+              <Route path="/projects/:id" element={<ProjectDetail />} />
+              <Route path="/gateway" element={<Gateway />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/tools" element={<Tools />} />
+              {/* After Google sign-in the server lands us on `/`; a stale /login goes home. */}
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
+        </div>
+      </main>
+    </div>
+  );
 }
 
-export default App
+function Brand() {
+  return (
+    <div className="flex items-center gap-2 px-1">
+      <span className="grid size-7 place-items-center rounded-lg bg-accent text-sm font-bold text-white">τ</span>
+      <span className="text-sm font-semibold tracking-tight">tau ops</span>
+    </div>
+  );
+}

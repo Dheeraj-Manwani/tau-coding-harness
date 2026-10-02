@@ -1,0 +1,257 @@
+import { useState, type FormEvent, type ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { API_URL, api, post } from "@/lib/api";
+import { credits, int } from "@/lib/format";
+import type { PromoCodeResult, ReapResult, ReconcileAccountResult, ReconcileJobResult } from "@/types";
+import { Badge, Button, Card, ConfirmButton, ErrorBox, JsonBlock, Section, Table, Td, inputClass } from "@/components/ui";
+
+/** Incident and support tools. Each one is a single, explicit request. Nothing here runs on its own. */
+export default function Tools() {
+  return (
+    <>
+      <header className="mb-6">
+        <h1 className="text-xl font-semibold tracking-tight">Tools</h1>
+        <p className="mt-1 text-sm text-fg-2">Repairs for jobs and credits, and promo codes.</p>
+      </header>
+
+      <Section title="Jobs and holds">
+        <div className="grid gap-3 md:grid-cols-2">
+          <ToolCard
+            title="Reap stuck jobs"
+            body="Terminates jobs whose heartbeat went cold and settles their credit holds. The hourly sweep does this too. Run it now if a user's project is refusing prompts."
+          >
+            <ConfirmButton
+              label="Reap stuck jobs"
+              variant="default"
+              title="Reap stuck jobs now?"
+              description="Every QUEUED/RUNNING job with a cold heartbeat is marked failed and its hold settled."
+              onConfirm={async () => {
+                const r = await post<ReapResult>("/jobs/reconcile-stuck");
+                return `Reaped ${r.reaped} job(s)${r.errors.length ? `, ${r.errors.length} error(s): ${r.errors.join("; ")}` : "."}`;
+              }}
+            />
+          </ToolCard>
+          <ToolCard
+            title="Sweep leaked holds"
+            body="Settles ACTIVE credit holds whose job already finished. These leak concurrency slots and block users from starting a new build."
+          >
+            <ConfirmButton
+              label="Sweep holds"
+              variant="default"
+              title="Settle every leaked hold?"
+              description="Holds behind COMPLETED/FAILED/CANCELLED jobs are settled against what the job actually consumed."
+              onConfirm={async () => {
+                const r = await post<{ swept: number; errors: string[] }>("/reconcile/sweep");
+                return `Settled ${r.swept} hold(s)${r.errors.length ? `, ${r.errors.length} error(s)` : "."}`;
+              }}
+            />
+          </ToolCard>
+        </div>
+      </Section>
+
+      <Section title="Credit integrity" description="Checks that stored balances match the ledger. Read-only.">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <LookupCard
+            title="Check one user"
+            placeholder="User id"
+            run={(id) => api<ReconcileAccountResult>(`/reconcile?userId=${encodeURIComponent(id)}`)}
+            render={(r) => <DriftResult ok={r.ok} rows={[["Balance drift", r.grossDriftMicro], ["Reserved drift", r.reservedDriftMicro]]} raw={r} />}
+          />
+          <LookupCard
+            title="Check one job"
+            placeholder="Job id"
+            run={(id) => api<ReconcileJobResult>(`/reconcile/job?jobId=${encodeURIComponent(id)}`)}
+            render={(r) => <DriftResult ok={r.ok} rows={[["Charged", r.chargedMicro], ["Token cost", r.tokenCostMicro], ["Drift", r.driftMicro]]} raw={r} />}
+          />
+          <AllAccountsCheck />
+        </div>
+      </Section>
+
+      <Section title="Promo codes">
+        <PromoForm />
+      </Section>
+
+      <Section title="Server pages" description="Older single-page tools served by the API itself. They open in a new tab with the same session.">
+        <div className="flex flex-wrap gap-3 text-sm">
+          <a className="text-accent hover:underline" href={`${API_URL}/admin/costs`} target="_blank" rel="noreferrer">
+            Cost calculator
+          </a>
+          <a className="text-accent hover:underline" href={`${API_URL}/admin/ui`} target="_blank" rel="noreferrer">
+            Legacy ops console
+          </a>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+function ToolCard({ title, body, children }: { title: string; body: string; children: ReactNode }) {
+  return (
+    <Card title={title}>
+      <p className="mb-3 text-sm text-fg-2">{body}</p>
+      {children}
+    </Card>
+  );
+}
+
+const microToCredits = (micro: string) => credits(Number(micro) / 1e6);
+
+function DriftResult({ ok, rows, raw }: { ok: boolean; rows: Array<[string, string]>; raw: unknown }) {
+  return (
+    <div className="mt-3 space-y-2">
+      <Badge tone={ok ? "good" : "critical"}>{ok ? "Consistent" : "Drift found"}</Badge>
+      <dl className="grid grid-cols-2 gap-1 text-xs">
+        {rows.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-fg-3">{k}</dt>
+            <dd className="num">{microToCredits(v)} cr</dd>
+          </div>
+        ))}
+      </dl>
+      <JsonBlock value={raw} />
+    </div>
+  );
+}
+
+function LookupCard<T>({
+  title,
+  placeholder,
+  run,
+  render,
+}: {
+  title: string;
+  placeholder: string;
+  run: (id: string) => Promise<T>;
+  render: (result: T) => ReactNode;
+}) {
+  const [id, setId] = useState("");
+  const [state, setState] = useState<{ busy: boolean; result?: T; error?: string }>({ busy: false });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!id.trim()) return;
+    setState({ busy: true });
+    try {
+      setState({ busy: false, result: await run(id.trim()) });
+    } catch (err) {
+      setState({ busy: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  return (
+    <Card title={title}>
+      <form onSubmit={submit} className="flex gap-2">
+        <input className={`${inputClass} min-w-0 flex-1 font-mono text-xs`} placeholder={placeholder} value={id} onChange={(e) => setId(e.target.value)} spellCheck={false} />
+        <Button type="submit" disabled={state.busy}>
+          {state.busy ? "…" : "Check"}
+        </Button>
+      </form>
+      {state.error && <div className="mt-3"><ErrorBox message={state.error} /></div>}
+      {state.result !== undefined && render(state.result)}
+    </Card>
+  );
+}
+
+function AllAccountsCheck() {
+  const [state, setState] = useState<{ total: number; driftedCount: number; drifted: ReconcileAccountResult[] }>();
+  return (
+    <Card title="Check every account">
+      <p className="mb-3 text-sm text-fg-2">Runs three queries per account. Fine at today's scale, but don't run it during a traffic spike.</p>
+      <ConfirmButton
+        label="Run full check"
+        variant="default"
+        title="Reconcile every billing account?"
+        description="Read-only, but it runs three aggregate queries per account against the production database."
+        onConfirm={async () => {
+          const r = await api<{ total: number; driftedCount: number; drifted: ReconcileAccountResult[] }>("/reconcile/all");
+          setState(r);
+          return `${r.driftedCount} of ${r.total} account(s) drifted.`;
+        }}
+      />
+      {state && state.drifted.length > 0 && (
+        <div className="mt-3">
+          <Table head={["User", "Balance drift", "Reserved drift"]}>
+            {state.drifted.map((r) => (
+              <tr key={r.userId}>
+                <Td>
+                  <Link to={`/users/${r.userId}`} className="font-mono text-xs text-accent hover:underline">
+                    {r.userId.slice(0, 8)}
+                  </Link>
+                </Td>
+                <Td num>{microToCredits(r.grossDriftMicro)}</Td>
+                <Td num>{microToCredits(r.reservedDriftMicro)}</Td>
+              </tr>
+            ))}
+          </Table>
+        </div>
+      )}
+      {state && state.drifted.length === 0 && (
+        <div className="mt-3">
+          <Badge tone="good">All {int(state.total)} accounts consistent</Badge>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function PromoForm() {
+  const [form, setForm] = useState({ code: "", credits: "", description: "", maxRedemptions: "", perUserLimit: "1", expiresAt: "" });
+  const [state, setState] = useState<{ busy: boolean; result?: PromoCodeResult; error?: string }>({ busy: false });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setState({ busy: true });
+    try {
+      const result = await post<PromoCodeResult>("/promo-codes", {
+        code: form.code.trim(),
+        credits: Number(form.credits),
+        ...(form.description.trim() ? { description: form.description.trim() } : {}),
+        ...(form.maxRedemptions ? { maxRedemptions: Number(form.maxRedemptions) } : {}),
+        perUserLimit: Number(form.perUserLimit || 1),
+        // Date input → end of that day, local time.
+        ...(form.expiresAt ? { expiresAt: new Date(`${form.expiresAt}T23:59:59`).toISOString() } : {}),
+      });
+      setState({ busy: false, result });
+      setForm({ code: "", credits: "", description: "", maxRedemptions: "", perUserLimit: "1", expiresAt: "" });
+    } catch (err) {
+      setState({ busy: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  const field = (labelText: string, input: ReactNode, hint?: string) => (
+    <label className="block text-xs text-fg-2">
+      {labelText}
+      <div className="mt-1">{input}</div>
+      {hint && <span className="mt-0.5 block text-fg-3">{hint}</span>}
+    </label>
+  );
+
+  return (
+    <Card>
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {field("Code", <input required maxLength={64} className={`${inputClass} w-full font-mono uppercase`} value={form.code} onChange={set("code")} placeholder="LAUNCH50" />, "Stored uppercase")}
+        {field("Credits", <input required type="number" min="0.01" step="0.01" className={`${inputClass} w-full`} value={form.credits} onChange={set("credits")} />, "Added to the bonus pot, which never expires")}
+        {field("Description", <input className={`${inputClass} w-full`} value={form.description} onChange={set("description")} placeholder="Internal note" />)}
+        {field("Max redemptions", <input type="number" min="1" step="1" className={`${inputClass} w-full`} value={form.maxRedemptions} onChange={set("maxRedemptions")} placeholder="Unlimited" />)}
+        {field("Per user", <input required type="number" min="1" step="1" className={`${inputClass} w-full`} value={form.perUserLimit} onChange={set("perUserLimit")} />)}
+        {field("Expires", <input type="date" className={`${inputClass} w-full`} value={form.expiresAt} onChange={set("expiresAt")} />, "Optional. Expires at the end of that day.")}
+        <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-3">
+          <Button type="submit" variant="primary" disabled={state.busy}>
+            {state.busy ? "Creating…" : "Create promo code"}
+          </Button>
+          {state.result && (
+            <Badge tone="good">
+              Created <span className="font-mono">{state.result.code}</span>: {credits(state.result.credits)} credits
+            </Badge>
+          )}
+        </div>
+        {state.error && (
+          <div className="sm:col-span-2 lg:col-span-3">
+            <ErrorBox message={state.error} />
+          </div>
+        )}
+      </form>
+    </Card>
+  );
+}

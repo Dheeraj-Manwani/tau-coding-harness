@@ -9,7 +9,6 @@ import { useAttachments } from "@/src/features/composer/attachments/useAttachmen
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
-import { AdminHomeCard } from "@/src/features/admin/AdminHomeCard";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
@@ -210,7 +209,6 @@ function Home() {
       <AnimatePresence mode="wait">
         {!initializing && (
           <motion.div key="projects" exit={{ opacity: 0 }}>
-            <AdminHomeCard />
             <MyProjects />
           </motion.div>
         )}

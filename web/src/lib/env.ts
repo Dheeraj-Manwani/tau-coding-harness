@@ -9,8 +9,15 @@ const API_URL = (
 // Live job streaming now rides the api origin over SSE (GET /jobs/:id/stream),
 // so there is no separate ws-gateway URL anymore.
 
+// The standalone ops console (admin/). Only admins ever see a link to it, and
+// the console does its own sign-in, so this is just where the link points.
+const ADMIN_URL = (
+  import.meta.env.VITE_ADMIN_URL ?? "https://admin.tauai.pro"
+).replace(/\/$/, "");
+
 export const env = {
   API_URL,
+  ADMIN_URL,
   /** Web route the API redirects to after Google OAuth (see OAUTH_SUCCESS_REDIRECT). */
   OAUTH_CALLBACK_PATH: "/auth/callback",
   /** Razorpay publishable key  */

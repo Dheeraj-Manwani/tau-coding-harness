@@ -44,7 +44,6 @@ src/
   middleware/    auth, apiKey, admin, rateLimit, logger, error
   schemas/       zod request validation
   lib/           credits, pricing, tokens, s3, github, apiKeys, handoff, log, alerts, …
-  views/         adminConsole.ts — the server-rendered /admin/ui
   generated/     prisma client (checked in; regenerate with `bun run generate`)
 ```
 
@@ -58,7 +57,7 @@ src/
 | `/attachments` | presigned R2 upload → extraction → `READY` |
 | `/account` | API-key lifecycle (`get`/`create`/`reveal`/`rotate`/`revoke`/`cap`) and re-auth. **Reveal and rotate hand out a live spend credential, so a valid session is deliberately not sufficient** — they require a fresh `X-Tau-Reauth` token. |
 | `/ai`, `/v1` | the AI gateway generated apps call. `/ai` is plain `fetch`; `/v1` is OpenAI-compatible. Authenticated by `tau_sk_*` key, not by session. |
-| `/admin` | health, metrics, job/user/sandbox drill-down, kill/reconcile/release, `/admin/ui`. Guarded solely by `User.role === ADMIN`, re-read from the database per request — there is no admin key and no break-glass credential. |
+| `/admin` | JSON for the ops console (`admin/`): overview, health, metrics, errors, jobs/users/projects/sandboxes, kill/reconcile/release, cost seed. Guarded solely by `User.role === ADMIN`, re-read from the database per request — there is no admin key and no break-glass credential. |
 | `/webhook` | Razorpay, idempotent via `WebhookEvent` |
 
 ## Tests

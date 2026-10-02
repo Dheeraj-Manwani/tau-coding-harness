@@ -1,0 +1,45 @@
+# Compose override for the production box (/opt/tau). Layered on top of the
+# existing docker-compose.yml there; it does not replace anything.
+#
+#   cp ops/docker-compose.monitoring.yml /opt/tau/
+#   mkdir -p /opt/tau/vector && cp ops/vector/vector.yaml /opt/tau/vector/
+#   cp ops/vector/vector.env.example /opt/tau/vector/vector.env   # then fill it in
+#   chmod 600 /opt/tau/vector/vector.env
+#   printf 'COMPOSE_PATH_SEPARATOR=:\nCOMPOSE_FILE=docker-compose.yml:docker-compose.monitoring.yml\n' >> /opt/tau/.env
+#
+# With COMPOSE_FILE in .env, every `docker compose` command in /opt/tau —
+# including the ones the deploy workflow runs — picks this file up automatically.
+# See ops/README.md for the full runbook.
+
+x-rotated-logs: &rotated-logs
+  # Unrotated json-file logs are the classic way a small box fills its disk.
+  # 5 × 10 MB per container, then the oldest file is dropped.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    logging: *rotated-logs
+
+  vector:
+    image: timberio/vector:0.47.0-alpine
+    restart: unless-stopped
+    command: ["--config", "/etc/vector/vector.yaml"]
+    # Its own env file, NOT /opt/tau/.env: the app reads that one, and the app
+    # has no business holding the Loki write token. Vector refuses to start if
+    # any ${VAR} in vector.yaml is unset, so a missing value fails loudly.
+    env_file: ./vector/vector.env
+    volumes:
+      # Read-only, and the log directory only — never the Docker socket.
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - vector-data:/var/lib/vector
+    # A log shipper must never be the thing that starves the app.
+    mem_limit: 128m
+    cpus: 0.25
+    logging: *rotated-logs
+
+volumes:
+  vector-data:

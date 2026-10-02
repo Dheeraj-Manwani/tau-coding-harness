@@ -17,6 +17,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import Gateway from "./pages/Gateway";
 import Feedback from "./pages/Feedback";
 import Tools from "./pages/Tools";
+import Costs from "./pages/Costs";
 
 const NAV = [
   { to: "/", label: "Overview", end: true },
@@ -26,6 +27,7 @@ const NAV = [
   { to: "/users", label: "Users" },
   { to: "/gateway", label: "AI gateway" },
   { to: "/feedback", label: "Feedback" },
+  { to: "/costs", label: "Costs" },
   { to: "/tools", label: "Tools" },
 ];
 
@@ -122,6 +124,7 @@ export default function App() {
               <Route path="/projects/:id" element={<ProjectDetail />} />
               <Route path="/gateway" element={<Gateway />} />
               <Route path="/feedback" element={<Feedback />} />
+              <Route path="/costs" element={<Costs />} />
               <Route path="/tools" element={<Tools />} />
               {/* After Google sign-in the server lands us on `/`; a stale /login goes home. */}
               <Route path="/login" element={<Navigate to="/" replace />} />

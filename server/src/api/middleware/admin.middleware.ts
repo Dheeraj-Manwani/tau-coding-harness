@@ -61,9 +61,9 @@ export function issueAdminSession(userId: string): {
 }
 
 /**
- * Mint a session and set it as the `/admin`-scoped HttpOnly cookie. Shared by
- * the password/bearer exchange and the Google round trip so the two can never
- * disagree on cookie attributes.
+ * Mint a session and set it as the `/admin`-scoped HttpOnly cookie. The only
+ * caller is the Google round trip (`/auth/google?client=admin`) — there is no
+ * password or token exchange for an admin session.
  *
  * `SameSite=Lax` is what lets the standalone console at ADMIN_URL use it: that
  * origin and the API are the same *site* (e.g. admin.tauai.pro / api.tauai.pro),
@@ -151,8 +151,8 @@ async function resolveAdmin(req: Request): Promise<AdminIdentity> {
 /**
  * Two credentials, one authority:
  *   - `Authorization: Bearer <access token>` — for curl and scripts;
- *   - the `tau_admin` cookie — for the browser console, since a tab can't set a
- *     header on navigation.
+ *   - the `tau_admin` cookie — for the ops console (admin/), minted by the
+ *     Google round trip; it rides the console's credentialed fetches.
  *
  * Both only establish *who* is asking. Whether that person is an admin is
  * always a fresh read of `User.role`.
@@ -187,13 +187,4 @@ export async function requireAdmin(
   } catch (err) {
     next(err);
   }
-}
-
-/**
- * Assert admin without mounting the gate — for the two routes that sit outside
- * it (`/admin/session`, which is how you get *through* the gate, and anything
- * else that must do its own check).
- */
-export function assertAdmin(req: Request): Promise<AdminIdentity> {
-  return resolveAdmin(req);
 }

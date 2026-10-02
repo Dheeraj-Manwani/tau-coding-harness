@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { API_URL, api, post } from "@/lib/api";
+import { api, post } from "@/lib/api";
 import { credits, int } from "@/lib/format";
 import type { PromoCodeResult, ReapResult, ReconcileAccountResult, ReconcileJobResult } from "@/types";
 import { Badge, Button, Card, ConfirmButton, ErrorBox, JsonBlock, Section, Table, Td, inputClass } from "@/components/ui";
@@ -11,7 +11,7 @@ export default function Tools() {
     <>
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight">Tools</h1>
-        <p className="mt-1 text-sm text-fg-2">Repairs for jobs and credits, and promo codes.</p>
+        <p className="mt-1 text-sm text-fg-2">Repairs for jobs and credits, and promo codes. For margins, see Costs.</p>
       </header>
 
       <Section title="Jobs and holds">
@@ -71,16 +71,6 @@ export default function Tools() {
         <PromoForm />
       </Section>
 
-      <Section title="Server pages" description="Older single-page tools served by the API itself. They open in a new tab with the same session.">
-        <div className="flex flex-wrap gap-3 text-sm">
-          <a className="text-accent hover:underline" href={`${API_URL}/admin/costs`} target="_blank" rel="noreferrer">
-            Cost calculator
-          </a>
-          <a className="text-accent hover:underline" href={`${API_URL}/admin/ui`} target="_blank" rel="noreferrer">
-            Legacy ops console
-          </a>
-        </div>
-      </Section>
     </>
   );
 }

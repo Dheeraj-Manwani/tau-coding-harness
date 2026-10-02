@@ -135,6 +135,29 @@ jobs:
       # would land a permanently red job rather than a guard. Fix those twelve,
       # then add them here.
 
+  admin:
+    name: admin console
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # admin/ is its own pnpm project with its own lockfile, like web/.
+      - run: pnpm install --frozen-lockfile
+        working-directory: admin
+      - run: pnpm lint
+        working-directory: admin
+      # `tsc -b && vite build`. The build refuses to run without an API URL
+      # (a console pointed at localhost can never sign in), so give it the real one.
+      - run: pnpm build
+        working-directory: admin
+        env:
+          VITE_API_URL: https://api.tauai.pro
+
   mobile-parity:
     name: mobile API contract
     runs-on: ubuntu-latest

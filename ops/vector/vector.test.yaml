@@ -1,0 +1,89 @@
+# Unit tests for vector.yaml's transforms. Run them alongside the config:
+#
+#   vector test ops/vector/vector.yaml ops/vector/vector.test.yaml
+#
+# Inputs are real Docker json-file lines: the outer envelope Docker writes,
+# wrapping the server's own structured JSON line.
+
+tests:
+  - name: structured server line becomes labelled fields
+    inputs:
+      - insert_at: parse
+        type: log
+        log_fields:
+          file: /var/lib/docker/containers/abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789/abcdef0123456789-json.log
+          message: '{"log":"{\"ts\":\"2026-10-02T12:00:00.000Z\",\"level\":\"error\",\"svc\":\"api\",\"event\":\"exception\",\"jobId\":\"job-1\",\"error\":\"boom\"}\n","stream":"stderr","time":"2026-10-02T12:00:00.000000001Z"}'
+    outputs:
+      - extract_from: parse
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.svc, "api")
+              assert_eq!(.level, "error")
+              assert_eq!(.event, "exception")
+              assert_eq!(.jobId, "job-1")
+              assert_eq!(.stream, "stderr")
+              assert_eq!(.container, "abcdef012345")
+              assert!(!exists(.file))
+
+  - name: plain-text stderr from another container is kept as an error under svc=other
+    inputs:
+      - insert_at: parse
+        type: log
+        log_fields:
+          file: /var/lib/docker/containers/0123456789ab0123456789ab0123456789ab0123456789ab0123456789ab0123/x-json.log
+          message: '{"log":"panic: something broke\n","stream":"stderr","time":"2026-10-02T12:00:00Z"}'
+    outputs:
+      - extract_from: parse
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!(.svc, "other")
+              assert_eq!(.level, "error")
+              assert_eq!(.message, "panic: something broke")
+
+  - name: failing requests are never sampled away
+    inputs:
+      - insert_at: sample_requests
+        type: log
+        log_fields:
+          event: http.request
+          status: 502
+          durationMs: 12.5
+          svc: api
+          level: info
+    outputs:
+      - extract_from: sample_requests
+        conditions:
+          - type: vrl
+            source: assert_eq!(.status, 502)
+
+  - name: slow requests are never sampled away
+    inputs:
+      - insert_at: sample_requests
+        type: log
+        log_fields:
+          event: http.request
+          status: 200
+          durationMs: 4200.0
+          svc: api
+          level: info
+    outputs:
+      - extract_from: sample_requests
+        conditions:
+          - type: vrl
+            source: assert_eq!(.durationMs, 4200.0)
+
+  - name: non-request events are never sampled away
+    inputs:
+      - insert_at: sample_requests
+        type: log
+        log_fields:
+          event: job.end
+          svc: worker
+          level: info
+    outputs:
+      - extract_from: sample_requests
+        conditions:
+          - type: vrl
+            source: assert_eq!(.event, "job.end")

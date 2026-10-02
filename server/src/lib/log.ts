@@ -136,41 +136,117 @@ export function onLog(listener: (record: LogRecord) => void): () => void {
   return () => void listeners.delete(listener);
 }
 
-// Sentry state is deliberately at MODULE scope, not per-logger. `combined.ts`
-// runs both services in one process, so a per-logger hub would initialise the
-// SDK twice. Same reasoning as the single PrismaClient in `lib/prisma.ts`.
-let sentryHub: { captureException: (e: Error, hint?: unknown) => void } | null =
-  null;
-let sentryTried = false;
+// ── error reporting (Sentry) ────────────────────────────────────────────────
+//
+// State is deliberately at MODULE scope, not per-logger: the api and the
+// worker run in one process, and a per-logger client would initialise the SDK
+// twice. Same reasoning as the single PrismaClient in `lib/prisma.ts`.
+//
+// Inert unless SENTRY_DSN is set. The SDK is imported dynamically so a process
+// without a DSN never loads it.
 
-async function forwardToSentry(
-  error: Error,
-  context: LogContext,
-  log: Logger,
-): Promise<void> {
-  if (!process.env.SENTRY_DSN) return;
-  if (!sentryTried) {
-    sentryTried = true;
+interface SentryLike {
+  init: (options: Record<string, unknown>) => unknown;
+  captureException: (error: unknown, hint?: Record<string, unknown>) => string;
+  flush: (timeoutMs?: number) => Promise<boolean>;
+}
+
+let sentry: SentryLike | null = null;
+let sentryInit: Promise<SentryLike | null> | null = null;
+
+/** Query-string values that carry credentials (mirrors api/middleware/logger). */
+const SECRET_PARAMS = /([?&](?:token|access_token|refresh_token|code|state|key)=)[^&#]*/gi;
+const redactUrl = (url: string): string => url.replace(SECRET_PARAMS, "$1[redacted]");
+
+/**
+ * Strip everything that could carry user content or a credential before an
+ * event leaves the box. The structured log line is already scrubbed by
+ * `scrub()`; this is the same promise for what goes to Sentry.
+ */
+function scrubEvent(event: Record<string, any>): Record<string, any> {
+  if (event.request) {
+    // Bodies are prompts, files, passwords. Cookies and auth headers are sessions.
+    delete event.request.data;
+    delete event.request.cookies;
+    if (event.request.url) event.request.url = redactUrl(String(event.request.url));
+    if (event.request.query_string) delete event.request.query_string;
+    if (event.request.headers) {
+      const ua = event.request.headers["user-agent"];
+      event.request.headers = ua ? { "user-agent": ua } : {};
+    }
+  }
+  // Callers are meant to pass already-redacted URLs; don't depend on it.
+  if (event.extra) event.extra = redactUrlsDeep(scrub(event.extra));
+  if (event.contexts) event.contexts = redactUrlsDeep(scrub(event.contexts));
+  return event;
+}
+
+function redactUrlsDeep(value: unknown): any {
+  if (typeof value === "string") return redactUrl(value);
+  if (Array.isArray(value)) return value.map(redactUrlsDeep);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactUrlsDeep(v)]));
+  }
+  return value;
+}
+
+/**
+ * Start error reporting. Call once, as early as possible, so a crash before
+ * the first `captureException` is still reported (the SDK installs the
+ * uncaught-exception and unhandled-rejection handlers here). Safe to call more
+ * than once; a missing DSN makes it a no-op.
+ */
+export function initErrorReporting(): Promise<SentryLike | null> {
+  if (!process.env.SENTRY_DSN) return Promise.resolve(null);
+  sentryInit ??= (async () => {
     try {
-      // Not a static import: the package is intentionally absent by default.
-      const mod = (await import(
-        /* @vite-ignore */ "@sentry/node" as string
-      )) as {
-        init: (o: Record<string, unknown>) => void;
-        captureException: (e: Error, hint?: unknown) => void;
-      };
+      const mod = (await import("@sentry/bun")) as unknown as SentryLike;
       mod.init({
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV ?? "development",
+        // The commit baked into the image (Dockerfile ARG), so an issue says
+        // which deploy introduced it.
+        release: process.env.GIT_SHA || undefined,
+        // Errors only. Performance tracing would spend the free quota on spans.
+        tracesSampleRate: 0,
+        sendDefaultPii: false,
+        beforeSend: (event: Record<string, any>) => scrubEvent(event),
+        beforeBreadcrumb: (crumb: Record<string, any>) => {
+          // Console breadcrumbs duplicate the structured log line already in
+          // the event; drop them rather than ship every line twice.
+          if (crumb.category === "console") return null;
+          if (crumb.data?.url) crumb.data.url = redactUrl(String(crumb.data.url));
+          return crumb;
+        },
       });
-      sentryHub = mod;
-    } catch {
-      log.warn("sentry.unavailable", {
-        detail: "SENTRY_DSN is set but @sentry/node is not installed",
-      });
+      sentry = mod;
+      return mod;
+    } catch (err) {
+      console.error(
+        JSON.stringify({ level: "warn", event: "sentry.unavailable", detail: String(err) }),
+      );
+      return null;
     }
-  }
-  sentryHub?.captureException(error, { tags: scrub(context) });
+  })();
+  return sentryInit;
+}
+
+/** Drain queued events before exit; a deploy's SIGTERM would otherwise drop them. */
+export async function flushErrorReporting(timeoutMs = 2_000): Promise<void> {
+  if (!sentry) return;
+  await sentry.flush(timeoutMs).catch(() => false);
+}
+
+async function forwardToSentry(svc: string, error: Error, context: LogContext): Promise<void> {
+  const client = sentry ?? (await initErrorReporting());
+  if (!client) return;
+  const tag = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+  client.captureException(error, {
+    // Tags are indexed and searchable: keep them to correlation ids.
+    tags: { svc, jobId: tag(context.jobId), projectId: tag(context.projectId) },
+    user: tag(context.userId) ? { id: context.userId } : undefined,
+    extra: scrub(context) as Record<string, unknown>,
+  });
 }
 
 /**
@@ -221,17 +297,13 @@ export function createLogger(svc: string): {
    * Report an exception with its correlation context.
    *
    * This is the **single seam** for error reporting. It always emits a
-   * structured `error` line; if `SENTRY_DSN` is set *and* `@sentry/node` is
-   * installed, it also forwards there. The dependency is deliberately not in
-   * `package.json` — adding an error-tracking vendor is a billing/privacy
-   * decision, not a code one, so the wiring is ready and inert until someone
-   * opts in:
+   * structured `error` line; when `SENTRY_DSN` is set it also forwards to
+   * Sentry (`@sentry/bun`), tagged with the service and correlation ids. With no
+   * DSN the SDK is never even loaded.
    *
-   *     bun add @sentry/node   # in api/ and worker-service/
-   *     SENTRY_DSN=https://…   # in the environment
-   *
-   * Note the redaction above applies to the structured line only. If you enable
-   * Sentry, also set its `beforeSend` to strip prompt content.
+   * What reaches Sentry is scrubbed the same way the log line is: request
+   * bodies, cookies and auth headers are dropped in `beforeSend`, credential
+   * query params are redacted, and `extra` goes through `scrub()`.
    */
   function captureException(err: unknown, context: LogContext = {}): void {
     const error =
@@ -246,7 +318,7 @@ export function createLogger(svc: string): {
       stack: error.stack,
     });
 
-    void forwardToSentry(error, context, log);
+    void forwardToSentry(svc, error, context);
   }
 
   return { log, captureException };

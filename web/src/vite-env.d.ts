@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  /** The standalone ops console, linked from the admin-only menu item. */
+  readonly VITE_ADMIN_URL?: string;
   readonly VITE_RAZORPAY_KEY_ID?: string;
   readonly VITE_LANDING_URL?: string;
 }

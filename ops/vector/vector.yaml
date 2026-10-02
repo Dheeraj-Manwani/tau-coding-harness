@@ -1,0 +1,93 @@
+# Ships every container's stdout/stderr on the box to Grafana Cloud Loki.
+#
+# Reads Docker's json-file logs straight off disk (read-only bind mount) rather
+# than through the Docker socket: the socket is root-equivalent on the host,
+# and a log shipper has no business holding it.
+#
+# The server already logs one JSON object per line (server/src/lib/log.ts), with
+# `jobId`/`projectId`/`userId` as correlation keys. Those stay in the log BODY.
+# Only low-cardinality fields become Loki labels (svc, level, stream), because
+# every distinct label value is a separate stream and Loki bills/limits on them.
+
+data_dir: /var/lib/vector
+
+sources:
+  docker_logs:
+    type: file
+    include:
+      - /var/lib/docker/containers/*/*-json.log
+    # Don't backfill the whole history on first start; tail from now.
+    read_from: end
+    # Docker rotates these files (see docker-compose.monitoring.yml); follow
+    # the rotation instead of re-reading from the top.
+    ignore_older_secs: 86400
+
+transforms:
+  parse:
+    type: remap
+    inputs: [docker_logs]
+    source: |
+      # Container id from the path: /var/lib/docker/containers/<64 hex>/<id>-json.log
+      .container = "unknown"
+      m, err = parse_regex(.file, r'/containers/(?P<id>[0-9a-f]{12})')
+      if err == null { .container = m.id }
+
+      # Docker's envelope: {"log": "<line>\n", "stream": "stdout", "time": "..."}
+      outer, err = parse_json(.message)
+      if err == null && is_object(outer) {
+        .stream = string(outer.stream) ?? "stdout"
+        .message = strip_whitespace(string(outer.log) ?? "")
+      }
+
+      # Our own structured line, when it is one. Anything else (Caddy, Postgres,
+      # a stack trace) is kept as plain text under svc="other".
+      inner, err = parse_json(.message)
+      if err == null && is_object(inner) {
+        . = merge(., object!(inner))
+        .level = string(inner.level) ?? "info"
+        .svc = string(inner.svc) ?? "app"
+      } else {
+        .level = if .stream == "stderr" { "error" } else { "info" }
+        .svc = "other"
+      }
+
+      del(.file)
+      del(.source_type)
+      del(.host)
+
+  # The request log is the bulk of the volume and almost never what you are
+  # looking for. Keep errors and slow requests; sample the rest at 1 in 10.
+  sample_requests:
+    type: sample
+    inputs: [parse]
+    rate: 10
+    exclude: >-
+      .event != "http.request" ||
+      (to_int(.status) ?? 0) >= 500 ||
+      (to_float(.durationMs) ?? 0.0) >= 1000.0
+
+sinks:
+  grafana_loki:
+    type: loki
+    inputs: [sample_requests]
+    endpoint: "${GRAFANA_LOKI_URL}"
+    auth:
+      strategy: basic
+      user: "${GRAFANA_LOKI_USER}"
+      password: "${GRAFANA_LOKI_TOKEN}"
+    encoding:
+      codec: json
+    labels:
+      app: tau
+      env: production
+      svc: "{{ svc }}"
+      level: "{{ level }}"
+      stream: "{{ stream }}"
+    compression: gzip
+    out_of_order_action: accept
+    # Memory, not disk: if Grafana is unreachable for long enough to fill this,
+    # dropping log lines is the right failure — filling the box's disk is not.
+    buffer:
+      type: memory
+      max_events: 10000
+      when_full: drop_newest

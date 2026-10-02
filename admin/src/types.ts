@@ -531,6 +531,21 @@ export interface ReconcileJobResult {
   driftMicro: string;
 }
 
+export interface CostSeed {
+  providerPricesAsOf: string;
+  products: Array<{ id: string; label: string; grossInr: number; credits: number }>;
+  models: Array<{
+    id: string;
+    label: string;
+    note: string;
+    cacheHitUsd: number;
+    inputUsd: number;
+    outputUsd: number;
+    inputCreditsPerM: number;
+    outputCreditsPerM: number;
+  }>;
+}
+
 export interface PromoCodeResult {
   id: string;
   code: string;

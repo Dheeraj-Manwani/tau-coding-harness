@@ -1,4 +1,3 @@
-import argon2 from "argon2";
 import { prisma } from "@/lib/prisma";
 import { bus, type JobRegistryEntry } from "@/lib/bus";
 import { env } from "@/lib/env";
@@ -10,7 +9,6 @@ import {
   FinishReason,
   HoldStatus,
   JobStatus,
-  Role,
   SandboxStatus,
   ToolCallStatus,
 } from "@/generated/prisma/enums";
@@ -25,42 +23,6 @@ export const STUCK_AFTER_MS = 5 * 60_000;
 const PROCESS_STARTED_AT = Date.now();
 
 const NON_TERMINAL = [JobStatus.QUEUED, JobStatus.RUNNING] as const;
-
-// ── console sign-in ──────────────────────────────────────────────────────────
-
-/**
- * Verify email + password and that the account carries the ADMIN role.
- *
- * Deliberately does *not* go through `auth.service.login`: that issues a full
- * token pair and writes a `RefreshToken` row, which is a session for the whole
- * product. Signing into the ops console should mint one short-lived,
- * `/admin`-scoped cookie and nothing else.
- *
- * A wrong password and a non-existent account return the same error. Failing
- * the role check returns a different one on purpose — at that point the caller
- * has already proven the account is theirs, so "you are not an admin" tells
- * them nothing they couldn't learn by logging into the app.
- */
-export async function authenticateAdmin(
-  email?: string,
-  password?: string,
-): Promise<{ id: string; email: string; via: string }> {
-  const invalid = Errors.unauthorized("Invalid credentials");
-  if (!email || !password) throw invalid;
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, email: true, passwordHash: true, role: true },
-  });
-
-  // No password hash means an OAuth-only account — there is nothing to verify
-  // here, and those operators sign in with a bearer token instead.
-  if (!user?.passwordHash) throw invalid;
-  if (!(await argon2.verify(user.passwordHash, password))) throw invalid;
-  if (user.role !== Role.ADMIN) throw Errors.forbidden("Admin access required");
-
-  return { id: user.id, email: user.email, via: "password" };
-}
 
 // ── health ───────────────────────────────────────────────────────────────────
 

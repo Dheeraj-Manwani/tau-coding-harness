@@ -1,4 +1,5 @@
 import "./load-env"; // must be first: populate process.env before service env.ts runs
+import { initErrorReporting, flushErrorReporting } from "@/lib/log";
 import http from "node:http";
 import { buildApp, startApiBackground } from "@/api/index";
 import { drainRunner, startRunner } from "@/worker/index";
@@ -18,6 +19,10 @@ const SHUTDOWN_GRACE_MS = Number(process.env.SHUTDOWN_GRACE_MS ?? 50_000);
 
 // api HTTP + SSE stream/cancel on one app; the SSE routes are mounted via the
 // buildApp hook so they sit before the global requireAuth.
+// Before anything else can throw: installs the uncaught-exception and
+// unhandled-rejection handlers. A no-op without SENTRY_DSN.
+void initErrorReporting();
+
 const app = buildApp(mountSse);
 startApiBackground(); // hourly credit-hold sweep
 startRunner(); // in-process BullMQ-free job consumer
@@ -50,6 +55,7 @@ async function shutdown(signal: string): Promise<void> {
   log.info("process.shutdown.done", { signal, stillRunning });
 
   await prisma.$disconnect().catch(() => {});
+  await flushErrorReporting();
   process.exit(0);
 }
 

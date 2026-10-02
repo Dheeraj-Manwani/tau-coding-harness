@@ -250,16 +250,17 @@ There is one schema and one migration history, at `server/prisma/`, read via
 
 ## Admin
 
-`GET /admin/ui` is a server-rendered operations console: health, 1h/24h/7d
-metrics, an SSE firehose of live job phases, job/user/project/sandbox
-drill-down, and kill-job / reconcile-stuck / release-holds actions. Start here
-when a job looks wedged.
+The operations console is the separate `admin/` app (admin.tauai.pro), reading
+the role-gated `/admin/*` JSON endpoints here. Set `ADMIN_URL` to its origin:
+that grants it CORS on `/admin` and enables its Google sign-in. Runbook:
+`ops/README.md`.
 
 Access is `User.role === ADMIN` and nothing else — there is no admin key, and
 the role is re-read from the database on every request, so revoking someone
-takes effect immediately. Sign in with that account's email and password, or
-with an `Authorization: Bearer <access token>` for scripts and OAuth-only
-accounts. Promote the first operator by hand after the first deploy:
+takes effect immediately. The console signs in with Google only
+(`/auth/google?client=admin`), which sets an `/admin`-scoped cookie; scripts can
+send `Authorization: Bearer <access token>`. There is no password login for
+admin. Promote the first operator by hand after the first deploy:
 
 ```sql
 UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';

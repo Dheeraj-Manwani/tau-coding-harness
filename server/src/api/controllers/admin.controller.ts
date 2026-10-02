@@ -7,18 +7,11 @@ import {
   type ReconcileAccountResult,
 } from "@/lib/credits";
 import { Errors } from "../lib/errors";
-import { env } from "@/lib/env";
 import { bus } from "@/lib/bus";
-import {
-  ADMIN_COOKIE,
-  assertAdmin,
-  setAdminSessionCookie,
-} from "../middleware/admin.middleware";
+import { ADMIN_COOKIE } from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
 import * as overviewService from "../services/adminOverview.service";
-import { renderAdminConsole } from "../views/adminConsole";
-import { renderAdminCostCalculator } from "../views/adminCosts";
-import { renderAdminPromoCodes } from "../views/adminPromoCodes";
+import { getCostSeed } from "../services/adminCosts.service";
 
 /** Wrap an async handler so a rejection reaches the error middleware. */
 function handler(
@@ -36,33 +29,8 @@ function handler(
 
 // ── session ──────────────────────────────────────────────────────────────────
 
-/**
- * Exchange proof of identity for a short-lived HttpOnly admin cookie.
- *
- * A browser tab can't set an Authorization header on navigation, so the console
- * needs a cookie; making it HttpOnly keeps it out of reach of page scripts.
- *
- * Two ways to authenticate, because an operator may not have a password at all:
- *   - an access token the caller already holds, which is the only route open to
- *     an OAuth-only account (`passwordHash` is null for those);
- *   - email + password typed into the console.
- *
- * Either way the cookie is only minted for a user whose `role` is already
- * ADMIN. This is mounted *before* `requireAdmin` — it is how you get past it —
- * and so does its own check.
- */
-export const createSession = handler(async (req, res) => {
-  const header = req.headers.authorization;
-  const body = (req.body ?? {}) as { email?: string; password?: string };
-
-  const operator = header?.startsWith("Bearer ")
-    ? await assertAdmin(req)
-    : await admin.authenticateAdmin(body.email, body.password);
-
-  const expiresAt = setAdminSessionCookie(res, operator.id);
-  return { ok: true, expiresAt, email: operator.email };
-});
-
+// Sessions are minted by the Google round trip only (`/auth/google?client=admin`,
+// see auth.controller.ts). Signing out just drops the cookie.
 export const destroySession = handler((_req, res) => {
   res.clearCookie(ADMIN_COOKIE, { path: "/admin" });
   return { ok: true };
@@ -181,19 +149,10 @@ export const releaseHolds = handler((req) =>
   admin.releaseUserHolds(String(req.params.id)),
 );
 
-// ── console ──────────────────────────────────────────────────────────────────
+// ── cost calculator ──────────────────────────────────────────────────────────
 
-export function ui(_req: Request, res: Response): void {
-  res.type("html").send(renderAdminConsole());
-}
-
-export function costsUi(_req: Request, res: Response): void {
-  res.type("html").send(renderAdminCostCalculator());
-}
-
-export function promoCodesUi(_req: Request, res: Response): void {
-  res.type("html").send(renderAdminPromoCodes());
-}
+/** Catalog + provider-rate seed for the console's unit-economics calculator. */
+export const costSeed = handler(() => getCostSeed());
 
 // ── credits reconciliation (pre-existing) ────────────────────────────────────
 

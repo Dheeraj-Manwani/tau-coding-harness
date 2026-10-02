@@ -18,7 +18,7 @@ import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
-import { openAdminConsole } from "@/src/features/admin/api";
+import { env } from "@/src/lib/env";
 import { APP_ACCOUNT, APP_BILLING } from "@/src/lib/routes";
 import { nameOf } from "@/src/features/account/identity";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
@@ -109,15 +109,18 @@ export function UserMenu() {
 
           <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
 
-          {/* Admins only. `openAdminConsole` runs inside the click handler's
-              call stack so its `window.open` survives the popup blocker. */}
+          {/* Admins only. Just a link: the ops console lives on its own origin
+              and signs in with Google itself. The role check that matters is
+              the API's, on every /admin request. */}
           {user.role === "ADMIN" && (
             <DropdownMenu.Item
-              onSelect={() => void openAdminConsole()}
+              asChild
               className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
             >
-              <ShieldCheckIcon className="size-4 text-brand" />
-              Ops console
+              <a href={env.ADMIN_URL} target="_blank" rel="noopener noreferrer">
+                <ShieldCheckIcon className="size-4 text-brand" />
+                Ops console
+              </a>
             </DropdownMenu.Item>
           )}
 

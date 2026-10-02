@@ -16,6 +16,7 @@ import {
   budgetForEffort,
 } from "../../config";
 import { executeSubAgentTool } from "./tool-executor";
+import { redactToolResult } from "@/worker/lib/redact";
 import type { Effort } from "@/generated/prisma/enums";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -261,14 +262,19 @@ export const executeSubAgentLoop = async (
 
       let output: unknown;
       try {
-        output = await executeSubAgentTool(
-          tc.function.name,
-          input,
-          sandbox,
-          jobId,
+        // Same redaction as the main executor: a sub-agent that runs `env` or
+        // reads `.env` must not pull a key into its context (or its summary).
+        output = await redactToolResult(
           projectId,
-          userId,
-          nextIndex,
+          await executeSubAgentTool(
+            tc.function.name,
+            input,
+            sandbox,
+            jobId,
+            projectId,
+            userId,
+            nextIndex,
+          ),
         );
       } catch (err) {
         output = { error: err instanceof Error ? err.message : String(err) };

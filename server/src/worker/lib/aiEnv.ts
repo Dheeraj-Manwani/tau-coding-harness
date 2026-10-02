@@ -1,5 +1,6 @@
 /**
- * Getting `TAU_API_KEY` into a generated app's running server.
+ * Getting `TAU_API_KEY` — and the user's own third-party keys
+ * (`lib/projectSecrets.ts`) — into a generated app's running server.
  *
  * ## Why this is not just `Sandbox.create({ envs })`
  *
@@ -27,6 +28,11 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { log } from "./log";
 import { ensureApiKey, keyEncryptionConfigured } from "@/lib/apiKeys";
+import {
+  hasProjectSecrets,
+  projectSecretEnv,
+  renderDotenv,
+} from "@/lib/projectSecrets";
 
 export const WORK_DIR = "/home/user/app";
 
@@ -235,28 +241,65 @@ export async function buildAiEnv(
   };
 }
 
-function renderDotenv(vars: AiEnv): string {
-  return (
-    "# Managed by tau. Do not edit or commit.\n" +
-    "# This file is intentionally not saved with your project — tau rewrites it\n" +
-    "# each time the app starts, and it is never pushed to GitHub.\n" +
-    Object.entries(vars)
-      .map(([k, v]) => `${k}=${v}`)
-      .join("\n") +
-    "\n"
+/**
+ * Everything the app's `.env` should hold: the user's third-party keys
+ * (`ProjectSecret`) plus, when AI is on, the tau gateway vars.
+ *
+ * The two halves fail independently. An unreachable gateway must not keep the
+ * user's Stripe key out of the app, and one undecryptable secret must not keep
+ * the AI key out — each is logged and skipped, never thrown.
+ */
+export async function buildProjectEnv(
+  userId: string,
+  projectId: string,
+  jobId: string,
+  opts: { aiEnabled: boolean },
+): Promise<Record<string, string>> {
+  if (!keyEncryptionConfigured()) return {};
+
+  const vars: Record<string, string> = await projectSecretEnv(
+    projectId,
+    (name, err) =>
+      log.error("secrets.decrypt_failed", {
+        jobId,
+        projectId,
+        name,
+        error: String(err),
+      }),
   );
+
+  if (opts.aiEnabled) {
+    const verdict = gatewayUsable();
+    if (!verdict.ok) {
+      // A config problem on tau's side, not a transient sandbox error — it will
+      // recur on every provision until someone fixes the URL.
+      log.error("ai.reinject_skipped", {
+        jobId,
+        projectId,
+        reason: "unreachable gateway",
+        detail: verdict.detail,
+      });
+    } else {
+      // Spread last: `TAU_*` names are reserved, so this never shadows a
+      // user's key — but if one slipped in, tau's value must win.
+      Object.assign(vars, await buildAiEnv(userId, projectId));
+    }
+  }
+  return vars;
 }
 
 /**
  * Write `.env` straight to the sandbox filesystem.
  *
  * Uses `sandbox.files.write` and NOT `persistFile`, deliberately: persisting
- * would put the key in R2 and the manifest, and from there into the user's
+ * would put the keys in R2 and the manifest, and from there into the user's
  * GitHub repo on the next push.
+ *
+ * Always rewrites the whole file, so a key the user deleted disappears too.
  */
-export async function writeAiEnvFile(
+export async function writeEnvFile(
   sandbox: Sandbox,
-  vars: AiEnv,
+  vars: Record<string, string>,
 ): Promise<void> {
   await sandbox.files.write(`${WORK_DIR}/.env`, renderDotenv(vars));
 }
@@ -330,14 +373,15 @@ async function waitForApi(sandbox: Sandbox, timeoutMs = 30_000): Promise<boolean
 }
 
 /**
- * Re-inject on provision for a project that already has AI enabled.
+ * Re-inject on provision for a project that has AI enabled or holds keys.
  *
  * Called from `provisionSandbox` after rehydration. No restart is needed on a
  * fresh sandbox whose files were just rehydrated — `bun --watch` reboots the
  * server when `server/index.ts` lands anyway, and by then `.env` is on disk.
- * A reconnect to a live sandbox is the case that needs the explicit restart.
+ * A reconnect to a live sandbox — or a key changed from the Keys tab while the
+ * app is running — is the case that needs the explicit restart.
  */
-export async function reinjectAiEnv(
+export async function reinjectProjectEnv(
   sandbox: Sandbox,
   projectId: string,
   userId: string,
@@ -345,34 +389,37 @@ export async function reinjectAiEnv(
   opts: { restart: boolean },
 ): Promise<void> {
   if (!keyEncryptionConfigured()) {
-    log.warn("ai.reinject_skipped", { jobId, projectId, reason: "no enc key" });
-    return;
-  }
-  // Distinguished from a generic failure below: this one is a config problem on
-  // tau's side, not a transient sandbox error, and it will recur on every
-  // provision until someone fixes the URL.
-  const verdict = gatewayUsable();
-  if (!verdict.ok) {
-    log.error("ai.reinject_skipped", {
-      jobId,
-      projectId,
-      reason: "unreachable gateway",
-      detail: verdict.detail,
-    });
+    log.warn("env.reinject_skipped", { jobId, projectId, reason: "no enc key" });
     return;
   }
   try {
-    const vars = await buildAiEnv(userId, projectId);
-    await writeAiEnvFile(sandbox, vars);
+    const vars = await buildProjectEnv(userId, projectId, jobId, {
+      aiEnabled: await isAiEnabled(projectId),
+    });
+    await writeEnvFile(sandbox, vars);
     if (opts.restart) await restartAppServer(sandbox, jobId);
-    log.info("ai.env_injected", { jobId, projectId });
+    log.info("env.injected", {
+      jobId,
+      projectId,
+      // Names are safe to log; values never are.
+      names: Object.keys(vars),
+    });
   } catch (err) {
-    log.warn("ai.env_inject_failed", {
+    log.warn("env.inject_failed", {
       jobId,
       projectId,
       error: String(err),
     });
   }
+}
+
+/** Does this project need a tau-written `.env` at all? */
+export async function needsProjectEnv(projectId: string): Promise<boolean> {
+  const [ai, secrets] = await Promise.all([
+    isAiEnabled(projectId),
+    hasProjectSecrets(projectId),
+  ]);
+  return ai || secrets;
 }
 
 /** Has the agent turned on AI for this project? */

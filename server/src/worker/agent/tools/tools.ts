@@ -10,6 +10,7 @@ export const silentTools = new Set<Tool>([
   "update_todo",
   "add_todos",
   "ask_user",
+  "request_secret",
 ]);
 
 export const subAgentTools = new Set<Tool>([
@@ -463,6 +464,61 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["purpose"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_secret",
+      description:
+        "Ask the user for API keys or other credentials for a third-party service the app calls at runtime (Stripe, Resend, OpenWeather, Supabase, Twilio, …). The user enters them in a secure form outside the chat — you never see the values and they never appear in the conversation. Saved keys are encrypted by tau, injected into the running app as environment variables (read them with `process.env.NAME` in SERVER code only), and restored on every rebuild. This is the ONLY way to get a credential from the user: never ask for one with ask_user or in plain text, never hardcode one, never write one into a file. Do NOT use this for AI models — use enable_ai. Keys already saved for the project are not asked for again unless `replace` is true. Pauses until the user answers; they may skip a key. On a frontend-only project it first adds a backend and returns `needsReprovision: true` — then tell the user, call `provision_sandbox`, and call this again.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            description:
+              "One or two plain sentences shown to the user in the chat explaining what the keys are for, e.g. 'To take payments, your app needs your Stripe secret key.' No technical jargon.",
+          },
+          secrets: {
+            type: "array",
+            description: "The keys to ask for (at most 10).",
+            items: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description:
+                    "Environment variable name in UPPER_SNAKE_CASE, e.g. STRIPE_SECRET_KEY. Must not start with VITE_ or TAU_.",
+                },
+                label: {
+                  type: "string",
+                  description: "Human-friendly field label, e.g. 'Stripe secret key'.",
+                },
+                description: {
+                  type: "string",
+                  description:
+                    "Where the user finds it, in one short sentence, e.g. 'Stripe Dashboard → Developers → API keys. Starts with sk_.'",
+                },
+                url: {
+                  type: "string",
+                  description:
+                    "Optional https link to the page where the user can create or copy the key.",
+                },
+              },
+              required: ["name", "label", "description"],
+              additionalProperties: false,
+            },
+          },
+          replace: {
+            type: "boolean",
+            description:
+              "Ask again even for keys that are already saved — only when the user says a saved key is wrong or wants to change it.",
+          },
+        },
+        required: ["reason", "secrets"],
         additionalProperties: false,
       },
     },

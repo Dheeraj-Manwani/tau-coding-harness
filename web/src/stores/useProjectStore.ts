@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type {
   JobEvent,
   MessageAttachment,
+  PendingQuestion,
   ProjectCheckpoint,
   ProjectDetail,
   ProjectMessage,
@@ -108,7 +109,7 @@ export interface MessageElement {
   tagName: string;
 }
 
-export type Tab = "preview" | "code";
+export type Tab = "preview" | "code" | "keys";
 export type PreviewDevice = "mobile" | "tablet" | "desktop";
 
 /**
@@ -492,6 +493,8 @@ function deriveActionItem(
     case "ask_user": {
       return { kind: "ask_user", label: "Asked for your input" };
     }
+    case "request_secret":
+      return { kind: "ask_user", label: "Asked for API keys" };
     default:
       return { kind: "create_file", label: truncateLabel(toolName) };
   }
@@ -754,9 +757,13 @@ function toConversation(
               content: text,
               timestamp: ts,
             });
-        } else if (name === "ask_user") {
+        } else if (name === "ask_user" || name === "request_secret") {
+          // A key request reads like a question in the transcript; its reply
+          // row says which keys were added, never what they are.
           askUserToolCallIds.add(tc.id);
-          const text = String(input.question ?? "").trim();
+          const text = String(
+            (name === "ask_user" ? input.question : input.reason) ?? "",
+          ).trim();
           if (text)
             messages.push({
               id: `${row.id}_q${j}`,
@@ -941,7 +948,7 @@ interface ProjectState {
   currentPlan: Plan | null;
 
   // Pending ask_user question waiting for the user's response.
-  pendingQuestion: { id: string; question: string; options: string[] } | null;
+  pendingQuestion: PendingQuestion | null;
 
   // Generated app
   files: Record<string, ProjectFile>;
@@ -1117,7 +1124,7 @@ const FRESH = {
   hasMoreMessages: false,
   oldestSequence: null as number | null,
   currentPlan: null as Plan | null,
-  pendingQuestion: null as { id: string; question: string; options: string[] } | null,
+  pendingQuestion: null as PendingQuestion | null,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -1677,7 +1684,12 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           ...fin,
           isAiTyping: false,
           chatMessages: [...fin.chatMessages, questionBubble],
-          pendingQuestion: { id: event.questionId, question: event.question, options: event.options },
+          pendingQuestion: {
+            id: event.questionId,
+            question: event.question,
+            options: event.options,
+            ...(event.secrets ? { secrets: event.secrets } : {}),
+          },
         };
       });
       return;

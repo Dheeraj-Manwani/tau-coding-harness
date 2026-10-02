@@ -9,6 +9,7 @@ export type Effort = "LOW" | "HIGH" | "MAX";
 
 export type { MessageAttachment } from "@/src/features/composer/attachments/types";
 import type { MessageAttachment } from "@/src/features/composer/attachments/types";
+import type { SecretField } from "@/src/features/project/secrets";
 
 /**
  * The element a chat message was sent about, when it came from the visual-edit
@@ -97,6 +98,18 @@ export interface ListProjectsResponse {
   nextCursor: string | null;
 }
 
+/**
+ * A paused agent waiting on the user. `secrets` is set when it is a
+ * `request_secret` call: the composer area then shows the key form instead of
+ * answer chips, and the values go to the secrets endpoint, never the chat.
+ */
+export interface PendingQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  secrets?: SecretField[];
+}
+
 /** Shape of `GET /project/:projectId`. */
 export interface ProjectDetail {
   project: ProjectSummary;
@@ -112,7 +125,7 @@ export interface ProjectDetail {
     phase: "queued" | "waiting_user" | "working" | "terminal";
     finishReason: string | null;
     error: string | null;
-    pendingQuestion: { id: string; question: string; options: string[] } | null;
+    pendingQuestion: PendingQuestion | null;
   } | null;
   checkpoints: ProjectCheckpoint[];
 }
@@ -219,7 +232,13 @@ export type JobEvent = BaseEvent &
       }
     | { type: "todo_updated"; sno: number; status: string }
     | { type: "todos_added"; todos: string[] }
-    | { type: "ask_user"; questionId: string; question: string; options: string[] }
+    | {
+        type: "ask_user";
+        questionId: string;
+        question: string;
+        options: string[];
+        secrets?: SecretField[];
+      }
     | { type: "ask_user_expired"; questionId: string }
     | { type: "resync" }
     | { type: "cancelled" }

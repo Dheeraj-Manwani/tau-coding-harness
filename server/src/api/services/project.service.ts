@@ -44,6 +44,7 @@ import {
 import { fetchImageAsset, slugifyAssetName } from "../lib/assetImport";
 import { bus } from "@/lib/bus";
 import { terminateStrandedJob } from "../lib/jobs";
+import { pendingSecretFields } from "./projectSecret.service";
 import {
   attachmentBlock,
   waitForExtraction,
@@ -539,7 +540,8 @@ async function findWaitingQuestionCall(
   return prisma.toolCall.findFirst({
     where: {
       message: { jobId: activeJob.id },
-      toolName: "ask_user",
+      // A key request is a question too: same pause, same recovery.
+      toolName: { in: ["ask_user", "request_secret"] },
       status: ToolCallStatus.RUNNING,
     },
     orderBy: { createdAt: "desc" },
@@ -602,16 +604,28 @@ export async function getProject(projectId: string, userId: string) {
   const questionInput = waitingCall?.input as {
     question?: unknown;
     options?: unknown;
+    reason?: unknown;
   } | undefined;
-  const pendingQuestion = waitingCall && typeof questionInput?.question === "string"
-    ? {
-        id: waitingCall.id,
-        question: questionInput.question,
-        options: Array.isArray(questionInput.options)
-          ? questionInput.options.filter((option): option is string => typeof option === "string")
-          : [],
-      }
-    : null;
+  const pendingQuestion = !waitingCall
+    ? null
+    : waitingCall.toolName === "request_secret"
+      ? {
+          id: waitingCall.id,
+          question:
+            typeof questionInput?.reason === "string" ? questionInput.reason : "",
+          options: [],
+          // Names and descriptions only — the values were never on this row.
+          secrets: pendingSecretFields(waitingCall),
+        }
+      : typeof questionInput?.question === "string"
+        ? {
+            id: waitingCall.id,
+            question: questionInput.question,
+            options: Array.isArray(questionInput.options)
+              ? questionInput.options.filter((option): option is string => typeof option === "string")
+              : [],
+          }
+        : null;
 
   return {
     project: { ...project, previewImageUrl },

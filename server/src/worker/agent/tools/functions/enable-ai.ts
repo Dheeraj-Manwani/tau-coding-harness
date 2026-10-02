@@ -2,10 +2,10 @@ import type Sandbox from "e2b";
 import { prisma } from "@/lib/prisma";
 import { log } from "@/worker/lib/log";
 import {
-  buildAiEnv,
+  buildProjectEnv,
   gatewayUsable,
   restartAppServer,
-  writeAiEnvFile,
+  writeEnvFile,
 } from "@/worker/lib/aiEnv";
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { persistFile } from "./utils";
@@ -246,8 +246,10 @@ export async function enableAi(
     }
   }
 
-  const vars = await buildAiEnv(userId, projectId);
-  await writeAiEnvFile(sandbox, vars);
+  // The whole .env is rewritten, so build it with the user's own keys too —
+  // writing only the AI vars would wipe every key they already supplied.
+  const vars = await buildProjectEnv(userId, projectId, jobId, { aiEnabled: true });
+  await writeEnvFile(sandbox, vars);
 
   await prisma.project.update({
     where: { id: projectId },

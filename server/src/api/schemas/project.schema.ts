@@ -165,6 +165,28 @@ export const jobAnswerSchema = z.object({
   answer: z.string().trim().min(1, "Answer can't be empty").max(10_000),
 });
 
+// Shape only — reserved names (TAU_*, VITE_*, PATH, …) are rejected by the
+// service with a specific message (`secretNameError`).
+const secretNameSchema = z
+  .string()
+  .regex(/^[A-Z][A-Z0-9_]{1,63}$/, "Use UPPER_SNAKE_CASE, e.g. STRIPE_SECRET_KEY");
+
+/** Values are validated (length, characters) by the service, which knows the
+ *  limits; the schema only bounds the request. Empty string = skipped. */
+export const secretAnswerSchema = z.object({
+  questionId: z.uuid("Invalid question id"),
+  values: z.record(secretNameSchema, z.string().max(20_000)),
+});
+
+export const secretParamSchema = z.object({
+  projectId: z.uuid("Invalid project id"),
+  name: secretNameSchema,
+});
+
+export const secretValueSchema = z.object({
+  value: z.string().max(20_000),
+});
+
 export const pushModeSchema = z.enum(["new_pr", "update_pr", "direct"]);
 
 export const githubPushSchema = z.object({

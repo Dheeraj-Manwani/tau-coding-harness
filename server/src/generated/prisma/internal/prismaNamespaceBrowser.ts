@@ -55,6 +55,7 @@ export const ModelName = {
   OAuthAccount: 'OAuthAccount',
   RefreshToken: 'RefreshToken',
   Project: 'Project',
+  ProjectSecret: 'ProjectSecret',
   Message: 'Message',
   Attachment: 'Attachment',
   Feedback: 'Feedback',
@@ -165,6 +166,18 @@ export const ProjectScalarFieldEnum = {
 } as const
 
 export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
+
+
+export const ProjectSecretScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  name: 'name',
+  ciphertext: 'ciphertext',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProjectSecretScalarFieldEnum = (typeof ProjectSecretScalarFieldEnum)[keyof typeof ProjectSecretScalarFieldEnum]
 
 
 export const MessageScalarFieldEnum = {

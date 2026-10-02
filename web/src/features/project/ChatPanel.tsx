@@ -76,6 +76,7 @@ import {
   useProject,
 } from "@/src/features/project/api";
 import { useSendMessage } from "@/src/features/project/useSendMessage";
+import { SecretRequestPrompt } from "@/src/features/project/SecretRequestPrompt";
 import {
   CREDIT_RESUME_PROMPT,
   shouldOfferCreditResume,
@@ -1195,7 +1196,18 @@ export function ChatPanel({
             </button>
           </div>
         )}
-        {pendingQuestion && currentJobId && projectId ? (
+        {pendingQuestion?.secrets?.length && currentJobId && projectId ? (
+          <SecretRequestPrompt
+            key={pendingQuestion.id}
+            projectId={projectId}
+            jobId={currentJobId}
+            questionId={pendingQuestion.id}
+            fields={pendingQuestion.secrets}
+            onAnswered={(answer) =>
+              answerPendingQuestion(pendingQuestion.id, answer)
+            }
+          />
+        ) : pendingQuestion && currentJobId && projectId ? (
           <AskUserPrompt
             projectId={projectId}
             jobId={currentJobId}

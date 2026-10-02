@@ -16,6 +16,7 @@ import { TOOL_DEFINITIONS } from "./tools/tools";
 
 export type SandboxRef = { current: Sandbox | null };
 import { executeTool } from "./tools/executor";
+import { projectSecretNames } from "@/lib/projectSecrets";
 import {
   FinishReason,
   MessageRole,
@@ -402,18 +403,20 @@ export async function runAgentLoop(
     // Determine which template the agent is (or will be) working in. A template
     // is "selected" once files have been scaffolded against it — before that the
     // agent still gets to pick it via provision_sandbox, so it sees the chooser.
-    const [project, fileCount] = await Promise.all([
+    const [project, fileCount, secretNames] = await Promise.all([
       prisma.project.findUnique({
         where: { id: projectId },
         select: { templateKey: true },
       }),
       prisma.projectFile.count({ where: { projectId } }),
+      projectSecretNames(projectId),
     ]);
     const selected = fileCount > 0;
     const systemPrompt = buildSystemPrompt({
       templateKey: toTemplateKey(project?.templateKey),
       selected,
       effort,
+      secretNames,
     });
 
     let entries: Entry[] = [

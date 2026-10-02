@@ -38,6 +38,18 @@ export type RefreshToken = Prisma.RefreshTokenModel
  */
 export type Project = Prisma.ProjectModel
 /**
+ * Model ProjectSecret
+ * A credential the user supplied for a third-party service the generated app
+ * calls (Stripe, Resend, OpenWeather, ...). Collected by the `request_secret`
+ * tool through a form outside the chat, so the value never enters a message,
+ * a tool call row, or the model's context.
+ * 
+ * Reversible (AES-256-GCM under TAU_KEY_ENC_SECRET, same format as
+ * `ApiKey.ciphertext`) because tau has to write the plaintext into the
+ * sandbox's `.env` on every provision — that file is never persisted.
+ */
+export type ProjectSecret = Prisma.ProjectSecretModel
+/**
  * Model Message
  * 
  */

@@ -12,8 +12,12 @@ import {
   visualAssetSchema,
   jobIdParamSchema,
   jobAnswerSchema,
+  secretAnswerSchema,
+  secretParamSchema,
+  secretValueSchema,
 } from "../schemas/project.schema";
 import * as projectService from "../services/project.service";
+import * as secretService from "../services/projectSecret.service";
 import { requireUserId } from "../middleware/auth.middleware";
 
 export const initializeProject = async (
@@ -168,6 +172,73 @@ export const submitJobAnswer = async (
     const { projectId, jobId } = parse(jobIdParamSchema, req.params);
     const { answer, questionId } = parse(jobAnswerSchema, req.body);
     await projectService.submitJobAnswer(projectId, jobId, userId, answer, questionId);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const submitSecretAnswer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId, jobId } = parse(jobIdParamSchema, req.params);
+    const { questionId, values } = parse(secretAnswerSchema, req.body);
+    const result = await secretService.submitSecretAnswer(
+      projectId,
+      jobId,
+      userId,
+      questionId,
+      values,
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listSecrets = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    res.status(200).json(await secretService.listSecrets(projectId, userId));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setSecret = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId, name } = parse(secretParamSchema, req.params);
+    const { value } = parse(secretValueSchema, req.body);
+    await secretService.setSecret(projectId, userId, name, value);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteSecret = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId, name } = parse(secretParamSchema, req.params);
+    await secretService.deleteSecret(projectId, userId, name);
     res.status(204).send();
   } catch (err) {
     next(err);

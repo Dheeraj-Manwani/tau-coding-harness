@@ -4,10 +4,9 @@ import { isTemplateKey } from "@/worker/templates/registry";
 import { publish } from "@/worker/lib/publish";
 import { log } from "@/worker/lib/log";
 import { bus } from "@/lib/bus";
-import { prisma } from "@/lib/prisma";
 import type { SandboxRef } from "../loop";
 import type { Tool } from "./tools";
-import { ToolCallStatus, type Effort } from "@/generated/prisma/enums";
+import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "./functions/utils";
 import { createPlan } from "./functions/create-plan";
 import { updateTodo } from "./functions/update-todos";
@@ -26,6 +25,9 @@ import { searchImages } from "./functions/search-images";
 import { imageDimensions } from "./functions/image-dimensions";
 import { downloadAsset } from "./functions/download-asset";
 import { enableAi } from "./functions/enable-ai";
+import { requestSecret } from "./functions/request-secret";
+import { awaitAnswer } from "./functions/await-answer";
+import { redactSecrets, redactToolResult } from "@/worker/lib/redact";
 import {
   pushProjectToGithub,
   createGithubIssue,
@@ -56,43 +58,8 @@ function isDeadSandboxError(err: unknown): boolean {
   );
 }
 
-/**
- * A tau API key, anywhere in a tool result.
- *
- * `tau_sk_live_` + 32 base62 bytes, but the length is left open so a truncated
- * or future-format key is still caught. Matching the prefix is the point: it
- * exists precisely so a key is recognizable on sight.
- */
-const TAU_KEY_PATTERN = /tau_sk_[A-Za-z0-9_]{8,}/g;
-const REDACTED = "tau_sk_***redacted***";
-
-/**
- * Strip API keys out of anything a tool hands back to the model.
- *
- * The key reaches the sandbox two ways — a `.env` file and `Sandbox.create({
- * envs })` — so `run_command("env")`, `cat .env`, `read_file(".env")` and a
- * printenv in a build script can all surface it. The system prompt forbids
- * logging it; nothing enforced that, and a tool result is not just shown to the
- * model, it is persisted into the job transcript where it outlives the sandbox.
- *
- * Applied at the executor rather than in `run-command.ts` on purpose: one choke
- * point every tool passes through cannot be forgotten by the next tool someone
- * adds.
- */
-export function redactSecrets<T>(value: T): T {
-  if (typeof value === "string") {
-    return value.replace(TAU_KEY_PATTERN, REDACTED) as T;
-  }
-  if (Array.isArray(value)) {
-    return value.map((v) => redactSecrets(v)) as T;
-  }
-  if (value && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) out[k] = redactSecrets(v);
-    return out as T;
-  }
-  return value;
-}
+// Re-exported: tests and older call sites import it from here.
+export { redactSecrets };
 
 export async function executeTool(
   name: Tool,
@@ -106,8 +73,9 @@ export async function executeTool(
   effort: Effort,
   toolCallId?: string,
 ): Promise<unknown> {
-  return redactSecrets(
-    await executeToolInner(
+  let output: unknown;
+  try {
+    output = await executeToolInner(
       name,
       input,
       sandboxRef,
@@ -118,8 +86,16 @@ export async function executeTool(
       model,
       effort,
       toolCallId,
-    ),
-  );
+    );
+  } catch (err) {
+    // A thrown message reaches the model and the ToolCall row just like a
+    // result does (a failed command's stderr can echo the environment).
+    if (err instanceof Error) {
+      err.message = await redactToolResult(projectId, err.message);
+    }
+    throw err;
+  }
+  return redactToolResult(projectId, output);
 }
 
 async function executeToolInner(
@@ -135,7 +111,9 @@ async function executeToolInner(
   toolCallId?: string,
 ): Promise<unknown> {
   log.debug("job.tool", { jobId, projectId, tool: name });
-  if (name === "ask_user") bus.setPhase(jobId, "waiting_user");
+  if (name === "ask_user" || name === "request_secret") {
+    bus.setPhase(jobId, "waiting_user");
+  }
 
   switch (name) {
     case "ask_user": {
@@ -150,61 +128,18 @@ async function executeToolInner(
 
       if (!toolCallId) throw new Error("Missing persisted question id");
 
-      // The tool-call row is the durable waiting state. A refreshed browser can
-      // recover this question even when the in-memory event buffer is gone.
       bus.registerQuestion(jobId, toolCallId);
-      try {
-        await publish(jobId, {
-          type: "ask_user",
-          questionId: toolCallId,
-          question: q,
-          options: opts,
-        });
-
-        // The bus is the fast path. Also check the persisted answer every few
-        // seconds: a successful DB claim followed by a failed in-process handoff
-        // must not leave the user waiting until the ten-minute timeout.
-        const deadline = Date.now() + 600_000;
-        let answer: string | null = null;
-        while (Date.now() < deadline) {
-          answer = await bus.waitForUserResponse(jobId, Math.min(5000, deadline - Date.now()));
-          if (answer !== null || bus.isCancelled(jobId)) break;
-          const persisted = await prisma.toolCall.findUnique({
-            where: { id: toolCallId },
-            select: { status: true, output: true },
-          });
-          const saved = persisted?.output as { answer?: unknown } | null;
-          if (persisted?.status === ToolCallStatus.SUCCESS && typeof saved?.answer === "string") {
-            answer = saved.answer;
-            break;
-          }
-        }
-        if (answer === null) {
-          if (bus.isCancelled(jobId)) return { answer: null, cancelled: true };
-          // Race timeout against an answer that the API has already committed.
-          const expired = await prisma.toolCall.updateMany({
-            where: { id: toolCallId, status: ToolCallStatus.RUNNING },
-            data: { status: ToolCallStatus.FAILED, error: "Question timed out" },
-          });
-          if (expired.count > 0) {
-            await publish(jobId, { type: "ask_user_expired", questionId: toolCallId });
-            return { answer: null, timedOut: true };
-          }
-          const accepted = await prisma.toolCall.findUnique({
-            where: { id: toolCallId },
-            select: { output: true },
-          });
-          const saved = accepted?.output as { answer?: unknown } | null;
-          if (typeof saved?.answer === "string") return { answer: saved.answer };
-          return { answer: null, timedOut: true };
-        }
-
-        // The answer is persisted as the standard TOOL_RES by the agent loop.
-        return { answer };
-      } finally {
-        bus.clearQuestion(jobId, toolCallId);
-      }
+      await publish(jobId, {
+        type: "ask_user",
+        questionId: toolCallId,
+        question: q,
+        options: opts,
+      });
+      // The answer is persisted as the standard TOOL_RES by the agent loop.
+      return awaitAnswer(jobId, toolCallId);
     }
+    case "request_secret":
+      return requestSecret(input, sandboxRef, jobId, projectId, userId, toolCallId);
     case "provision_sandbox": {
       if (!sandboxRef.current) {
         const { template } = (input ?? {}) as { template?: unknown };
@@ -306,8 +241,16 @@ async function executeToolInner(
           userId,
           indexer,
         );
-      case "enable_ai":
-        return await enableAi(input, sandbox, jobId, projectId, userId, indexer);
+      case "enable_ai": {
+        const result = await enableAi(input, sandbox, jobId, projectId, userId, indexer);
+        // A frontend-only app was just migrated and its sandbox marked DEAD.
+        // Without dropping the ref, `provision_sandbox` would see a sandbox and
+        // no-op, leaving the agent on the old template's stack.
+        if ("needsReprovision" in result && result.needsReprovision) {
+          sandboxRef.current = null;
+        }
+        return result;
+      }
       case "run_command":
         return await runCommand(input, sandbox);
       case "tail_command_output":

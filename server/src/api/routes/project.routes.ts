@@ -17,6 +17,10 @@ import {
   getPreviewStatus,
   restartPreview,
   submitJobAnswer,
+  submitSecretAnswer,
+  listSecrets,
+  setSecret,
+  deleteSecret,
   cancelAllJobs,
 } from "../controllers/project.controller";
 import * as github from "../controllers/githubProject.controller";
@@ -53,6 +57,12 @@ router.post(
 router.get("/:projectId/preview/status", getPreviewStatus);
 router.post("/:projectId/preview/restart", restartPreview);
 router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);
+// Third-party API keys. Values travel only in these request bodies — never
+// through `answer`, which is persisted into the chat transcript.
+router.post("/:projectId/jobs/:jobId/secrets", submitSecretAnswer);
+router.get("/:projectId/secrets", listSecrets);
+router.put("/:projectId/secrets/:name", setSecret);
+router.delete("/:projectId/secrets/:name", deleteSecret);
 
 // Publish panel. The site itself is served by the public routes in
 // `sites.routes.ts`, which sit outside this authenticated router.

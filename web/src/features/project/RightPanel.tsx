@@ -1,10 +1,11 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Popover } from "radix-ui";
 import {
   ChevronDownIcon,
   CodeIcon,
   ExternalLinkIcon,
+  KeyRoundIcon,
   LoaderCircleIcon,
   MonitorIcon,
   PanelLeftOpenIcon,
@@ -32,6 +33,8 @@ import {
 } from "@/src/stores/useProjectStore";
 import { PreviewPane } from "@/src/features/project/PreviewPane";
 import { previewSrc } from "@/src/features/project/previewUrl";
+import { KeysPane } from "@/src/features/project/KeysPane";
+import { useProjectSecrets } from "@/src/features/project/secrets";
 
 // Lazy so the editor's heavy deps (CodeMirror + file icons) only load when the
 // Code tab is first opened, not on initial project render.
@@ -44,7 +47,27 @@ const CodePane = lazy(() =>
 const TABS: { id: Tab; icon: typeof CodeIcon }[] = [
   { id: "preview", icon: TvMinimalIcon },
   { id: "code", icon: CodeIcon },
+  { id: "keys", icon: KeyRoundIcon },
 ];
+
+/**
+ * The Keys tab exists only once the project holds a key — most apps never need
+ * one, and an empty tab would just be noise. If the last key is removed while
+ * the tab is open, fall back to the preview.
+ */
+function useHasKeys(): boolean {
+  const projectId = useProjectStore((s) => s.projectId);
+  const activeTab = useProjectStore((s) => s.activeTab);
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
+  const { data: secrets, isSuccess } = useProjectSecrets(projectId ?? undefined);
+  const hasKeys = (secrets?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (isSuccess && !hasKeys && activeTab === "keys") setActiveTab("preview");
+  }, [isSuccess, hasKeys, activeTab, setActiveTab]);
+
+  return hasKeys;
+}
 
 const DEVICES: {
   id: PreviewDevice;
@@ -56,17 +79,18 @@ const DEVICES: {
   { id: "desktop", icon: MonitorIcon, label: "Desktop" },
 ];
 
-function TabToggle() {
+function TabToggle({ hasKeys }: { hasKeys: boolean }) {
   const activeTab = useProjectStore((s) => s.activeTab);
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const isWriting = useProjectStore((s) => s.writingPath !== null);
+  const tabs = hasKeys ? TABS : TABS.filter((t) => t.id !== "keys");
 
   return (
     <div
       data-tour="view-tabs"
       className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)]"
     >
-      {TABS.map(({ id, icon: Icon }) => (
+      {tabs.map(({ id, icon: Icon }) => (
         <button
           key={id}
           type="button"
@@ -345,6 +369,8 @@ function PreviewNavigation() {
 
 export function RightPanel() {
   const activeTab = useProjectStore((s) => s.activeTab);
+  const projectId = useProjectStore((s) => s.projectId);
+  const hasKeys = useHasKeys();
   const previewDevice = useProjectStore((s) => s.previewDevice);
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const toggleChat = useProjectStore((s) => s.toggleChat);
@@ -365,7 +391,7 @@ export function RightPanel() {
           </motion.button>
         )}
 
-        <TabToggle />
+        <TabToggle hasKeys={hasKeys} />
         {activeTab === "preview" && <PreviewNavigation />}
 
         <div className="flex-1" />
@@ -410,6 +436,10 @@ export function RightPanel() {
           >
             <CodePane />
           </Suspense>
+        )}
+
+        {activeTab === "keys" && hasKeys && projectId && (
+          <KeysPane projectId={projectId} />
         )}
       </div>
     </div>

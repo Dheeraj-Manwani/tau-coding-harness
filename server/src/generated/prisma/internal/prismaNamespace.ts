@@ -401,6 +401,7 @@ export const ModelName = {
   OAuthAccount: 'OAuthAccount',
   RefreshToken: 'RefreshToken',
   Project: 'Project',
+  ProjectSecret: 'ProjectSecret',
   Message: 'Message',
   Attachment: 'Attachment',
   Feedback: 'Feedback',
@@ -436,7 +437,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
+    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -733,6 +734,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProjectCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProjectCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProjectSecret: {
+      payload: Prisma.$ProjectSecretPayload<ExtArgs>
+      fields: Prisma.ProjectSecretFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProjectSecretFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProjectSecretFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        findFirst: {
+          args: Prisma.ProjectSecretFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProjectSecretFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        findMany: {
+          args: Prisma.ProjectSecretFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>[]
+        }
+        create: {
+          args: Prisma.ProjectSecretCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        createMany: {
+          args: Prisma.ProjectSecretCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProjectSecretCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>[]
+        }
+        delete: {
+          args: Prisma.ProjectSecretDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        update: {
+          args: Prisma.ProjectSecretUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProjectSecretDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProjectSecretUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProjectSecretUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProjectSecretUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectSecretPayload>
+        }
+        aggregate: {
+          args: Prisma.ProjectSecretAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProjectSecret>
+        }
+        groupBy: {
+          args: Prisma.ProjectSecretGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectSecretGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProjectSecretCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectSecretCountAggregateOutputType> | number
         }
       }
     }
@@ -2329,6 +2404,18 @@ export const ProjectScalarFieldEnum = {
 export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
 
 
+export const ProjectSecretScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  name: 'name',
+  ciphertext: 'ciphertext',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProjectSecretScalarFieldEnum = (typeof ProjectSecretScalarFieldEnum)[keyof typeof ProjectSecretScalarFieldEnum]
+
+
 export const MessageScalarFieldEnum = {
   id: 'id',
   role: 'role',
@@ -3208,6 +3295,7 @@ export type GlobalOmitConfig = {
   oAuthAccount?: Prisma.OAuthAccountOmit
   refreshToken?: Prisma.RefreshTokenOmit
   project?: Prisma.ProjectOmit
+  projectSecret?: Prisma.ProjectSecretOmit
   message?: Prisma.MessageOmit
   attachment?: Prisma.AttachmentOmit
   feedback?: Prisma.FeedbackOmit

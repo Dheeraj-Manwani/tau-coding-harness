@@ -383,6 +383,7 @@ export type ProjectWhereInput = {
   files?: Prisma.ProjectFileListRelationFilter
   contextCheckpoints?: Prisma.ContextCheckpointListRelationFilter
   deployments?: Prisma.DeploymentListRelationFilter
+  secrets?: Prisma.ProjectSecretListRelationFilter
 }
 
 export type ProjectOrderByWithRelationInput = {
@@ -417,6 +418,7 @@ export type ProjectOrderByWithRelationInput = {
   files?: Prisma.ProjectFileOrderByRelationAggregateInput
   contextCheckpoints?: Prisma.ContextCheckpointOrderByRelationAggregateInput
   deployments?: Prisma.DeploymentOrderByRelationAggregateInput
+  secrets?: Prisma.ProjectSecretOrderByRelationAggregateInput
 }
 
 export type ProjectWhereUniqueInput = Prisma.AtLeast<{
@@ -454,6 +456,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   files?: Prisma.ProjectFileListRelationFilter
   contextCheckpoints?: Prisma.ContextCheckpointListRelationFilter
   deployments?: Prisma.DeploymentListRelationFilter
+  secrets?: Prisma.ProjectSecretListRelationFilter
 }, "id" | "slug">
 
 export type ProjectOrderByWithAggregationInput = {
@@ -549,6 +552,7 @@ export type ProjectCreateInput = {
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateInput = {
@@ -582,6 +586,7 @@ export type ProjectUncheckedCreateInput = {
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUpdateInput = {
@@ -615,6 +620,7 @@ export type ProjectUpdateInput = {
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateInput = {
@@ -648,6 +654,7 @@ export type ProjectUncheckedUpdateInput = {
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateManyInput = {
@@ -904,6 +911,20 @@ export type IntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type ProjectCreateNestedOneWithoutSecretsInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutSecretsInput, Prisma.ProjectUncheckedCreateWithoutSecretsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutSecretsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutSecretsNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutSecretsInput, Prisma.ProjectUncheckedCreateWithoutSecretsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutSecretsInput
+  upsert?: Prisma.ProjectUpsertWithoutSecretsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutSecretsInput, Prisma.ProjectUpdateWithoutSecretsInput>, Prisma.ProjectUncheckedUpdateWithoutSecretsInput>
+}
+
 export type ProjectCreateNestedOneWithoutMessagesInput = {
   create?: Prisma.XOR<Prisma.ProjectCreateWithoutMessagesInput, Prisma.ProjectUncheckedCreateWithoutMessagesInput>
   connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutMessagesInput
@@ -1018,6 +1039,7 @@ export type ProjectCreateWithoutUserInput = {
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutUserInput = {
@@ -1050,6 +1072,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutUserInput = {
@@ -1108,6 +1131,154 @@ export type ProjectScalarWhereInput = {
   headSequence?: Prisma.IntFilter<"Project"> | number
 }
 
+export type ProjectCreateWithoutSecretsInput = {
+  id?: string
+  name: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  user: Prisma.UserCreateNestedOneWithoutProjectsInput
+  messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectUncheckedCreateWithoutSecretsInput = {
+  id?: string
+  name: string
+  userId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectCreateOrConnectWithoutSecretsInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutSecretsInput, Prisma.ProjectUncheckedCreateWithoutSecretsInput>
+}
+
+export type ProjectUpsertWithoutSecretsInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutSecretsInput, Prisma.ProjectUncheckedUpdateWithoutSecretsInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutSecretsInput, Prisma.ProjectUncheckedCreateWithoutSecretsInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutSecretsInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutSecretsInput, Prisma.ProjectUncheckedUpdateWithoutSecretsInput>
+}
+
+export type ProjectUpdateWithoutSecretsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutSecretsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+}
+
 export type ProjectCreateWithoutMessagesInput = {
   id?: string
   name: string
@@ -1138,6 +1309,7 @@ export type ProjectCreateWithoutMessagesInput = {
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutMessagesInput = {
@@ -1170,6 +1342,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutMessagesInput = {
@@ -1218,6 +1391,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutMessagesInput = {
@@ -1250,6 +1424,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateWithoutJobsInput = {
@@ -1282,6 +1457,7 @@ export type ProjectCreateWithoutJobsInput = {
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutJobsInput = {
@@ -1314,6 +1490,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutJobsInput = {
@@ -1362,6 +1539,7 @@ export type ProjectUpdateWithoutJobsInput = {
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutJobsInput = {
@@ -1394,6 +1572,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateWithoutFilesInput = {
@@ -1426,6 +1605,7 @@ export type ProjectCreateWithoutFilesInput = {
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutFilesInput = {
@@ -1458,6 +1638,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutFilesInput = {
@@ -1506,6 +1687,7 @@ export type ProjectUpdateWithoutFilesInput = {
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutFilesInput = {
@@ -1538,6 +1720,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateWithoutContextCheckpointsInput = {
@@ -1570,6 +1753,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
@@ -1602,6 +1786,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutContextCheckpointsInput = {
@@ -1650,6 +1835,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
@@ -1682,6 +1868,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateWithoutTokenUsageInput = {
@@ -1714,6 +1901,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutTokenUsageInput = {
@@ -1746,6 +1934,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
   deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutTokenUsageInput = {
@@ -1794,6 +1983,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
@@ -1826,6 +2016,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateWithoutDeploymentsInput = {
@@ -1858,6 +2049,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutDeploymentsInput = {
@@ -1890,6 +2082,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutDeploymentsInput = {
@@ -1938,6 +2131,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
@@ -1970,6 +2164,7 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectCreateManyUserInput = {
@@ -2028,6 +2223,7 @@ export type ProjectUpdateWithoutUserInput = {
   files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutUserInput = {
@@ -2060,6 +2256,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
   deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateManyWithoutUserInput = {
@@ -2100,6 +2297,7 @@ export type ProjectCountOutputType = {
   files: number
   contextCheckpoints: number
   deployments: number
+  secrets: number
 }
 
 export type ProjectCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2109,6 +2307,7 @@ export type ProjectCountOutputTypeSelect<ExtArgs extends runtime.Types.Extension
   files?: boolean | ProjectCountOutputTypeCountFilesArgs
   contextCheckpoints?: boolean | ProjectCountOutputTypeCountContextCheckpointsArgs
   deployments?: boolean | ProjectCountOutputTypeCountDeploymentsArgs
+  secrets?: boolean | ProjectCountOutputTypeCountSecretsArgs
 }
 
 /**
@@ -2163,6 +2362,13 @@ export type ProjectCountOutputTypeCountDeploymentsArgs<ExtArgs extends runtime.T
   where?: Prisma.DeploymentWhereInput
 }
 
+/**
+ * ProjectCountOutputType without action
+ */
+export type ProjectCountOutputTypeCountSecretsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProjectSecretWhereInput
+}
+
 
 export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2196,6 +2402,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   files?: boolean | Prisma.Project$filesArgs<ExtArgs>
   contextCheckpoints?: boolean | Prisma.Project$contextCheckpointsArgs<ExtArgs>
   deployments?: boolean | Prisma.Project$deploymentsArgs<ExtArgs>
+  secrets?: boolean | Prisma.Project$secretsArgs<ExtArgs>
   _count?: boolean | Prisma.ProjectCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["project"]>
 
@@ -2291,6 +2498,7 @@ export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   files?: boolean | Prisma.Project$filesArgs<ExtArgs>
   contextCheckpoints?: boolean | Prisma.Project$contextCheckpointsArgs<ExtArgs>
   deployments?: boolean | Prisma.Project$deploymentsArgs<ExtArgs>
+  secrets?: boolean | Prisma.Project$secretsArgs<ExtArgs>
   _count?: boolean | Prisma.ProjectCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProjectIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2310,6 +2518,7 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     files: Prisma.$ProjectFilePayload<ExtArgs>[]
     contextCheckpoints: Prisma.$ContextCheckpointPayload<ExtArgs>[]
     deployments: Prisma.$DeploymentPayload<ExtArgs>[]
+    secrets: Prisma.$ProjectSecretPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2752,6 +2961,7 @@ export interface Prisma__ProjectClient<T, Null = never, ExtArgs extends runtime.
   files<T extends Prisma.Project$filesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$filesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProjectFilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   contextCheckpoints<T extends Prisma.Project$contextCheckpointsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$contextCheckpointsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ContextCheckpointPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   deployments<T extends Prisma.Project$deploymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$deploymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DeploymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  secrets<T extends Prisma.Project$secretsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$secretsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProjectSecretPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3347,6 +3557,30 @@ export type Project$deploymentsArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.DeploymentScalarFieldEnum | Prisma.DeploymentScalarFieldEnum[]
+}
+
+/**
+ * Project.secrets
+ */
+export type Project$secretsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProjectSecret
+   */
+  select?: Prisma.ProjectSecretSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProjectSecret
+   */
+  omit?: Prisma.ProjectSecretOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProjectSecretInclude<ExtArgs> | null
+  where?: Prisma.ProjectSecretWhereInput
+  orderBy?: Prisma.ProjectSecretOrderByWithRelationInput | Prisma.ProjectSecretOrderByWithRelationInput[]
+  cursor?: Prisma.ProjectSecretWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProjectSecretScalarFieldEnum | Prisma.ProjectSecretScalarFieldEnum[]
 }
 
 /**

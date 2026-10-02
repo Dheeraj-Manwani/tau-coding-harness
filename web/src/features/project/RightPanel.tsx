@@ -1,6 +1,8 @@
 import { Suspense, lazy, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
+import { Popover } from "radix-ui";
 import {
+  ChevronDownIcon,
   CodeIcon,
   ExternalLinkIcon,
   LoaderCircleIcon,
@@ -62,7 +64,7 @@ function TabToggle() {
   return (
     <div
       data-tour="view-tabs"
-      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)]"
     >
       {TABS.map(({ id, icon: Icon }) => (
         <button
@@ -216,7 +218,7 @@ function ThemeToggle() {
   );
 }
 
-function UrlBar() {
+function PreviewNavigation() {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
   const reloadPreview = useProjectStore((s) => s.reloadPreview);
@@ -226,6 +228,7 @@ function UrlBar() {
   // While the user is typing, the input shows their draft; the committed path
   // is only replaced on Enter. `null` means "not editing: show the real path".
   const [draft, setDraft] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const value = draft ?? previewPath;
 
   const fullUrl = previewSrc(previewUrl, previewPath);
@@ -234,17 +237,76 @@ function UrlBar() {
     if (!hasUrl) return;
     setPreviewPath(value);
     setDraft(null);
+    setOpen(false);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
-      className="flex min-w-0 flex-1 items-center gap-2"
+    <div
+      className="flex min-w-0 items-center gap-1"
       data-tour="url-bar"
     >
+      <Popover.Root
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          setDraft(null);
+        }}
+      >
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            disabled={!hasUrl}
+            aria-label={`Navigate preview: ${previewPath}`}
+            title={fullUrl ?? "No preview yet"}
+            className="flex h-8 min-w-0 max-w-32 items-center gap-1.5 rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 font-mono text-xs text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40 sm:max-w-48"
+          >
+            <span className="truncate">{previewPath}</span>
+            <ChevronDownIcon className="size-3 shrink-0 text-[var(--silver-600)]" />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            align="start"
+            sideOffset={8}
+            collisionPadding={12}
+            aria-label="Preview navigation"
+            className="z-50 w-80 max-w-[calc(100vw-24px)] rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-3 text-[var(--silver-900)] shadow-xl"
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                commit();
+              }}
+              className="flex flex-col gap-2"
+            >
+              <label htmlFor="preview-path" className="text-xs font-medium">
+                Preview path
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="preview-path"
+                  value={value}
+                  spellCheck={false}
+                  autoComplete="off"
+                  placeholder="/settings"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="h-9 min-w-0 flex-1 rounded-lg border border-[var(--silver-200)] bg-[var(--space-void)] px-3 font-mono text-xs focus:border-[var(--silver-400)] focus:outline-none focus:ring-2 focus:ring-white/5"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[var(--silver-900)] px-3 text-xs font-medium text-[var(--space-void)] focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  Go
+                </button>
+              </div>
+              <p className="text-xs text-[var(--silver-600)]">
+                Enter a path or paste a URL.
+              </p>
+            </form>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.button
@@ -262,35 +324,6 @@ function UrlBar() {
         <TooltipContent>Reload preview</TooltipContent>
       </Tooltip>
 
-      <div className="relative flex min-w-0 flex-1 items-center">
-        <input
-          value={hasUrl ? value : ""}
-          disabled={!hasUrl}
-          spellCheck={false}
-          autoComplete="off"
-          // The origin is a generated sandbox hostname: not useful in the bar,
-          // but worth having on hover and for copy/paste.
-          title={fullUrl ?? undefined}
-          placeholder={hasUrl ? "/" : "No preview yet: tau will build one"}
-          onChange={(e) => setDraft(e.target.value)}
-          onFocus={(e) => e.currentTarget.select()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            } else if (e.key === "Escape") {
-              setDraft(null);
-              e.currentTarget.blur();
-            }
-          }}
-          // Abandon an uncommitted edit rather than leave the bar showing a path
-          // the preview was never sent to.
-          onBlur={() => setDraft(null)}
-          aria-label="Preview path"
-          className="h-9 w-full rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] px-3 font-mono text-xs text-[var(--silver-900)] transition-colors placeholder:font-sans placeholder:text-[var(--silver-600)] focus:border-[var(--silver-400)] focus:outline-none focus:ring-2 focus:ring-white/5 disabled:cursor-default disabled:text-[var(--silver-600)]"
-        />
-      </div>
-
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.button
@@ -306,7 +339,7 @@ function UrlBar() {
         </TooltipTrigger>
         <TooltipContent>Open in new tab</TooltipContent>
       </Tooltip>
-    </motion.div>
+    </div>
   );
 }
 
@@ -318,7 +351,7 @@ export function RightPanel() {
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">
-      <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-3 border-b border-[var(--silver-200)] px-4 py-2.5">
+      <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-3 border-b border-[var(--silver-200)] px-4 ">
         {!isChatOpen && (
           <motion.button
             type="button"
@@ -333,6 +366,7 @@ export function RightPanel() {
         )}
 
         <TabToggle />
+        {activeTab === "preview" && <PreviewNavigation />}
 
         <div className="flex-1" />
         {activeTab === "preview" && <VisualEditToggle />}
@@ -352,29 +386,12 @@ export function RightPanel() {
         <UserMenu />
       </div>
 
-      <AnimatePresence initial={false}>
-        {activeTab === "preview" && (
-          <motion.div
-            key="preview-navigation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex shrink-0 items-center border-b border-[var(--silver-200)] px-4 py-2"
-          >
-            <UrlBar />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="min-h-0 flex-1">
         {/* Keep the iframe mounted while Code is open. Unmounting it made a
             simple tab round-trip navigate the preview again and replay the
             post-load shimmer even though the already-loaded page was usable. */}
         <div
-          className={cn(
-            "h-full bg-black",
-            activeTab !== "preview" && "hidden",
-          )}
+          className={cn("h-full bg-black", activeTab !== "preview" && "hidden")}
           aria-hidden={activeTab !== "preview"}
         >
           <PreviewPane

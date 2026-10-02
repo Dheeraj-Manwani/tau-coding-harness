@@ -522,7 +522,8 @@ function ElementChip({ element }: { element: MessageElement }) {
     >
       <SquareMousePointerIcon className="size-3 shrink-0" />
       <span className="truncate font-mono">
-        &lt;{element.tagName}&gt; · {element.path.split("/").pop()}:{element.line}
+        &lt;{element.tagName}&gt; · {element.path.split("/").pop()}:
+        {element.line}
       </span>
     </button>
   );
@@ -1114,11 +1115,7 @@ export function ChatPanel({
                 key={m.id}
                 message={m}
                 delay={
-                  prependedIds.has(m.id)
-                    ? 0
-                    : i < initialCount
-                      ? i * 0.04
-                      : 0
+                  prependedIds.has(m.id) ? 0 : i < initialCount ? i * 0.04 : 0
                 }
                 noAnimate={prependedIds.has(m.id)}
               />
@@ -1167,7 +1164,7 @@ export function ChatPanel({
         </AnimatePresence>
       </div>
 
-      <div className="shrink-0 border-t border-[var(--silver-200)] bg-[var(--space-surface)]/50 p-4" data-tour="composer">
+      <div className="shrink-0 p-4" data-tour="composer">
         {!pendingQuestion && readyNotification?.showPrompt && (
           <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
@@ -1205,7 +1202,9 @@ export function ChatPanel({
             questionId={pendingQuestion.id}
             // question={pendingQuestion.question}
             options={pendingQuestion.options}
-            onAnswered={(answer) => answerPendingQuestion(pendingQuestion.id, answer)}
+            onAnswered={(answer) =>
+              answerPendingQuestion(pendingQuestion.id, answer)
+            }
           />
         ) : (
           <PromptComposer

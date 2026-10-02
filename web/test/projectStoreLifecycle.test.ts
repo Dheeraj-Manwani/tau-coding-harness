@@ -21,6 +21,41 @@ const detail: ProjectDetail = {
 };
 
 describe("project store lifecycle reconciliation", () => {
+  test("enabling the inspector closes the theme panel", () => {
+    useProjectStore.getState().initProject("inspector-mode");
+    useProjectStore.getState().setThemePanelOpen(true);
+    useProjectStore.getState().setVisualEditEnabled(true);
+    expect(useProjectStore.getState()).toMatchObject({
+      visualEditEnabled: true,
+      themePanelOpen: false,
+    });
+  });
+
+  test("opening the theme panel disables the inspector and clears its selection", () => {
+    useProjectStore.getState().initProject("theme-mode");
+    useProjectStore.getState().setVisualEditEnabled(true);
+    useProjectStore.getState().setVisualSelection({
+      loc: "src/App.tsx:1:1", tagName: "button", className: "",
+      text: "Click me", editableText: true, siblingCount: 1,
+    });
+    useProjectStore.getState().setThemePanelOpen(true);
+    expect(useProjectStore.getState()).toMatchObject({
+      themePanelOpen: true,
+      visualEditEnabled: false,
+      visualSelection: null,
+    });
+  });
+
+  test("closing either tool does not enable the other tool", () => {
+    useProjectStore.getState().initProject("close-tools");
+    useProjectStore.getState().setThemePanelOpen(true);
+    useProjectStore.getState().setThemePanelOpen(false);
+    expect(useProjectStore.getState().visualEditEnabled).toBe(false);
+    useProjectStore.getState().setVisualEditEnabled(true);
+    useProjectStore.getState().setVisualEditEnabled(false);
+    expect(useProjectStore.getState().themePanelOpen).toBe(false);
+  });
+
   test("reload restores the answer prompt and unblocks the thinking shimmer", () => {
     useProjectStore.getState().initProject("p1");
     useProjectStore.getState().hydrate(detail);

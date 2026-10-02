@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { AlertTriangleIcon } from "lucide-react";
 
 import { useBillingStore } from "./useBillingStore";
-import { useRedeemCode } from "./api";
+import { useBalance, useRedeemCode } from "./api";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_BILLING } from "@/src/lib/routes";
+import { UpgradeProButton } from "./UpgradeProButton";
 
 export function OutOfCreditsModal() {
   const open = useBillingStore((s) => s.outOfCreditsOpen);
@@ -23,6 +24,8 @@ export function OutOfCreditsModal() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const redeemCode = useRedeemCode();
+  const { data: balance } = useBalance();
+  const isFreePlan = balance?.plan === "FREE";
 
   const handleRedeem = () => {
     const trimmed = code.trim();
@@ -38,9 +41,9 @@ export function OutOfCreditsModal() {
     });
   };
 
-  const handleUpgrade = () => {
+  const handleBilling = (section: "buy-credits" | "pro-plan") => {
     close();
-    navigate(APP_BILLING);
+    void navigate(`${APP_BILLING}#${section}`);
   };
 
   return (
@@ -52,16 +55,18 @@ export function OutOfCreditsModal() {
             Out of credits
           </DialogTitle>
           <DialogDescription>
-            You've used your credit allowance. Redeem a promo code, buy a
-            one-time credit pack, or upgrade to PRO for 5,000 credits per month.
+            You've used your credit allowance. Buy a one-time credit pack or
+            redeem a promo code to keep building.
+            {isFreePlan && " You can also upgrade to Pro for 5,000 credits per month."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
           <div className="space-y-2">
-            <p className="text-sm font-medium">Redeem a code</p>
+            <label htmlFor="out-of-credits-code" className="text-sm font-medium">Redeem a code</label>
             <div className="flex gap-2">
               <Input
+                id="out-of-credits-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="PROMO-CODE"
@@ -84,10 +89,28 @@ export function OutOfCreditsModal() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <Button className="w-full" onClick={handleUpgrade}>
-            Buy credits or upgrade
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button className="flex-1" onClick={() => handleBilling("buy-credits")}>
+              Buy credits
+            </Button>
+            {isFreePlan && (
+              <UpgradeProButton
+                wrapperClassName="flex-1"
+                onClick={() => handleBilling("pro-plan")}
+              />
+            )}
+          </div>
         </div>
+
+        <p className="border-t border-border pt-4 text-center text-xs leading-relaxed text-muted-foreground">
+          For promo codes, contact{" "}
+          <a
+            href="mailto:iammadfortech@gmail.com"
+            className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-brand"
+          >
+            iammadfortech@gmail.com
+          </a>.
+        </p>
       </DialogContent>
     </Dialog>
   );

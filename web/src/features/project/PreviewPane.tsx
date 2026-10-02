@@ -1461,7 +1461,7 @@ export function PreviewPane({
   };
 
   return (
-    <div className="flex h-full items-center justify-center overflow-auto bg-[var(--space-surface)] p-4 xl:p-6">
+    <div className="flex h-full items-center justify-center overflow-auto bg-[var(--space-surface)] p-2">
       <motion.div
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}

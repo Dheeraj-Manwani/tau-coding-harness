@@ -1437,7 +1437,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setVisualEditEnabled: (visualEditEnabled) =>
     // Leaving pick mode drops the selection: the inspector describes a live
     // highlighted element, and the highlight goes away with the mode.
-    set(visualEditEnabled ? { visualEditEnabled } : { visualEditEnabled, visualSelection: null }),
+    set(visualEditEnabled
+      ? { visualEditEnabled, themePanelOpen: false }
+      : { visualEditEnabled, visualSelection: null }),
 
   // A remount (reload, path change, rebuilt sandbox) tears the runtime down, so
   // `ready` going false must also invalidate whatever was selected.
@@ -1461,7 +1463,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   clearVisualUndo: () => set({ visualUndo: [] }),
 
-  setThemePanelOpen: (themePanelOpen) => set({ themePanelOpen }),
+  setThemePanelOpen: (themePanelOpen) =>
+    set(themePanelOpen
+      ? { themePanelOpen, visualEditEnabled: false, visualSelection: null }
+      : { themePanelOpen }),
   setManualPanelOpen: (manualPanelOpen) => set({ manualPanelOpen }),
 
   prefillVisualPrompt: (text, computed) =>

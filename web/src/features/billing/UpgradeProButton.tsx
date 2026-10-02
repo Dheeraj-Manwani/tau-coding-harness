@@ -10,9 +10,10 @@ import { cn } from "@/src/lib/utils";
  */
 export function UpgradeProButton({
   className,
+  wrapperClassName,
   children = "Upgrade to PRO",
   ...props
-}: ComponentProps<typeof Button>) {
+}: ComponentProps<typeof Button> & { wrapperClassName?: string }) {
   return (
     <BorderGlow
       autoAnimate
@@ -25,7 +26,7 @@ export function UpgradeProButton({
       glowRadius={12}
       glowIntensity={0.7}
       fillOpacity={0.25}
-      className="p-[1.5px]"
+      className={cn("p-[1.5px]", wrapperClassName)}
     >
       <Button
         className={cn(

@@ -9,7 +9,7 @@ import {
   MessageSquareIcon,
   SettingsIcon,
   ShieldCheckIcon,
-  ZapIcon,
+  CreditCard,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
@@ -20,7 +20,6 @@ import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import { openAdminConsole } from "@/src/features/admin/api";
 import { APP_BILLING } from "@/src/lib/routes";
-import { cn } from "@/src/lib/utils";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
 import { useProjectStore } from "@/src/stores/useProjectStore";
@@ -77,37 +76,30 @@ export function UserMenu() {
             const available = balance?.credits.available;
             const isLow = available !== undefined && available < LOW_CREDITS;
             return (
-              <button
-                type="button"
-                onClick={() => navigate(APP_BILLING)}
-                className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
-                  isLow
-                    ? "text-amber-400 hover:bg-amber-500/10"
-                    : "text-silver-600 hover:bg-space-overlay hover:text-silver-900",
-                )}
+              <DropdownMenu.Item
+                onSelect={() => void navigate(APP_BILLING)}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-silver-900 outline-none select-none data-[highlighted]:bg-space-overlay"
               >
-                <span className="flex items-center gap-2">
-                  {isLow ? (
-                    <AlertTriangleIcon className="size-4 shrink-0" />
-                  ) : (
-                    <ZapIcon className="size-4 shrink-0" />
-                  )}
-                  Credits
-                </span>
-                {balanceLoading ? (
-                  <DataSpinner label="Loading credits" />
-                ) : available !== undefined ? (
-                  <span className="font-medium">
-                    {available % 1 === 0
-                      ? available.toFixed(0)
-                      : available.toFixed(1)}{" "}
-                    cr
-                  </span>
+                {isLow ? (
+                  <AlertTriangleIcon className="size-4 shrink-0 text-amber-400" />
                 ) : (
-                  <span aria-label="Credits unavailable">-</span>
+                  <CreditCard className="size-4 shrink-0" />
                 )}
-              </button>
+                Credits
+                <span className="ml-auto text-xs text-silver-600 tabular-nums">
+                  {balanceLoading ? (
+                    <DataSpinner label="Loading credits" />
+                  ) : available !== undefined ? (
+                    <span>
+                      {available % 1 === 0
+                        ? available.toFixed(0)
+                        : available.toFixed(1)}{" "}
+                    </span>
+                  ) : (
+                    <span aria-label="Credits unavailable">-</span>
+                  )}
+                </span>
+              </DropdownMenu.Item>
             );
           })()}
 

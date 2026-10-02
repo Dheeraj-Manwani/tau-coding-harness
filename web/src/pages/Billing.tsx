@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { celebrateSuccess } from "@/src/lib/confetti";
 import {
@@ -574,6 +574,13 @@ function HistorySection() {
 
 export default function BillingPage() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (hash === "#buy-credits" || hash === "#pro-plan") {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
+    }
+  }, [hash]);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-8">
@@ -596,10 +603,10 @@ export default function BillingPage() {
         <BalanceCard />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+          <div id="pro-plan" className="scroll-mt-4 sm:col-span-2">
             <PlanSection />
           </div>
-          <div className="sm:col-span-2">
+          <div id="buy-credits" className="scroll-mt-4 sm:col-span-2">
             <TopUpSection />
           </div>
           <div className="sm:col-span-2">

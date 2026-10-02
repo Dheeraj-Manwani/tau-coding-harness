@@ -1,9 +1,10 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api, post } from "@/lib/api";
-import { credits, int } from "@/lib/format";
-import type { PromoCodeResult, ReapResult, ReconcileAccountResult, ReconcileJobResult } from "@/types";
-import { Badge, Button, Card, ConfirmButton, ErrorBox, JsonBlock, Section, Table, Td, inputClass } from "@/components/ui";
+import { api, patch, post } from "@/lib/api";
+import { ago, credits, dateTime, int } from "@/lib/format";
+import { useApi } from "@/lib/useApi";
+import type { PromoCodeResult, PromoCodeRow, ReapResult, ReconcileAccountResult, ReconcileJobResult } from "@/types";
+import { Badge, Button, Card, ConfirmButton, ErrorBox, JsonBlock, Loading, Section, Table, Td, inputClass, type Tone } from "@/components/ui";
 
 /** Incident and support tools. Each one is a single, explicit request. Nothing here runs on its own. */
 export default function Tools() {
@@ -67,10 +68,7 @@ export default function Tools() {
         </div>
       </Section>
 
-      <Section title="Promo codes">
-        <PromoForm />
-      </Section>
-
+      <PromoCodes />
     </>
   );
 }
@@ -184,7 +182,127 @@ function AllAccountsCheck() {
   );
 }
 
-function PromoForm() {
+const PROMO_STATUS: Record<PromoCodeRow["status"], { tone: Tone; label: string }> = {
+  active: { tone: "good", label: "Active" },
+  used_up: { tone: "warning", label: "Used up" },
+  expired: { tone: "neutral", label: "Expired" },
+  inactive: { tone: "neutral", label: "Inactive" },
+};
+
+/** Create form + the existing codes. The table reloads after each create. */
+function PromoCodes() {
+  const { data, error, loading, reload } = useApi<PromoCodeRow[]>("/promo-codes");
+  const active = data?.filter((c) => c.status === "active").length ?? 0;
+  const redemptions = data?.reduce((n, c) => n + c.redeemedCount, 0) ?? 0;
+
+  return (
+    <Section
+      title="Promo codes"
+      description={data ? `${int(active)} active of ${int(data.length)} · ${int(redemptions)} redemptions in total` : undefined}
+      action={<Button onClick={() => reload()} disabled={loading}>Refresh</Button>}
+    >
+      <PromoForm onCreated={() => reload()} />
+      <div className="mt-3">
+        {error && <ErrorBox message={error} onRetry={() => reload()} />}
+        {!data && loading && <Loading label="Loading codes…" />}
+        {data && (
+          <Table
+            head={["Code", "Status", "Credits", "Redeemed", "Per user", "Expires", "Created", "Note", ""]}
+            empty="No promo codes yet. Create one above."
+          >
+            {data.map((c) => {
+              const s = PROMO_STATUS[c.status];
+              const cap = c.maxRedemptions;
+              return (
+                <tr key={c.id}>
+                  <Td mono className="font-medium">{c.code}</Td>
+                  <Td>
+                    <Badge tone={s.tone} icon={s.tone !== "neutral"}>
+                      {s.label}
+                    </Badge>
+                  </Td>
+                  <Td num>{credits(c.credits)}</Td>
+                  <Td num>
+                    {int(c.redeemedCount)}
+                    <span className="text-fg-3"> / {cap === null ? "∞" : int(cap)}</span>
+                  </Td>
+                  <Td num>{int(c.perUserLimit)}</Td>
+                  <Td className="text-xs whitespace-nowrap text-fg-2" >
+                    <span title={c.expiresAt ? dateTime(c.expiresAt) : undefined}>{c.expiresAt ? ago(c.expiresAt) : "Never"}</span>
+                  </Td>
+                  <Td className="text-xs whitespace-nowrap text-fg-2">
+                    <span title={dateTime(c.createdAt)}>{ago(c.createdAt)}</span>
+                  </Td>
+                  <Td className="max-w-[20rem] truncate text-xs text-fg-2">
+                    <span title={c.description ?? undefined}>{c.description ?? "—"}</span>
+                  </Td>
+                  <Td className="text-right">
+                    <ActiveToggle code={c} onDone={() => reload()} />
+                  </Td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+        {data && data.length >= 200 && <p className="mt-2 text-xs text-fg-3">Showing the newest 200.</p>}
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * Deactivate an active code, or reactivate an inactive one. Never a delete:
+ * the redemption history (and with it the once-per-user guard) is kept.
+ */
+function ActiveToggle({ code: c, onDone }: { code: PromoCodeRow; onDone: () => void }) {
+  const set = (isActive: boolean) => async () => {
+    await patch<PromoCodeRow>(`/promo-codes/${c.id}`, { isActive });
+  };
+
+  if (c.isActive) {
+    return (
+      <ConfirmButton
+        label="Deactivate"
+        title={`Deactivate ${c.code}?`}
+        description={
+          <>
+            It stops working immediately: nobody can redeem it from now on. Users keep the credits they already
+            got, and its redemption history ({int(c.redeemedCount)} so far) is kept. You can reactivate it at
+            any time.
+          </>
+        }
+        confirmLabel="Deactivate code"
+        closeOnSuccess
+        onConfirm={set(false)}
+        onDone={onDone}
+      />
+    );
+  }
+
+  // Reactivating can't revive a code that something else is stopping. The
+  // server derives these with the same checks redeem() makes.
+  const { expired, usedUp } = c;
+  return (
+    <ConfirmButton
+      label="Reactivate"
+      variant="default"
+      title={`Reactivate ${c.code}?`}
+      description={
+        <>
+          Users will be able to redeem it again. Anyone who already redeemed it still can't redeem it a second time.
+          {expired && <> It has also passed its expiry date, so redemptions will still be refused.</>}
+          {usedUp && <> It has also reached its redemption cap, so redemptions will still be refused.</>}
+        </>
+      }
+      confirmLabel="Reactivate code"
+      closeOnSuccess
+      onConfirm={set(true)}
+      onDone={onDone}
+    />
+  );
+}
+
+function PromoForm({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({ code: "", credits: "", description: "", maxRedemptions: "", perUserLimit: "1", expiresAt: "" });
   const [state, setState] = useState<{ busy: boolean; result?: PromoCodeResult; error?: string }>({ busy: false });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -203,6 +321,7 @@ function PromoForm() {
         ...(form.expiresAt ? { expiresAt: new Date(`${form.expiresAt}T23:59:59`).toISOString() } : {}),
       });
       setState({ busy: false, result });
+      onCreated();
       setForm({ code: "", credits: "", description: "", maxRedemptions: "", perUserLimit: "1", expiresAt: "" });
     } catch (err) {
       setState({ busy: false, error: err instanceof Error ? err.message : String(err) });

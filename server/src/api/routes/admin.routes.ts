@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPromoCode } from "../controllers/credits.controller";
+import { createPromoCode, listPromoCodes, setPromoCodeActive } from "../controllers/credits.controller";
 import { listFeedback } from "../services/feedback.service";
 import { z } from "zod";
 import { parse } from "../lib/utils";
@@ -39,7 +39,9 @@ router.get("/feedback", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.get("/promo-codes", listPromoCodes); // newest 200, with derived status
 router.post("/promo-codes", createPromoCode);
+router.patch("/promo-codes/:id", setPromoCodeActive); // { isActive } — codes are never deleted
 
 // ── credits reconciliation ───────────────────────────────────────────────────
 router.get("/reconcile", reconcileUser); // ?userId=xxx

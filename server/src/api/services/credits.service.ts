@@ -118,6 +118,66 @@ export async function redeemCode(userId: string, rawCode: string) {
   };
 }
 
+export type PromoCodeStatus = "active" | "inactive" | "expired" | "used_up";
+
+/**
+ * Whether a code can still be redeemed, as one word. Mirrors the checks
+ * `redeem()` makes, in the same order, so the admin table never calls a code
+ * active that redemption would refuse.
+ */
+export function promoCodeStatus(
+  code: { isActive: boolean; expiresAt: Date | null; maxRedemptions: number | null; redeemedCount: number },
+  now = new Date(),
+): PromoCodeStatus {
+  if (!code.isActive) return "inactive";
+  if (code.expiresAt && code.expiresAt <= now) return "expired";
+  if (code.maxRedemptions !== null && code.redeemedCount >= code.maxRedemptions) return "used_up";
+  return "active";
+}
+
+type PromoCodeRecord = Awaited<ReturnType<typeof creditsRepo.listPromoCodes>>[number];
+
+function toPromoCodeRow(c: PromoCodeRecord, now = new Date()) {
+  return {
+    id: c.id,
+    code: c.code,
+    credits: toCredits(c.credits),
+    description: c.description,
+    redeemedCount: c.redeemedCount,
+    maxRedemptions: c.maxRedemptions,
+    perUserLimit: c.perUserLimit,
+    expiresAt: c.expiresAt,
+    isActive: c.isActive,
+    createdAt: c.createdAt,
+    status: promoCodeStatus(c, now),
+    // What else would stop redemption, independent of `isActive` — so the
+    // console can warn that reactivating alone won't revive the code.
+    expired: c.expiresAt !== null && c.expiresAt <= now,
+    usedUp: c.maxRedemptions !== null && c.redeemedCount >= c.maxRedemptions,
+  };
+}
+
+export async function listPromoCodes() {
+  const codes = await creditsRepo.listPromoCodes();
+  const now = new Date();
+  return codes.map((c) => toPromoCodeRow(c, now));
+}
+
+/**
+ * Switch a promo code off (or back on).
+ *
+ * Deliberately not a delete: deleting would cascade away its PromoRedemption
+ * rows, losing who redeemed it and with them the once-per-user guard. An
+ * inactive code is refused by `redeem()` (its first check) while its history
+ * stays intact, and credits already granted are untouched either way.
+ */
+export async function setPromoCodeActive(id: string, isActive: boolean) {
+  const promo = await creditsRepo.findPromoCodeById(id);
+  if (!promo) throw Errors.notFound("Promo code not found");
+  const updated = await creditsRepo.setPromoCodeActive(id, isActive);
+  return toPromoCodeRow(updated);
+}
+
 export async function createPromoCode(input: CreatePromoCodeInput) {
   const promo = await creditsRepo.createPromoCode(input);
   return {

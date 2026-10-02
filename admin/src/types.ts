@@ -546,6 +546,24 @@ export interface CostSeed {
   }>;
 }
 
+export interface PromoCodeRow {
+  id: string;
+  code: string;
+  credits: number;
+  description: string | null;
+  redeemedCount: number;
+  maxRedemptions: number | null;
+  perUserLimit: number;
+  expiresAt: ISODate | null;
+  isActive: boolean;
+  createdAt: ISODate;
+  status: "active" | "inactive" | "expired" | "used_up";
+  /** Past its expiry, whatever `isActive` says. */
+  expired: boolean;
+  /** At its redemption cap, whatever `isActive` says. */
+  usedUp: boolean;
+}
+
 export interface PromoCodeResult {
   id: string;
   code: string;

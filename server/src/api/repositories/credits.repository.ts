@@ -213,6 +213,22 @@ export interface CreatePromoCodeInput {
   expiresAt?: Date;
 }
 
+/** Newest first. Capped: this backs an admin table, not an export. */
+export async function listPromoCodes(limit = 200) {
+  return prisma.promoCode.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
+export function findPromoCodeById(id: string) {
+  return prisma.promoCode.findUnique({ where: { id } });
+}
+
+export function setPromoCodeActive(id: string, isActive: boolean) {
+  return prisma.promoCode.update({ where: { id }, data: { isActive } });
+}
+
 export async function createPromoCode(input: CreatePromoCodeInput) {
   const creditsMicro = BigInt(Math.round(input.credits * Number(MICRO)));
   return prisma.promoCode.create({

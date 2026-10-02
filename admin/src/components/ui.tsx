@@ -357,6 +357,8 @@ export const inputClass =
  * A destructive action behind a dialog. With `typeToConfirm`, the operator has
  * to type the value (e.g. the first 8 chars of an id) — slows the 3 a.m. click.
  * `onConfirm` returns a line to show on success; a throw is shown as the error.
+ * With `closeOnSuccess` the dialog simply closes once the action succeeds (the
+ * caller's `onDone` refreshes whatever changed); errors still show in place.
  */
 export function ConfirmButton({
   label,
@@ -366,6 +368,8 @@ export function ConfirmButton({
   variant = "danger",
   onConfirm,
   onDone,
+  closeOnSuccess = false,
+  confirmLabel,
 }: {
   label: string;
   title: string;
@@ -374,15 +378,22 @@ export function ConfirmButton({
   variant?: "danger" | "default" | "primary";
   onConfirm: () => Promise<string | void>;
   onDone?: () => void;
+  closeOnSuccess?: boolean;
+  /** The dialog's action button, when it should differ from the trigger's label. */
+  confirmLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string }>();
+  // Read by the dialog's close event, which may fire in the same tick as a
+  // success (closeOnSuccess) — before React has re-rendered with `result`.
+  const succeeded = useRef(false);
 
   const open = () => {
     setTyped("");
     setResult(undefined);
+    succeeded.current = false;
     ref.current?.showModal();
   };
   // `onDone` fires from the dialog's own close event, so Escape counts too.
@@ -391,7 +402,9 @@ export function ConfirmButton({
     setBusy(true);
     try {
       const text = await onConfirm();
+      succeeded.current = true;
       setResult({ ok: true, text: text || "Done." });
+      if (closeOnSuccess) ref.current?.close();
     } catch (err) {
       setResult({ ok: false, text: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -407,8 +420,8 @@ export function ConfirmButton({
       </Button>
       <dialog
         ref={ref}
-        onClose={() => result?.ok && onDone?.()}
-        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-fg shadow-2xl"
+        onClose={() => succeeded.current && onDone?.()}
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-left text-sm font-normal whitespace-normal text-fg shadow-2xl"
       >
         <div className="p-5">
           <h3 className="text-base font-semibold">{title}</h3>
@@ -435,7 +448,7 @@ export function ConfirmButton({
             <Button onClick={close}>{result?.ok ? "Close" : "Cancel"}</Button>
             {!result?.ok && (
               <Button variant={variant === "default" ? "primary" : variant} disabled={!armed || busy} onClick={run}>
-                {busy ? "Working…" : label}
+                {busy ? "Working…" : (confirmLabel ?? label)}
               </Button>
             )}
           </div>

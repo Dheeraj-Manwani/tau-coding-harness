@@ -15,16 +15,16 @@ export function Providers({ children }: { children: ReactNode }) {
           position="bottom-center"
           toastOptions={{
             style: {
-              background: "#0c0f14",
-              color: "#e2e8f0",
-              border: "1px solid #1e2532",
+              background: "#09090b",
+              color: "#fafafa",
+              border: "1px solid #27272a",
               borderRadius: "12px",
               fontSize: "14px",
             },
             success: {
-              iconTheme: { primary: "#60a5fa", secondary: "#0c0f14" },
+              iconTheme: { primary: "#fafafa", secondary: "#09090b" },
             },
-            error: { iconTheme: { primary: "#f87171", secondary: "#0c0f14" } },
+            error: { iconTheme: { primary: "#f87171", secondary: "#09090b" } },
           }}
         />
         {children}

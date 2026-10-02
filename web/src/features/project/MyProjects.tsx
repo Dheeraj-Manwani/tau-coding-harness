@@ -43,7 +43,7 @@ function ProjectCard({
     <div className="group relative">
       <Link
         to={projectPath(project.id)}
-        className="flex flex-col overflow-hidden rounded-lg border border-silver-400/30 bg-space-surface text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
+        className="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
       >
         <div className="aspect-video w-full overflow-hidden bg-space-overlay">
           {project.previewImageUrl ? (
@@ -57,7 +57,7 @@ function ProjectCard({
             <ThumbnailPlaceholder />
           )}
         </div>
-        <div className="flex flex-col gap-1 p-4">
+        <div className="flex flex-col gap-2 p-5">
           <span className="truncate pr-8 text-sm font-medium text-silver-900 group-hover:text-foreground">
             {project.name}
           </span>
@@ -124,7 +124,7 @@ export function MyProjects() {
     <>
       <section className="relative z-10 mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
         <h2 className="mb-4 text-sm font-medium text-silver-600">My projects</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
             <ProjectCard
               key={project.id}

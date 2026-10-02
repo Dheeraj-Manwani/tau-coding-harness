@@ -62,24 +62,25 @@ function TabToggle() {
   return (
     <div
       data-tour="view-tabs"
-      className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
     >
       {TABS.map(({ id, icon: Icon }) => (
         <button
           key={id}
           type="button"
           onClick={() => setActiveTab(id)}
+          aria-pressed={activeTab === id}
           className={cn(
-            "relative rounded-[var(--radius-md)] px-3 py-1 text-xs font-medium capitalize transition-colors",
+            "relative flex h-8 items-center rounded-lg px-3 text-xs font-medium capitalize transition-colors",
             activeTab === id
-              ? "text-[var(--silver-900)]"
+              ? "text-[var(--space-void)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
           )}
         >
           {activeTab === id && (
             <motion.span
               layoutId="tab-pill"
-              className="absolute inset-0 rounded-[var(--radius-md)] bg-[var(--space-overlay)]"
+              className="absolute inset-0 rounded-lg bg-[var(--silver-900)] shadow-sm"
               transition={{ type: "spring", stiffness: 400, damping: 32 }}
             />
           )}
@@ -104,7 +105,7 @@ function DeviceSwitcher() {
   return (
     <div
       data-tour="device-switcher"
-      className="flex gap-1 rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
     >
       {DEVICES.map(({ id, icon: Icon, label }) => (
         <motion.button
@@ -113,10 +114,11 @@ function DeviceSwitcher() {
           whileTap={{ scale: 0.92 }}
           onClick={() => setPreviewDevice(id)}
           aria-label={label}
+          aria-pressed={previewDevice === id}
           className={cn(
-            "flex size-6 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            "flex size-8 items-center justify-center rounded-lg transition-colors",
             previewDevice === id
-              ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
+              ? "bg-[var(--space-overlay)] text-[var(--silver-900)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
           )}
         >
@@ -157,7 +159,7 @@ function VisualEditToggle() {
           data-tour="select-element"
           aria-pressed={enabled}
           className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            "flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
             enabled
               ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
@@ -200,7 +202,7 @@ function ThemeToggle() {
           data-tour="theme-editor"
           aria-pressed={open}
           className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            "flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
             open
               ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
@@ -240,7 +242,7 @@ function UrlBar() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="flex flex-1 items-center gap-2"
+      className="flex min-w-0 flex-1 items-center gap-2"
       data-tour="url-bar"
     >
       <Tooltip>
@@ -252,7 +254,7 @@ function UrlBar() {
             disabled={!hasUrl}
             onClick={() => hasUrl && reloadPreview()}
             aria-label="Reload preview"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RotateCwIcon className="size-3.5" />
           </motion.button>
@@ -260,7 +262,7 @@ function UrlBar() {
         <TooltipContent>Reload preview</TooltipContent>
       </Tooltip>
 
-      <div className="relative flex flex-1 items-center">
+      <div className="relative flex min-w-0 flex-1 items-center">
         <input
           value={hasUrl ? value : ""}
           disabled={!hasUrl}
@@ -284,7 +286,8 @@ function UrlBar() {
           // Abandon an uncommitted edit rather than leave the bar showing a path
           // the preview was never sent to.
           onBlur={() => setDraft(null)}
-          className="w-full rounded-[var(--radius-md)] border border-[var(--silver-400)] bg-[var(--space-overlay)] py-1.5 pl-3 pr-3 text-xs text-[var(--silver-900)] transition-colors placeholder:text-[var(--silver-600)] focus:border-[var(--blue-500)] focus:outline-none disabled:cursor-default disabled:text-[var(--silver-600)]"
+          aria-label="Preview path"
+          className="h-9 w-full rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] px-3 font-mono text-xs text-[var(--silver-900)] transition-colors placeholder:font-sans placeholder:text-[var(--silver-600)] focus:border-[var(--silver-400)] focus:outline-none focus:ring-2 focus:ring-white/5 disabled:cursor-default disabled:text-[var(--silver-600)]"
         />
       </div>
 
@@ -296,7 +299,7 @@ function UrlBar() {
             disabled={!hasUrl}
             onClick={() => fullUrl && window.open(fullUrl, "_blank")}
             aria-label="Open in new tab"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ExternalLinkIcon className="size-4" />
           </motion.button>
@@ -314,8 +317,8 @@ export function RightPanel() {
   const toggleChat = useProjectStore((s) => s.toggleChat);
 
   return (
-    <div className="flex h-full flex-col bg-[var(--space-void)]">
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--silver-200)] bg-[var(--space-void)]/70 px-3 py-2 backdrop-blur-md">
+    <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">
+      <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-3 border-b border-[var(--silver-200)] px-4 py-2.5">
         {!isChatOpen && (
           <motion.button
             type="button"
@@ -331,11 +334,7 @@ export function RightPanel() {
 
         <TabToggle />
 
-        <AnimatePresence initial={false}>
-          {activeTab === "preview" && <UrlBar key="url-bar" />}
-        </AnimatePresence>
-
-        {activeTab !== "preview" && <div className="flex-1" />}
+        <div className="flex-1" />
         {activeTab === "preview" && <VisualEditToggle />}
         {activeTab === "preview" && <ThemeToggle />}
         {activeTab === "preview" && <DeviceSwitcher />}
@@ -352,6 +351,20 @@ export function RightPanel() {
         </div>
         <UserMenu />
       </div>
+
+      <AnimatePresence initial={false}>
+        {activeTab === "preview" && (
+          <motion.div
+            key="preview-navigation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex shrink-0 items-center border-b border-[var(--silver-200)] px-4 py-2"
+          >
+            <UrlBar />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="min-h-0 flex-1">
         {/* Keep the iframe mounted while Code is open. Unmounting it made a

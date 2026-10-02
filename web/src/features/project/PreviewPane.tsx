@@ -23,8 +23,6 @@ import {
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
-import { PreviewCoffee } from "@/src/features/project/PreviewCoffee";
-import { isCoffeePreviewReady } from "@/src/features/project/previewCoffeeReady";
 import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
 import BorderGlow from "@/src/components/ui/glow-loader";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
@@ -1380,7 +1378,6 @@ export function PreviewPane({
   const cancelStream = useProjectStore((s) => s.cancelStream);
   const currentJobId = useProjectStore((s) => s.currentJobId);
   const previewReadyJobId = useProjectStore((s) => s.previewReadyJobId);
-  const feedbackOpen = useFeedbackStore((s) => s.isOpen);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
   const { data: balance } = useBalance();
   const { send } = useSendMessage(projectId ?? undefined);
@@ -1464,22 +1461,11 @@ export function PreviewPane({
   };
 
   return (
-    <div className="flex h-full items-center justify-center overflow-auto bg-black p-6">
-      {projectId && (
-        <PreviewCoffee
-          key={projectId}
-          projectId={projectId}
-          ready={isCoffeePreviewReady({
-            active, loaded: previewLoaded, status, currentJobId, previewReadyJobId,
-            starting, down: isDown, error: Boolean(previewError), feedbackOpen,
-            stalled: isStalled, waitingForAnswer: pendingQuestion !== null,
-          })}
-        />
-      )}
+    <div className="flex h-full items-center justify-center overflow-auto bg-[var(--space-surface)] p-4 xl:p-6">
       <motion.div
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
-        className="relative h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-black"
+        className="relative h-full w-full overflow-hidden rounded-xl border border-[var(--silver-200)] bg-black shadow-xl shadow-black/20"
       >
         {starting || isDown ? (
           <PreviewStopped

@@ -565,7 +565,7 @@ function ChatBubble({
         {/* Attachment-only turns have no text of their own: render the chips
             and the timestamp, but no empty bubble. */}
         {message.content && (
-          <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--space-overlay)] px-3.5 py-2 text-sm leading-relaxed text-[var(--silver-900)]">
+          <div className="max-w-[85%] rounded-2xl rounded-br-md border border-[var(--silver-200)] bg-[var(--space-overlay)] px-4 py-3 text-sm leading-relaxed text-[var(--silver-900)]">
             <div
               ref={contentRef}
               style={
@@ -751,9 +751,10 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
               <button
                 type="button"
                 data-tour="project-switcher"
-                className="group flex items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)]"
+                className="group flex max-w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)] focus-visible:ring-2 focus-visible:ring-[var(--silver-400)]"
               >
-                <span ref={nameRef} className="max-w-[220px] truncate">
+                <FolderOpenIcon className="size-4 shrink-0 text-[var(--silver-600)]" />
+                <span ref={nameRef} className="min-w-0 max-w-[220px] truncate">
                   {name}
                 </span>
                 <ChevronDownIcon className="size-3.5 shrink-0 text-[var(--silver-600)] transition-transform group-data-[state=open]:rotate-180" />
@@ -1065,9 +1066,11 @@ export function ChatPanel({
   };
 
   return (
-    <div className="flex h-full flex-col bg-[var(--space-void)]">
-      <div className="flex items-center justify-between px-3 py-2.5">
-        {projectId && <ProjectSwitcher projectId={projectId} />}
+    <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">
+      <div className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-[var(--silver-200)] px-4 py-3">
+        <div className="min-w-0">
+          {projectId && <ProjectSwitcher projectId={projectId} />}
+        </div>
         <div className="flex items-center gap-2">
           {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
@@ -1091,7 +1094,7 @@ export function ChatPanel({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="h-full space-y-5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="h-full space-y-6 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:var(--silver-200)_transparent]"
         >
           {isLoadingOlder && (
             <div className="flex justify-center py-2">
@@ -1164,7 +1167,7 @@ export function ChatPanel({
         </AnimatePresence>
       </div>
 
-      <div className="border-[var(--silver-200)] p-3" data-tour="composer">
+      <div className="shrink-0 border-t border-[var(--silver-200)] bg-[var(--space-surface)]/50 p-4" data-tour="composer">
         {!pendingQuestion && readyNotification?.showPrompt && (
           <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">

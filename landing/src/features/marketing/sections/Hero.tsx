@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -9,7 +9,7 @@ import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import type { Effort } from "@/src/features/project/types";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
-import { TauWatermark } from "@/src/features/marketing/motion/TauWatermark";
+
 import { useCosmos } from "@/src/features/marketing/motion/cosmos";
 import { appPath } from "@/src/lib/routes";
 
@@ -81,36 +81,6 @@ export function Hero() {
       id="overview"
       className="relative mx-auto flex min-h-[88svh] w-full max-w-3xl flex-col items-center justify-center px-6 pb-20 pt-16 text-center"
     >
-      {/* MAX vignette: the frame edge breathes blue while the big model is
-          armed. Sits behind everything and never intercepts a pointer. */}
-      <AnimatePresence>
-        {maxActive && !reduceMotion && (
-          <motion.div
-            key="max-vignette"
-            aria-hidden="true"
-            className="pointer-events-none fixed inset-0 -z-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.35, 0.6, 0.35] }}
-            exit={{ opacity: 0 }}
-            transition={{
-              opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-            }}
-            style={{
-              background:
-                "radial-gradient(ellipse at center, transparent 45%, rgba(59,130,246,0.18) 100%)",
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* The τ mark ignites once on mount and then holds as a watermark. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-[18%] -translate-x-1/2"
-      >
-        <TauWatermark size={96} />
-      </div>
-
       <p className="relative text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
         Your idea → a working app
       </p>

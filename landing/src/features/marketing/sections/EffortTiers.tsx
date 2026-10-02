@@ -67,7 +67,7 @@ export function EffortTiers() {
   const spend = useCountUp(activeTier.spendCap, focused !== null);
 
   return (
-    <section id="effort" className="mx-auto w-full max-w-6xl px-6 py-24">
+    <section id="effort" className="mx-auto w-full max-w-6xl px-6 py-20 md:py-24">
       <ScrollReveal className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
           Pick the pace

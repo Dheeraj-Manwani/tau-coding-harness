@@ -3,14 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
 
-import { SparkleParticles } from "@/src/components/ui/star-particles";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
-import { MaxStarField } from "@/src/features/home/MaxStarField";
 import { AdminHomeCard } from "@/src/features/admin/AdminHomeCard";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { useInitProject, useProjects } from "@/src/features/project/api";
@@ -21,21 +19,14 @@ import { projectPath } from "@/src/lib/routes";
 import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
-import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { AmbientStars } from "@/src/components/AmbientStars";
 
 // Free plan may own at most this many concurrent projects (mirrors
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
 const FREE_PLAN_MAX_PROJECTS = 3;
 
-const STAR_COLORS = [
-  "rgba(203, 213, 225, 0.7)",
-  "rgba(203, 213, 225, 0.7)",
-  "rgba(203, 213, 225, 0.7)",
-  "rgba(226, 232, 240, 0.75)",
-  "rgba(253, 230, 138, 0.7)",
-  "rgba(186, 230, 253, 0.7)",
-];
+
 
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
@@ -63,7 +54,7 @@ function Home() {
   // Otherwise the suggestion carousel animates over the chip rail.
   const showPlaceholder =
     prompt.length === 0 && attachments.attachments.length === 0;
-  const reduceMotion = useReduceMotion();
+
 
   // Proactively surface the free-plan project cap instead of only failing on
   // submit with a 403. PRO users are unlimited, so only gate FREE.
@@ -144,24 +135,7 @@ function Home() {
 
   return (
     <div className="h-full overflow-y-auto pt-12">
-      {/* Ambient silver field: always on. In MAX, MaxStarField layers extra
-          brand-colored stars on top of this same field so the base look stays
-          consistent and MAX just adds a brand sparkle. */}
-      {!reduceMotion && (
-        <SparkleParticles
-          className="fixed inset-0 -z-10"
-          particleColor={STAR_COLORS}
-          baseDensity={70}
-          maxParticleSize={1.4}
-          maxOpacity={0.7}
-          minParticleOpacity={0.4}
-          maxSpeed={0.5}
-          enableShootingStars
-        />
-      )}
-      <AnimatePresence>
-        {maxActive && !reduceMotion && <MaxStarField key="max-stars" />}
-      </AnimatePresence>
+      <AmbientStars />
       <div className="flex min-h-[70svh] flex-col items-center justify-center">
         <div className="relative z-10 w-full max-w-2xl px-6 text-center">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import { MeteorDivider } from "@/src/features/marketing/motion/MeteorDivider";
 import { SupportTauButton } from "@/src/components/SupportTauButton";
 
 /**
@@ -112,8 +111,7 @@ export function MarketingFooter() {
   })).filter((column) => column.links.length > 0);
 
   return (
-    <footer className="horizon-glow relative isolate mt-24 overflow-hidden">
-      <MeteorDivider />
+    <footer className="relative mt-16 border-t border-border bg-background">
 
       <div className="relative mx-auto w-full max-w-6xl px-6 py-14">
         <div className="flex flex-col gap-12 md:flex-row md:justify-between">

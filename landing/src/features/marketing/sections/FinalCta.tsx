@@ -29,7 +29,7 @@ export function FinalCta() {
   };
 
   return (
-    <section className="relative mx-auto w-full max-w-3xl px-6 py-28 text-center">
+    <section className="relative mx-auto w-full max-w-3xl px-6 py-20 md:py-24 text-center">
       <ScrollReveal>
         <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
           What do you want to build?

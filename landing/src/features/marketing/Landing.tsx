@@ -3,8 +3,6 @@ import { Suspense, lazy, type ReactNode } from "react";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { hasRecording } from "@/src/features/marketing/data/replay";
 import { Hero } from "@/src/features/marketing/sections/Hero";
-import { MeteorDivider } from "@/src/features/marketing/motion/MeteorDivider";
-import { NebulaDrift } from "@/src/features/marketing/motion/NebulaDrift";
 
 /**
  * The public landing page: the fourteen bands of §4.
@@ -46,14 +44,14 @@ const FinalCta = lazy(
 /** Reserves the band's box so nothing below it moves when the chunk lands. */
 function Band({ minHeight, children }: { minHeight: number; children: ReactNode }) {
   return (
-    <Suspense fallback={<div style={{ minHeight }} aria-hidden="true" />}>
-      <div style={{ minHeight }}>{children}</div>
+    <Suspense fallback={<div style={{ minHeight: Math.min(minHeight, 480) }} aria-hidden="true" />}>
+      {children}
     </Suspense>
   );
 }
 
 function Divider() {
-  return <MeteorDivider className="mx-auto max-w-5xl" />;
+  return <div aria-hidden="true" className="mx-auto h-px max-w-6xl bg-border/60" />;
 }
 
 export function Landing() {
@@ -67,12 +65,7 @@ export function Landing() {
 
   return (
     <div className="relative">
-      {/* Anchored to the hero band rather than the whole page: three 90px-blur
-          clouds spanning a long document would be a large, permanently
-          composited layer for no visual gain below the fold. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[100svh]">
-        <NebulaDrift />
-      </div>
+
 
       <Hero />
 

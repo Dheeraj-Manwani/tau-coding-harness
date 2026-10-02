@@ -37,7 +37,7 @@ export function ShipIt() {
   const [pulses, setPulses] = useState(0);
 
   return (
-    <section id="ship" className="mx-auto w-full max-w-6xl px-6 py-24">
+    <section id="ship" className="mx-auto w-full max-w-6xl px-6 py-20 md:py-24">
       <ScrollReveal className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
           It's your code

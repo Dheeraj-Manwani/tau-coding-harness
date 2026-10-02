@@ -186,7 +186,7 @@ export function HowItWorks() {
     <section
       id="how-it-works"
       ref={sectionRef}
-      className="mx-auto w-full max-w-5xl px-6 py-24"
+      className="mx-auto w-full max-w-5xl px-6 py-20 md:py-24"
     >
       <ScrollReveal className="text-center">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">

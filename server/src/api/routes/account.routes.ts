@@ -1,17 +1,23 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import {
   createApiKey,
+  getActivity,
   getApiKey,
   reauth,
   reauthChallenge,
   reauthMethod,
+  removeAvatar,
   revealApiKey,
   revokeApiKeys,
   rotateApiKey,
   setDailyCap,
   updatePreferences,
+  updateProfile,
+  uploadAvatar,
 } from "../controllers/account.controller";
+import { AVATAR_MAX_BYTES } from "../services/profile.service";
 import {
+  avatarRateLimiter,
   reauthRateLimiter,
   revealRateLimiter,
 } from "../middleware/rateLimit.middleware";
@@ -41,5 +47,23 @@ router.put("/api-key/cap", setDailyCap);
 // Account-level UI preferences (tours, motion, last effort). Reads ride along on
 // GET /auth/me; this is the only write path.
 router.patch("/preferences", updatePreferences);
+
+// Profile: a name and a picture, nothing more. The picture is read through the
+// public `/avatars/:userId` redirect, mounted in index.ts.
+router.patch("/profile", updateProfile);
+router.put(
+  "/avatar",
+  avatarRateLimiter,
+  raw({
+    type: ["image/png", "image/jpeg", "image/webp"],
+    limit: AVATAR_MAX_BYTES,
+    inflate: false,
+  }),
+  uploadAvatar,
+);
+router.delete("/avatar", avatarRateLimiter, removeAvatar);
+
+// Private to the owner: there is no way to read anyone else's.
+router.get("/activity", getActivity);
 
 export default router;

@@ -6,6 +6,7 @@
  */
 export const APP_HOME = "/";
 export const APP_BILLING = "/billing";
+export const APP_ACCOUNT = "/account";
 
 export const LANDING_ORIGIN =
   import.meta.env.VITE_LANDING_URL?.replace(/\/+$/, "") ??

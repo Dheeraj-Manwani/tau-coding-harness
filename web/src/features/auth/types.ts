@@ -15,6 +15,13 @@ export interface AuthUser {
   createdAt: string;
   /** Account-level UI preferences. See features/settings/preferences.ts. */
   preferences: Preferences;
+  /** What tau calls you. Null falls back to the email. */
+  displayName: string | null;
+  /**
+   * Profile picture path relative to the API origin (versioned), or null for
+   * the generated avatar. Resolve with `avatarSrc()` in features/account/identity.
+   */
+  avatarPath: string | null;
 }
 
 /** Shape returned by /auth/login and /auth/register. */

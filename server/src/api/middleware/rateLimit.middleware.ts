@@ -135,3 +135,15 @@ export const reauthRateLimiter = rateLimit({
     error: "Too many confirmation attempts. Please try again in a little while.",
   },
 });
+
+// Avatar changes. Generous for a person fiddling with a crop, tight enough that
+// nobody uses the bucket as free image hosting.
+export const avatarRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: { error: "That's a lot of new looks. Try again in a bit." },
+});

@@ -37,6 +37,8 @@ if (googleConfigured) {
           const user = await authService.findOrCreateGoogleUser({
             providerAccountId: profile.id,
             email: profile.emails?.[0]?.value,
+            displayName: profile.displayName,
+            photoUrl: profile.photos?.[0]?.value,
             accessToken,
             refreshToken,
           });

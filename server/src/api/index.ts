@@ -14,6 +14,7 @@ import webhookRoutes from "./routes/webhook.routes";
 import gatewayRoutes from "./routes/gateway.routes";
 import aiRoutes from "./routes/ai.routes";
 import accountRoutes from "./routes/account.routes";
+import { getAvatar } from "./controllers/account.controller";
 import siteRoutes, { siteHostMiddleware } from "./routes/sites.routes";
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
@@ -218,6 +219,10 @@ export function buildApp(
   // job cancel) BEFORE the global requireAuth so they can do their own token
   // check (EventSource can't send an Authorization header). No-op on master.
   mountExtra?.(app);
+
+  // Profile pictures load through `<img>`, which can't send a Bearer token.
+  // See getAvatar for why this is safe to leave public.
+  app.get("/avatars/:userId", getAvatar);
 
   app.use(requireAuth);
 

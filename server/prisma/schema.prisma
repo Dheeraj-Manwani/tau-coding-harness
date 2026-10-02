@@ -31,6 +31,19 @@ model User {
   /// browser. Written only through `updatePreferences` (atomic jsonb merge).
   preferences     Json      @default("{}")
 
+  /// What tau calls you. Optional: the UI falls back to the email. Seeded once
+  /// from the Google profile, then only ever written by the user.
+  displayName     String?   @db.VarChar(40)
+  /// R2 key of the profile picture (`tau/avatars/{userId}/…`). Null means the
+  /// generated gradient avatar.
+  avatarKey       String?
+  /// Bumped on every avatar change; the avatar URL carries it as `?v=` so a
+  /// browser cache never outlives the picture.
+  avatarUpdatedAt DateTime?
+  /// When the Google name/photo import ran. Set once, success or not, so a
+  /// later sign-in never re-imports something the user deliberately removed.
+  profileSeededAt DateTime?
+
   oauthAccounts OAuthAccount[]
   refreshTokens RefreshToken[]
   projects      Project[]

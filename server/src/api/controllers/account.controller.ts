@@ -3,8 +3,11 @@ import { requireUserId } from "../middleware/auth.middleware";
 import * as accountService from "../services/account.service";
 import * as reauthService from "../services/reauth.service";
 import * as preferencesService from "../services/preferences.service";
+import * as profileService from "../services/profile.service";
 import { patchPreferencesSchema } from "../schemas/preferences.schema";
+import { patchProfileSchema } from "../schemas/profile.schema";
 import { parse } from "../lib/utils";
+import { z } from "zod";
 
 /**
  * The re-auth token travels in a header, not the body.
@@ -163,6 +166,95 @@ export async function updatePreferences(
         patch,
       ),
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** PATCH /account/profile — the display name. Null or blank clears it. */
+export async function updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { displayName } = parse(patchProfileSchema, req.body ?? {});
+    await profileService.updateDisplayName(requireUserId(req), displayName);
+    res.json({ displayName });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** PUT /account/avatar — raw image bytes, resized by the browser beforehand. */
+export async function uploadAvatar(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await profileService.uploadAvatar(requireUserId(req), req.body);
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** DELETE /account/avatar — back to the generated avatar. */
+export async function removeAvatar(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await profileService.removeAvatar(requireUserId(req));
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /account/activity?tz=Area/City — the private activity graph. */
+export async function getActivity(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    res.json(await profileService.getActivity(requireUserId(req), req.query.tz));
+  } catch (err) {
+    next(err);
+  }
+}
+
+const avatarParamSchema = z.object({ userId: z.uuid() });
+
+/**
+ * GET /avatars/:userId — public redirect to a short-lived signed URL.
+ *
+ * Public because an `<img>` can't send the Bearer token. That's acceptable: the
+ * id is an unguessable UUID that only ever appears in the owner's own session,
+ * and a picture is the one thing on the account meant to be looked at. The
+ * `?v=` the client appends makes each version its own cache entry.
+ */
+export async function getAvatar(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { userId } = parse(avatarParamSchema, req.params);
+    const url = await profileService.avatarUrlFor(userId);
+    if (!url) {
+      res.sendStatus(404);
+      return;
+    }
+    res.set(
+      "Cache-Control",
+      `private, max-age=${profileService.AVATAR_REDIRECT_MAX_AGE_SECONDS}`,
+    );
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    res.redirect(302, url);
   } catch (err) {
     next(err);
   }

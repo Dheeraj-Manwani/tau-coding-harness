@@ -12,14 +12,15 @@ import {
   CreditCard,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { UserAvatar } from "@/src/components/UserAvatar";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useMe } from "@/src/features/auth/queries";
 import { useLogout } from "@/src/features/auth/mutations";
 import { useBalance } from "@/src/features/billing/api";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import { openAdminConsole } from "@/src/features/admin/api";
-import { APP_BILLING } from "@/src/lib/routes";
+import { APP_ACCOUNT, APP_BILLING } from "@/src/lib/routes";
+import { nameOf } from "@/src/features/account/identity";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
 import { useProjectStore } from "@/src/stores/useProjectStore";
@@ -41,8 +42,6 @@ export function UserMenu() {
 
   if (!user) return null;
 
-  const initials = user.email.slice(0, 2).toUpperCase();
-
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -52,9 +51,7 @@ export function UserMenu() {
           data-tour="account-menu"
           className="cursor-pointer rounded-full outline-none transition-opacity hover:opacity-90"
         >
-          <Avatar>
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
+          <UserAvatar user={user} />
         </button>
       </DropdownMenu.Trigger>
 
@@ -64,12 +61,19 @@ export function UserMenu() {
           sideOffset={8}
           className="z-50 min-w-60 rounded-lg border border-silver-400/30 bg-space-surface p-1 text-left shadow-xl"
         >
-          <div className="px-3 py-2.5">
-            <p className="text-xs text-silver-600">Signed in as</p>
-            <p className="truncate text-sm font-medium text-silver-900">
-              {user.email}
-            </p>
-          </div>
+          <DropdownMenu.Item
+            onSelect={() => void navigate(APP_ACCOUNT)}
+            className="group flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 outline-none select-none data-[highlighted]:bg-space-overlay"
+          >
+            <UserAvatar user={user} className="size-8" fallbackClassName="text-xs" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-silver-900">
+                {nameOf(user)}
+              </p>
+              <p className="truncate text-xs text-silver-600">{user.email}</p>
+            </div>
+            <ChevronRightIcon className="size-3.5 shrink-0 text-silver-600 opacity-0 transition-opacity group-data-[highlighted]:opacity-100" />
+          </DropdownMenu.Item>
 
           <DropdownMenu.Separator className="my-1 h-px bg-silver-400/20" />
           {(() => {

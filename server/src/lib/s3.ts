@@ -54,6 +54,14 @@ export function attachmentKey(userId: string, hash: string): string {
   return `${ATTACHMENT_PREFIX}/${userId}/${hash}`;
 }
 
+export const AVATAR_PREFIX = "tau/avatars";
+
+/** Content-addressed, so a new picture is a new key and no cache can serve the
+ *  old one under it. */
+export function avatarKey(userId: string, hash: string): string {
+  return `${AVATAR_PREFIX}/${userId}/${hash}`;
+}
+
 /** Server-side fallback when the bucket's CORS policy blocks browser PUTs. */
 export async function putAttachmentBytes(key: string, body: Buffer, mimeType: string): Promise<void> {
   await r2.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: mimeType }));

@@ -30,6 +30,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { PageContainer } from "@/src/components/PageContainer";
 import { UpgradeProButton } from "@/src/features/billing/UpgradeProButton";
 import { ApiKeyCard } from "@/src/features/account/ApiKeyCard";
 import { SpendSplitCard } from "@/src/features/billing/SpendSplitCard";
@@ -583,7 +584,7 @@ export default function BillingPage() {
   }, [hash]);
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
+    <PageContainer>
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -643,6 +644,6 @@ export default function BillingPage() {
           iammadfortech@gmail.com
         </a>
       </p>
-    </div>
+    </PageContainer>
   );
 }

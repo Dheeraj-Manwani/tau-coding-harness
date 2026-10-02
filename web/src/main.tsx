@@ -46,6 +46,10 @@ const router = createBrowserRouter([
                 path: "billing",
                 lazy: lazyComponent(() => import("./pages/Billing")),
               },
+              {
+                path: "account",
+                lazy: lazyComponent(() => import("./pages/Account")),
+              },
             ],
           },
         ],

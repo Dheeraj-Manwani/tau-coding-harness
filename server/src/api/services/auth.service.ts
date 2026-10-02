@@ -7,6 +7,7 @@ import type { IssuedTokens } from "../lib/tokens";
 import { sendVerificationEmail, verifyEmailToken } from "../lib/email";
 import { AppError, Errors } from "../lib/errors";
 import { ensureBillingAccount } from "@/lib/credits";
+import { seedFromGoogle } from "./profile.service";
 import {
   readPreferences,
   type Preferences,
@@ -33,6 +34,13 @@ export interface SafeUser {
   createdAt: Date;
   /** Account-level UI preferences, sanitised on the way out. */
   preferences: Preferences;
+  /** What tau calls you, or null to fall back to the email. */
+  displayName: string | null;
+  /**
+   * Path to the profile picture, relative to the API origin, or null for the
+   * generated avatar. Versioned so a browser cache never outlives a change.
+   */
+  avatarPath: string | null;
 }
 
 export interface AuthResult {
@@ -48,6 +56,10 @@ function toSafeUser(user: User): SafeUser {
     role: user.role,
     createdAt: user.createdAt,
     preferences: readPreferences(user.preferences),
+    displayName: user.displayName,
+    avatarPath: user.avatarKey
+      ? `/avatars/${user.id}?v=${user.avatarUpdatedAt?.getTime() ?? 0}`
+      : null,
   };
 }
 
@@ -157,6 +169,25 @@ export async function logoutAll(userId: string): Promise<void> {
 }
 
 export async function findOrCreateGoogleUser(profile: {
+  providerAccountId: string;
+  email: string | undefined;
+  displayName?: string;
+  photoUrl?: string;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+}): Promise<User> {
+  const user = await resolveGoogleUser(profile);
+  // Once per account (seedFromGoogle claims it atomically), and never fails
+  // the sign-in. Awaited so the very first page already shows the name/photo.
+  if (user.profileSeededAt) return user;
+  await seedFromGoogle(user.id, {
+    displayName: profile.displayName,
+    photoUrl: profile.photoUrl,
+  });
+  return (await authRepository.findUserById(user.id)) ?? user;
+}
+
+async function resolveGoogleUser(profile: {
   providerAccountId: string;
   email: string | undefined;
   accessToken?: string | null;

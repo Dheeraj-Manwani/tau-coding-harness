@@ -26,8 +26,6 @@ import { AmbientStars } from "@/src/components/AmbientStars";
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
 const FREE_PLAN_MAX_PROJECTS = 3;
 
-
-
 const SUGGESTIONS = [
   "Build me a personal finance dashboard with charts…",
   "Create a landing page for my coffee shop…",
@@ -54,7 +52,6 @@ function Home() {
   // Otherwise the suggestion carousel animates over the chip rail.
   const showPlaceholder =
     prompt.length === 0 && attachments.attachments.length === 0;
-
 
   // Proactively surface the free-plan project cap instead of only failing on
   // submit with a 403. PRO users are unlimited, so only gate FREE.
@@ -186,20 +183,25 @@ function Home() {
             </LightningComposer>
             {limitsLoading ? (
               <div className="mt-2 flex h-5 items-center px-1">
-                <DataSpinner label="Loading account limits" className="[&_svg]:size-3" />
+                <DataSpinner
+                  label="Loading account limits"
+                  className="[&_svg]:size-3"
+                />
               </div>
-            ) : isFreePlan && (
-              <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
-                <span>
-                  {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
-                  {FREE_PLAN_MAX_PROJECTS} projects
-                </span>
-                {atProjectLimit && (
-                  <span className="text-amber-400">
-                    Free plan limit reached.
+            ) : (
+              isFreePlan && (
+                <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
+                  <span>
+                    {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
+                    {FREE_PLAN_MAX_PROJECTS} projects
                   </span>
-                )}
-              </div>
+                  {atProjectLimit && (
+                    <span className="text-amber-400">
+                      Free plan limit reached.
+                    </span>
+                  )}
+                </div>
+              )
             )}
           </div>
         </div>

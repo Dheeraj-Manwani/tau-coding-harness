@@ -85,6 +85,14 @@ function hostTagName(nameNode: unknown): string | null {
   return /^[a-z]/.test(name) ? name : null; // skips <Card>, <App>
 }
 
+function readBadge(root: string): string {
+  try {
+    return readFileSync(path.join(root, "..", ".tau-badge.js"), "utf8");
+  } catch {
+    return "";
+  }
+}
+
 export function tauTagger(options: TauTaggerOptions = {}) {
   const parentOrigin =
     options.parentOrigin ?? process.env.TAU_PARENT_ORIGIN ?? "*";
@@ -173,18 +181,33 @@ export function tauTagger(options: TauTaggerOptions = {}) {
     },
 
     transformIndexHtml() {
-      if (!runtime) return [];
+      const tags: Array<{
+        tag: string;
+        attrs?: Record<string, string>;
+        children: string;
+        injectTo: "body";
+      }> = [];
       // Injected here rather than written into the project: it never enters the
       // file manifest, never reaches GitHub, and the agent cannot see it (and
       // so cannot "tidy it up").
-      return [
-        {
+      if (runtime) {
+        tags.push({
           tag: "script",
           attrs: { type: "module" },
           children: runtime,
-          injectTo: "body" as const,
-        },
-      ];
+          injectTo: "body",
+        });
+      }
+      // The "Built with tau" badge, for free-plan projects. tau writes it beside
+      // the app, not in it (`PREVIEW_BADGE_SANDBOX_PATH` in the server's
+      // lib/badge), and deletes it for Pro. Read on every page load rather than
+      // once at boot, so a plan change shows up on the next reload without
+      // restarting Vite. Absent file = no badge.
+      const badge = readBadge(root);
+      if (badge) {
+        tags.push({ tag: "script", children: badge, injectTo: "body" });
+      }
+      return tags;
     },
   };
 }

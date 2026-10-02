@@ -166,7 +166,8 @@ ${stackLine}
 
 ## Already provided — don't reinstall or re-create
 - Routing (\`react-router-dom\`) and React Query are wired in \`src/main.tsx\`. Add pages as \`<Route>\`s in \`src/App.tsx\`; keep the catch-all \`*\` 404 route last.
-- A global \`<Toaster />\` (sonner) and \`<TooltipProvider>\` are mounted — call \`toast()\` from \`sonner\` and use \`<Tooltip>\` directly, no extra wrapping.
+- A global \`<Toaster />\` (sonner) and \`<TooltipProvider>\` are mounted — call \`toast()\` from \`sonner\` and use \`<Tooltip>\` directly, no extra wrapping. Keep toasts at \`position="bottom-center"\`.
+- On the Free plan, tau shows a small "Built with tau" badge in the bottom-right corner of the preview and the published site. tau adds it when serving pages; it is not in the project's code, so there is nothing for you to find or remove. Don't put the app's own fixed UI in that corner. If the user asks to remove the badge, don't try. Tell them it goes away on the Pro plan (Billing).
 ${aliasLine}
 - Pre-installed deps: react-router-dom, @tanstack/react-query, zustand, date-fns, react-hook-form, zod, @hookform/resolvers, lucide-react, plus tailwind/shadcn utils. Use these instead of adding alternatives.
 - Pre-installed shadcn/ui components in \`src/components/ui/\`: button input label textarea card badge separator skeleton select checkbox switch radio-group slider dialog alert-dialog sheet popover tooltip dropdown-menu alert sonner tabs accordion avatar scroll-area table. Add others with \`bunx --bun shadcn@latest add <name> -y\`.${apiLine}

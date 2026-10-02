@@ -42,6 +42,7 @@ const PRO_FEATURES = [
   `${PRO_MONTHLY_CREDITS.toLocaleString()} credits per month`,
   "Everything in Free",
   "Unlimited projects",
+  "No tau badge on your previews and published sites",
   "Credits reset monthly with your billing cycle",
   "Priority support",
 ];

@@ -15,6 +15,7 @@ import { publish } from "./publish";
 import { markProjectWorkspaceStarted } from "./projectWorkspace";
 import { log } from "./log";
 import { retrofitVisualEdit } from "./retrofitVisualEdit";
+import { syncPreviewBadge } from "./previewBadge";
 import { allocateHeadSequence } from "@/lib/headSequence";
 import { SandboxStatus } from "@/generated/prisma/enums";
 import {
@@ -314,6 +315,7 @@ export async function provisionSandbox(
           restart: true,
         });
       }
+      await syncPreviewBadge(sandbox, userId, jobId);
       return sandbox;
     } catch (err) {
       log.warn("sandbox.reconnect.failed", {
@@ -366,5 +368,12 @@ export async function provisionSandbox(
     }
   }
 
-  return createFreshSandbox(projectId, userId, jobId, templateKey);
+  const sandbox = await createFreshSandbox(
+    projectId,
+    userId,
+    jobId,
+    templateKey,
+  );
+  await syncPreviewBadge(sandbox, userId, jobId);
+  return sandbox;
 }

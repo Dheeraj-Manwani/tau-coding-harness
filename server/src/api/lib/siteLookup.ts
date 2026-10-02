@@ -11,12 +11,16 @@
  */
 import { prisma } from "@/lib/prisma";
 import { DeploymentStatus } from "@/generated/prisma/enums";
+import { showsBadge } from "@/lib/badge";
 
-/** Short enough that a publish shows up about as fast as a browser reload. */
+/** Short enough that a publish shows up about as fast as a browser reload —
+ *  and that an upgrade takes the badge off every site about as fast. */
 const LOOKUP_TTL_MS = 10_000;
 
 export interface LiveSite {
   storagePrefix: string;
+  /** The owner is on the free plan, so pages get the "Built with tau" badge. */
+  showBadge: boolean;
 }
 
 const cache = new Map<string, { value: LiveSite | null; expiresAt: number }>();
@@ -27,7 +31,10 @@ export async function resolveLiveSite(slug: string): Promise<LiveSite | null> {
 
   const project = await prisma.project.findUnique({
     where: { slug },
-    select: { liveDeploymentId: true },
+    select: {
+      liveDeploymentId: true,
+      user: { select: { billing: { select: { plan: true } } } },
+    },
   });
 
   let value: LiveSite | null = null;
@@ -37,7 +44,10 @@ export async function resolveLiveSite(slug: string): Promise<LiveSite | null> {
       select: { storagePrefix: true },
     });
     if (deployment?.storagePrefix) {
-      value = { storagePrefix: deployment.storagePrefix };
+      value = {
+        storagePrefix: deployment.storagePrefix,
+        showBadge: showsBadge(project.user.billing?.plan),
+      };
     }
   }
 

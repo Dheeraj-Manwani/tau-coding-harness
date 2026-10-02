@@ -114,6 +114,28 @@ function renderPretty(
   return `${time} ${level.padEnd(5)} ${event}${rest ? ` ${rest}` : ""}`;
 }
 
+export interface LogRecord {
+  ts: number;
+  level: LogLevel;
+  svc: string;
+  event: string;
+  /** Already scrubbed — safe to keep in memory and show to an operator. */
+  fields: Record<string, unknown>;
+}
+
+/**
+ * In-process subscribers to emitted lines. This is how the admin console's
+ * "recent errors" view sees what the drain sees without a drain: lib/telemetry
+ * listens here and keeps a bounded ring. Module scope for the same reason as the
+ * Sentry hub below — one process, one set of listeners.
+ */
+const listeners = new Set<(record: LogRecord) => void>();
+
+export function onLog(listener: (record: LogRecord) => void): () => void {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
 // Sentry state is deliberately at MODULE scope, not per-logger. `combined.ts`
 // runs both services in one process, so a per-logger hub would initialise the
 // SDK twice. Same reasoning as the single PrismaClient in `lib/prisma.ts`.
@@ -175,6 +197,17 @@ export function createLogger(svc: string): {
         });
     if (level === "error") console.error(line);
     else console.log(line);
+
+    if (listeners.size === 0) return;
+    const record: LogRecord = { ts: Date.now(), level, svc, event, fields: scrubbed };
+    for (const listener of listeners) {
+      // A broken subscriber must never take logging down with it.
+      try {
+        listener(record);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   const log: Logger = {

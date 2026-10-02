@@ -14,6 +14,8 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { useProjectStore } from "@/src/stores/useProjectStore";
+import { useBalance } from "@/src/features/billing/api";
+import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import {
   formatBytes,
   publishLabel,
@@ -147,6 +149,8 @@ function PanelBody({
         </Notice>
       )}
 
+      <BadgeRow />
+
       <button
         type="button"
         disabled={status.inProgress || publish.isPending}
@@ -169,6 +173,34 @@ function PanelBody({
       <p className="text-center text-[11px] text-silver-600">
         {publishLabel(status)}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Free plan only: says the published site carries the "Built with tau" badge
+ * and offers the way to remove it. Pro sites have no badge, so nothing to say.
+ */
+function BadgeRow() {
+  const { data: balance } = useBalance();
+  const openUpgrade = useUpgradeModalStore((s) => s.openModal);
+  if (balance?.plan !== "FREE") return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-silver-400/20 bg-space-void/40 px-3 py-2">
+      <span className="text-[11px] leading-relaxed text-silver-600">
+        Shows a “Built with tau” badge
+      </span>
+      <button
+        type="button"
+        onClick={() => openUpgrade("Upgrade to Pro to remove this badge")}
+        className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-silver-900 transition-colors hover:bg-space-overlay"
+      >
+        Remove
+        <span className="rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold text-brand">
+          PRO
+        </span>
+      </button>
     </div>
   );
 }

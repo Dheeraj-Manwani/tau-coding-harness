@@ -33,6 +33,12 @@ const envSchema = z.object({
 
   // App / client URLs
   APP_URL: z.string().url().default("http://localhost:5174"),
+  /** The public marketing site. The "Built with tau" badge links visitors here. */
+  LANDING_URL: z
+    .string()
+    .url()
+    .default("https://tauai.pro")
+    .transform((v) => v.replace(/\/+$/, "")),
   /**
    * Deep-link base for the native app. Where `GET /auth/github/callback` sends
    * the browser when the flow was started from mobile — an in-app browser tab

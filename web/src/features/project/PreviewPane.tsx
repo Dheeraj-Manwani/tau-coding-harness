@@ -52,6 +52,7 @@ import type { PreviewBuildError } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_BILLING } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
+import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import {
   CREDIT_RESUME_PROMPT,
   wasInterruptedForCredits,
@@ -513,6 +514,51 @@ function useVisualEditBridge(
   );
 
   return { reselect };
+}
+
+/**
+ * The "Built with tau" badge tau shows in free-plan previews.
+ *
+ * Clicking it inside the editor asks us to open the upgrade modal, so the path
+ * to removing it is the real checkout rather than a link out. And because the
+ * sandbox only learns about a plan change on its next provision, a Pro user can
+ * still be served a badge until then — so on every load we tell it to go away.
+ * Both directions are checked against the sandbox origin, like the visual-edit
+ * bridge.
+ */
+function usePreviewBadge(
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  previewUrl: string | null,
+  isPro: boolean,
+) {
+  const origin = previewUrl ? new URL(previewUrl).origin : null;
+
+  useEffect(() => {
+    if (!origin) return;
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== origin) return;
+      const d = e.data as { source?: string; type?: string } | null;
+      if (d?.source !== "tau-badge" || d.type !== "tau:upgrade") return;
+      useUpgradeModalStore
+        .getState()
+        .openModal("Upgrade to Pro to remove this badge");
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [origin]);
+
+  const hideIfPro = useCallback(() => {
+    if (!origin || !isPro) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      { source: "tau-parent", type: "tau:badge", show: false },
+      origin,
+    );
+  }, [origin, isPro, iframeRef]);
+
+  // An upgrade landing mid-session hides it without a reload.
+  useEffect(hideIfPro, [hideIfPro]);
+
+  return hideIfPro;
 }
 
 /**
@@ -1392,6 +1438,11 @@ export function PreviewPane({
   const previewRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loadedFrameKey, setLoadedFrameKey] = useState<string | null>(null);
   const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
+  const hideBadgeIfPro = usePreviewBadge(
+    iframeRef,
+    previewUrl,
+    balance?.plan === "PRO",
+  );
   useVisualUndo(reselect);
   useVisualEditEscape();
 
@@ -1484,6 +1535,7 @@ export function PreviewPane({
               src={src}
               title="App preview"
               onLoad={() => {
+                hideBadgeIfPro();
                 setLoadedFrameKey(null);
                 if (previewRevealTimer.current) {
                   clearTimeout(previewRevealTimer.current);

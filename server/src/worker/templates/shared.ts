@@ -366,8 +366,9 @@ createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <App />
         </BrowserRouter>
-        {/* Toaster (sonner): mounted once so toast() works app-wide */}
-        <Toaster />
+        {/* Toaster (sonner): mounted once so toast() works app-wide.
+            bottom-center keeps the bottom-right corner clear for tau's badge. */}
+        <Toaster position="bottom-center" />
       </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>,
@@ -725,7 +726,7 @@ export function buildContextMd({
   conventions.push(
     "- Routing is mounted in `src/main.tsx` (BrowserRouter); add pages as `<Route>`s in `src/App.tsx`",
     "- React Query client is provided in `src/main.tsx` — use `useQuery`/`useMutation` directly",
-    "- Toasts: `<Toaster />` (sonner) is mounted in `src/main.tsx` — call `toast()` from `sonner` anywhere",
+    "- Toasts: `<Toaster position=\"bottom-center\" />` (sonner) is mounted in `src/main.tsx` — call `toast()` from `sonner` anywhere. Keep toasts bottom-center: the bottom-right corner is reserved for tau's badge",
     "- Tooltips: `<TooltipProvider>` wraps the app in `src/main.tsx` — use `<Tooltip>` without re-wrapping",
     "- `src/App.tsx` has a catch-all `*` 404 route — keep it last when adding routes",
     '- Theme: **Spotify-inspired**, **dark by default** (`<html class="dark">`). Both themes live in `src/index.css`: `:root` = light, `.dark` = dark (Spotify green `#1DB954` primary; dark surfaces step `#121212` -> `#181818` -> `#282828`, muted text `#b3b3b3`). Style with shadcn tokens (`bg-background`, `text-foreground`, `bg-primary`, `bg-card`, `text-muted-foreground`, `border-border`, …) — never hardcode hex colors. A **theme switcher just works** by toggling the `dark` class on `<html>` (persist the choice in `localStorage`); for light-only, default to no `dark` class. Edit the palettes in `index.css` rather than introducing parallel color systems.',

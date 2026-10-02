@@ -243,6 +243,7 @@ function PlanSection() {
       <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
         {[
           "5,000 credits per month",
+          "No tau badge on your previews and sites",
           "Your builds move to the front",
           "Credits reset monthly",
         ].map((f) => (

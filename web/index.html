@@ -2,10 +2,49 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tau: describe it. build it.</title>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <title>Tau</title>
+    <meta
+      name="description"
+      content="The tau app: describe what you want and watch it get built."
+    />
+    <meta name="theme-color" content="#09090b" />
+    <!-- Authenticated product, not the public site (that's tauai.pro): keep it
+         out of search regardless of what any one route's own meta says.
+         robots.txt already disallows the whole host; this is the same
+         instruction for a crawler that reads the HTML without respecting it. -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph / Twitter: still worth a real card on the rare occasion an
+         app link (e.g. a login or project invite) gets pasted somewhere. -->
+    <meta property="og:site_name" content="Tau" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Tau" />
+    <meta
+      property="og:description"
+      content="The tau app: describe what you want and watch it get built."
+    />
+    <meta property="og:image" content="https://app.tauai.pro/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tau" />
+    <meta
+      name="twitter:description"
+      content="The tau app: describe what you want and watch it get built."
+    />
+    <meta name="twitter:image" content="https://app.tauai.pro/og-image.png" />
+
+    <!-- Loaded eagerly but non-blocking: Checkout.tsx already polls for
+         `window.Razorpay` rather than assuming it's ready at mount. -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
   </head>
   <body>
     <div id="root"></div>

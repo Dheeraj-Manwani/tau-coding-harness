@@ -15,3 +15,8 @@ The production app origin defaults to `https://app.tauai.pro`. Set
 Run `bun run scripts/prerender.ts` after a build to write static HTML for public
 routes. `SITE_ORIGIN` overrides the canonical origin used by the sitemap and
 prerenderer.
+
+Run `bun run scripts/generate-og-image.ts` to regenerate `public/og-image.png`
+(and `../web/public/og-image.png`, the same file) after the τ glyph or the
+space/silver/blue palette changes. It's the sitewide Open Graph / Twitter card
+`useDocumentMeta` falls back to for any page that doesn't set its own `image`.

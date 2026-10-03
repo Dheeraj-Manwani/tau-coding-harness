@@ -4,6 +4,7 @@ import { Loader2Icon, XCircleIcon } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { SplashScreen } from "@/src/components/SplashScreen";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME } from "@/src/lib/routes";
 import { useMe } from "@/src/features/auth/queries";
@@ -15,6 +16,8 @@ import { useVerifyEmail } from "@/src/features/auth/mutations";
  * current user is already verified (e.g. a reload), we skip straight home too.
  */
 function VerifyEmail() {
+  useDocumentMeta({ title: "Verify email", noIndex: true });
+
   const [params] = useSearchParams();
   const token = params.get("token");
   const navigate = useNavigate();

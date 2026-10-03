@@ -11,6 +11,7 @@ import {
 
 import { cn } from "@/src/lib/utils";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { api } from "@/src/lib/api-client";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
@@ -183,6 +184,11 @@ const WORKSPACE_SPRING = { type: "spring", stiffness: 320, damping: 34 } as cons
 
 export default function ProjectPage() {
   const { detail, detailPending } = useProjectBootstrap();
+
+  useDocumentMeta({
+    title: detail?.project.name ?? "Project",
+    noIndex: true,
+  });
 
   const { id: projectId } = useParams<{ id: string }>();
   const [cameFromHome] = useState(() =>

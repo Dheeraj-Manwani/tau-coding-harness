@@ -10,7 +10,8 @@
     "reset:confirm": "cd server && bun run reset:confirm",
     "check:mobile": "bun run mobile/scripts/check-parity.ts",
     "docs:index": "bun run landing/scripts/build-docs-index.ts",
-    "prerender": "bun run landing/scripts/prerender.ts"
+    "prerender": "bun run landing/scripts/prerender.ts",
+    "og-image": "bun run landing/scripts/generate-og-image.ts"
   },
   "devDependencies": {
     "e2b": "^2.36.1",

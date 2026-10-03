@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { env } from "@/src/lib/env";
 import { cn } from "@/src/lib/utils";
 import { ApiError } from "@/src/lib/api-client";
@@ -575,6 +576,8 @@ function HistorySection() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
+  useDocumentMeta({ title: "Billing", noIndex: true });
+
   const navigate = useNavigate();
   const { hash } = useLocation();
 

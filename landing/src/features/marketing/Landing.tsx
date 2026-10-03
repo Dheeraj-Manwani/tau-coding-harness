@@ -56,10 +56,12 @@ function Divider() {
 
 export function Landing() {
   useDocumentMeta({
-    title: "tau: describe it. build it.",
+    // Bare site name on the tab for the home screen; every other screen
+    // follows "<Screen> | Tau" via the hook's default suffix.
+    title: "Tau",
     exactTitle: true,
     description:
-      "Describe what you want and Tau turns it into a working app while you watch. Start free with 300 credits and no card.",
+      "Describe what you want and tau turns it into a working app while you watch. Start free with 300 credits and no card.",
     canonical: "/",
   });
 

@@ -9,7 +9,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDownIcon,
-  ArrowUpIcon,
   BellIcon,
   BookOpen,
   Box,
@@ -19,6 +18,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   CircleIcon,
+  CopyIcon,
   FileIcon,
   FilePen,
   FilePlus,
@@ -486,6 +486,39 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
   );
 }
 
+// A small icon-only "Copy" affordance that fades in on hover of the message
+// it belongs to, pinned to its bottom-right corner. Absolutely positioned
+// into a reserved right-hand gutter, not stacked below the content, so it
+// never adds height to the message - two replies back to back stay exactly
+// as close as they'd be without it.
+function CopyMessageButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          toast.error("Couldn't copy to clipboard.");
+        }
+      }}
+      aria-label="Copy message"
+      title="Copy"
+      className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-md text-[var(--silver-600)] opacity-0 pointer-events-none transition-opacity group-hover/message:pointer-events-auto group-hover/message:opacity-100 hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+    >
+      {copied ? (
+        <CheckIcon className="size-3.5" />
+      ) : (
+        <CopyIcon className="size-3.5" />
+      )}
+    </button>
+  );
+}
+
 const USER_MSG_LINE_CLAMP = 4;
 
 /**
@@ -616,8 +649,9 @@ function ChatBubble({
   const aiBody = (
     <div>
       {message.content && (
-        <div className="text-sm text-[var(--silver-900)]">
+        <div className="group/message relative pr-7 text-sm text-[var(--silver-900)]">
           <ChatMarkdown content={message.content} />
+          <CopyMessageButton text={message.content} />
         </div>
       )}
       {message.actions && message.actions.length > 0 && (
@@ -803,21 +837,68 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   );
 }
 
+// Sentinel selection for the free-form row, distinct from any option string
+// the agent could plausibly suggest.
+const ASK_USER_CUSTOM = "__custom__";
+const ASK_USER_SKIP_ANSWER = "No strong preference — use your best judgment.";
+
+function AskUserOptionRow({
+  label,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  label: string;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-50",
+        selected
+          ? "border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 text-foreground"
+          : "border-transparent bg-space-overlay text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          selected ? "border-[var(--blue-500)]" : "border-silver-400",
+        )}
+      >
+        {selected && (
+          <span className="size-1.5 rounded-full bg-[var(--blue-500)]" />
+        )}
+      </span>
+      <span className="leading-snug">{label}</span>
+    </button>
+  );
+}
+
 function AskUserPrompt({
   projectId,
   jobId,
   questionId,
+  question,
   options,
   onAnswered,
 }: {
   projectId: string;
   jobId: string;
   questionId: string;
+  question: string;
   options: string[];
   onAnswered: (answer: string) => void;
 }) {
+  const [selected, setSelected] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const customInputRef = useRef<HTMLInputElement>(null);
 
   const submit = async (answer: string) => {
     if (!answer.trim() || submitting) return;
@@ -831,60 +912,112 @@ function AskUserPrompt({
     }
   };
 
+  const canSubmit =
+    !submitting &&
+    (selected === ASK_USER_CUSTOM ? custom.trim().length > 0 : !!selected);
+
+  const handleSubmit = () => {
+    if (!canSubmit || !selected) return;
+    void submit(selected === ASK_USER_CUSTOM ? custom : selected);
+  };
+
   return (
-    <div className="rounded-xl border border-silver-400/40 bg-space-surface p-2 shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10">
-      {/* <p className="px-2 pt-1 pb-2 text-xs text-muted-foreground border-b border-white/5 mb-2">
-        {question}
-      </p> */}
-      {options.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5 px-2 pt-1">
-          {options.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              disabled={submitting}
-              onClick={() => void submit(opt)}
-              className="rounded-lg border border-silver-400/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-silver-600/60 hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <input
-        autoFocus
-        type="text"
-        value={custom}
-        onChange={(e) => setCustom(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            void submit(custom);
-          }
-        }}
-        disabled={submitting}
-        placeholder="Or type a custom answer…"
-        className="w-full bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
-      />
-
-      <div className="mt-1 flex justify-end">
+    <div className="rounded-xl border border-silver-400/40 bg-space-surface shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10">
+      <div className="flex items-start justify-between gap-3 border-b border-white/5 px-4 py-3">
+        <p className="text-sm font-semibold leading-snug text-foreground">
+          {question}
+        </p>
         <button
           type="button"
-          disabled={!custom.trim() || submitting}
-          onClick={() => void submit(custom)}
+          disabled={submitting}
+          onClick={() => void submit(ASK_USER_SKIP_ANSWER)}
+          aria-label="Skip this question"
+          title="Skip"
+          className="-mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
+        >
+          <XIcon className="size-4" />
+        </button>
+      </div>
+
+      <div className="space-y-1.5 px-3 py-3">
+        {options.map((opt) => (
+          <AskUserOptionRow
+            key={opt}
+            label={opt}
+            selected={selected === opt}
+            disabled={submitting}
+            onSelect={() => setSelected(opt)}
+          />
+        ))}
+
+        <div
+          onClick={() => {
+            setSelected(ASK_USER_CUSTOM);
+            customInputRef.current?.focus();
+          }}
           className={cn(
-            "flex size-7 items-center justify-center rounded-lg transition-[background-color,transform]",
-            custom.trim()
+            "flex cursor-text items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-colors",
+            selected === ASK_USER_CUSTOM
+              ? "border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10"
+              : "border-transparent bg-space-overlay hover:border-silver-400/40",
+          )}
+        >
+          <span
+            className={cn(
+              "flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+              selected === ASK_USER_CUSTOM
+                ? "border-[var(--blue-500)]"
+                : "border-silver-400",
+            )}
+          >
+            {selected === ASK_USER_CUSTOM && (
+              <span className="size-1.5 rounded-full bg-[var(--blue-500)]" />
+            )}
+          </span>
+          <input
+            ref={customInputRef}
+            type="text"
+            value={custom}
+            onChange={(e) => {
+              setSelected(ASK_USER_CUSTOM);
+              setCustom(e.target.value);
+            }}
+            onFocus={() => setSelected(ASK_USER_CUSTOM)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void submit(custom);
+              }
+            }}
+            disabled={submitting}
+            placeholder="Write your own…"
+            className="w-full min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 border-t border-white/5 px-3 py-2.5">
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => void submit(ASK_USER_SKIP_ANSWER)}
+          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
+        >
+          Skip
+        </button>
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-[background-color,transform]",
+            canSubmit
               ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
               : "cursor-not-allowed bg-space-overlay text-silver-600",
           )}
         >
-          {submitting ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            <ArrowUpIcon className="size-4" />
-          )}
+          {submitting && <Loader2Icon className="size-3.5 animate-spin" />}
+          Submit
         </button>
       </div>
     </div>
@@ -1212,7 +1345,7 @@ export function ChatPanel({
             projectId={projectId}
             jobId={currentJobId}
             questionId={pendingQuestion.id}
-            // question={pendingQuestion.question}
+            question={pendingQuestion.question}
             options={pendingQuestion.options}
             onAnswered={(answer) =>
               answerPendingQuestion(pendingQuestion.id, answer)

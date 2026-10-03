@@ -2,6 +2,7 @@ import { MailCheckIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/src/components/ui/button";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { ApiError } from "@/src/lib/api-client";
 import { useMe } from "@/src/features/auth/queries";
 import {
@@ -15,6 +16,8 @@ import {
  * /verify-email and redirects home). From here they can resend or log out.
  */
 function VerifyPending() {
+  useDocumentMeta({ title: "Verify email", noIndex: true });
+
   const { data: user } = useMe();
   const resend = useResendVerification();
   const logout = useLogout();

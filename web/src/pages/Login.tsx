@@ -5,6 +5,7 @@ import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { SiteFooter } from "@/src/components/SiteFooter";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
@@ -16,6 +17,8 @@ import { useLogin } from "@/src/features/auth/mutations";
 import { loginSchema, type LoginValues } from "@/src/features/auth/schemas";
 
 function Login() {
+  useDocumentMeta({ title: "Log in", noIndex: true });
+
   const navigate = useNavigate();
   const location = useLocation();
   const login = useLogin();

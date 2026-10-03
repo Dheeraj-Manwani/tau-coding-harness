@@ -5,6 +5,7 @@ import { SiteFooter } from "@/src/components/SiteFooter";
 import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
@@ -16,6 +17,8 @@ import { useRegister } from "@/src/features/auth/mutations";
 import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
 
 function SignUp() {
+  useDocumentMeta({ title: "Sign up", noIndex: true });
+
   const navigate = useNavigate();
   const registerMutation = useRegister();
   const {

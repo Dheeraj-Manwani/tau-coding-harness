@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "docs:index": "bun run scripts/build-docs-index.ts",
+    "og-image": "bun run scripts/generate-og-image.ts",
     "predev": "pnpm run docs:index",
     "dev": "vite",
     "prebuild": "pnpm run docs:index",

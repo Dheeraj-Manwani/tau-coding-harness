@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { SplashScreen } from "@/src/components/SplashScreen";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { setAccessToken } from "@/src/lib/api-client";
 import { APP_HOME } from "@/src/lib/routes";
 import { authKeys } from "@/src/features/auth/queries";
@@ -13,6 +14,8 @@ import { authKeys } from "@/src/features/auth/queries";
  * read it, store it in memory, scrub it from history, then resolve `me`.
  */
 function OAuthCallback() {
+  useDocumentMeta({ title: "Signing you in…", exactTitle: true, noIndex: true });
+
   const navigate = useNavigate();
   const qc = useQueryClient();
 

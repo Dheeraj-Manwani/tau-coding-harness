@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
@@ -35,6 +36,8 @@ const SUGGESTIONS = [
 ];
 
 function Home() {
+  useDocumentMeta({ title: "Tau", exactTitle: true, noIndex: true });
+
   const navigate = useNavigate();
   const initProject = useInitProject();
   const openOutOfCredits = useBillingStore((s) => s.open);

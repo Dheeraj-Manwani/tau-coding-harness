@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftIcon, UserRoundIcon } from "lucide-react";
 
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { useMe } from "@/src/features/auth/queries";
 import { ProfileCard } from "@/src/features/account/ProfileCard";
 import { ActivityCard } from "@/src/features/account/ActivityGraph";
@@ -9,6 +10,8 @@ import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { PageContainer } from "@/src/components/PageContainer";
 
 export default function Account() {
+  useDocumentMeta({ title: "Account", noIndex: true });
+
   const navigate = useNavigate();
   const { data: user } = useMe();
 

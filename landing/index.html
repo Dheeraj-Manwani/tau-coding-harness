@@ -2,9 +2,68 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>tau: describe it. build it.</title>
+    <title>Tau</title>
+    <meta
+      name="description"
+      content="Describe what you want and tau turns it into a working app while you watch. Start free with 300 credits and no card."
+    />
+    <meta name="theme-color" content="#09090b" />
+    <link rel="canonical" href="https://tauai.pro/" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Every CTA (Get started, Log in, Start building) jumps to the app
+         origin; warm the connection ahead of the click rather than at it. -->
+    <link rel="preconnect" href="https://app.tauai.pro" />
+
+    <!-- Open Graph / WhatsApp, iMessage, Slack, Instagram DMs, Facebook -->
+    <meta property="og:site_name" content="Tau" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Tau" />
+    <meta
+      property="og:description"
+      content="Describe what you want and tau turns it into a working app while you watch. Start free with 300 credits and no card."
+    />
+    <meta property="og:url" content="https://tauai.pro/" />
+    <meta property="og:image" content="https://tauai.pro/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tau" />
+    <meta
+      name="twitter:description"
+      content="Describe what you want and tau turns it into a working app while you watch. Start free with 300 credits and no card."
+    />
+    <meta name="twitter:image" content="https://tauai.pro/og-image.png" />
+
+    <!-- Sitewide entity, so a crawler that never runs JS still gets who "tau" is. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Tau",
+        "url": "https://tauai.pro/",
+        "description": "Describe what you want and tau turns it into a working app while you watch.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "image": "https://tauai.pro/og-image.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free plan: 300 credits, no card required."
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -4,6 +4,7 @@ import { AlertTriangleIcon, ArrowLeftIcon, Wallet } from "lucide-react";
 
 import { env } from "@/src/lib/env";
 import { Button } from "@/src/components/ui/button";
+import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { celebrateSuccess } from "@/src/lib/confetti";
 
 /**
@@ -52,6 +53,8 @@ function returnToApp(status: "success" | "cancelled" | "failed") {
 }
 
 export default function CheckoutPage() {
+  useDocumentMeta({ title: "Checkout", noIndex: true });
+
   const [params] = useSearchParams();
   const orderId = params.get("orderId") ?? "";
   const amount = Number(params.get("amount") ?? "0");

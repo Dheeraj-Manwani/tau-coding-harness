@@ -4,7 +4,8 @@ import type { ProjectDetail } from "../src/features/project/types";
 
 const base: ProjectDetail = {
   project: {
-    id: "p", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null,
+    id: "p", name: "Test", description: null, tags: [],
+    sandboxStatus: "NONE", workspaceStartedAt: null,
     previewImageUrl: null,
   },
   messages: [],

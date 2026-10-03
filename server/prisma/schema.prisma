@@ -95,6 +95,11 @@ model RefreshToken {
 model Project {
   id        String   @id @default(uuid())
   name      String
+  /// User-edited, never generated. Shown on the project card and in Edit project.
+  description String?
+  /// User-edited labels, e.g. ["side project", "client work"]. Free text, not a
+  /// taxonomy — no separate table because nothing queries or joins on a tag yet.
+  tags        String[] @default([])
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

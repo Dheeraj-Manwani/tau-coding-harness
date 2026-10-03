@@ -75,6 +75,10 @@ export interface ProjectCheckpoint {
 export interface ProjectSummary {
   id: string;
   name: string;
+  /** User-edited, never generated. Null until someone sets one. */
+  description: string | null;
+  /** User-edited labels. Empty, never null — same shape the API always sends. */
+  tags: string[];
   sandboxStatus: string;
   /** Durable one-way transition from the initial chat-only view. */
   workspaceStartedAt: string | null;
@@ -86,6 +90,8 @@ export interface ProjectSummary {
 export interface ProjectListItem {
   id: string;
   name: string;
+  description: string | null;
+  tags: string[];
   sandboxStatus: string;
   createdAt: string;
   updatedAt: string;

@@ -110,6 +110,31 @@ export function cancelAllJobs(): Promise<{ cancelled: number }> {
     .then((r) => r.data);
 }
 
+export interface UpdateProjectResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  tags: string[];
+}
+
+/** `PATCH /project/:id`: edit name, description and/or tags from the edit
+ *  dialog shared by Home and the project page. */
+export function useUpdateProject(projectId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { name?: string; description?: string; tags?: string[] }) =>
+      api
+        .patch<UpdateProjectResponse>(`/project/${projectId}`, vars)
+        .then((r) => r.data),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: projectKeys.list() });
+      qc.setQueryData<ProjectDetail>(projectKeys.detail(projectId ?? ""), (prev) =>
+        prev ? { ...prev, project: { ...prev.project, ...updated } } : prev,
+      );
+    },
+  });
+}
+
 /** `DELETE /project/:id`: permanently delete a project and all its data. */
 export function useDeleteProject() {
   const qc = useQueryClient();

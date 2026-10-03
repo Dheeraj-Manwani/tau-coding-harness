@@ -62,6 +62,13 @@ export function findProjectById(id: string): Promise<Project | null> {
   return prisma.project.findUnique({ where: { id } });
 }
 
+export function updateProject(
+  projectId: string,
+  data: { name?: string; description?: string | null; tags?: string[] },
+): Promise<Project> {
+  return prisma.project.update({ where: { id: projectId }, data });
+}
+
 export function countProjectsByUser(
   userId: string,
   client: Prisma.TransactionClient | typeof prisma = prisma,

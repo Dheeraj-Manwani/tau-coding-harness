@@ -2377,6 +2377,8 @@ export type RefreshTokenScalarFieldEnum = (typeof RefreshTokenScalarFieldEnum)[k
 export const ProjectScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  description: 'description',
+  tags: 'tags',
   userId: 'userId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',

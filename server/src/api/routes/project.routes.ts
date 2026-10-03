@@ -6,6 +6,7 @@ import {
   getProjectJobStatus,
   listMessages,
   addMessage,
+  updateProject,
   deleteProject,
   getProjectTree,
   getProjectFile,
@@ -41,6 +42,7 @@ router.get("/:projectId", getProject);
 router.get("/:projectId/job-status", getProjectJobStatus);
 router.get("/:projectId/messages", listMessages);
 router.post("/:projectId/message", addMessage);
+router.patch("/:projectId", updateProject);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);

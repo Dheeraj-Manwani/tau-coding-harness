@@ -521,6 +521,8 @@ export async function listProjects(
       projects.map(async (p) => ({
         id: p.id,
         name: p.name,
+        description: p.description,
+        tags: p.tags,
         sandboxStatus: p.sandboxStatus,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
@@ -530,6 +532,48 @@ export async function listProjects(
       })),
     ),
     nextCursor,
+  };
+}
+
+/**
+ * User-edited project metadata: name, description, tags. Distinct from
+ * {@link generateProjectName} — that's the one-time AI-generated name at
+ * creation; this is the user overriding it (or adding what the model never
+ * generates) from the edit-project dialog, in both Home and the project page.
+ */
+export async function updateProject(
+  projectId: string,
+  userId: string,
+  input: { name?: string; description?: string; tags?: string[] },
+) {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) {
+    throw Errors.forbidden("You do not have access to this project");
+  }
+
+  const data: { name?: string; description?: string | null; tags?: string[] } = {};
+  if (input.name !== undefined) data.name = input.name;
+  // An empty string is the form's "clear the description" — store it as the
+  // unset `null` rather than a lingering empty row.
+  if (input.description !== undefined) data.description = input.description || null;
+  if (input.tags !== undefined) {
+    // Case-insensitive de-dupe, keeping whichever casing the user typed first.
+    const seen = new Set<string>();
+    data.tags = input.tags.filter((tag) => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  const updated = await projectRepo.updateProject(projectId, data);
+  return {
+    id: updated.id,
+    name: updated.name,
+    description: updated.description,
+    tags: updated.tags,
   };
 }
 

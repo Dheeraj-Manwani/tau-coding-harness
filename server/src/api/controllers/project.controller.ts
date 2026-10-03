@@ -15,6 +15,7 @@ import {
   secretAnswerSchema,
   secretParamSchema,
   secretValueSchema,
+  updateProjectSchema,
 } from "../schemas/project.schema";
 import * as projectService from "../services/project.service";
 import * as secretService from "../services/projectSecret.service";
@@ -141,6 +142,22 @@ export const getProjectTree = async (
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
     const result = await projectService.getProjectTree(projectId, userId);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateProject = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const changes = parse(updateProjectSchema, req.body);
+    const result = await projectService.updateProject(projectId, userId, changes);
     res.status(200).json(result);
   } catch (err) {
     next(err);

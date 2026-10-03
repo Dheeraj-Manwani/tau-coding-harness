@@ -6,7 +6,8 @@ import type { ProjectDetail } from "../src/features/project/types";
 const question = { id: "q1", question: "Which layout?", options: ["Grid", "List"] };
 const detail: ProjectDetail = {
   project: {
-    id: "p1", name: "Test", sandboxStatus: "NONE", workspaceStartedAt: null,
+    id: "p1", name: "Test", description: null, tags: [],
+    sandboxStatus: "NONE", workspaceStartedAt: null,
     previewImageUrl: "https://images.example.test/cover.png",
   },
   messages: [],

@@ -68,6 +68,27 @@ export const listProjectsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+const MAX_DESCRIPTION = 2_000;
+const MAX_TAG_LENGTH = 32;
+const MAX_TAGS = 10;
+
+/** The edit-project form sends all three fields together; each is still
+ *  individually optional so a future caller can patch just one. */
+export const updateProjectSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name can't be empty").max(MAX_NAME).optional(),
+    // Empty string clears the description — the form's only way to remove one.
+    description: z.string().trim().max(MAX_DESCRIPTION).optional(),
+    tags: z
+      .array(z.string().trim().min(1, "Tag can't be empty").max(MAX_TAG_LENGTH))
+      .max(MAX_TAGS, `At most ${MAX_TAGS} tags`)
+      .optional(),
+  })
+  .refine(
+    (v) => v.name !== undefined || v.description !== undefined || v.tags !== undefined,
+    { message: "Nothing to update" },
+  );
+
 export const listMessagesQuerySchema = z.object({
   cursor: z.uuid().optional(),
   before: z.coerce.number().int().min(0).optional(),
@@ -218,4 +239,5 @@ export type Effort = z.infer<typeof effortSchema>;
 export type MessageInput = z.infer<typeof messageSchema>;
 export type ProjectIdParam = z.infer<typeof projectIdParamSchema>;
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type ListMessagesQuery = z.infer<typeof listMessagesQuerySchema>;

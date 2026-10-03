@@ -38,6 +38,7 @@ import {
   MessageCircleQuestionMark,
   MinusIcon,
   PanelLeftCloseIcon,
+  PencilIcon,
   PlayIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
@@ -82,6 +83,7 @@ import {
   shouldOfferCreditResume,
 } from "@/src/features/project/creditResume";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
+import { EditProjectDialog } from "@/src/features/project/EditProjectDialog";
 import {
   Tooltip,
   TooltipContent,
@@ -761,6 +763,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   const nameRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     const el = nameRef.current;
@@ -771,6 +774,8 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
     ? {
         id: projectId,
         name: detail.project.name,
+        description: detail.project.description,
+        tags: detail.project.tags,
         sandboxStatus: detail.project.sandboxStatus,
         createdAt: "",
         updatedAt: "",
@@ -817,6 +822,14 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
 
             <DropdownMenu.Item
+              onSelect={() => setEditOpen(true)}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
+            >
+              <PencilIcon className="size-3.5 shrink-0" />
+              Edit project
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Item
               onSelect={() => setDeleteOpen(true)}
               className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
             >
@@ -826,6 +839,12 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+
+      <EditProjectDialog
+        project={projectAsListItem}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
 
       <DeleteProjectDialog
         project={projectAsListItem}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
@@ -12,7 +12,8 @@ import {
 import { cn } from "@/src/lib/utils";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
-import { api } from "@/src/lib/api-client";
+import { api, ApiError, isTerminalRequestError } from "@/src/lib/api-client";
+import { APP_HOME } from "@/src/lib/routes";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { ChatPanel } from "@/src/features/project/ChatPanel";
 import { RightPanel } from "@/src/features/project/RightPanel";
@@ -59,8 +60,10 @@ function useProjectBootstrap() {
   const qc = useQueryClient();
 
   const projectQuery = useProject(projectId);
-  const { data } = projectQuery;
-  const { data: tree } = useProjectTree(projectId);
+  const { data, refetch } = projectQuery;
+  const projectError = projectQuery.isError && (!data || isTerminalRequestError(projectQuery.error))
+    ? projectQuery.error : null;
+  const { data: tree } = useProjectTree(data && !projectError ? projectId : undefined);
 
   useEffect(() => {
     if (!projectId) return;
@@ -82,7 +85,7 @@ function useProjectBootstrap() {
   }, [projectId]);
 
   useEffect(() => {
-    if (!data || !projectQuery.isFetchedAfterMount) return;
+    if (!data || projectError || !projectQuery.isFetchedAfterMount) return;
     const wasLive = useProjectStore.getState().currentJobId === data.activeJobId &&
       useProjectStore.getState().status === "streaming";
     hydrate(data);
@@ -92,14 +95,14 @@ function useProjectBootstrap() {
       // hydrate deliberately leaves a live optimistic stream alone.
       seedWatermark(data.activeJobId, data.activeJobEventIndex);
     }
-  }, [data, hydrate, projectQuery.isFetchedAfterMount]);
+  }, [data, hydrate, projectError, projectQuery.isFetchedAfterMount]);
 
   useEffect(() => {
     if (tree) hydrateTree(tree);
   }, [tree, hydrateTree]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || projectError) return;
     if (status === "done" || status === "cancelled" || status === "error") {
       // Rebuild from the final persisted transcript. A snapshot/stream handoff
       // can miss a transient frame, but it must never leave final messages or
@@ -111,7 +114,7 @@ function useProjectBootstrap() {
       }).catch(() => {});
       void qc.invalidateQueries({ queryKey: projectKeys.tree(projectId), refetchType: "active" });
     }
-  }, [status, projectId, qc, resyncFromDetail]);
+  }, [status, projectId, projectError, qc, resyncFromDetail]);
 
   // Backstop: while the store believes a job is streaming, poll only the
   // authoritative job state. A terminal SSE event (`done`/`error`) is the fast
@@ -123,7 +126,7 @@ function useProjectBootstrap() {
   // that has sent nothing for STALL_AFTER_MS is flagged as stalled so the UI can
   // say so and offer the stop button, rather than shimmering indefinitely.
   useEffect(() => {
-    if (!projectId || status !== "streaming") return;
+    if (!projectId || projectError || status !== "streaming") return;
     let cancelled = false;
     let inFlight = false;
     const timer = setInterval(() => {
@@ -159,7 +162,12 @@ function useProjectBootstrap() {
             qc.setQueryData(projectKeys.detail(projectId), detail);
             resyncFromDetail(detail);
           }
-        } catch {
+        } catch (error) {
+          if (!cancelled && isTerminalRequestError(error)) {
+            clearInterval(timer);
+            // Refresh once to put the page into its stable access/error state.
+            void refetch();
+          }
           // Transient network failure: keep the live stream and retry next tick.
         } finally {
           inFlight = false;
@@ -170,20 +178,22 @@ function useProjectBootstrap() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [status, projectId, qc, resyncFromDetail, setStalled]);
+  }, [status, projectId, projectError, qc, refetch, resyncFromDetail, setStalled]);
 
-  useJobStream();
+  useJobStream(!projectError);
 
   return {
     detail: projectQuery.isFetchedAfterMount ? data : undefined,
     detailPending: projectQuery.isPending || !projectQuery.isFetchedAfterMount,
+    detailError: projectError,
+    retryLoad: refetch,
   };
 }
 
 const WORKSPACE_SPRING = { type: "spring", stiffness: 320, damping: 34 } as const;
 
 export default function ProjectPage() {
-  const { detail, detailPending } = useProjectBootstrap();
+  const { detail, detailPending, detailError, retryLoad } = useProjectBootstrap();
 
   useDocumentMeta({
     title: detail?.project.name ?? "Project",
@@ -257,6 +267,23 @@ export default function ProjectPage() {
       if (!chatPanelRef.current?.isCollapsed()) chatPanelRef.current?.collapse();
     }
   }, [isChatOpen]);
+
+  if (detailError) {
+    const message = detailError instanceof ApiError && detailError.status === 403
+      ? "You don’t have access to this project."
+      : detailError instanceof ApiError && [404, 410].includes(detailError.status)
+        ? "This project is no longer available."
+        : "We couldn’t load this project. Please try again.";
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+        <p role="alert" className="text-sm text-[var(--silver-700)]">{message}</p>
+        <div className="flex gap-4 text-sm text-[var(--blue-500)]">
+          <Link to={APP_HOME}>Back to projects</Link>
+          <button type="button" onClick={() => void retryLoad()}>Try again</button>
+        </div>
+      </div>
+    );
+  }
 
   if (layoutMode === "loading") {
     return (

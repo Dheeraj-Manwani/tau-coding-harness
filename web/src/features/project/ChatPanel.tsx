@@ -758,7 +758,9 @@ function ContextDivider({ meta }: { meta: DividerMeta }) {
 
 function ProjectSwitcher({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
-  const { data: detail } = useProject(projectId);
+  // Bootstrap owns fetching. Mounting this header must only observe its cache;
+  // a second fetch can otherwise unmount/remount it on every failed response.
+  const { data: detail } = useProject(projectId, { enabled: false });
   const name = detail?.project.name ?? "Project";
   const nameRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);

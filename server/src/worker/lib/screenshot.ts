@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { env } from "@/lib/env";
+import { PREVIEW_CAPTURE_INIT_SCRIPT } from "@/lib/previewBanner";
 import {
   screenshotLooksUseful,
   type ScreenshotPixelStats,
@@ -305,6 +306,11 @@ export async function captureAppScreenshot(url: string): Promise<Buffer> {
     page = await CdpConnection.connect(`${wsBase}/devtools/page/${targetId}`);
     await page.send("Page.enable");
     await page.send("Runtime.enable");
+    // Prevent the development notice and its body spacing before either mounts.
+    // The script also applies after redirects/reloads within this capture target.
+    await page.send("Page.addScriptToEvaluateOnNewDocument", {
+      source: PREVIEW_CAPTURE_INIT_SCRIPT,
+    });
     await page.send("Emulation.setDeviceMetricsOverride", {
       width: VIEWPORT.width,
       height: VIEWPORT.height,

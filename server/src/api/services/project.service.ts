@@ -426,7 +426,7 @@ const PREVIEW_LIVENESS_TIMEOUT_MS = 8_000;
 export async function getPreviewStatus(
   projectId: string,
   userId: string,
-): Promise<{ alive: boolean }> {
+): Promise<{ alive: boolean; url?: string }> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
   if (project.userId !== userId) {
@@ -442,12 +442,13 @@ export async function getPreviewStatus(
     await sandbox.commands.run("true", {
       timeoutMs: PREVIEW_LIVENESS_TIMEOUT_MS,
     });
-    return { alive: true };
+    return { alive: true, url: `https://${sandbox.getHost(5173)}` };
   } catch {
     // Sandbox is gone. Clear the stale status so future reads short-circuit.
     await prisma.project
-      .update({
-        where: { id: projectId },
+      .updateMany({
+        // A probe of the old sandbox can finish after recovery replaced it.
+        where: { id: projectId, sandboxId: project.sandboxId },
         data: { sandboxStatus: SandboxStatus.DEAD },
       })
       .catch(() => {});

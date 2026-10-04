@@ -12,6 +12,7 @@ import { captureAppScreenshot } from "../lib/screenshot";
 import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
 import { putScreenshot } from "@/lib/s3";
 import type { Sandbox } from "../lib/sandbox";
+import { waitForPreviewHttp, previewSupportsHealth } from "../lib/previewReadiness";
 import { TOOL_DEFINITIONS } from "./tools/tools";
 
 export type SandboxRef = { current: Sandbox | null };
@@ -808,8 +809,9 @@ export async function runAgentLoop(
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
           previewUrl = `https://${host}`;
+          await waitForPreviewHttp(previewUrl);
           await markProjectWorkspaceStarted(projectId);
-          await publish(jobId, { type: "preview_ready", url: previewUrl });
+          await publish(jobId, { type: "preview_ready", url: previewUrl, healthCheck: await previewSupportsHealth(previewUrl), readyAt: new Date().toISOString() });
 
           await prisma.fragment.create({
             data: {

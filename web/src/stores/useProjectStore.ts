@@ -109,7 +109,7 @@ export interface MessageElement {
   tagName: string;
 }
 
-export type Tab = "preview" | "code" | "keys";
+export type Tab = "preview" | "code" | "tools";
 export type PreviewDevice = "mobile" | "tablet" | "desktop";
 
 /**
@@ -965,6 +965,11 @@ interface ProjectState {
   previewPath: string;
   /** Bumped to force the preview iframe to remount (manual reload). */
   previewNonce: number;
+  /** Server timestamp used to avoid rolling a live URL back to an old snapshot. */
+  previewUpdatedAt: number;
+  previewHealthExpected: boolean;
+  previewRestoring: boolean;
+  previewRestoreFailed: boolean;
 
   // Cancellation hook, registered by the active SSE stream.
   cancelStream: (() => void) | null;
@@ -1132,6 +1137,10 @@ const FRESH = {
   previewImageUrl: null,
   previewPath: "/",
   previewNonce: 0,
+  previewUpdatedAt: 0,
+  previewHealthExpected: false,
+  previewRestoring: false,
+  previewRestoreFailed: false,
   cancelStream: null,
   userCancelledJobId: null as string | null,
   activeTab: "preview" as Tab,
@@ -1194,6 +1203,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         hydrated: true,
         chatMessages,
         previewUrl,
+        previewUpdatedAt: Math.max(s.previewUpdatedAt, Date.parse(detail.latestFragment?.createdAt ?? "") || 0),
+        previewRestoring: Boolean(detail.activeJobId) && detail.project.sandboxStatus === "DEAD",
         previewImageUrl: detail.project.previewImageUrl,
         buildStarted,
         hasMoreMessages,
@@ -1209,8 +1220,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // source of truth; any in-flight bubble it doesn't contain was lost with the
       // buffer and will re-stream if the job is genuinely still running.
       const chatMessages = toConversation(detail.messages, detail.checkpoints);
-      const previewUrl =
-        s.previewUrl ?? detail.latestFragment?.sandboxUrl ?? null;
+      const fragmentTime = Date.parse(detail.latestFragment?.createdAt ?? "") || 0;
+      const snapshotUrl = detail.latestFragment?.sandboxUrl;
+      const adoptSnapshot = Boolean(snapshotUrl) && fragmentTime >= s.previewUpdatedAt;
+      const previewUrl = adoptSnapshot ? snapshotUrl! : s.previewUrl;
+      const previewChanged = previewUrl !== s.previewUrl;
+      if (previewChanged && s.projectId && previewUrl) {
+        queryClient.setQueryData(["project", s.projectId, "preview-status", previewUrl], { alive: true });
+      }
       // Chat history alone is not evidence that a workspace exists: a run can
       // stop for credits or fail before writing its first file. Only the
       // durable transition (or a legacy fragment) reveals the right panel.
@@ -1226,6 +1243,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         hydrated: true,
         chatMessages,
         previewUrl,
+        previewUpdatedAt: adoptSnapshot ? fragmentTime : s.previewUpdatedAt,
+        previewNonce: s.previewNonce + (previewChanged ? 1 : 0),
+        previewHealthExpected: previewChanged ? false : s.previewHealthExpected,
+        previewRestoring: !previewChanged && Boolean(detail.activeJobId) && s.previewRestoring,
+        previewRestoreFailed: previewChanged ? false : (!detail.activeJobId && s.previewRestoring) || s.previewRestoreFailed,
         previewImageUrl: detail.project.previewImageUrl,
         buildStarted,
         hasMoreMessages,
@@ -1322,6 +1344,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         terminalOutcome: null,
         isAiTyping: true,
         isPreviewJob: false,
+        previewRestoring: s.previewUrl != null && queryClient.getQueryData<{ alive: boolean }>(["project", s.projectId, "preview-status", s.previewUrl])?.alive === false,
+        previewRestoreFailed: false,
         activity: "Thinking",
         currentPlan: null,
         lastEventAt: Date.now(),
@@ -1341,6 +1365,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       terminalOutcome: null,
       isPreviewJob: true,
       previewReadyJobId: null,
+      previewRestoring: true,
+      previewRestoreFailed: false,
       lastEventAt: Date.now(),
       isStalled: false,
       // No chat turn: the preview pane shows its own "Starting…" state, so we
@@ -2025,12 +2051,23 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
     case "shell_output":
       return;
 
+    case "preview_restoring":
+      set({ previewRestoring: true, previewRestoreFailed: false });
+      if (get().projectId && get().previewUrl) {
+        queryClient.setQueryData(["project", get().projectId, "preview-status", get().previewUrl], { alive: false });
+      }
+      return;
+
     case "preview_ready":
       // Bump the nonce so the iframe remounts even if the URL string is
       // unchanged: a restarted sandbox may serve at the same host, and the old
       // (dead) frame must be torn down and reloaded.
       set((s) => ({
         previewUrl: event.url,
+        previewUpdatedAt: Date.parse(event.readyAt ?? "") || Date.now(),
+        previewHealthExpected: event.healthCheck === true,
+        previewRestoring: false,
+        previewRestoreFailed: false,
         previewNonce: s.previewNonce + 1,
         buildStarted: true,
         previewReadyJobId: s.currentJobId,
@@ -2040,7 +2077,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
       // result replace the iframe with "Preview stopped" when the job ends.
       if (get().projectId) {
         queryClient.setQueryData(
-          ["project", get().projectId, "preview-status"],
+          ["project", get().projectId, "preview-status", event.url],
           { alive: true },
         );
       }
@@ -2075,6 +2112,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           activity: null,
           writingPath: null,
           currentJobId: null,
+          previewRestoring: false,
+          previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,
           isPreviewJob: false,
           pendingActions: [],
           pendingQuestion: null,
@@ -2096,6 +2135,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           activity: null,
           writingPath: null,
           currentJobId: null,
+          previewRestoring: false,
+          previewRestoreFailed: false,
           isPreviewJob: false,
           pendingActions: [],
           pendingQuestion: null,
@@ -2121,6 +2162,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           activity: null,
           writingPath: null,
           currentJobId: null,
+          previewRestoring: false,
+          previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,
           chatMessages: [
             ...chatMessages,
             {
@@ -2149,6 +2192,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         activity: null,
         writingPath: null,
         currentJobId: null,
+        previewRestoring: false,
+        previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,
         isPreviewJob: false,
         pendingActions: [],
       }));

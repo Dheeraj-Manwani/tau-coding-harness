@@ -2,9 +2,9 @@ import { env } from "@/lib/env";
 import { bus, type DispatchPayload } from "@/lib/bus";
 import { prisma } from "@/lib/prisma";
 import { publish, publishTerminal } from "./lib/publish";
-import { markProjectWorkspaceStarted } from "./lib/projectWorkspace";
 import { captureException, log } from "./lib/log";
 import { provisionSandbox } from "./lib/sandbox";
+import { announceAvailablePreview } from "./lib/previewAvailability";
 import { previewNeedsScreenshot } from "./lib/previewScreenshot";
 import { logGatewayReachability } from "./lib/aiEnv";
 import {
@@ -14,7 +14,6 @@ import {
 } from "./agent/loop";
 import { settle } from "@/lib/credits";
 import { finalizeJobRollups } from "./lib/jobRollups";
-import { getNextSequence } from "@/lib/sequence";
 import { PREVIEW_PORT } from "./agent/config";
 import { buildAndUpload, DeployError } from "./lib/deploy";
 import { publicSiteUrl } from "@/lib/sites";
@@ -25,11 +24,8 @@ import {
   FinishReason,
   JobStatus,
   JobType,
-  MessageRole,
-  MessageType,
   type Effort,
 } from "@/generated/prisma/enums";
-import type { Prisma } from "@/generated/prisma/client";
 
 async function runPreviewJob(payload: DispatchPayload): Promise<void> {
   const { jobId, projectId, userId } = payload;
@@ -45,36 +41,7 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
   const sandbox = await provisionSandbox(projectId, userId, jobId);
   const previewUrl = `https://${sandbox.getHost(PREVIEW_PORT)}`;
 
-  await markProjectWorkspaceStarted(projectId);
-  await publish(jobId, { type: "preview_ready", url: previewUrl });
-
-  // Persist the new URL as the project's latest fragment so a page reload
-  // hydrates the live sandbox, not the stale one. Fragment requires a message,
-  // so anchor it to an empty assistant row — empty RESULT rows don't render in
-  // the transcript, keeping the chat clean.
-  const messageId = await prisma.$transaction(async (tx) => {
-    const seq = await getNextSequence(tx, projectId);
-    const message = await tx.message.create({
-      data: {
-        project: { connect: { id: projectId } },
-        job: { connect: { id: jobId } },
-        role: MessageRole.ASSISTANT,
-        type: MessageType.RESULT,
-        content: { content: null } as unknown as Prisma.InputJsonValue,
-        sequence: seq,
-      },
-    });
-    return message.id;
-  });
-
-  await prisma.fragment.create({
-    data: {
-      message: { connect: { id: messageId } },
-      job: { connect: { id: jobId } },
-      sandboxUrl: previewUrl,
-      title: "Preview",
-    },
-  });
+  await announceAvailablePreview(jobId, projectId, previewUrl);
 
   // Cover maintenance must never turn an otherwise successful preview restart
   // into a failed job, including when its freshness lookup fails.

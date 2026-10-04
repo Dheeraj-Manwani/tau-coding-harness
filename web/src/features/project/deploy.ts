@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
-import { api } from "@/src/lib/api-client";
+import { api, isTerminalRequestError } from "@/src/lib/api-client";
 
 /**
  * Publishing a project. Talks to `/project/:id/deploy`.
@@ -60,7 +60,7 @@ export function useDeployStatus(projectId: string | null) {
     enabled: !!projectId,
     staleTime: 15_000,
     refetchInterval: (query) =>
-      query.state.data?.inProgress ? 5_000 : false,
+      query.state.data?.inProgress && !isTerminalRequestError(query.state.error) ? 5_000 : false,
   });
 }
 

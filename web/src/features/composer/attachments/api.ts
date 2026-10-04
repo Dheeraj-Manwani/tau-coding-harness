@@ -1,4 +1,4 @@
-import { api } from "@/src/lib/api-client";
+import { api, notifyApiRequest } from "@/src/lib/api-client";
 import type { AttachmentSummary } from "./types";
 
 interface SignResponse {
@@ -28,6 +28,7 @@ export async function uploadToR2(
 ): Promise<void> {
   let res: Response;
   try {
+    notifyApiRequest(uploadUrl);
     res = await fetch(uploadUrl, {
       method: "PUT",
       body: file,

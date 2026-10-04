@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/src/lib/api-client";
+import { api, isTerminalRequestError } from "@/src/lib/api-client";
 import { projectGithubKeys } from "@/src/features/project/github";
 import {
   locToPath,
@@ -43,18 +43,18 @@ export function useProjects() {
 }
 
 /** Load a project's persisted state (messages + latest fragment) on entry. */
-export function useProject(projectId: string | undefined) {
+export function useProject(projectId: string | undefined, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: projectKeys.detail(projectId ?? ""),
     queryFn: () =>
       api.get<ProjectDetail>(`/project/${projectId}`).then((r) => r.data),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && options.enabled !== false,
     retry: false,
     staleTime: 30_000,
     // Job phase is live state. Never restore a cached "working" snapshot on
     // re-entry and wait 30 seconds to discover that it is now waiting/finished.
     refetchOnMount: "always",
-    refetchOnWindowFocus: "always",
+    refetchOnWindowFocus: (query) => isTerminalRequestError(query.state.error) ? false : "always",
   });
 }
 
@@ -173,17 +173,18 @@ export function useProjectTree(projectId: string | undefined) {
 
 export function usePreviewStatus(
   projectId: string | undefined,
-  options: { enabled: boolean },
+  options: { enabled: boolean; previewUrl: string | null },
 ) {
   return useQuery({
-    queryKey: projectKeys.previewStatus(projectId ?? ""),
+    queryKey: [...projectKeys.previewStatus(projectId ?? ""), options.previewUrl],
     queryFn: () =>
       api
         .get<PreviewStatusResponse>(`/project/${projectId}/preview/status`)
-        .then((r) => r.data),
+          .then((r) => r.data.url && r.data.url !== options.previewUrl ? { alive: false } : r.data),
     enabled: Boolean(projectId) && options.enabled,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.alive === false || isTerminalRequestError(query.state.error) ? false : 30_000,
+    refetchOnWindowFocus: (query) => !isTerminalRequestError(query.state.error),
     staleTime: 15_000,
     retry: false,
   });

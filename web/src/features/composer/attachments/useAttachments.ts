@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { isTerminalRequestError } from "@/src/lib/api-client";
 
 import {
   completeUpload,
@@ -260,18 +261,26 @@ export function useAttachments(): UseAttachments {
     if (!pendingKey) return;
     const ids = pendingKey.split(",");
     let cancelled = false;
+    let inFlight = false;
 
     const tick = async () => {
+      if (inFlight) return;
+      inFlight = true;
       const results = await Promise.allSettled(
         ids.map((id) => getAttachment(id)),
       );
+      inFlight = false;
       if (cancelled) return;
       setAttachments((prev) =>
         prev.map((a) => {
           if (a.id === null) return a;
           const idx = ids.indexOf(a.id);
           const r = idx === -1 ? undefined : results[idx];
-          return r?.status === "fulfilled" ? { ...a, ...r.value } : a;
+          if (r?.status === "fulfilled") return { ...a, ...r.value };
+          if (r?.status === "rejected" && isTerminalRequestError(r.reason)) {
+            return { ...a, status: "FAILED", extractionError: "This attachment is no longer available. Please attach it again." };
+          }
+          return a;
         }),
       );
     };

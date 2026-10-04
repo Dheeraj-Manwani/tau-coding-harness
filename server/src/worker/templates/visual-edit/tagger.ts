@@ -85,9 +85,9 @@ function hostTagName(nameNode: unknown): string | null {
   return /^[a-z]/.test(name) ? name : null; // skips <Card>, <App>
 }
 
-function readBadge(root: string): string {
+function readPreviewScript(root: string, name: string): string {
   try {
-    return readFileSync(path.join(root, "..", ".tau-badge.js"), "utf8");
+    return readFileSync(path.join(root, "..", name), "utf8");
   } catch {
     return "";
   }
@@ -185,8 +185,12 @@ export function tauTagger(options: TauTaggerOptions = {}) {
         tag: string;
         attrs?: Record<string, string>;
         children: string;
-        injectTo: "body";
+        injectTo: "body" | "head-prepend";
       }> = [];
+      const health = readPreviewScript(root, ".tau-preview-health.js");
+      if (health) {
+        tags.push({ tag: "script", children: health, injectTo: "head-prepend" });
+      }
       // Injected here rather than written into the project: it never enters the
       // file manifest, never reaches GitHub, and the agent cannot see it (and
       // so cannot "tidy it up").
@@ -203,9 +207,14 @@ export function tauTagger(options: TauTaggerOptions = {}) {
       // lib/badge), and deletes it for Pro. Read on every page load rather than
       // once at boot, so a plan change shows up on the next reload without
       // restarting Vite. Absent file = no badge.
-      const badge = readBadge(root);
+      const badge = readPreviewScript(root, ".tau-badge.js");
       if (badge) {
         tags.push({ tag: "script", children: badge, injectTo: "body" });
+      }
+      // Independent of plan: the script itself skips embedded previews.
+      const banner = readPreviewScript(root, ".tau-preview-banner.js");
+      if (banner) {
+        tags.push({ tag: "script", children: banner, injectTo: "body" });
       }
       return tags;
     },

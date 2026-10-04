@@ -22,6 +22,55 @@ const detail: ProjectDetail = {
 };
 
 describe("project store lifecycle reconciliation", () => {
+  test("chat on a known-dead sandbox stays restoring until an early preview_ready", () => {
+    useProjectStore.getState().initProject("dead-chat-preview");
+    useProjectStore.getState().applyEvent({ type: "preview_ready", url: "https://dead.example.test" });
+    queryClient.setQueryData(["project", "dead-chat-preview", "preview-status", "https://dead.example.test"], { alive: false });
+    useProjectStore.getState().startJob("recovery-chat");
+    expect(useProjectStore.getState().previewRestoring).toBe(true);
+    useProjectStore.getState().applyEvent({ type: "preview_restoring" });
+    useProjectStore.getState().applyEvent({ type: "preview_ready", url: "https://replacement.example.test", healthCheck: true, restored: true });
+    expect(useProjectStore.getState()).toMatchObject({ status: "streaming", currentJobId: "recovery-chat", previewRestoring: false, previewRestoreFailed: false, previewUrl: "https://replacement.example.test" });
+  });
+  test("an unsuccessful restore finishes in a retry state", () => {
+    useProjectStore.getState().initProject("restore-failure");
+    useProjectStore.getState().startJob("recovery-job");
+    useProjectStore.getState().applyEvent({ type: "preview_restoring" });
+    useProjectStore.getState().applyEvent({ type: "error", message: "Could not start workspace" });
+    expect(useProjectStore.getState()).toMatchObject({ previewRestoring: false, previewRestoreFailed: true, status: "error" });
+  });
+  test("cancelling recovery never leaves a permanent restoring spinner", () => {
+    useProjectStore.getState().initProject("restore-cancel");
+    useProjectStore.getState().startJob("recovery-job");
+    useProjectStore.getState().applyEvent({ type: "preview_restoring" });
+    useProjectStore.getState().applyEvent({ type: "cancelled" });
+    expect(useProjectStore.getState()).toMatchObject({ previewRestoring: false, previewRestoreFailed: false, status: "cancelled" });
+  });
+  const snapshot = (url: string, createdAt: string): ProjectDetail => ({
+    ...detail,
+    activeJobId: null,
+    jobState: null,
+    latestFragment: { id: "fragment", sandboxUrl: url, title: "Preview", createdAt },
+  });
+  test("resync replaces a dead preview when its stream event was missed", () => {
+    useProjectStore.getState().initProject("missed-preview");
+    useProjectStore.getState().hydrate(snapshot("https://old.example.test", "2026-10-04T00:00:00Z"));
+    const nonce = useProjectStore.getState().previewNonce;
+    useProjectStore.getState().resyncFromDetail(snapshot("https://new.example.test", "2026-10-04T00:01:00Z"));
+    expect(useProjectStore.getState().previewUrl).toBe("https://new.example.test");
+    expect(useProjectStore.getState().previewNonce).toBe(nonce + 1);
+    useProjectStore.getState().resyncFromDetail(snapshot("https://new.example.test", "2026-10-04T00:01:00Z"));
+    expect(useProjectStore.getState().previewNonce).toBe(nonce + 1);
+  });
+  test("an old snapshot cannot roll back a newer stream URL", () => {
+    useProjectStore.getState().initProject("stale-preview-snapshot");
+    useProjectStore.getState().applyEvent({ type: "preview_ready", url: "https://new.example.test", readyAt: "2026-10-04T00:02:00Z", healthCheck: true });
+    const nonce = useProjectStore.getState().previewNonce;
+    useProjectStore.getState().resyncFromDetail(snapshot("https://old.example.test", "2026-10-04T00:01:00Z"));
+    expect(useProjectStore.getState().previewUrl).toBe("https://new.example.test");
+    expect(useProjectStore.getState().previewNonce).toBe(nonce);
+    expect(useProjectStore.getState().previewHealthExpected).toBe(true);
+  });
   test("enabling the inspector closes the theme panel", () => {
     useProjectStore.getState().initProject("inspector-mode");
     useProjectStore.getState().setThemePanelOpen(true);
@@ -112,7 +161,7 @@ describe("project store lifecycle reconciliation", () => {
   test("preview_ready makes the new iframe usable before the restart job ends", () => {
     useProjectStore.getState().initProject("preview-project");
     queryClient.setQueryData(
-      ["project", "preview-project", "preview-status"],
+      ["project", "preview-project", "preview-status", "https://old.example.test"],
       { alive: false },
     );
     useProjectStore.getState().startPreviewJob("preview-job");
@@ -129,6 +178,7 @@ describe("project store lifecycle reconciliation", () => {
       previewReadyJobId: "preview-job",
       previewUrl: "https://preview.example.test",
     });
-    expect(queryClient.getQueryData(["project", "preview-project", "preview-status"])).toEqual({ alive: true });
+    expect(queryClient.getQueryData(["project", "preview-project", "preview-status", "https://preview.example.test"])).toEqual({ alive: true });
+    expect(queryClient.getQueryData(["project", "preview-project", "preview-status", "https://old.example.test"])).toEqual({ alive: false });
   });
 });

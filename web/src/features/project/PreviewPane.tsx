@@ -48,6 +48,8 @@ import {
   type VisualEditRefusal,
 } from "@/src/features/project/api";
 import { previewSrc } from "@/src/features/project/previewUrl";
+import { usePreviewRecovery } from "@/src/features/project/usePreviewRecovery";
+import { resolvePreviewSurface, type PreviewSurface } from "@/src/features/project/previewAvailability";
 import type { PreviewBuildError } from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_BILLING } from "@/src/lib/routes";
@@ -339,14 +341,16 @@ function PreviewPlaceholder({
  *  persisted project files without spending a chat turn. While the restart is
  *  in flight the button itself shows the progress (no full-pane shimmer). */
 function PreviewStopped({
-  starting,
+  mode,
   onStart,
   coverImageUrl,
 }: {
-  starting: boolean;
+  mode: Exclude<PreviewSurface, "frame" | "empty">;
   onStart: () => void;
   coverImageUrl: string | null;
 }) {
+  const starting = mode === "restoring" || mode === "checking";
+  const label = mode === "restoring" ? "Restoring your preview…" : mode === "checking" ? "Checking preview…" : mode === "failed" ? "We couldn’t restore the preview." : "Preview stopped";
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden bg-black">
       {coverImageUrl && (
@@ -363,27 +367,24 @@ function PreviewStopped({
       <span className="relative flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)] shadow-lg">
         <PowerOffIcon className="size-4.5" />
       </span>
-      <span className="relative text-xs text-[var(--silver-900)]">
-        Preview stopped
+      <span role={starting ? "status" : undefined} className="relative text-xs text-[var(--silver-900)]">
+        {label}
       </span>
+      {starting ? (
+        <span aria-hidden className="relative size-4 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
+      ) : (
       <button
         type="button"
         disabled={starting}
         onClick={onStart}
         className="relative flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-default disabled:hover:bg-brand"
       >
-        {starting ? (
-          <>
-            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            Starting…
-          </>
-        ) : (
           <>
             <PlayIcon className="size-3.5" />
-            Start preview
+            {mode === "failed" ? "Retry preview" : "Start preview"}
           </>
-        )}
       </button>
+      )}
     </div>
   );
 }
@@ -1414,6 +1415,10 @@ export function PreviewPane({
   const previewImageUrl = useProjectStore((s) => s.previewImageUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
   const previewNonce = useProjectStore((s) => s.previewNonce);
+  const previewHealthExpected = useProjectStore((s) => s.previewHealthExpected);
+  const previewRestoring = useProjectStore((s) => s.previewRestoring);
+  const previewRestoreFailed = useProjectStore((s) => s.previewRestoreFailed);
+  const reloadPreview = useProjectStore((s) => s.reloadPreview);
   const projectId = useProjectStore((s) => s.projectId);
   const status = useProjectStore((s) => s.status);
   const hydrated = useProjectStore((s) => s.hydrated);
@@ -1422,8 +1427,6 @@ export function PreviewPane({
   const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const messages = useProjectStore((s) => s.chatMessages);
   const cancelStream = useProjectStore((s) => s.cancelStream);
-  const currentJobId = useProjectStore((s) => s.currentJobId);
-  const previewReadyJobId = useProjectStore((s) => s.previewReadyJobId);
   const startPreviewJob = useProjectStore((s) => s.startPreviewJob);
   const { data: balance } = useBalance();
   const { send } = useSendMessage(projectId ?? undefined);
@@ -1435,8 +1438,6 @@ export function PreviewPane({
   const themePanelOpen = useProjectStore((s) => s.themePanelOpen);
   const setThemePanelOpen = useProjectStore((s) => s.setThemePanelOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const previewRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [loadedFrameKey, setLoadedFrameKey] = useState<string | null>(null);
   const { reselect } = useVisualEditBridge(iframeRef, previewUrl, previewNonce);
   const hideBadgeIfPro = usePreviewBadge(
     iframeRef,
@@ -1448,37 +1449,25 @@ export function PreviewPane({
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
-  // Id of the restart job we launched. Its preview can be shown as soon as
-  // preview_ready arrives; thumbnail capture may continue afterwards.
-  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+  const starting = restart.isPending;
 
-  // Covers the click→dispatch gap and only the provision phase of the job.
-  const starting =
-    restart.isPending ||
-    (previewJobId !== null &&
-      currentJobId === previewJobId &&
-      previewReadyJobId !== previewJobId);
-
-  // Only probe liveness while a preview exists and nothing is actively
-  // streaming (a running job means the sandbox is being managed already).
+  // Validate persisted URLs even if a chat starts before the first check.
   // The pane stays mounted behind the Code tab to preserve its loaded iframe,
   // but hidden previews should not create background liveness traffic.
   const liveness = usePreviewStatus(projectId ?? undefined, {
-    enabled: active && Boolean(previewUrl) && !isStreaming && !starting,
+    previewUrl,
+    enabled: active && Boolean(previewUrl) && !previewRestoring && !starting,
   });
-
-  const isDown =
-    Boolean(previewUrl) && !isStreaming && liveness.data?.alive === false;
+  const surface = resolvePreviewSurface({
+    hasUrl: Boolean(previewUrl), alive: liveness.data?.alive,
+    streaming: isStreaming, restoring: previewRestoring,
+    restoreFailed: previewRestoreFailed, starting, checkFailed: liveness.isError,
+  });
 
   const src = previewSrc(previewUrl, previewPath);
   const frameKey = src ? `${src}-${previewNonce}` : null;
-  const previewLoaded = frameKey !== null && loadedFrameKey === frameKey;
-
-  useEffect(() => {
-    return () => {
-      if (previewRevealTimer.current) clearTimeout(previewRevealTimer.current);
-    };
-  }, [frameKey]);
+  const recovery = usePreviewRecovery(iframeRef, surface === "frame" ? src : null, surface === "frame" ? frameKey : null, previewHealthExpected);
+  const previewLoaded = frameKey !== null && recovery.phase === "loaded";
   const emptyState = getEmptyPreviewState({
     status,
     hydrated,
@@ -1503,7 +1492,6 @@ export function PreviewPane({
     if (!projectId || starting) return;
     restart.mutate(undefined, {
       onSuccess: ({ jobId }) => {
-        setPreviewJobId(jobId);
         startPreviewJob(jobId);
       },
       onError: () =>
@@ -1518,32 +1506,26 @@ export function PreviewPane({
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
         className="relative h-full w-full overflow-hidden rounded-xl border border-[var(--silver-200)] bg-black shadow-xl shadow-black/20"
       >
-        {starting || isDown ? (
+        {surface !== "frame" && surface !== "empty" ? (
           <PreviewStopped
-            starting={starting}
+            mode={surface}
             onStart={handleStart}
             coverImageUrl={previewImageUrl}
           />
-        ) : src ? (
+        ) : surface === "frame" && src ? (
           <>
             <iframe
               // The nonce is bumped by both reload and any path change, so the
               // frame remounts either way: re-entering the current path still
               // re-navigates instead of being a no-op.
-              key={`${previewUrl}-${previewNonce}`}
+              key={`${previewUrl}-${previewNonce}-${recovery.attempt}`}
               ref={iframeRef}
               src={src}
               title="App preview"
-              onLoad={() => {
+              onLoad={(event) => {
+                if (event.currentTarget !== iframeRef.current) return;
                 hideBadgeIfPro();
-                setLoadedFrameKey(null);
-                if (previewRevealTimer.current) {
-                  clearTimeout(previewRevealTimer.current);
-                }
-                previewRevealTimer.current = setTimeout(() => {
-                  setLoadedFrameKey(frameKey);
-                  previewRevealTimer.current = null;
-                }, 1_500);
+                recovery.onLoad();
               }}
               className={cn(
                 "h-full w-full border-0 bg-black transition-opacity duration-200",
@@ -1554,7 +1536,21 @@ export function PreviewPane({
             />
             {!previewLoaded && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
-                <DataSpinner label="Loading preview" />
+                {previewImageUrl && (
+                  <>
+                    <img src={previewImageUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-110 object-cover object-top opacity-45 blur-md" />
+                    <div className="absolute inset-0 bg-black/80" />
+                  </>
+                )}
+                {recovery.phase === "failed" ? (
+                  <div role="alert" className="relative max-w-sm px-5 text-center text-sm text-[var(--silver-900)]">
+                    <p>{recovery.appError ? "The app encountered an error while starting." : "The preview couldn’t finish loading."}</p>
+                    <p className="mt-2 text-xs text-[var(--silver-600)]">{recovery.appError ? "Ask tau to fix the app, or try reloading the preview." : "Try reloading the preview. Your project is saved."}</p>
+                    <button type="button" onClick={reloadPreview} className="mt-4 rounded-lg bg-[var(--silver-900)] px-3 py-2 text-xs font-medium text-[var(--space-void)]">Reload preview</button>
+                  </div>
+                ) : (
+                  <div className="relative"><DataSpinner label={recovery.attempt ? "Reconnecting preview" : "Loading preview"} /></div>
+                )}
               </div>
             )}
             {/* One stack, so a dismissed build error and selection mode can

@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import toast from "react-hot-toast";
 
 import { env } from "./env";
 
@@ -28,6 +29,16 @@ export class ApiError extends Error {
   }
 }
 
+/** Repeating these requests cannot recover without user/access state changing. */
+export function isTerminalRequestError(error: unknown): boolean {
+  return error instanceof ApiError && [401, 403, 404, 410].includes(error.status);
+}
+
+/** Show each request separately, without query parameters or credentials. */
+export function notifyApiRequest(url: string): void {
+  toast(new URL(url, "http://tau.local").pathname);
+}
+
 export const api = axios.create({
   baseURL: env.API_URL,
   withCredentials: true, // sends the /auth/* refresh cookie; harmless elsewhere
@@ -36,6 +47,7 @@ export const api = axios.create({
 
 // Attach the in-memory access token to every outgoing request.
 api.interceptors.request.use((config) => {
+  notifyApiRequest(api.getUri(config));
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });

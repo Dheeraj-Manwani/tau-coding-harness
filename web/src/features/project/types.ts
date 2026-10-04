@@ -162,6 +162,7 @@ export interface AddMessageResponse {
 /** `GET /project/:id/preview/status`: is the live E2B sandbox reachable? */
 export interface PreviewStatusResponse {
   alive: boolean;
+  url?: string;
 }
 
 /** `POST /project/:id/preview/restart`: the queued provision-only job. */
@@ -222,7 +223,8 @@ export type JobEvent = BaseEvent &
     | { type: "file_done"; path: string; headSequence?: number }
     | { type: "file_delete"; path: string; headSequence: number }
     | { type: "shell_output"; stream: "stdout" | "stderr"; line: string }
-    | { type: "preview_ready"; url: string }
+    | { type: "preview_restoring" }
+    | { type: "preview_ready"; url: string; healthCheck?: boolean; readyAt?: string; restored?: boolean }
     | {
         type: "deploy_ready";
         url: string | null;

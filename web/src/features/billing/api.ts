@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/src/lib/api-client";
+import { api, isTerminalRequestError } from "@/src/lib/api-client";
 import { celebrateSuccess } from "@/src/lib/confetti";
 
 export const billingKeys = {
@@ -82,7 +82,7 @@ export function useBalance() {
     queryFn: () =>
       api.get<BalanceSummary>("/credits/balance").then((r) => r.data),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: (query) => isTerminalRequestError(query.state.error) ? false : 60_000,
   });
 }
 

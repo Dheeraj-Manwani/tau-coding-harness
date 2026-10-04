@@ -21,6 +21,9 @@ import { markProjectWorkspaceStarted } from "./projectWorkspace";
 import { log } from "./log";
 import { retrofitVisualEdit } from "./retrofitVisualEdit";
 import { syncPreviewBadge } from "./previewBadge";
+import { syncPreviewBanner } from "./previewBanner";
+import { waitForPreviewHttp } from "./previewReadiness";
+import { announceAvailablePreview } from "./previewAvailability";
 import { allocateHeadSequence } from "@/lib/headSequence";
 import { SandboxStatus } from "@/generated/prisma/enums";
 import {
@@ -324,6 +327,8 @@ export async function provisionSandbox(
         });
       }
       await syncPreviewBadge(sandbox, userId, jobId);
+      await syncPreviewBanner(sandbox, projectId, jobId);
+      await waitForPreviewHttp(`https://${sandbox.getHost(5173)}`);
       return sandbox;
     } catch (err) {
       log.warn("sandbox.reconnect.failed", {
@@ -341,6 +346,9 @@ export async function provisionSandbox(
   // (a truly fresh project) the agent's choice wins and gets persisted.
   const fileCount = await prisma.projectFile.count({ where: { projectId } });
   const templateLocked = fileCount > 0;
+  if (templateLocked && !bus.isCancelled(jobId)) {
+    await publish(jobId, { type: "preview_restoring" });
+  }
   const templateKey =
     !templateLocked && requestedTemplateKey
       ? requestedTemplateKey
@@ -383,5 +391,10 @@ export async function provisionSandbox(
     templateKey,
   );
   await syncPreviewBadge(sandbox, userId, jobId);
+  await syncPreviewBanner(sandbox, projectId, jobId);
+  await waitForPreviewHttp(`https://${sandbox.getHost(5173)}`);
+  if (templateLocked) {
+    await announceAvailablePreview(jobId, projectId, `https://${sandbox.getHost(5173)}`);
+  }
   return sandbox;
 }

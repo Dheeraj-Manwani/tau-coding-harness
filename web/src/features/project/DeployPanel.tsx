@@ -10,6 +10,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
@@ -46,6 +47,8 @@ export function DeployPanel() {
   const projectId = useProjectStore((s) => s.projectId);
   const { data: status, isLoading } = useDeployStatus(projectId);
   const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const publishRequested = searchParams.get("publish") === "1";
 
   const dot = dotClass(status);
 
@@ -74,7 +77,17 @@ export function DeployPanel() {
   );
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Root
+      open={open || publishRequested}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (publishRequested) {
+          const next = new URLSearchParams(searchParams);
+          next.delete("publish");
+          setSearchParams(next, { replace: true });
+        }
+      }}
+    >
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

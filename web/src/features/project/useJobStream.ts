@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { env } from "@/src/lib/env";
-import { api, getAccessToken, refreshOnce } from "@/src/lib/api-client";
+import { api, getAccessToken, refreshOnce, isTerminalRequestError, notifyApiRequest } from "@/src/lib/api-client";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import type { JobEvent, ProjectDetail, ProjectTree } from "./types";
 
@@ -34,7 +34,7 @@ export function seedWatermark(jobId: string, index: number): void {
  * When the job reaches a terminal event the reducer clears `currentJobId`,
  * which tears this effect down and closes the stream.
  */
-export function useJobStream(): void {
+export function useJobStream(enabled = true): void {
   const jobId = useProjectStore((s) => s.currentJobId);
   const projectId = useProjectStore((s) => s.projectId);
   const applyEvent = useProjectStore((s) => s.applyEvent);
@@ -43,7 +43,7 @@ export function useJobStream(): void {
   const setCanceller = useProjectStore((s) => s.setCanceller);
 
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId || !enabled) return;
 
     let source: EventSource | null = null;
     let attempt = 0;
@@ -72,6 +72,7 @@ export function useJobStream(): void {
       const url =
         `${env.API_URL}/jobs/${encodeURIComponent(jobId)}/stream` +
         `?token=${encodeURIComponent(token)}&lastEventIndex=${lastEventIndex}`;
+      notifyApiRequest(url);
       source = new EventSource(url);
 
       source.onopen = () => {
@@ -107,6 +108,11 @@ export function useJobStream(): void {
               }
             })
             .catch((err) => {
+              if (disposed) return;
+              if (isTerminalRequestError(err)) {
+                applyEvent({ type: "error", message: err.message, index: event.index });
+                return;
+              }
               console.error("[useJobStream] resync project fetch failed:", err);
               scheduleReconnect();
             });
@@ -161,6 +167,7 @@ export function useJobStream(): void {
       }
     };
   }, [
+    enabled,
     jobId,
     projectId,
     applyEvent,

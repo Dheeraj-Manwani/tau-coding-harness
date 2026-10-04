@@ -213,6 +213,19 @@ export function submitJobAnswer(
 
 /** `GET /project/:id/file?path=…`: lazy-load a single file's body.
  *  Only fetches when `path` is non-empty and `enabled` is true. */
+export async function downloadProjectZip(projectId: string): Promise<void> {
+  const { data } = await api.get<Blob>(`/project/${projectId}/download`, { responseType: "blob" });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `project-${projectId}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Give the browser time to begin consuming the object URL.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function useProjectFile(
   projectId: string | undefined,
   path: string,

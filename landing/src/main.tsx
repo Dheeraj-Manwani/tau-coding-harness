@@ -33,6 +33,14 @@ const router = createBrowserRouter([
                   () => import("./features/marketing/Changelog.tsx"),
                 ),
               },
+              {
+                path: "/pricing",
+                lazy: lazyComponent(() => import("./pages/Pricing")),
+              },
+              {
+                path: "*",
+                lazy: lazyComponent(() => import("./pages/NotFound")),
+              },
             ],
           },
           {
@@ -63,20 +71,12 @@ const router = createBrowserRouter([
         ],
       },
       {
-        path: "/pricing",
-        lazy: lazyComponent(() => import("./pages/Pricing")),
-      },
-      {
         path: "/privacy",
         lazy: lazyComponent(() => import("./pages/Privacy")),
       },
       {
         path: "/terms",
         lazy: lazyComponent(() => import("./pages/Terms")),
-      },
-      {
-        path: "*",
-        lazy: lazyComponent(() => import("./pages/NotFound")),
       },
     ],
   },

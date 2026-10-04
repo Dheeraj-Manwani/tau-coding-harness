@@ -33,11 +33,11 @@ const COLUMNS: FooterColumn[] = [
   {
     title: "Product",
     links: [
-      { label: "Overview", href: "/#overview", ready: false },
-      { label: "Effort tiers", href: "/#effort", ready: false },
-      { label: "AI in your app", href: "/#ai-gateway", ready: false },
+      { label: "Overview", href: "/#overview", ready: true },
+      { label: "Effort tiers", href: "/pricing", ready: true },
+      { label: "AI in your app", href: "/docs/ai/quickstart", ready: true },
       { label: "Pricing", href: "/pricing", ready: true },
-      { label: "Mobile", href: "/#mobile", ready: false },
+      { label: "Mobile", href: "/#mobile", ready: true },
     ],
   },
   {
@@ -112,7 +112,6 @@ export function MarketingFooter() {
 
   return (
     <footer className="relative mt-16 border-t border-border bg-background">
-
       <div className="relative mx-auto w-full max-w-6xl px-6 py-14">
         <div className="flex flex-col gap-12 md:flex-row md:justify-between">
           <div className="max-w-xs">
@@ -126,11 +125,11 @@ export function MarketingFooter() {
                 role="img"
                 aria-hidden="true"
               />
-              <span className="text-sm font-semibold text-silver-900">tau</span>
+              <span className="storm-brand">TAU</span>
             </Link>
             <p className="mt-3 text-sm text-silver-600">
-              Bring the idea. Tau helps you turn it into an app you can use,
-              change, and call your own.
+              Describe it. Build it. An app you can use, change, and call your
+              own.
             </p>
           </div>
 
@@ -151,7 +150,9 @@ export function MarketingFooter() {
                   ))}
                   {column.title === "Company" && (
                     <li>
-                      <SupportTauButton className={`cursor-pointer ${LINK_CLASS}`} />
+                      <SupportTauButton
+                        className={`cursor-pointer ${LINK_CLASS}`}
+                      />
                     </li>
                   )}
                 </ul>

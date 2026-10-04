@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createProjectArchive } from "../lib/projectArchive";
 import { Sandbox } from "e2b";
 import { prisma } from "@/lib/prisma";
 import * as projectRepo from "../repositories/project.repository";
@@ -18,6 +19,7 @@ import {
 import { FREE_PLAN_MAX_PROJECTS } from "@/lib/pricing";
 import {
   getBlobText,
+  getBlob,
   deleteProjectBlobs,
   presignGet,
   blobKey,
@@ -725,6 +727,17 @@ export async function listMessages(
   }
 
   return projectRepo.listMessages(projectId, opts);
+}
+
+export async function downloadProjectArchive(projectId: string, userId: string) {
+  const project = await projectRepo.findProjectWithTree(projectId);
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) throw Errors.forbidden("You do not have access to this project");
+  const files = project.files.filter((file) => !isSecretPath(file.path));
+  if (files.reduce((total, file) => total + file.sizeBytes, 0) > 100 * 1024 * 1024) {
+    throw Errors.badRequest("Project exceeds the 100 MB download limit");
+  }
+  return createProjectArchive(files, (hash) => getBlob(userId, projectId, hash));
 }
 
 export async function getProjectTree(projectId: string, userId: string) {

@@ -27,6 +27,10 @@ export function DropdownMenuRadioGroup(props: React.ComponentProps<typeof Dropdo
   return <DropdownMenuPrimitive.RadioGroup {...props} />;
 }
 
+export function DropdownMenuItem({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Item>) {
+  return <DropdownMenuPrimitive.Item className={cn("flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-3.5", className)} {...props} />;
+}
+
 export function DropdownMenuRadioItem({ className, children, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
   return (
     <DropdownMenuPrimitive.RadioItem

@@ -12,7 +12,17 @@ import {
   ChevronsRightIcon,
   LoaderCircleIcon,
   XIcon,
+  EllipsisVerticalIcon,
+  FilePlusIcon,
+  FolderPlusIcon,
+  FolderUpIcon,
+  DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ChevronsDownUpIcon,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/src/components/ui/dropdown-menu";
 
 import {
   ContextMenu,
@@ -29,7 +39,7 @@ import {
   useProjectStore,
   type ProjectFile as ProjectFileState,
 } from "@/src/stores/useProjectStore";
-import { useProjectFile } from "@/src/features/project/api";
+import { downloadProjectZip, useProjectFile } from "@/src/features/project/api";
 import { useFileSave } from "@/src/features/project/useFileSave";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
 
@@ -564,15 +574,44 @@ export function CodePane() {
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const writingPath = useProjectStore((s) => s.writingPath);
   const openFile = useProjectStore((s) => s.openFile);
+  const closeAllFiles = useProjectStore((s) => s.closeAllFiles);
+  const projectId = useProjectStore((s) => s.projectId);
+  const isBuilding = useProjectStore((s) => s.status === "streaming");
+  const [search, setSearch] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
+  const [collapseVersion, setCollapseVersion] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const downloadPending = useRef(false);
+
+  const download = async () => {
+    if (!projectId || downloadPending.current) return;
+    if (Object.values(useProjectStore.getState().files).some((file) => isFileDirty(file) || file.saving)) {
+      toast.error("Wait for your changes to save before downloading.");
+      return;
+    }
+    downloadPending.current = true;
+    setDownloading(true);
+    try {
+      await downloadProjectZip(projectId);
+    } catch {
+      toast.error("Could not download the project ZIP. Please try again.");
+    } finally {
+      downloadPending.current = false;
+      setDownloading(false);
+    }
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const paths = useMemo(() => Object.keys(files), [files]);
-  const tree = useMemo(() => buildTree(paths), [paths]);
+  const tree = useMemo(() => buildTree(paths.filter((path) =>
+    (showHidden || !path.split("/").some((part) => part.startsWith("."))) &&
+    path.toLowerCase().includes(search.trim().toLowerCase()),
+  )), [paths, showHidden, search]);
   const expanded = useMemo(() => folderPaths(tree), [tree]);
   // Re-mount the Tree (re-applying expanded folders) only when the folder
   // structure changes: not on every file content chunk.
-  const treeKey = expanded.join("|");
+  const treeKey = `${projectId}:${collapseVersion}:${search}:${showHidden}:${expanded.join("|")}`;
 
   const handleDrag = (clientX: number) => {
     const el = containerRef.current;
@@ -587,22 +626,55 @@ export function CodePane() {
     <div ref={containerRef} className="flex h-full w-full overflow-hidden">
       <div
         style={{ width: codeTreeWidth }}
-        className="shrink-0 overflow-hidden bg-[var(--space-surface)] py-2 text-[var(--silver-900)]"
+        className="flex shrink-0 flex-col overflow-hidden bg-[var(--space-surface)] py-2 text-[var(--silver-900)]"
       >
+        <div className="mb-2 flex shrink-0 items-center gap-1 px-2">
+          <input
+            aria-label="Search files"
+            placeholder="Search files"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="h-8 min-w-0 flex-1 rounded-md border border-[var(--silver-200)] bg-[var(--space-overlay)] px-2 text-xs outline-none focus:border-[var(--silver-600)]"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label="File options" className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--space-overlay)]">
+                {downloading ? <LoaderCircleIcon className="size-4 animate-spin" /> : <EllipsisVerticalIcon className="size-4" />}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem disabled title="File creation is not available yet"><FilePlusIcon />New file</DropdownMenuItem>
+              <DropdownMenuItem disabled title="Folder creation is not available yet"><FolderPlusIcon />New folder</DropdownMenuItem>
+              <DropdownMenuItem disabled title="Folder upload is not available yet"><FolderUpIcon />Upload folder</DropdownMenuItem>
+              <DropdownMenuItem disabled={!projectId || paths.length === 0 || downloading || isBuilding} onSelect={() => void download()}>
+                <DownloadIcon />{downloading ? "Downloading…" : "Download as zip"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowHidden((value) => !value)}>
+                {showHidden ? <EyeOffIcon /> : <EyeIcon />}{showHidden ? "Hide hidden files" : "Show hidden files"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setSearch(""); setCollapseVersion((value) => value + 1); }}><ChevronsDownUpIcon />Collapse all</DropdownMenuItem>
+              <DropdownMenuItem onSelect={closeAllFiles}><XIcon />Close files</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="min-h-0 flex-1">
         {paths.length === 0 ? (
           <div className="px-3 py-2 text-xs text-[var(--silver-600)]">
             Files will appear here as tau builds your app.
           </div>
+        ) : tree.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-[var(--silver-600)]">No matching files.</div>
         ) : (
           <Tree
             key={treeKey}
             className="scrollbar-thin"
             initialSelectedId={activeFileId}
-            initialExpandedItems={[]}
+            initialExpandedItems={search.trim() ? expanded : []}
           >
             {renderNodes(tree, activeFileId, writingPath, openFile)}
           </Tree>
         )}
+        </div>
       </div>
 
       <ResizeHandle onDrag={handleDrag} />

@@ -228,7 +228,7 @@ export function findProjectWithTree(id: string) {
     where: { id },
     include: {
       files: {
-        select: { path: true, sizeBytes: true },
+          select: { path: true, sizeBytes: true, contentHash: true },
         orderBy: { path: "asc" },
       },
     },

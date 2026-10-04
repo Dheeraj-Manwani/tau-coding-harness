@@ -10,6 +10,7 @@ import {
   deleteProject,
   getProjectTree,
   getProjectFile,
+  downloadProjectArchive,
   saveProjectFile,
   applyVisualEdit,
   getProjectTheme,
@@ -46,6 +47,7 @@ router.patch("/:projectId", updateProject);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);
 router.get("/:projectId/file", getProjectFile);
+router.get("/:projectId/download", downloadProjectArchive);
 router.put("/:projectId/file", saveProjectFile);
 // Visual edit — deterministic, zero-credit source edits driven by the preview.
 router.post("/:projectId/visual-edit", visualEditRateLimiter, applyVisualEdit);

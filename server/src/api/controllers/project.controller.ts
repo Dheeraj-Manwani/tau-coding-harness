@@ -276,6 +276,22 @@ export const cancelAllJobs = async (
   }
 };
 
+export const downloadProjectArchive = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const archive = await projectService.downloadProjectArchive(projectId, userId);
+    res.setHeader("Cache-Control", "no-store");
+    res.attachment(`project-${projectId}.zip`).send(archive);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getProjectFile = async (
   req: Request,
   res: Response,

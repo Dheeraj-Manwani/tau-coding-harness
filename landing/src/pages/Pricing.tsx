@@ -28,6 +28,9 @@ import {
  * Figures come from `features/marketing/data/effortTiers.ts`, which cites the
  * constants in `api/src/lib/pricing.ts` and `billing.service.ts`, so this page
  * and the landing page can never quietly disagree.
+ *
+ * Now routed inside `MarketingShell` alongside `/` and `/changelog`, so it
+ * gets the real storm nav/footer instead of a one-off logo link.
  */
 
 const FREE_FEATURES = [
@@ -117,15 +120,8 @@ export default function PricingPage() {
   });
 
   return (
-    <div className="min-h-[100svh] px-6 py-16">
+    <div className="px-6 py-16">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex justify-center">
-          <Link to="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="logo-mark size-5" role="img" aria-hidden="true" />
-            <span className="text-silver-900">tau</span>
-          </Link>
-        </div>
-
         <div className="mb-12 text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             Simple, transparent pricing

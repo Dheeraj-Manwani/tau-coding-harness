@@ -12,6 +12,10 @@ import { TauWatermark } from "@/src/features/marketing/motion/TauWatermark";
  * but offers the three destinations a stranger is most likely to want rather than
  * the docs sidebar.
  *
+ * Routed inside `MarketingShell` so a mistyped link still lands on the real
+ * nav/footer rather than a bare page, which is why the wrapper below no longer
+ * claims the full viewport height itself.
+ *
  * `noIndex` because a soft 404 that crawlers index is worse than one they skip:
  * this is a client-rendered SPA, so the server has already answered 200.
  */
@@ -23,7 +27,7 @@ function NotFound() {
   });
 
   return (
-    <div className="flex min-h-[100svh] flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center">
       <TauWatermark size={88} opacity={0.14} />
 
       <p className="mt-6 font-mono text-xs uppercase tracking-[0.18em] text-blue-500">

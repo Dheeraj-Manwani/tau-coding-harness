@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   initializeProject,
   listProjects,
+  getProjectShowcase,
   getProject,
   getProjectJobStatus,
   listMessages,
@@ -36,6 +37,7 @@ const router = Router();
 
 router.post("/", initializeProject);
 router.get("/", listProjects);
+router.get("/showcase", getProjectShowcase);
 // User-scoped, not project-scoped — declared before the `/:projectId` routes so
 // "jobs" is never captured as a projectId.
 router.post("/jobs/cancel-all", cancelAllJobs);

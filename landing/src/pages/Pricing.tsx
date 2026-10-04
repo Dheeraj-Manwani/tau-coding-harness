@@ -1,115 +1,42 @@
 import { Link } from "react-router-dom";
-import { CheckCircleIcon } from "lucide-react";
-import { Button } from "@/src/components/ui/button";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { APP_BILLING, APP_HOME } from "@/src/lib/routes";
-import { cn } from "@/src/lib/utils";
 import {
   CREDIT_PACKS,
-  FREE_MAX_PROJECTS,
   FREE_SIGNUP_CREDITS,
   PRO_MONTHLY_CREDITS,
   PRO_PRICE_INR,
 } from "@/src/features/marketing/data/effortTiers";
+import {
+  FREE_FEATURES,
+  PACK_TAGS,
+  PRO_FEATURES,
+  PlanCard,
+  litSegmentsFor,
+} from "@/src/features/marketing/sections/Pricing";
 
 /**
  * Public pricing.
  *
- * Re-skinned to the space palette: this page predated the theme and was still
- * carrying `indigo-*` and a `ZapIcon` standing in for the τ mark, which made it
- * read as a different product to anyone arriving from the landing page.
+ * Re-skinned to the storm hero's bold type voice (Big Shoulders Display,
+ * `.eyebrow`, `.tier-card`/`.effort-meter`) via the shared `PlanCard` in
+ * `sections/Pricing.tsx`, which the home page's teaser section also renders -
+ * one set of cards, one set of numbers, two places they show up.
  *
- * One claim was also removed. The Free plan listed "Download your code
- * anytime", which §9 of the landing plan flags as **live today but not built** -
- * there is no ZIP export. It has been replaced by what is genuinely true: you
- * push to a GitHub repo you own. Restore a download line only when export
- * actually exists.
+ * Only two real plans exist (Free, PRO): there is no middle paid tier and no
+ * yearly billing in the product, so this does not add either just to mirror
+ * a three-card reference layout. Figures come from
+ * `features/marketing/data/effortTiers.ts`, which cites the constants in
+ * `api/src/lib/pricing.ts` and `billing.service.ts`, so this page and the
+ * landing page can never quietly disagree.
  *
- * Figures come from `features/marketing/data/effortTiers.ts`, which cites the
- * constants in `api/src/lib/pricing.ts` and `billing.service.ts`, so this page
- * and the landing page can never quietly disagree.
+ * One claim was removed in an earlier pass. The Free plan listed "Download
+ * your code anytime" - not built, no ZIP export - replaced by what is
+ * genuinely true: you push to a GitHub repo you own.
  *
- * Now routed inside `MarketingShell` alongside `/` and `/changelog`, so it
- * gets the real storm nav/footer instead of a one-off logo link.
+ * Routed inside `MarketingShell` alongside `/` and `/changelog`, so it gets
+ * the real storm nav/footer instead of a one-off logo link.
  */
-
-const FREE_FEATURES = [
-  `${FREE_SIGNUP_CREDITS} free credits (one-time, on signup)`,
-  `Up to ${FREE_MAX_PROJECTS} projects`,
-  "Every effort level, including Max",
-  "Try your app while Tau builds it",
-  "Push your code to your own GitHub repo",
-];
-
-const PRO_FEATURES = [
-  `${PRO_MONTHLY_CREDITS.toLocaleString()} credits per month`,
-  "Everything in Free",
-  "Unlimited projects",
-  "No tau badge on your previews and published sites",
-  "Credits reset monthly with your billing cycle",
-  "Priority support",
-];
-
-function PlanCard({
-  name,
-  price,
-  period,
-  features,
-  cta,
-  ctaHref,
-  highlight,
-  description,
-}: {
-  name: string;
-  price: string;
-  period?: string;
-  features: string[];
-  cta: string;
-  ctaHref: string;
-  highlight?: boolean;
-  description: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col rounded-2xl border p-6",
-        highlight
-          ? "border-blue-500/40 bg-blue-500/5"
-          : "border-silver-200 bg-space-surface",
-      )}
-    >
-      {highlight && (
-        <span className="mb-3 self-start rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-300">
-          Most popular
-        </span>
-      )}
-      <h3 className="text-lg font-semibold text-silver-900">{name}</h3>
-      <p className="mt-1 text-sm text-silver-600">{description}</p>
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-3xl font-semibold text-silver-900">{price}</span>
-        {period && <span className="text-sm text-silver-600">/{period}</span>}
-      </div>
-
-      <ul className="mt-6 flex-1 space-y-2.5">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm">
-            <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-blue-500" />
-            <span className="text-silver-900/80">{f}</span>
-          </li>
-        ))}
-      </ul>
-
-      <Button
-        asChild
-        className="mt-8"
-        variant={highlight ? "default" : "outline"}
-      >
-        <Link to={ctaHref}>{cta}</Link>
-      </Button>
-    </div>
-  );
-}
-
 export default function PricingPage() {
   useDocumentMeta({
     title: "Pricing",
@@ -120,32 +47,44 @@ export default function PricingPage() {
   });
 
   return (
-    <div className="px-6 py-16">
+    <div className="px-6 py-20">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-12 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Simple, transparent pricing
+        <div className="mb-14 text-center">
+          <p className="eyebrow">// Pricing</p>
+          <h1 className="display-heading mt-3 text-5xl text-silver-900 sm:text-7xl">
+            Pay per
+            <br />
+            <span className="text-blue-300">strike</span>
           </h1>
-          <p className="mt-3 text-silver-600">
-            Start for free. Upgrade when you need more.
+          <p className="mx-auto mt-5 max-w-xl text-silver-600">
+            Every plan runs on credits. A build only spends what it uses, and
+            effort caps the most any single strike can spend.
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
           <PlanCard
             name="Free"
-            price="₹0"
             description="For turning your first few ideas into real apps."
+            price="₹0"
+            period="forever"
+            creditsLabel={FREE_SIGNUP_CREDITS.toString()}
+            litSegments={litSegmentsFor(FREE_SIGNUP_CREDITS)}
             features={FREE_FEATURES}
+            bestFor="For a handful of real projects"
             cta="Open Tau"
             ctaHref={APP_HOME}
           />
           <PlanCard
             name="PRO"
-            price={`₹${PRO_PRICE_INR}`}
-            period="month"
+            badge="Most picked"
             description="For people who build often and want more room to run."
+            price={`₹${PRO_PRICE_INR}`}
+            period="/ month"
+            creditsLabel={PRO_MONTHLY_CREDITS.toLocaleString()}
+            litSegments={litSegmentsFor(PRO_MONTHLY_CREDITS)}
             features={PRO_FEATURES}
+            bestFor="For builders who ship every week"
             cta="Upgrade to PRO"
             ctaHref={APP_BILLING}
             highlight
@@ -153,24 +92,28 @@ export default function PricingPage() {
         </div>
 
         <div className="mt-8 rounded-2xl border border-silver-200 bg-space-surface p-6">
-          <h2 className="mb-4 text-base font-semibold text-silver-900">
-            Credit packs
+          <h2 className="mb-1 text-base font-semibold text-silver-900">
+            Top up anytime
           </h2>
-          <p className="mb-4 text-sm text-silver-600">
-            Top up any time, with or without a subscription. Packs never expire.
+          <p className="mb-5 text-sm text-silver-600">
+            One-time packs, with or without a subscription. Credits never
+            expire.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             {CREDIT_PACKS.map((pack) => (
               <div
                 key={pack.credits}
-                className="rounded-xl border border-silver-200 p-4"
+                className="rounded-xl border border-silver-200 bg-space-void p-4 text-center"
               >
-                <p className="font-mono text-lg text-silver-900">
+                {PACK_TAGS[pack.credits] && (
+                  <p className="mono mb-2 text-blue-400">
+                    {PACK_TAGS[pack.credits]}
+                  </p>
+                )}
+                <p className="display-heading text-2xl text-silver-900">
                   {pack.credits.toLocaleString()}
                 </p>
-                <p className="text-xs text-silver-600">
-                  credits · ₹{pack.inr}
-                </p>
+                <p className="mono text-silver-600">CR · ₹{pack.inr}</p>
               </div>
             ))}
           </div>

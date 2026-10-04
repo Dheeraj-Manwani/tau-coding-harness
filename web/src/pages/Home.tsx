@@ -11,6 +11,8 @@ import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { MyProjects } from "@/src/features/project/MyProjects";
+import { CommunityProjects } from "@/src/features/project/CommunityProjects";
+import { HomeFooter } from "@/src/components/HomeFooter";
 import { useInitProject, useProjects } from "@/src/features/project/api";
 import { markFreshBuild } from "@/src/features/project/revealSession";
 import { showConcurrentJobLimitToast } from "@/src/features/project/concurrencyToast";
@@ -213,6 +215,8 @@ function Home() {
         {!initializing && (
           <motion.div key="projects" exit={{ opacity: 0 }}>
             <MyProjects />
+            <CommunityProjects />
+            <HomeFooter />
           </motion.div>
         )}
       </AnimatePresence>

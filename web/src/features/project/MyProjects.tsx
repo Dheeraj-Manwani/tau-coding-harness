@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DropdownMenu } from "radix-ui";
-import { MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FolderOpenIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 
 import { useMe } from "@/src/features/auth/queries";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import { EditProjectDialog } from "@/src/features/project/EditProjectDialog";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { APP_HOME, projectPath } from "@/src/lib/routes";
-import { useProjects } from "./api";
+import { useProjectsPage } from "./api";
 import type { ProjectListItem } from "./types";
 
 function formatUpdated(iso: string): string {
@@ -125,55 +134,179 @@ function ProjectCard({
   );
 }
 
-
 export function MyProjects() {
   const { data: user } = useMe();
-  const { data: projects, isLoading, isError } = useProjects();
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+  const { data, isLoading, isError, refetch } = useProjectsPage(
+    query,
+    cursors.at(-1),
+  );
+  const projects = data?.projects ?? [];
+  useEffect(() => {
+    if (search.trim() === query) return;
+    const timer = setTimeout(() => {
+      setQuery(search.trim());
+      setCursors([undefined]);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, query]);
   const navigate = useNavigate();
   const { id: currentProjectId } = useParams<{ id?: string }>();
 
-  const [pendingDelete, setPendingDelete] = useState<ProjectListItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ProjectListItem | null>(
+    null,
+  );
   const [pendingEdit, setPendingEdit] = useState<ProjectListItem | null>(null);
 
   if (!user) return null;
-  if (isLoading) {
-    return (
-      <section className="relative z-10 mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
-        <h2 className="mb-4 text-sm font-medium text-silver-600">My projects</h2>
-        <div className="flex min-h-24 items-center justify-center">
-          <DataSpinner label="Loading projects" />
-        </div>
-      </section>
-    );
-  }
-  if (isError || !projects || projects.length === 0) return null;
 
   return (
     <>
-      <section className="relative z-10 mx-auto w-full max-w-4xl px-6 pt-24 pb-16">
-        <h2 className="mb-4 text-sm font-medium text-silver-600">My projects</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onEditClick={setPendingEdit}
-              onDeleteClick={setPendingDelete}
+      <section
+        aria-labelledby="my-projects-heading"
+        className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-16 pb-12"
+      >
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            {/* <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Your workspace</p> */}
+            <h2
+              id="my-projects-heading"
+              className="text-xl font-medium tracking-tight"
+            >
+              My projects
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Pick up where you left off.
+            </p>
+          </div>
+          <div className="flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 focus-within:ring-1 focus-within:ring-ring sm:w-72">
+            <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              aria-label="Search projects"
+              placeholder="Search name or description"
+              maxLength={200}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-          ))}
+            {search && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearch("")}
+                className="rounded p-1 text-muted-foreground hover:text-foreground"
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            )}
+          </div>
         </div>
+        {isLoading ? (
+          <div className="flex min-h-64 items-center justify-center">
+            <DataSpinner label="Loading projects" />
+          </div>
+        ) : isError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground"
+          >
+            Could not load your projects.{" "}
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="text-foreground underline underline-offset-4"
+            >
+              Try again
+            </button>
+          </div>
+        ) : projects.length === 0 ? (
+          <div
+            role="status"
+            className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 text-center"
+          >
+            <FolderOpenIcon className="mb-4 size-6 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              {query
+                ? "No projects found"
+                : cursors.length > 1
+                  ? "No more projects on this page"
+                  : "Your next idea starts here"}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {query
+                ? "Try a different name or description."
+                : cursors.length > 1
+                  ? "Go back to your previous projects."
+                  : "Describe an idea above to create your first project."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onEditClick={setPendingEdit}
+                onDeleteClick={setPendingDelete}
+              />
+            ))}
+          </div>
+        )}
+        {(cursors.length > 1 || Boolean(data?.nextCursor)) && <nav
+          aria-label="Project pagination"
+          className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground"
+        >
+          <span aria-live="polite">
+            Page {cursors.length}
+            {query ? " · Search results" : ""}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={cursors.length === 1 || isLoading}
+              onClick={() => setCursors((previous) => previous.slice(0, -1))}
+              className="flex items-center gap-1 rounded-md border border-border px-3 py-2 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeftIcon className="size-3.5" />
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={
+                !data?.nextCursor ||
+                isLoading ||
+                isError ||
+                search.trim() !== query
+              }
+              onClick={() => {
+                if (data?.nextCursor)
+                  setCursors((previous) => [...previous, data.nextCursor!]);
+              }}
+              className="flex items-center gap-1 rounded-md border border-border px-3 py-2 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+              <ChevronRightIcon className="size-3.5" />
+            </button>
+          </div>
+        </nav>}
       </section>
 
       <EditProjectDialog
         project={pendingEdit}
         open={pendingEdit !== null}
-        onOpenChange={(open) => { if (!open) setPendingEdit(null); }}
+        onOpenChange={(open) => {
+          if (!open) setPendingEdit(null);
+        }}
       />
 
       <DeleteProjectDialog
         project={pendingDelete}
         open={pendingDelete !== null}
-        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
         onDeleted={(id) => {
           if (currentProjectId === id) navigate(APP_HOME);
         }}

@@ -78,11 +78,17 @@ export function countProjectsByUser(
 
 export async function listProjectsByUser(
   userId: string,
-  opts: { cursor?: string; limit: number },
+  opts: { cursor?: string; limit: number; search?: string },
 ): Promise<{ projects: Project[]; nextCursor: string | null }> {
   const rows = await prisma.project.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
+    where: {
+      userId,
+      ...(opts.search ? { OR: [
+        { name: { contains: opts.search, mode: "insensitive" as const } },
+        { description: { contains: opts.search, mode: "insensitive" as const } },
+      ] } : {}),
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
   });

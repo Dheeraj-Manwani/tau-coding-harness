@@ -45,7 +45,7 @@ export function AppShell() {
       )}
 
       <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
-      {!isProject && <SiteFooter />}
+      {!isProject && !isHome && <SiteFooter />}
       <OutOfCreditsModal />
       <UpgradeModal />
       <SettingsModal />

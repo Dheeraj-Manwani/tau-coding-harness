@@ -4,6 +4,7 @@ import { Zap } from "lucide-react";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { appPath } from "@/src/lib/routes";
 import { Hero } from "./sections/StormHero";
+import { PricingSection } from "./sections/Pricing";
 import XRayLens from "./sections/XRayLens";
 import { hasRecording } from "./data/replay";
 import "./storm.css";
@@ -317,6 +318,7 @@ export default function Landing() {
           <div className="mock-input">Ask for a change…</div>
         </div>
       </section>
+      <PricingSection />
       <section className="storm-cta storm-band">
         <div className="storm-container">
           <a

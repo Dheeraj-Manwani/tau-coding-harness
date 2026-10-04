@@ -42,6 +42,25 @@ export function useProjects() {
   });
 }
 
+export function useProjectsPage(search: string, cursor?: string) {
+  return useQuery({
+    queryKey: [...projectKeys.list(), "page", search, cursor ?? ""],
+    queryFn: () => api.get<ListProjectsResponse>("/project", {
+      params: { search: search || undefined, cursor, limit: 6 },
+    }).then((response) => response.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useProjectShowcase() {
+  return useQuery({
+    queryKey: ["project", "showcase"],
+    queryFn: () => api.get<{ projects: { slug: string; url: string }[] }>("/project/showcase")
+      .then((response) => response.data.projects),
+    staleTime: 60_000,
+  });
+}
+
 /** Load a project's persisted state (messages + latest fragment) on entry. */
 export function useProject(projectId: string | undefined, options: { enabled?: boolean } = {}) {
   return useQuery({

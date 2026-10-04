@@ -48,9 +48,23 @@ export const listProjects = async (
 ) => {
   try {
     const userId = requireUserId(req);
-    const { cursor, limit } = parse(listProjectsQuerySchema, req.query);
-    const result = await projectService.listProjects(userId, { cursor, limit });
+    const { cursor, limit, search } = parse(listProjectsQuerySchema, req.query);
+    const result = await projectService.listProjects(userId, { cursor, limit, search });
     res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getProjectShowcase = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    res.set("Cache-Control", "private, no-store");
+    res.json({ projects: await projectService.getProjectShowcase(userId) });
   } catch (err) {
     next(err);
   }

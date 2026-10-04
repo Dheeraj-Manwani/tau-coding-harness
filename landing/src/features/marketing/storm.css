@@ -1928,6 +1928,51 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Reusable bold display type, for pages (404, pricing) that want the storm
+   hero's type voice without opting into `.storm-landing`'s hero-scale
+   clamp()s and global overrides. */
+.display-heading {
+  font-family: "Big Shoulders Display", Impact, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+/* 404: "4"s are hollow outlines, the "0" is a lit tube that flickers with the
+   same keyframe the hero uses for "Build it.", just slower. */
+.digit-404 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0.82;
+  font-family: "Big Shoulders Display", Impact, sans-serif;
+  font-weight: 900;
+  font-size: clamp(96px, 20vw, 220px);
+}
+.digit-404 .digit-hollow {
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(147, 197, 253, 0.4);
+}
+.digit-404 .digit-glow {
+  position: relative;
+  color: transparent;
+}
+.digit-404 .digit-glow::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: #eff6ff;
+  animation: tube-flicker 4.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .digit-404 .digit-glow::before {
+    animation: none;
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33);
+  }
+}
 @media (min-width: 761px) and (max-width: 1000px) {
   .hero-grid {
     grid-template-columns: 1fr;

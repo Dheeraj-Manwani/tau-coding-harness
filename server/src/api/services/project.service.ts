@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { publicSiteUrl } from "@/lib/sites";
+import { findShowcaseSites } from "../repositories/showcase.repository";
 import { createProjectArchive } from "../lib/projectArchive";
 import { Sandbox } from "e2b";
 import { prisma } from "@/lib/prisma";
@@ -512,7 +514,7 @@ export async function restartPreview(
 
 export async function listProjects(
   userId: string,
-  opts: { cursor?: string; limit: number },
+  opts: { cursor?: string; limit: number; search?: string },
 ) {
   const { projects, nextCursor } = await projectRepo.listProjectsByUser(
     userId,
@@ -536,6 +538,13 @@ export async function listProjects(
     ),
     nextCursor,
   };
+}
+
+export async function getProjectShowcase(userId: string) {
+  const sites = await findShowcaseSites(userId);
+  // Slugs are already public. Internal names, descriptions and sandbox
+  // screenshots may contain unpublished work and must not leave the owner API.
+  return sites.map(({ slug }) => ({ slug, url: publicSiteUrl(slug) }));
 }
 
 /**

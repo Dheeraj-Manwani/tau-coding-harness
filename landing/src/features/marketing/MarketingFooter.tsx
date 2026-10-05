@@ -161,7 +161,14 @@ export function MarketingFooter() {
           </nav>
         </div>
 
-        <p className="mt-12 text-xs text-silver-600">
+        <p
+          aria-hidden="true"
+          className="text-hollow display-heading mt-10 overflow-hidden text-nowrap text-[clamp(2.5rem,11vw,6rem)] leading-none select-none"
+        >
+          Describe it. Build it.
+        </p>
+
+        <p className="mt-6 text-xs text-silver-600">
           © {new Date().getFullYear()} Tau. All rights reserved.
         </p>
       </div>

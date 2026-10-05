@@ -1,6 +1,11 @@
 import { useRef, useState, type ReactNode } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { ArrowUpIcon, Loader2Icon, PaperclipIcon, SquareIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  Loader2Icon,
+  PaperclipIcon,
+  SquareIcon,
+} from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
 import { AttachmentRail } from "@/src/features/composer/attachments/AttachmentRail";
@@ -35,6 +40,8 @@ interface PromptComposerProps {
   onStop?: () => void;
   /** Extra control rendered in the bottom row, just left of the send/stop button. */
   rightSlot?: ReactNode;
+  /** Text shown next to the send icon (e.g. "Build"). Icon-only when omitted. */
+  submitLabel?: string;
 
   attachments?: AttachmentDraft[];
   onAttach?: (files: File[]) => void;
@@ -60,6 +67,7 @@ export function PromptComposer({
   compact = false,
   onStop,
   rightSlot,
+  submitLabel,
   attachments = [],
   onAttach,
   onRemoveAttachment,
@@ -124,7 +132,10 @@ export function PromptComposer({
         isDragging
           ? "border-dashed border-brand/70 ring-3 ring-brand/10"
           : "border-silver-400/40",
-        compact ? "rounded-xl p-2" : "rounded-2xl p-3",
+        // Matches landing's `.storm-composer`: 14px normally, 10px compact
+        // (landing's own `compact ? 10 : 14` ElectricBorder radius) - padding
+        // is a notch past landing's own to carry the bigger Home title.
+        compact ? "rounded-[10px] p-2" : "rounded-[14px] p-4",
       )}
     >
       {onRemoveAttachment && (
@@ -166,14 +177,21 @@ export function PromptComposer({
           disabled={disabled}
           className={cn(
             "scrollbar-thin w-full resize-none bg-transparent px-2 py-1 text-left text-foreground placeholder:text-muted-foreground focus:outline-none",
-            compact ? "text-sm" : "text-base",
+            // Landing's 24px read too big once it was real input text rather
+            // than a short placeholder - dialed back a step.
+            compact ? "text-sm" : "text-lg",
             disabled && "cursor-not-allowed opacity-60",
           )}
         />
         {overlay}
       </div>
 
-      <div className={cn("flex items-center justify-between", compact ? "mt-1" : "mt-2")}>
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          compact ? "mt-1" : "mt-4",
+        )}
+      >
         <button
           type="button"
           aria-label="Attach files"
@@ -181,10 +199,10 @@ export function PromptComposer({
           onClick={() => fileInputRef.current?.click()}
           className={cn(
             "flex items-center justify-center rounded-lg text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
-            compact ? "size-7" : "size-9",
+            compact ? "size-7" : "size-10",
           )}
         >
-          <PaperclipIcon className="size-4" />
+          <PaperclipIcon className={compact ? "size-4" : "size-5"} />
         </button>
         <input
           ref={fileInputRef}
@@ -222,19 +240,26 @@ export function PromptComposer({
               type="button"
               onClick={onSubmit}
               disabled={!canSubmit}
-              aria-label="Send prompt"
+              aria-label={submitLabel ?? "Send prompt"}
               className={cn(
-                "flex items-center justify-center rounded-lg transition-[background-color,transform]",
-                compact ? "size-7" : "size-9",
+                "flex items-center justify-center gap-1.5 rounded-lg transition-[background-color,transform]",
+                submitLabel
+                  ? "h-10 px-3 text-base font-semibold"
+                  : compact
+                    ? "size-7"
+                    : "size-9",
                 canSubmit
                   ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
                   : "cursor-not-allowed bg-space-overlay text-silver-600",
               )}
             >
               {isSubmitting || attachmentsBusy ? (
-                <Loader2Icon className="size-4 animate-spin" />
+                <Loader2Icon className="size-5 animate-spin" />
               ) : (
-                <ArrowUpIcon className="size-4" />
+                <>
+                  {submitLabel}
+                  <ArrowUpIcon className="size-5" />
+                </>
               )}
             </button>
           )}

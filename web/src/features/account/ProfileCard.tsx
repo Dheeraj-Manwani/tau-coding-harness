@@ -83,12 +83,12 @@ function AvatarEditor({ user }: { user: AuthUser }) {
         disabled={busy}
         onClick={() => input.current?.click()}
         aria-label={user.avatarPath ? "Change profile picture" : "Add a profile picture"}
-        className="group relative cursor-pointer rounded-full outline-none focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-wait"
+        className="group relative cursor-pointer rounded-[8px] outline-none focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-wait"
       >
         <UserAvatar user={user} className="size-18" fallbackClassName="text-xl" />
         <span
           className={cn(
-            "absolute inset-0 flex items-center justify-center rounded-full bg-black/55 text-white transition-opacity",
+            "absolute inset-0 flex items-center justify-center rounded-[8px] bg-black/55 text-white transition-opacity",
             busy ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
           )}
         >

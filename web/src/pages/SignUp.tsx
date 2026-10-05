@@ -145,7 +145,7 @@ function SignUp() {
         </p>
       </div>
     </div>
-    <SiteFooter />
+    <SiteFooter watermark={false} />
     </div>
   );
 }

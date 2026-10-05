@@ -117,7 +117,7 @@ function Login() {
         </p>
       </div>
     </div>
-    <SiteFooter />
+    <SiteFooter watermark={false} />
     </div>
   );
 }

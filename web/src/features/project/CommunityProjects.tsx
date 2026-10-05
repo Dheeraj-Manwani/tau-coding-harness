@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, Globe2Icon, SparklesIcon } from "lucide-react";
+import { ArrowUpRightIcon } from "lucide-react";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useProjectShowcase } from "./api";
 
@@ -20,10 +20,10 @@ export function CommunityProjects() {
     >
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          {/* <p className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"><SparklesIcon className="size-3" />Made with tau</p> */}
+          <p className="eyebrow">// 02</p>
           <h2
             id="community-projects-heading"
-            className="text-xl font-medium tracking-tight"
+            className="display-heading mt-1 text-3xl text-silver-900"
           >
             See what others are building
           </h2>
@@ -56,13 +56,34 @@ export function CommunityProjects() {
           </button>
         </div>
       ) : !projects?.length ? (
-        <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-gradient-to-br from-space-overlay/60 to-transparent px-6 text-center">
-          <Globe2Icon className="mb-4 size-7 text-muted-foreground" />
-          <p className="text-sm font-medium">Good things are taking shape.</p>
-          <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            As builders refine and publish their projects, you’ll find a
-            selection of their live sites here.
-          </p>
+        <div className="relative flex min-h-52 flex-col items-center gap-8 overflow-hidden rounded-xl border border-border bg-space-surface px-6 py-10 text-center sm:flex-row sm:text-left">
+          <div aria-hidden="true" className="rain-streaks" />
+          <div
+            aria-hidden="true"
+            className="relative size-32 shrink-0 rounded-full border border-blue-500/20"
+          >
+            <div className="absolute inset-4 rounded-full border border-blue-500/20" />
+            <div className="absolute inset-8 rounded-full border border-blue-500/20" />
+            <div className="absolute inset-x-0 top-1/2 h-px bg-blue-500/15" />
+            <div className="absolute inset-y-0 left-1/2 w-px bg-blue-500/15" />
+            <div className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-300" />
+            <div className="absolute left-[38%] top-[28%] size-1 rounded-full bg-silver-600" />
+            <div className="absolute left-[62%] top-[68%] size-1 rounded-full bg-silver-600" />
+            <div
+              className="absolute left-1/2 top-1/2 h-1/2 w-px origin-top bg-gradient-to-b from-blue-300 to-transparent"
+              style={{ animation: "orbit-spin 3.2s linear infinite" }}
+            />
+          </div>
+          <div className="relative z-10">
+            <p className="eyebrow">Scanning for live sites</p>
+            <p className="display-heading mt-1 text-2xl text-silver-900">
+              Good things are taking shape.
+            </p>
+            <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
+              As builders refine and publish their projects, you’ll find a
+              selection of their live sites here.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

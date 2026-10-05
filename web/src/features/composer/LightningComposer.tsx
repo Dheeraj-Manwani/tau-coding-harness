@@ -23,7 +23,7 @@ export function LightningComposer({ active, children }: LightningComposerProps) 
       active={active}
       reducedMotion={reducedMotion}
       color="#3b82f6"
-      borderRadius={16}
+      borderRadius={14}
     >
       {children}
     </ElectricBorder>

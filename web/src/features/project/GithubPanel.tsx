@@ -74,12 +74,13 @@ export function GithubPanel() {
   const trigger = (
     <motion.button
       type="button"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
       aria-label="GitHub"
-      className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] text-[var(--silver-900)] transition-colors hover:border-[var(--silver-400)] hover:bg-[var(--space-overlay)]"
+      className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-[8px] border border-silver-400/30 bg-space-surface px-3.5 text-sm font-medium text-silver-900 transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
     >
-      <GithubMark className="size-4.5" />
+      <GithubMark className="size-4" />
+      GitHub
       {dot && (
         <span
           className={cn(

@@ -104,7 +104,17 @@ export function normalizeProjectName(name: string): string {
     /^(?:project\s+)?(?:name|title)\s*:\s*/i,
     "",
   );
-  const clean = withoutPrefix
+  // Strip markdown syntax wherever it appears, not just at the edges. The AI
+  // path hands this function a raw completion with no prior filtering, and
+  // when there's no typed message the model is often naming off an
+  // image-extracted description that's itself markdown (headings, bold,
+  // code spans are explicitly allowed there - see IMAGE_SYSTEM_PROMPT in
+  // api/lib/attachments.ts) - a title that echoes a fragment of it must not
+  // leak markdown characters into the display name.
+  const withoutMarkdown = withoutPrefix
+    .replace(/\*\*?|__?|`+/g, "") // bold/italic/code markers
+    .replace(/(?<![\p{L}\p{N}])#+/gu, ""); // heading markers, but not "C#"
+  const clean = withoutMarkdown
     .replace(/^[\s'"`*_#-]+|[\s'"`*_#.!?,;:-]+$/g, "")
     .replace(/\s+/g, " ")
     .trim();

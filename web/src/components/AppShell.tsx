@@ -8,7 +8,7 @@ import { MotionIntroDialog } from "@/src/features/settings/MotionIntroDialog";
 import { FeedbackModal } from "@/src/features/feedback/FeedbackModal";
 import { SupportTauModal } from "@/src/features/support/SupportTauModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
-import { APP_HOME } from "@/src/lib/routes";
+import { APP_BILLING, APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
 /**
@@ -22,6 +22,9 @@ export function AppShell() {
   // The project editor is a full-screen workspace: it hides the app navbar.
   const isProject = pathname.startsWith("/project/");
   const isHome = pathname === APP_HOME;
+  // The buy-credits flow is a focused purchase decision - the watermark is a
+  // flourish for pages someone lingers on, not one mid-checkout.
+  const isBilling = pathname === APP_BILLING;
 
   return (
     <div className="flex h-[100svh] flex-col">
@@ -30,13 +33,18 @@ export function AppShell() {
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             <Link
               to={APP_HOME}
-              className={cn(
-                "logo-mark pointer-events-auto size-6",
-                isHome && "logo-mark--white",
-              )}
-              role="img"
-              aria-label="tau"
-            />
+              aria-label="tau home"
+              className="pointer-events-auto flex items-center gap-2"
+            >
+              <span
+                className={cn("logo-mark size-6", isHome && "logo-mark--white")}
+                role="img"
+                aria-label="tau"
+              />
+              {/* <span className="display-heading text-base text-silver-900">
+                Tau
+              </span> */}
+            </Link>
             <div className="pointer-events-auto flex items-center gap-3">
               <UserMenu />
             </div>
@@ -45,7 +53,7 @@ export function AppShell() {
       )}
 
       <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
-      {!isProject && !isHome && <SiteFooter />}
+      {!isProject && !isHome && <SiteFooter watermark={!isBilling} />}
       <OutOfCreditsModal />
       <UpgradeModal />
       <SettingsModal />

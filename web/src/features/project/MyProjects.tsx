@@ -57,6 +57,11 @@ function ProjectCard({
         to={projectPath(project.id)}
         className="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
       >
+        <div className="flex items-center gap-1 border-b border-border/60 bg-space-void/60 px-2.5 py-1.5" aria-hidden="true">
+          <span className="size-1.5 rounded-full bg-silver-400/40" />
+          <span className="size-1.5 rounded-full bg-silver-400/40" />
+          <span className="size-1.5 rounded-full bg-silver-400/40" />
+        </div>
         <div className="aspect-video w-full overflow-hidden bg-space-overlay">
           {project.previewImageUrl ? (
             <img
@@ -170,10 +175,10 @@ export function MyProjects() {
       >
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            {/* <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Your workspace</p> */}
+            <p className="eyebrow">// 01</p>
             <h2
               id="my-projects-heading"
-              className="text-xl font-medium tracking-tight"
+              className="display-heading mt-1 text-3xl text-silver-900"
             >
               My projects
             </h2>

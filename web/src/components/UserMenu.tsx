@@ -49,7 +49,7 @@ export function UserMenu() {
           type="button"
           aria-label="Account menu"
           data-tour="account-menu"
-          className="cursor-pointer rounded-full outline-none transition-opacity hover:opacity-90"
+          className="cursor-pointer rounded-[8px] outline-none transition-opacity hover:opacity-90"
         >
           <UserAvatar user={user} />
         </button>

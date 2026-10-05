@@ -55,16 +55,17 @@ export function DeployPanel() {
   const trigger = (
     <motion.button
       type="button"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
       aria-label="Publish"
-      className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] text-[var(--silver-900)] transition-colors hover:border-[var(--silver-400)] hover:bg-[var(--space-overlay)]"
+      className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-[8px] bg-blue-500 px-3.5 text-sm font-semibold text-blue-900 shadow-[0_0_16px_rgba(96,165,250,0.35)] transition-colors hover:bg-blue-400"
     >
       {status?.inProgress ? (
-        <LoaderCircleIcon className="size-4.5 animate-spin" />
+        <LoaderCircleIcon className="size-4 animate-spin" />
       ) : (
-        <RocketIcon className="size-4.5" />
+        <RocketIcon className="size-4" />
       )}
+      Publish
       {dot && !status?.inProgress && (
         <span
           className={cn(

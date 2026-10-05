@@ -56,7 +56,7 @@ export function AuthLayout({
         </div>
       </div>
 
-      <SiteFooter />
+      <SiteFooter watermark={false} />
     </div>
   );
 }

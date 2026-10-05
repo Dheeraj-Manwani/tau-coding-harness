@@ -1940,6 +1940,14 @@
   line-height: 0.95;
 }
 
+/* Hollow outline text (e.g. a footer watermark) - mirrors web/'s own
+   `.text-hollow`, so the giant "Describe it. Build it." line at the bottom
+   of every page reads identically on both sites. */
+.text-hollow {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--silver-200);
+}
+
 /* 404: "4"s are hollow outlines, the "0" is a lit tube that flickers with the
    same keyframe the hero uses for "Build it.", just slower. */
 .digit-404 {

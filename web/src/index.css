@@ -1,3 +1,7 @@
+/* Remote import first: unlike the local imports below, it isn't inlined by
+   Vite's CSS processing, so after them it would land after expanded (non-
+   import) content and fail "@import must precede all other statements". */
+@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -71,8 +75,11 @@
   --accent-primary: var(--blue-500);
   --accent-secondary: var(--blue-300);
 
-  --sans: "Inter Variable", Inter, system-ui, sans-serif;
-  --heading: "Inter Variable", Inter, system-ui, sans-serif;
+  /* Same faces as landing/ (loaded via the same Google Fonts families above),
+     so the authenticated app reads as the same product as the marketing site
+     instead of a different one wearing its colors. */
+  --sans: Geist, system-ui, sans-serif;
+  --heading: Geist, system-ui, sans-serif;
   --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
 
   --radius: 0.75rem;
@@ -98,7 +105,8 @@
  * border-silver-400, text-blue-500, etc. (Tailwind v4 CSS-first config.)
  * ───────────────────────────────────────────────────────────────────────── */
 @theme {
-  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --font-sans: Geist, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Consolas, monospace;
 
   --color-space-void: #09090b;
   --color-space-surface: #111113;
@@ -665,6 +673,195 @@ a:hover > .logo-shimmer {
   html {
     background-color: var(--background);
     color-scheme: dark;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Storm voice, on this side of the product too: the same bold display face,
+ * eyebrow labels and hollow/rain motifs landing/ uses, scoped so they only
+ * apply where a component opts in (Home, Billing) rather than every page.
+ * ───────────────────────────────────────────────────────────────────────── */
+.display-heading {
+  font-family: "Big Shoulders Display", Impact, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.mono,
+.eyebrow {
+  font-family: "Geist Mono", Consolas, monospace;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--blue-500);
+  text-transform: uppercase;
+}
+
+/* Hollow outline text (e.g. a footer watermark) - pairs with `.text-cosmic`
+   for the solid/glow half of a two-tone headline. */
+.text-hollow {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--silver-200);
+}
+
+/* Subtle animated rain streaks for a `relative overflow-hidden` panel. Pure
+   CSS (no canvas): cheap enough to sit behind static dashboard content. */
+.rain-streaks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: repeating-linear-gradient(
+    100deg,
+    transparent 0,
+    transparent 38px,
+    rgba(160, 196, 253, 0.16) 39px,
+    transparent 40px
+  );
+  background-size: 140% 140%;
+  animation: rain-drift 9s linear infinite;
+}
+
+@keyframes rain-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -120px 220px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain-streaks {
+    animation: none;
+  }
+}
+
+/* Composer placeholder "stutter-in": ported verbatim from landing's
+   `.composer-placeholder` / `placeholder-glitch` so the rotating suggestion
+   text reads the same on both sides of the product. Positioning/color/size
+   stay Tailwind classes on the element; this class is only the animation. */
+.composer-glitch {
+  animation: placeholder-glitch 0.5s ease-out;
+}
+
+@keyframes placeholder-glitch {
+  0% {
+    opacity: 0;
+    transform: translateX(-3px);
+    text-shadow:
+      -2px 0 #60a5fa,
+      2px 0 #f472b6;
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+  22% {
+    opacity: 0.15;
+    transform: translateX(-2px);
+    text-shadow:
+      2px 0 #60a5fa,
+      -2px 0 #f472b6;
+  }
+  32% {
+    opacity: 1;
+    transform: translateX(1px);
+  }
+  42% {
+    opacity: 0.2;
+    transform: translateX(0);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: none;
+    text-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-glitch {
+    animation: none;
+  }
+}
+
+/* Tubelight text: a flickering lit layer over a hollow-outline base, lifted
+   from landing's hero ("Build it."). Pairs `data-text` (the ::before content)
+   with the element's own matching text, so selection/a11y still read real
+   text while the glow is purely decorative. */
+.tube-text {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(96, 165, 250, 0.18);
+}
+.tube-text::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: var(--blue-300);
+  animation: tube-flicker 7s ease-in-out infinite;
+}
+
+/* Rigged tubelight: holds lit, flickers 2-3 times, then sits dark for a
+   stretch before buzzing back to life. */
+@keyframes tube-flicker {
+  0%,
+  44% {
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33);
+  }
+  45% {
+    opacity: 0.2;
+    filter: none;
+  }
+  46% {
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88);
+  }
+  47% {
+    opacity: 0.15;
+    filter: none;
+  }
+  48% {
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88);
+  }
+  49% {
+    opacity: 0.1;
+    filter: none;
+  }
+  50%,
+  80% {
+    opacity: 0.06;
+    filter: none;
+  }
+  81% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 14px #60a5fa66);
+  }
+  82% {
+    opacity: 0.08;
+    filter: none;
+  }
+  84%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tube-text::before {
+    animation: none;
+    opacity: 1;
+    filter: drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33);
   }
 }
 

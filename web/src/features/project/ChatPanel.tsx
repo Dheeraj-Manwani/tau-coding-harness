@@ -58,7 +58,7 @@ import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
-import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { EffortToggle } from "@/src/features/composer/EffortToggle";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { MessageAttachmentRail } from "@/src/features/composer/attachments/AttachmentRail";
@@ -380,7 +380,7 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 flex items-center gap-2 rounded-md px-1.5 py-1 text-xs text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+        className="mt-3 flex items-center gap-2 rounded-[8px] border border-silver-400/25 px-1.5 py-1 text-xs text-silver-600 transition-colors hover:border-silver-400/50 hover:bg-space-overlay hover:text-silver-900"
       >
         <div className="flex items-center gap-1.5 opacity-60">
           {actions.slice(0, 8).map((a, i) => (
@@ -390,9 +390,10 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
           ))}
           {actions.length > 8 && <span className="text-[10px]">…</span>}
         </div>
-        <span>
-          {actions.length} action{actions.length !== 1 ? "s" : ""}
+        <span className="">
+          {actions.length} Action{actions.length !== 1 ? "s" : ""}
         </span>
+        <ChevronDownIcon className="size-3 shrink-0 opacity-60" />
       </button>
     );
   }
@@ -602,7 +603,7 @@ function ChatBubble({
         {/* Attachment-only turns have no text of their own: render the chips
             and the timestamp, but no empty bubble. */}
         {message.content && (
-          <div className="max-w-[85%] rounded-2xl rounded-br-md border border-[var(--silver-200)] bg-[var(--space-overlay)] px-4 py-3 text-sm leading-relaxed text-[var(--silver-900)]">
+          <div className="max-w-[85%] rounded-[14px] rounded-br-[6px] border border-[var(--silver-200)] bg-[var(--space-overlay)] px-4 py-3 text-sm leading-relaxed text-[var(--silver-900)]">
             <div
               ref={contentRef}
               style={
@@ -694,7 +695,7 @@ function TypingBubble({
         initial={ENTRANCE.initial}
         animate={ENTRANCE.animate}
         exit={{ opacity: 0 }}
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+        className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
       >
         <span>Tau has gone quiet. It may need a fresh start.</span>
         {onStop && (
@@ -715,7 +716,7 @@ function TypingBubble({
       initial={ENTRANCE.initial}
       animate={ENTRANCE.animate}
       exit={{ opacity: 0 }}
-      className="flex items-center"
+      className="mt-6 flex items-center"
     >
       <ChatLoader text={activity ?? "Thinking"} />
     </motion.div>
@@ -1250,7 +1251,7 @@ export function ChatPanel({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="h-full space-y-6 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:var(--silver-200)_transparent]"
+          className="h-full overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:var(--silver-200)_transparent]"
         >
           {isLoadingOlder && (
             <div className="flex justify-center py-2">
@@ -1262,20 +1263,41 @@ export function ChatPanel({
               <DataSpinner label="Loading chat" />
             </div>
           )}
-          {messages.map((m, i) =>
-            m.role === "divider" && m.divider ? (
-              <ContextDivider key={m.id} meta={m.divider} />
-            ) : (
-              <ChatBubble
-                key={m.id}
-                message={m}
-                delay={
-                  prependedIds.has(m.id) ? 0 : i < initialCount ? i * 0.04 : 0
-                }
-                noAnimate={prependedIds.has(m.id)}
-              />
-            ),
-          )}
+          {messages.map((m, i) => {
+            // Consecutive messages from the same speaker (tau narrating a
+            // multi-step turn: "I'll set up...", "4 Actions", "Adding a
+            // button...", "2 Actions", ...) read as one continuous stream and
+            // sit close together; an actual turn change (user <-> tau, or a
+            // context-summary divider) gets the full gap so the thread still
+            // reads as distinct exchanges rather than one flat wall.
+            const prev = i > 0 ? messages[i - 1] : undefined;
+            const sameSpeakerAsPrev =
+              !!prev &&
+              prev.role !== "divider" &&
+              m.role !== "divider" &&
+              prev.role === m.role;
+            const spacing =
+              i === 0 && !isLoadingOlder
+                ? undefined
+                : sameSpeakerAsPrev
+                  ? "mt-2"
+                  : "mt-6";
+            return (
+              <div key={m.id} className={spacing}>
+                {m.role === "divider" && m.divider ? (
+                  <ContextDivider meta={m.divider} />
+                ) : (
+                  <ChatBubble
+                    message={m}
+                    delay={
+                      prependedIds.has(m.id) ? 0 : i < initialCount ? i * 0.04 : 0
+                    }
+                    noAnimate={prependedIds.has(m.id)}
+                  />
+                )}
+              </div>
+            );
+          })}
           {canContinueAfterCredits && (
             <motion.button
               type="button"
@@ -1283,7 +1305,7 @@ export function ChatPanel({
               animate={ENTRANCE.animate}
               transition={ENTRANCE.transition}
               onClick={() => void send(CREDIT_RESUME_PROMPT, { effort })}
-              className="flex items-center gap-2 rounded-lg border border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 px-3 py-2 text-sm font-medium text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-500)]/20"
+              className="mt-6 flex items-center gap-2 rounded-lg border border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 px-3 py-2 text-sm font-medium text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-500)]/20"
             >
               <PlayIcon className="size-4 fill-current" />
               Continue
@@ -1391,11 +1413,7 @@ export function ChatPanel({
             onPasteLarge={attachments.addPaste}
             attachmentsBusy={attachments.isBusy}
             rightSlot={
-              <EffortDropdown
-                effort={effort}
-                onChange={setEffort}
-                ceilings={balance?.effortCeilings}
-              />
+              <EffortToggle effort={effort} onChange={setEffort} compact />
             }
           />
         )}

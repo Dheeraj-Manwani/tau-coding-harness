@@ -67,7 +67,7 @@ function TabToggle() {
   return (
     <div
       data-tour="view-tabs"
-      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)]"
+      className="flex shrink-0 gap-1 rounded-[9px] border border-silver-400/30 bg-space-surface p-1"
     >
       {TABS.map(({ id, icon: Icon }) => (
         <button
@@ -76,16 +76,16 @@ function TabToggle() {
           onClick={() => setActiveTab(id)}
           aria-pressed={activeTab === id}
           className={cn(
-            "relative flex h-8 items-center rounded-lg px-3 text-xs font-medium capitalize transition-colors",
+            "relative flex h-8 items-center rounded-[7px] px-3 text-xs font-semibold tracking-wide uppercase transition-colors",
             activeTab === id
-              ? "text-[var(--space-void)]"
-              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+              ? "text-white"
+              : "text-silver-600 hover:text-silver-900",
           )}
         >
           {activeTab === id && (
             <motion.span
               layoutId="tab-pill"
-              className="absolute inset-0 rounded-lg bg-[var(--silver-900)] shadow-sm"
+              className="absolute inset-0 rounded-[7px] bg-blue-500 shadow-sm"
               transition={{ type: "spring", stiffness: 400, damping: 32 }}
             />
           )}
@@ -110,7 +110,7 @@ function DeviceSwitcher() {
   return (
     <div
       data-tour="device-switcher"
-      className="flex shrink-0 gap-1 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
+      className="flex shrink-0 gap-1 rounded-[9px] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
     >
       {DEVICES.map(({ id, icon: Icon, label }) => (
         <motion.button
@@ -121,7 +121,7 @@ function DeviceSwitcher() {
           aria-label={label}
           aria-pressed={previewDevice === id}
           className={cn(
-            "flex size-8 items-center justify-center rounded-lg transition-colors",
+            "flex size-8 items-center justify-center rounded-[7px] transition-colors",
             previewDevice === id
               ? "bg-[var(--space-overlay)] text-[var(--silver-900)]"
               : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
@@ -157,20 +157,21 @@ function VisualEditToggle() {
       <TooltipTrigger asChild>
         <motion.button
           type="button"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.92 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
           onClick={() => setEnabled(!enabled)}
           aria-label="Select an element"
           data-tour="select-element"
           aria-pressed={enabled}
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
+            "flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-xs font-semibold tracking-wide uppercase transition-colors",
             enabled
-              ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
-              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+              ? "border-blue-500/50 bg-blue-500/15 text-blue-300"
+              : "border-silver-400/30 text-silver-600 hover:text-silver-900",
           )}
         >
-          <SquareMousePointerIcon className="size-4" />
+          <SquareMousePointerIcon className="size-3.5" />
+          Edit
         </motion.button>
       </TooltipTrigger>
       <TooltipContent>
@@ -261,7 +262,7 @@ function PreviewNavigation() {
             disabled={!hasUrl}
             aria-label={`Navigate preview: ${previewPath}`}
             title={fullUrl ?? "No preview yet"}
-            className="flex h-8 min-w-0 max-w-32 items-center gap-1.5 rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 font-mono text-xs text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40 sm:max-w-48"
+            className="flex h-8 min-w-0 max-w-32 items-center gap-1.5 rounded-[8px] border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 font-mono text-xs text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40 sm:max-w-48"
           >
             <span className="truncate">{previewPath}</span>
             <ChevronDownIcon className="size-3 shrink-0 text-[var(--silver-600)]" />

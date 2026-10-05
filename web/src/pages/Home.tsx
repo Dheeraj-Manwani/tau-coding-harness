@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
-import { TextAnimate } from "@/src/components/ui/text-animate";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
-import { EffortDropdown } from "@/src/features/composer/EffortDropdown";
+import { EffortToggle } from "@/src/features/composer/EffortToggle";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { CommunityProjects } from "@/src/features/project/CommunityProjects";
@@ -22,7 +21,9 @@ import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
-import { AmbientStars } from "@/src/components/AmbientStars";
+import { StormCanvas } from "@/src/components/StormCanvas";
+import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+import { cn } from "@/src/lib/utils";
 
 // Free plan may own at most this many concurrent projects (mirrors
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
@@ -41,6 +42,9 @@ function Home() {
   useDocumentMeta({ title: "Tau", exactTitle: true, noIndex: true });
 
   const navigate = useNavigate();
+  // Target for StormCanvas's rain splash - landing splashes drops against the
+  // composer's top edge the same way.
+  const composerRef = useRef<HTMLDivElement>(null);
   const initProject = useInitProject();
   const openOutOfCredits = useBillingStore((s) => s.open);
   const { data: projects, isLoading: projectsLoading } = useProjects();
@@ -68,19 +72,24 @@ function Home() {
   const { effort, setEffort } = useEffortChoice();
   // Drives the Home-only dramatic animations (lightning composer + glitch stars).
   const maxActive = effort === "MAX";
+  // Covers both the OS setting and the in-app Settings toggle - the tube
+  // flicker and the placeholder's stutter-in/rotation both defer to it.
+  const reduceMotion = useReduceMotion();
 
   // A prefilled prompt is a one-time welcome, not a sticky draft.
   useEffect(() => clearPendingPrompt(), []);
 
-  // Cycle through suggestions while the input is empty.
+  // Cycle through suggestions while the input is empty. Same 4s cadence as
+  // landing's StormComposer - which, like here, just shows the first
+  // suggestion statically under reduced motion rather than rotating it.
   useEffect(() => {
-    if (!showPlaceholder || isSubmitting) return;
+    if (!showPlaceholder || isSubmitting || reduceMotion) return;
     const id = setInterval(
       () => setSuggestion((i) => (i + 1) % SUGGESTIONS.length),
-      5000,
+      4000,
     );
     return () => clearInterval(id);
-  }, [showPlaceholder, isSubmitting]);
+  }, [showPlaceholder, isSubmitting, reduceMotion]);
 
   const submit = () => {
     const message = prompt.trim();
@@ -136,17 +145,30 @@ function Home() {
 
   return (
     <div className="h-full overflow-y-auto pt-12">
-      <AmbientStars />
-      <div className="flex min-h-[70svh] flex-col items-center justify-center">
-        <div className="relative z-10 w-full max-w-2xl px-6 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            What do you want to build?
+      <StormCanvas target={() => composerRef.current} />
+      <div className="relative flex min-h-[70svh] flex-col items-center justify-center overflow-hidden">
+        <div className="relative z-10 w-full max-w-4xl px-6 text-center">
+          <p className="eyebrow">— describe it. build it. —</p>
+          <h1 className="display-heading mt-4 text-7xl text-silver-900 sm:text-8xl">
+            What do you want
+            <br />
+            <span
+              className={reduceMotion ? "text-blue-300" : "tube-text"}
+              data-text="to build?"
+              style={
+                reduceMotion
+                  ? {
+                      filter:
+                        "drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33)",
+                    }
+                  : undefined
+              }
+            >
+              to build?
+            </span>
           </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            describe it. build it.
-          </p>
 
-          <div className="mt-8 text-left">
+          <div ref={composerRef} className="mt-10 text-left">
             <LightningComposer active={maxActive}>
               <PromptComposer
                 value={prompt}
@@ -154,33 +176,27 @@ function Home() {
                 onSubmit={submit}
                 isSubmitting={isSubmitting}
                 disabled={atProjectLimit}
-                minRows={3}
+                minRows={2}
                 maxRows={12}
+                submitLabel="Build"
                 attachments={attachments.attachments}
                 onAttach={(files) => attachments.addFiles(files, prompt)}
                 onRemoveAttachment={attachments.remove}
                 onPasteLarge={attachments.addPaste}
                 attachmentsBusy={attachments.isBusy}
-                rightSlot={
-                  <EffortDropdown
-                    effort={effort}
-                    onChange={setEffort}
-                    ceilings={balance?.effortCeilings}
-                  />
-                }
+                rightSlot={<EffortToggle effort={effort} onChange={setEffort} />}
                 overlay={
                   showPlaceholder ? (
-                    <TextAnimate
+                    <span
                       key={suggestion}
-                      as="span"
-                      by="character"
-                      animation="slideLeft"
-                      startOnView={false}
-                      once
-                      className="pointer-events-none absolute left-2 top-1 text-base text-muted-foreground"
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none absolute left-2 top-1 text-lg whitespace-pre-wrap text-muted-foreground",
+                        !reduceMotion && "composer-glitch",
+                      )}
                     >
                       {SUGGESTIONS[suggestion]}
-                    </TextAnimate>
+                    </span>
                   ) : null
                 }
               />
@@ -194,16 +210,18 @@ function Home() {
               </div>
             ) : (
               isFreePlan && (
-                <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
-                  <span>
-                    {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
-                    {FREE_PLAN_MAX_PROJECTS} projects
-                  </span>
-                  {atProjectLimit && (
-                    <span className="text-amber-400">
-                      Free plan limit reached.
+                <div className="mt-2 px-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-mono">
+                      {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
+                      {FREE_PLAN_MAX_PROJECTS} projects
                     </span>
-                  )}
+                    {atProjectLimit && (
+                      <span className="text-amber-400">
+                        Free plan limit reached.
+                      </span>
+                    )}
+                  </div>
                 </div>
               )
             )}

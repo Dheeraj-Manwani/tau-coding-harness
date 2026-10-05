@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowUpIcon,
@@ -24,8 +24,9 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
-import BorderGlow from "@/src/components/ui/glow-loader";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { BuildLoaderCard } from "@/src/features/project/BuildLoaderCard";
+import { PreviewStoppedCard } from "@/src/features/project/PreviewStoppedCard";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
@@ -198,142 +199,22 @@ function PreviewPlaceholder({
   }
 
   const tip = BUILD_TIPS[tipIndex]!;
-  const TipIcon = tip.icon;
   const liveActivity = activityPhrase(state.title);
 
   return (
-    <div className="flex h-full items-center justify-center bg-black p-6">
-      <BorderGlow
-        autoAnimate
-        autoAnimateDuration={3200}
-        coneSpread={8}
-        borderRadius={20}
-        backgroundColor="var(--space-surface)"
-        glowColor="253 91 85"
-        colors={["#8b7bff", "#f472b6", "#38bdf8"]}
-        glowRadius={32}
-        glowIntensity={0.9}
-        fillOpacity={0.3}
-        className="mx-0 w-full max-w-md px-0 py-0"
-      >
-        <div className="relative overflow-hidden rounded-[20px] px-6 py-5 sm:px-7">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
-
-          <div className="flex flex-col items-center text-center">
-            <div
-              className="flex min-h-7 w-full items-center justify-center gap-1.5 overflow-hidden"
-              aria-live="polite"
-            >
-              <div className="relative shrink-0">
-                <motion.span
-                  aria-hidden="true"
-                  className="absolute inset-0 rounded-full bg-[var(--blue-500)]/20 blur-lg"
-                  animate={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          scale: [0.85, 1.15, 0.85],
-                          opacity: [0.3, 0.65, 0.3],
-                        }
-                  }
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                <span
-                  className="logo-mark relative block size-4"
-                  role="img"
-                  aria-label="tau"
-                />
-              </div>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p
-                  key={state.title}
-                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                  transition={{ duration: 0.22 }}
-                  className="text-[13px] font-semibold leading-snug text-[var(--silver-900)]"
-                >
-                  is {liveActivity}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="relative min-h-32 overflow-hidden text-center">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={tipIndex}
-                  initial={reduceMotion ? false : { opacity: 0, x: 18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, x: -18 }}
-                  transition={{ duration: 0.28, ease: "easeOut" }}
-                  className="flex flex-col items-center"
-                >
-                  <span className="mb-2.5 flex size-8 items-center justify-center rounded-lg bg-[var(--space-overlay)]">
-                    <TipIcon className={cn("size-4", tip.iconClass)} />
-                  </span>
-                  <p className="text-[13px] font-semibold text-[var(--silver-900)]">
-                    {tip.title}
-                  </p>
-                  <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[var(--silver-600)]">
-                    {tip.copy}
-                  </p>
-                  {tipIndex === 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        useFeedbackStore
-                          .getState()
-                          .open(
-                            "preview",
-                            useProjectStore.getState().projectId ?? undefined,
-                          )
-                      }
-                      className="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-amber-300 underline underline-offset-4 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      Give feedback
-                    </button>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="mt-1.5 flex items-center justify-center">
-              <div
-                role="group"
-                className="flex items-center gap-0.5"
-                aria-label={`Tip ${tipIndex + 1} of ${BUILD_TIPS.length}`}
-              >
-                {BUILD_TIPS.map((item, index) => (
-                  <button
-                    key={item.title}
-                    type="button"
-                    onClick={() => selectTip(index)}
-                    aria-label={`Show tip ${index + 1}`}
-                    aria-current={index === tipIndex ? "true" : undefined}
-                    className="flex size-6 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--blue-500)]"
-                  >
-                    <span
-                      className={cn(
-                        "block h-1.5 rounded-full transition-[width,background-color,opacity]",
-                        index === tipIndex
-                          ? "w-4 bg-[var(--blue-500)]"
-                          : "w-1.5 bg-[var(--silver-600)] opacity-80 ring-1 ring-[var(--silver-400)] hover:opacity-100",
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </BorderGlow>
-    </div>
+    <BuildLoaderCard
+      liveActivity={liveActivity}
+      tip={tip}
+      tipIndex={tipIndex}
+      tipCount={BUILD_TIPS.length}
+      onSelectTip={selectTip}
+      onFeedback={() =>
+        useFeedbackStore
+          .getState()
+          .open("preview", useProjectStore.getState().projectId ?? undefined)
+      }
+      reduceMotion={reduceMotion}
+    />
   );
 }
 
@@ -349,43 +230,8 @@ function PreviewStopped({
   onStart: () => void;
   coverImageUrl: string | null;
 }) {
-  const starting = mode === "restoring" || mode === "checking";
-  const label = mode === "restoring" ? "Restoring your preview…" : mode === "checking" ? "Checking preview…" : mode === "failed" ? "We couldn’t restore the preview." : "Preview stopped";
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-3 overflow-hidden bg-black">
-      {coverImageUrl && (
-        <>
-          <img
-            src={coverImageUrl}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 size-full scale-110 object-cover object-top opacity-45 blur-md"
-          />
-          <div className="absolute inset-0 bg-black/80" />
-        </>
-      )}
-      <span className="relative flex size-10 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)] shadow-lg">
-        <PowerOffIcon className="size-4.5" />
-      </span>
-      <span role={starting ? "status" : undefined} className="relative text-xs text-[var(--silver-900)]">
-        {label}
-      </span>
-      {starting ? (
-        <span aria-hidden className="relative size-4 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
-      ) : (
-      <button
-        type="button"
-        disabled={starting}
-        onClick={onStart}
-        className="relative flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-default disabled:hover:bg-brand"
-      >
-          <>
-            <PlayIcon className="size-3.5" />
-            {mode === "failed" ? "Retry preview" : "Start preview"}
-          </>
-      </button>
-      )}
-    </div>
+    <PreviewStoppedCard mode={mode} onStart={onStart} coverImageUrl={coverImageUrl} />
   );
 }
 

@@ -131,6 +131,15 @@ export const Effort = {
 export type Effort = (typeof Effort)[keyof typeof Effort]
 
 
+export const ContextCheckpointReason = {
+  AUTO_SUMMARIZE: 'AUTO_SUMMARIZE',
+  MANUAL_SUMMARIZE: 'MANUAL_SUMMARIZE',
+  MANUAL_CLEAR: 'MANUAL_CLEAR'
+} as const
+
+export type ContextCheckpointReason = (typeof ContextCheckpointReason)[keyof typeof ContextCheckpointReason]
+
+
 export const DeploymentStatus = {
   QUEUED: 'QUEUED',
   BUILDING: 'BUILDING',

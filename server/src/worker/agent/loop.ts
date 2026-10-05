@@ -273,7 +273,7 @@ export function balanceToolResults(entries: Entry[]): Entry[] {
   return out;
 }
 
-async function loadHistory(projectId: string): Promise<Entry[]> {
+export async function loadHistory(projectId: string): Promise<Entry[]> {
   const checkpoint = await prisma.contextCheckpoint.findFirst({
     where: { projectId },
     orderBy: { upToSequence: "desc" },
@@ -289,7 +289,9 @@ async function loadHistory(projectId: string): Promise<Entry[]> {
 
   const entries: Entry[] = [];
 
-  if (checkpoint) {
+  // A "Clear chat" checkpoint carries no summary — nothing of it should
+  // carry forward into the model's context.
+  if (checkpoint && checkpoint.summary) {
     entries.push({
       param: {
         role: "system",

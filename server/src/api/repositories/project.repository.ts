@@ -6,7 +6,11 @@ import type {
   Job,
   Fragment,
 } from "@/generated/prisma/client";
-import { JobStatus, MessageType } from "@/generated/prisma/enums";
+import {
+  ContextCheckpointReason,
+  JobStatus,
+  MessageType,
+} from "@/generated/prisma/enums";
 
 export function createProject(
   tx: Prisma.TransactionClient,
@@ -157,9 +161,10 @@ export type MessageWithAttachments = Message & {
 export async function findRecentMessages(
   projectId: string,
   limit: number,
+  afterSequence = -1,
 ): Promise<MessageWithAttachments[]> {
   const rows = await prisma.message.findMany({
-    where: { projectId, ...CHAT_MESSAGE_TYPES },
+    where: { projectId, sequence: { gt: afterSequence }, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "desc" },
     take: limit,
     include: { attachments: ATTACHMENT_SUMMARY },
@@ -171,9 +176,14 @@ export async function findMessagesBefore(
   projectId: string,
   beforeSequence: number,
   limit: number,
+  afterSequence = -1,
 ): Promise<{ messages: MessageWithAttachments[]; hasMore: boolean }> {
   const rows = await prisma.message.findMany({
-    where: { projectId, sequence: { lt: beforeSequence }, ...CHAT_MESSAGE_TYPES },
+    where: {
+      projectId,
+      sequence: { lt: beforeSequence, gt: afterSequence },
+      ...CHAT_MESSAGE_TYPES,
+    },
     orderBy: { sequence: "desc" },
     take: limit + 1,
     include: { attachments: ATTACHMENT_SUMMARY },
@@ -186,9 +196,10 @@ export async function findMessagesBefore(
 export async function listMessages(
   projectId: string,
   opts: { cursor?: string; limit: number },
+  afterSequence = -1,
 ): Promise<{ messages: MessageWithAttachments[]; nextCursor: string | null }> {
   const rows = await prisma.message.findMany({
-    where: { projectId, ...CHAT_MESSAGE_TYPES },
+    where: { projectId, sequence: { gt: afterSequence }, ...CHAT_MESSAGE_TYPES },
     orderBy: { sequence: "asc" },
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
@@ -218,6 +229,45 @@ export function findCheckpointsInRange(
       createdAt: true,
     },
   });
+}
+
+/**
+ * The boundary of the most recent "Clear chat" (`MANUAL_CLEAR`), if any.
+ * Every message read path floors on this so a cleared chat never resurfaces
+ * in the UI, while `AUTO_SUMMARIZE`/`MANUAL_SUMMARIZE` checkpoints stay purely
+ * cosmetic (a divider) and never hide history — see
+ * doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md.
+ */
+export async function findLatestClearSequence(
+  projectId: string,
+): Promise<number> {
+  const row = await prisma.contextCheckpoint.findFirst({
+    where: { projectId, reason: ContextCheckpointReason.MANUAL_CLEAR },
+    orderBy: { upToSequence: "desc" },
+    select: { upToSequence: true },
+  });
+  return row?.upToSequence ?? -1;
+}
+
+export function maxMessageSequence(projectId: string): Promise<number | null> {
+  return prisma.message
+    .findFirst({
+      where: { projectId },
+      orderBy: { sequence: "desc" },
+      select: { sequence: true },
+    })
+    .then((row) => row?.sequence ?? null);
+}
+
+export function createContextCheckpoint(data: {
+  projectId: string;
+  upToSequence: number;
+  reason: ContextCheckpointReason;
+  summary: string;
+  tokensBefore: number;
+  tokensAfter: number;
+}) {
+  return prisma.contextCheckpoint.create({ data });
 }
 
 export function findLatestFragment(

@@ -2535,6 +2535,7 @@ export const ContextCheckpointScalarFieldEnum = {
   id: 'id',
   projectId: 'projectId',
   upToSequence: 'upToSequence',
+  reason: 'reason',
   summary: 'summary',
   tokensBefore: 'tokensBefore',
   tokensAfter: 'tokensAfter',
@@ -3042,6 +3043,20 @@ export type BigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 
  * Reference to a field of type 'BigInt[]'
  */
 export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ContextCheckpointReason'
+ */
+export type EnumContextCheckpointReasonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContextCheckpointReason'>
+    
+
+
+/**
+ * Reference to a field of type 'ContextCheckpointReason[]'
+ */
+export type ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContextCheckpointReason[]'>
     
 
 

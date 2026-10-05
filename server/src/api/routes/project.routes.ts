@@ -28,6 +28,7 @@ import {
 } from "../controllers/project.controller";
 import * as github from "../controllers/githubProject.controller";
 import * as deploy from "../controllers/deploy.controller";
+import * as context from "../controllers/context.controller";
 import {
   visualEditRateLimiter,
   assetImportRateLimiter,
@@ -45,6 +46,9 @@ router.get("/:projectId", getProject);
 router.get("/:projectId/job-status", getProjectJobStatus);
 router.get("/:projectId/messages", listMessages);
 router.post("/:projectId/message", addMessage);
+// Project-dropdown chat actions. See doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md.
+router.post("/:projectId/chat/clear", context.clearChat);
+router.post("/:projectId/chat/summarize", context.summarizeChat);
 router.patch("/:projectId", updateProject);
 router.delete("/:projectId", deleteProject);
 router.get("/:projectId/tree", getProjectTree);

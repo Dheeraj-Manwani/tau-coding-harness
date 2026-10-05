@@ -185,6 +185,9 @@ function Home() {
                 onPasteLarge={attachments.addPaste}
                 attachmentsBusy={attachments.isBusy}
                 rightSlot={<EffortToggle effort={effort} onChange={setEffort} />}
+                placeholderText={
+                  showPlaceholder ? SUGGESTIONS[suggestion] : undefined
+                }
                 overlay={
                   showPlaceholder ? (
                     <span

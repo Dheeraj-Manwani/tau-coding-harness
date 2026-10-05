@@ -535,6 +535,23 @@ export type BigIntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedBigIntFilter<$PrismaModel>
 }
 
+export type EnumContextCheckpointReasonFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContextCheckpointReason | Prisma.EnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  in?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel> | $Enums.ContextCheckpointReason
+}
+
+export type EnumContextCheckpointReasonWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContextCheckpointReason | Prisma.EnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  in?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContextCheckpointReasonWithAggregatesFilter<$PrismaModel> | $Enums.ContextCheckpointReason
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel>
+}
+
 export type EnumDeploymentStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.DeploymentStatus | Prisma.EnumDeploymentStatusFieldRefInput<$PrismaModel>
   in?: $Enums.DeploymentStatus[] | Prisma.ListEnumDeploymentStatusFieldRefInput<$PrismaModel>
@@ -1142,6 +1159,23 @@ export type NestedBigIntWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedBigIntFilter<$PrismaModel>
   _min?: Prisma.NestedBigIntFilter<$PrismaModel>
   _max?: Prisma.NestedBigIntFilter<$PrismaModel>
+}
+
+export type NestedEnumContextCheckpointReasonFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContextCheckpointReason | Prisma.EnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  in?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel> | $Enums.ContextCheckpointReason
+}
+
+export type NestedEnumContextCheckpointReasonWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ContextCheckpointReason | Prisma.EnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  in?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ContextCheckpointReason[] | Prisma.ListEnumContextCheckpointReasonFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumContextCheckpointReasonWithAggregatesFilter<$PrismaModel> | $Enums.ContextCheckpointReason
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumContextCheckpointReasonFilter<$PrismaModel>
 }
 
 export type NestedEnumDeploymentStatusFilter<$PrismaModel = never> = {

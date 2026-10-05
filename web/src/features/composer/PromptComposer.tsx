@@ -28,6 +28,14 @@ interface PromptComposerProps {
   ariaLabel?: string;
   /** Custom node rendered over the textarea (e.g. animated suggestions). */
   overlay?: ReactNode;
+  /**
+   * Text that Tab fills in when pressed as the first keystroke (empty
+   * value). Defaults to `placeholder`; pass this separately when `overlay`
+   * replaces the native placeholder attribute with custom-rendered text
+   * (e.g. the rotating suggestions on Home), since that text isn't otherwise
+   * readable back from the opaque overlay node.
+   */
+  placeholderText?: string;
   isSubmitting?: boolean;
   /** Hard-disable input and submit (e.g. at the free-plan project cap). */
   disabled?: boolean;
@@ -59,6 +67,7 @@ export function PromptComposer({
   placeholder,
   ariaLabel,
   overlay,
+  placeholderText = placeholder,
   isSubmitting = false,
   disabled = false,
   minRows = 1,
@@ -151,6 +160,16 @@ export function PromptComposer({
           aria-label={ariaLabel}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
+            if (
+              e.key === "Tab" &&
+              value.length === 0 &&
+              !disabled &&
+              placeholderText
+            ) {
+              e.preventDefault();
+              onChange(placeholderText);
+              return;
+            }
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               if (canSubmit) onSubmit();

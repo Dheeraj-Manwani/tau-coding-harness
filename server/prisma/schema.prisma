@@ -451,12 +451,24 @@ model ProjectFile {
   @@index([projectId])
 }
 
+/// Why a checkpoint was written. `AUTO_SUMMARIZE` is the agent loop's own
+/// high-water-mark summarization; the `MANUAL_*` values are user-triggered
+/// from the project dropdown (doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md).
+/// Only `MANUAL_CLEAR` hides messages at/below it from the UI — the others
+/// stay visible behind a divider, matching today's auto-summarize behavior.
+enum ContextCheckpointReason {
+  AUTO_SUMMARIZE
+  MANUAL_SUMMARIZE
+  MANUAL_CLEAR
+}
+
 model ContextCheckpoint {
   id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   upToSequence Int
+  reason       ContextCheckpointReason @default(AUTO_SUMMARIZE)
 
   summary      String
   tokensBefore Int

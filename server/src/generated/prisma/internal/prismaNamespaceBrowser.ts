@@ -299,6 +299,7 @@ export const ContextCheckpointScalarFieldEnum = {
   id: 'id',
   projectId: 'projectId',
   upToSequence: 'upToSequence',
+  reason: 'reason',
   summary: 'summary',
   tokensBefore: 'tokensBefore',
   tokensAfter: 'tokensAfter',

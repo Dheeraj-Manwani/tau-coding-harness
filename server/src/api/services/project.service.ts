@@ -647,8 +647,9 @@ export async function getProject(projectId: string, userId: string) {
     throw Errors.forbidden("You do not have access to this project");
   }
 
+  const clearFloor = await projectRepo.findLatestClearSequence(projectId);
   const [messages, latestFragment, activeJob, previewImageUrl] = await Promise.all([
-    projectRepo.findRecentMessages(projectId, 50),
+    projectRepo.findRecentMessages(projectId, 50, clearFloor),
     projectRepo.findLatestFragment(projectId),
     projectRepo.findActiveJob(projectId),
     project.previewImageKey ? presignGet(project.previewImageKey) : Promise.resolve(null),
@@ -729,11 +730,14 @@ export async function listMessages(
     throw Errors.forbidden("You do not have access to this project");
   }
 
+  const clearFloor = await projectRepo.findLatestClearSequence(projectId);
+
   if (opts.before !== undefined) {
     const result = await projectRepo.findMessagesBefore(
       projectId,
       opts.before,
       opts.limit,
+      clearFloor,
     );
     const checkpoints = result.messages.length
       ? await projectRepo.findCheckpointsInRange(
@@ -745,7 +749,7 @@ export async function listMessages(
     return { ...result, checkpoints };
   }
 
-  return projectRepo.listMessages(projectId, opts);
+  return projectRepo.listMessages(projectId, opts, clearFloor);
 }
 
 export async function downloadProjectArchive(projectId: string, userId: string) {

@@ -42,6 +42,7 @@ export type ContextCheckpointMinAggregateOutputType = {
   id: string | null
   projectId: string | null
   upToSequence: number | null
+  reason: $Enums.ContextCheckpointReason | null
   summary: string | null
   tokensBefore: number | null
   tokensAfter: number | null
@@ -53,6 +54,7 @@ export type ContextCheckpointMaxAggregateOutputType = {
   id: string | null
   projectId: string | null
   upToSequence: number | null
+  reason: $Enums.ContextCheckpointReason | null
   summary: string | null
   tokensBefore: number | null
   tokensAfter: number | null
@@ -64,6 +66,7 @@ export type ContextCheckpointCountAggregateOutputType = {
   id: number
   projectId: number
   upToSequence: number
+  reason: number
   summary: number
   tokensBefore: number
   tokensAfter: number
@@ -89,6 +92,7 @@ export type ContextCheckpointMinAggregateInputType = {
   id?: true
   projectId?: true
   upToSequence?: true
+  reason?: true
   summary?: true
   tokensBefore?: true
   tokensAfter?: true
@@ -100,6 +104,7 @@ export type ContextCheckpointMaxAggregateInputType = {
   id?: true
   projectId?: true
   upToSequence?: true
+  reason?: true
   summary?: true
   tokensBefore?: true
   tokensAfter?: true
@@ -111,6 +116,7 @@ export type ContextCheckpointCountAggregateInputType = {
   id?: true
   projectId?: true
   upToSequence?: true
+  reason?: true
   summary?: true
   tokensBefore?: true
   tokensAfter?: true
@@ -209,6 +215,7 @@ export type ContextCheckpointGroupByOutputType = {
   id: string
   projectId: string
   upToSequence: number
+  reason: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -243,6 +250,7 @@ export type ContextCheckpointWhereInput = {
   id?: Prisma.StringFilter<"ContextCheckpoint"> | string
   projectId?: Prisma.StringFilter<"ContextCheckpoint"> | string
   upToSequence?: Prisma.IntFilter<"ContextCheckpoint"> | number
+  reason?: Prisma.EnumContextCheckpointReasonFilter<"ContextCheckpoint"> | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFilter<"ContextCheckpoint"> | string
   tokensBefore?: Prisma.IntFilter<"ContextCheckpoint"> | number
   tokensAfter?: Prisma.IntFilter<"ContextCheckpoint"> | number
@@ -255,6 +263,7 @@ export type ContextCheckpointOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   projectId?: Prisma.SortOrder
   upToSequence?: Prisma.SortOrder
+  reason?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   tokensBefore?: Prisma.SortOrder
   tokensAfter?: Prisma.SortOrder
@@ -270,6 +279,7 @@ export type ContextCheckpointWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ContextCheckpointWhereInput | Prisma.ContextCheckpointWhereInput[]
   projectId?: Prisma.StringFilter<"ContextCheckpoint"> | string
   upToSequence?: Prisma.IntFilter<"ContextCheckpoint"> | number
+  reason?: Prisma.EnumContextCheckpointReasonFilter<"ContextCheckpoint"> | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFilter<"ContextCheckpoint"> | string
   tokensBefore?: Prisma.IntFilter<"ContextCheckpoint"> | number
   tokensAfter?: Prisma.IntFilter<"ContextCheckpoint"> | number
@@ -282,6 +292,7 @@ export type ContextCheckpointOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   projectId?: Prisma.SortOrder
   upToSequence?: Prisma.SortOrder
+  reason?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   tokensBefore?: Prisma.SortOrder
   tokensAfter?: Prisma.SortOrder
@@ -301,6 +312,7 @@ export type ContextCheckpointScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"ContextCheckpoint"> | string
   projectId?: Prisma.StringWithAggregatesFilter<"ContextCheckpoint"> | string
   upToSequence?: Prisma.IntWithAggregatesFilter<"ContextCheckpoint"> | number
+  reason?: Prisma.EnumContextCheckpointReasonWithAggregatesFilter<"ContextCheckpoint"> | $Enums.ContextCheckpointReason
   summary?: Prisma.StringWithAggregatesFilter<"ContextCheckpoint"> | string
   tokensBefore?: Prisma.IntWithAggregatesFilter<"ContextCheckpoint"> | number
   tokensAfter?: Prisma.IntWithAggregatesFilter<"ContextCheckpoint"> | number
@@ -311,6 +323,7 @@ export type ContextCheckpointScalarWhereWithAggregatesInput = {
 export type ContextCheckpointCreateInput = {
   id?: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -323,6 +336,7 @@ export type ContextCheckpointUncheckedCreateInput = {
   id?: string
   projectId: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -333,6 +347,7 @@ export type ContextCheckpointUncheckedCreateInput = {
 export type ContextCheckpointUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -345,6 +360,7 @@ export type ContextCheckpointUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   projectId?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -356,6 +372,7 @@ export type ContextCheckpointCreateManyInput = {
   id?: string
   projectId: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -366,6 +383,7 @@ export type ContextCheckpointCreateManyInput = {
 export type ContextCheckpointUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -377,6 +395,7 @@ export type ContextCheckpointUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   projectId?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -398,6 +417,7 @@ export type ContextCheckpointCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   projectId?: Prisma.SortOrder
   upToSequence?: Prisma.SortOrder
+  reason?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   tokensBefore?: Prisma.SortOrder
   tokensAfter?: Prisma.SortOrder
@@ -415,6 +435,7 @@ export type ContextCheckpointMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   projectId?: Prisma.SortOrder
   upToSequence?: Prisma.SortOrder
+  reason?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   tokensBefore?: Prisma.SortOrder
   tokensAfter?: Prisma.SortOrder
@@ -426,6 +447,7 @@ export type ContextCheckpointMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   projectId?: Prisma.SortOrder
   upToSequence?: Prisma.SortOrder
+  reason?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   tokensBefore?: Prisma.SortOrder
   tokensAfter?: Prisma.SortOrder
@@ -481,9 +503,14 @@ export type ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput = {
   deleteMany?: Prisma.ContextCheckpointScalarWhereInput | Prisma.ContextCheckpointScalarWhereInput[]
 }
 
+export type EnumContextCheckpointReasonFieldUpdateOperationsInput = {
+  set?: $Enums.ContextCheckpointReason
+}
+
 export type ContextCheckpointCreateWithoutProjectInput = {
   id?: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -494,6 +521,7 @@ export type ContextCheckpointCreateWithoutProjectInput = {
 export type ContextCheckpointUncheckedCreateWithoutProjectInput = {
   id?: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -534,6 +562,7 @@ export type ContextCheckpointScalarWhereInput = {
   id?: Prisma.StringFilter<"ContextCheckpoint"> | string
   projectId?: Prisma.StringFilter<"ContextCheckpoint"> | string
   upToSequence?: Prisma.IntFilter<"ContextCheckpoint"> | number
+  reason?: Prisma.EnumContextCheckpointReasonFilter<"ContextCheckpoint"> | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFilter<"ContextCheckpoint"> | string
   tokensBefore?: Prisma.IntFilter<"ContextCheckpoint"> | number
   tokensAfter?: Prisma.IntFilter<"ContextCheckpoint"> | number
@@ -544,6 +573,7 @@ export type ContextCheckpointScalarWhereInput = {
 export type ContextCheckpointCreateManyProjectInput = {
   id?: string
   upToSequence: number
+  reason?: $Enums.ContextCheckpointReason
   summary: string
   tokensBefore: number
   tokensAfter: number
@@ -554,6 +584,7 @@ export type ContextCheckpointCreateManyProjectInput = {
 export type ContextCheckpointUpdateWithoutProjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -564,6 +595,7 @@ export type ContextCheckpointUpdateWithoutProjectInput = {
 export type ContextCheckpointUncheckedUpdateWithoutProjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -574,6 +606,7 @@ export type ContextCheckpointUncheckedUpdateWithoutProjectInput = {
 export type ContextCheckpointUncheckedUpdateManyWithoutProjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   upToSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  reason?: Prisma.EnumContextCheckpointReasonFieldUpdateOperationsInput | $Enums.ContextCheckpointReason
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   tokensBefore?: Prisma.IntFieldUpdateOperationsInput | number
   tokensAfter?: Prisma.IntFieldUpdateOperationsInput | number
@@ -587,6 +620,7 @@ export type ContextCheckpointSelect<ExtArgs extends runtime.Types.Extensions.Int
   id?: boolean
   projectId?: boolean
   upToSequence?: boolean
+  reason?: boolean
   summary?: boolean
   tokensBefore?: boolean
   tokensAfter?: boolean
@@ -599,6 +633,7 @@ export type ContextCheckpointSelectCreateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   projectId?: boolean
   upToSequence?: boolean
+  reason?: boolean
   summary?: boolean
   tokensBefore?: boolean
   tokensAfter?: boolean
@@ -611,6 +646,7 @@ export type ContextCheckpointSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   projectId?: boolean
   upToSequence?: boolean
+  reason?: boolean
   summary?: boolean
   tokensBefore?: boolean
   tokensAfter?: boolean
@@ -623,6 +659,7 @@ export type ContextCheckpointSelectScalar = {
   id?: boolean
   projectId?: boolean
   upToSequence?: boolean
+  reason?: boolean
   summary?: boolean
   tokensBefore?: boolean
   tokensAfter?: boolean
@@ -630,7 +667,7 @@ export type ContextCheckpointSelectScalar = {
   createdAt?: boolean
 }
 
-export type ContextCheckpointOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "upToSequence" | "summary" | "tokensBefore" | "tokensAfter" | "jobId" | "createdAt", ExtArgs["result"]["contextCheckpoint"]>
+export type ContextCheckpointOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "upToSequence" | "reason" | "summary" | "tokensBefore" | "tokensAfter" | "jobId" | "createdAt", ExtArgs["result"]["contextCheckpoint"]>
 export type ContextCheckpointInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }
@@ -650,6 +687,7 @@ export type $ContextCheckpointPayload<ExtArgs extends runtime.Types.Extensions.I
     id: string
     projectId: string
     upToSequence: number
+    reason: $Enums.ContextCheckpointReason
     summary: string
     tokensBefore: number
     tokensAfter: number
@@ -1082,6 +1120,7 @@ export interface ContextCheckpointFieldRefs {
   readonly id: Prisma.FieldRef<"ContextCheckpoint", 'String'>
   readonly projectId: Prisma.FieldRef<"ContextCheckpoint", 'String'>
   readonly upToSequence: Prisma.FieldRef<"ContextCheckpoint", 'Int'>
+  readonly reason: Prisma.FieldRef<"ContextCheckpoint", 'ContextCheckpointReason'>
   readonly summary: Prisma.FieldRef<"ContextCheckpoint", 'String'>
   readonly tokensBefore: Prisma.FieldRef<"ContextCheckpoint", 'Int'>
   readonly tokensAfter: Prisma.FieldRef<"ContextCheckpoint", 'Int'>

@@ -7,19 +7,29 @@
  * seeded `.tau/CONTEXT.md` — to roll the change out to all *future* sandboxes
  * (existing ones keep the image they were created from).
  *
- *   bun run build:template                    # build ALL templates
- *   bun run build:template --key frontend     # build one template by key
+ *   bun run build:template --key v2-frontend  # build one template by key
  *   bun run build:template --key fullstack-db --skip-cache
  *   bun run build:template --name foo         # override the published name (single key only)
+ *   bun run build:template --all              # build EVERY template (see below)
  *
- * Valid keys: frontend | fullstack | fullstack-db (see registry.ts).
+ * A key is required. Publishing replaces the image under that name for every
+ * sandbox created afterwards, on whatever deployment shares this E2B account —
+ * and the generation-1 images (frontend | fullstack | fullstack-db) are what
+ * existing projects boot from. So rebuilding them is a deliberate act: name the
+ * key, or pass `--all` and mean it.
+ *
+ * Valid keys: frontend | fullstack | fullstack-db | v2-frontend (see registry.ts).
+ * The other v2-* keys are stack levels of the v2-frontend image, not images of
+ * their own; naming one builds that same image.
  * Requires `E2B_API_KEY` in the environment (or in `.env`, auto-loaded by Bun).
  */
 import { Template, defaultBuildLogger, type BuildInfo } from "e2b";
 
 import {
+  IMAGE_KEYS,
   TEMPLATES,
   TEMPLATE_KEYS,
+  imageKeyFor,
   isTemplateKey,
   type TemplateKey,
 } from "@/worker/templates/registry";
@@ -33,6 +43,7 @@ interface Args {
 function parseArgs(argv: string[]): Args {
   let key: TemplateKey | undefined;
   let skipCache = false;
+  let all = false;
   let nameOverride: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
@@ -52,6 +63,8 @@ function parseArgs(argv: string[]): Args {
       nameOverride = value;
     } else if (arg === "--skip-cache") {
       skipCache = true;
+    } else if (arg === "--all") {
+      all = true;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -60,9 +73,18 @@ function parseArgs(argv: string[]): Args {
   if (nameOverride && !key) {
     throw new Error("--name can only be used together with a single --key");
   }
+  if (key && all) {
+    throw new Error("Pass either --key or --all, not both");
+  }
+  if (!key && !all) {
+    throw new Error(
+      `Pass --key <key> to build one template (valid keys: ${TEMPLATE_KEYS.join(", ")}), or --all to rebuild every one — including the generation-1 images existing projects boot from.`,
+    );
+  }
 
   return {
-    keys: key ? [key] : [...TEMPLATE_KEYS],
+    // Per image, not per key: the three v2-* levels are one image.
+    keys: key ? [imageKeyFor(key)] : [...IMAGE_KEYS],
     skipCache,
     nameOverride,
   };

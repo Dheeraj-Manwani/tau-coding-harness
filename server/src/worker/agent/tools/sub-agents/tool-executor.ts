@@ -1,6 +1,7 @@
 import type Sandbox from "e2b";
 import { readFile } from "../functions/read";
 import { listDir } from "../functions/list-dir";
+import { grepTool } from "../functions/grep";
 import { runCommand } from "../functions/run-command";
 import { tailCommandOutput } from "../functions/tail-command-output";
 import { waitForPort } from "../functions/wait-for-port";
@@ -25,6 +26,8 @@ export async function executeSubAgentTool(
       return readFile(input, sandbox);
     case "list_dir":
       return listDir(input, sandbox);
+    case "grep":
+      return grepTool(input, sandbox);
     case "run_command":
       return runCommand(input, sandbox);
     case "tail_command_output":

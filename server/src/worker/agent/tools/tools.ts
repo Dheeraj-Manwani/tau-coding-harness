@@ -2,7 +2,9 @@ import type OpenAI from "openai";
 
 type ChatCompletionToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
-export type Tool = (typeof TOOL_DEFINITIONS)[number]["function"]["name"];
+export type Tool =
+  | (typeof TOOL_DEFINITIONS)[number]["function"]["name"]
+  | (typeof BASE_APP_TOOLS)[number]["function"]["name"];
 
 export const silentTools = new Set<Tool>([
   "report_progress",
@@ -19,6 +21,75 @@ export const subAgentTools = new Set<Tool>([
   "dispatch_verifier",
   // "dispatch_implementer",
 ]);
+
+/**
+ * `provision_sandbox` for a generation-2 project. There is one base image, so
+ * there is no `template` to pick; the agent loop swaps this in for the entry in
+ * `TOOL_DEFINITIONS` below (same name, so the executor and `Tool` are
+ * unaffected).
+ */
+export const PROVISION_SANDBOX_BASE_TOOL = {
+  type: "function",
+  function: {
+    name: "provision_sandbox",
+    description:
+      "Call this to provision a sandbox with boilerplate files. Without this, you won't be able to call create_file, read_file, edit_file etc. Takes no arguments: every app starts from the same base.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+/**
+ * Tools only a generation-2 project gets, appended to its tool list by the
+ * agent loop. Kept out of `TOOL_DEFINITIONS` so generation-1 projects, whose
+ * stack is fixed at creation, are sent exactly the tool list they always were.
+ */
+export const BASE_APP_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "add_backend",
+      description:
+        "Give this app a server: a Hono API in `server/index.ts`, reachable from the frontend at `/api/*`. Call it once, before writing any API route, when the app genuinely needs server-side logic. It sets everything up in place — installs what is needed and starts the server, with no rebuild — and returns the guide for writing routes. Safe to call again: on an app that already has a backend it changes nothing and returns the guide. You do NOT need it before `enable_ai`, `request_secret` or `add_database`; they add the backend themselves.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            description:
+              "One short sentence on what the server is for (e.g. 'proxy the weather API so the key stays private').",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_database",
+      description:
+        "Give this app a real database: Postgres (PGlite) with Drizzle, in `server/db/`. Call it once, before writing any table or query, when data must be stored on the server — multiple users, accounts, or anything that has to outlive one browser. It adds the backend first if the app has none, sets everything up in place with no rebuild, and returns the guide for defining tables and writing queries. Safe to call again: on an app that already has a database it changes nothing and returns the guide. Do NOT use it for data that can live in the browser — React state or localStorage is the right tool for that.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            description:
+              "One short sentence on what needs storing on the server (e.g. 'bookings shared between all visitors').",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+] as const;
 
 export const TOOL_DEFINITIONS = [
   {
@@ -48,7 +119,8 @@ export const TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "read_file",
-      description: "Read the contents of a file in the sandbox.",
+      description:
+        "Read a file in the sandbox. A file that fits is returned whole. A long one is returned a page at a time: you get the first 600 lines with the line range and total, and read on by passing `offset`. To look at one part of a big file, find the line with `grep` first, then read just that range.",
       parameters: {
         type: "object",
         properties: {
@@ -56,8 +128,57 @@ export const TOOL_DEFINITIONS = [
             type: "string",
             description: "Path of the file relative to the project root.",
           },
+          offset: {
+            type: "number",
+            description:
+              "Line number to start reading from (1-based). Omit to start at the top.",
+          },
+          limit: {
+            type: "number",
+            description:
+              "How many lines to read. Omit to read as much as fits (up to 600 lines).",
+          },
         },
         required: ["path"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "grep",
+      description:
+        "Search file contents in the project for a regular expression. Returns matching lines as `path:line:text`. Use this to find where something is defined or used instead of opening files one by one, and instead of running grep through run_command. Skips node_modules, build output and anything gitignored. Also works on a saved command log (pass its `logPath` as `path`).",
+      parameters: {
+        type: "object",
+        properties: {
+          pattern: {
+            type: "string",
+            description:
+              "Regular expression to search for, e.g. 'useQuery\\(' or 'function handleSubmit'.",
+          },
+          path: {
+            type: "string",
+            description:
+              "File or directory to search, relative to the project root. Defaults to the whole project.",
+          },
+          glob: {
+            type: "string",
+            description:
+              "Only search files matching this glob, e.g. '*.tsx' or '*.css'.",
+          },
+          ignoreCase: {
+            type: "boolean",
+            description: "Match case-insensitively. Defaults to false.",
+          },
+          context: {
+            type: "number",
+            description:
+              "Lines of context to show around each match (0-5). Defaults to 0.",
+          },
+        },
+        required: ["pattern"],
         additionalProperties: false,
       },
     },
@@ -142,7 +263,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "run_command",
       description:
-        "Run a shell command inside the sandbox. Long-running or slow-starting commands (dev servers, background workers) are detected automatically and run in the background, but you can also set `background` explicitly instead of relying on that detection.",
+        "Run a shell command inside the sandbox. Long-running or slow-starting commands (dev servers, background workers) are detected automatically and run in the background, but you can also set `background` explicitly instead of relying on that detection. Long output is cut in the middle and saved in full to a file whose `logPath` is returned; read, grep or tail that file for the rest.",
       parameters: {
         type: "object",
         properties: {
@@ -171,14 +292,14 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "tail_command_output",
       description:
-        "Read the trailing lines of a background command's captured output log — the `logPath` returned by run_command when it started something in the background.",
+        "Read the trailing lines of a command's captured output log — the `logPath` returned by run_command when it started something in the background, or when a command's output was too long to return whole.",
       parameters: {
         type: "object",
         properties: {
           logPath: {
             type: "string",
             description:
-              "The logPath returned by a prior background run_command call.",
+              "The logPath returned by a prior run_command call.",
           },
           lines: {
             type: "number",

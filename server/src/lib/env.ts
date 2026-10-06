@@ -108,6 +108,16 @@ const envSchema = z.object({
 
   // E2B sandbox (used for sandbox-first file reads)
   E2B_API_KEY: z.string().min(1, "E2B_API_KEY is required"),
+  // Which sandbox template generation a brand-new project boots into
+  // (templates/registry.ts). 1 = the three original images, picked by the
+  // agent. 2 = the single `tau-app-v2` base image, which has to be published to
+  // this E2B account first (`bun run build:template --key v2-frontend`).
+  // Existing projects stay on the template they were created with either way,
+  // so flipping this never moves an app onto a different image.
+  TEMPLATE_GENERATION: z
+    .enum(["1", "2"])
+    .default("1")
+    .transform((v) => (v === "2" ? 2 : 1)),
 
   // Cloudflare R2 object store
   R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),

@@ -438,6 +438,12 @@ function deriveActionItem(
         kind: "list_dir",
         label: `Looked through ${input.path ? String(input.path) : "the project"}`,
       };
+    case "grep":
+      return { kind: "list_dir", label: "Searched the project" };
+    case "add_backend":
+      return { kind: "provision_sandbox", label: "Set up the server" };
+    case "add_database":
+      return { kind: "provision_sandbox", label: "Set up the database" };
     case "delete_file":
       return { kind: "delete_file", label: `Deleted ${file}`, meta: { path } };
     case "run_command":

@@ -11,6 +11,7 @@ import { keyEncryptionConfigured } from "@/lib/apiKeys";
 import { persistFile } from "./utils";
 import { toTemplateKey, TEMPLATES } from "@/worker/templates/registry";
 import { migrateTemplate, type MigrateOutcome } from "@/worker/lib/migrateTemplate";
+import { addBackend } from "@/worker/lib/appStack";
 
 /** The env vars a deployed app will need, declared for the deploy flow. */
 const DEPLOY_MANIFEST_PATH = ".tau/deploy.json";
@@ -220,8 +221,24 @@ export async function enableAi(
   // silently (doc/AI_FOR_GENERATED_APPS.md §7.3).
   const template = TEMPLATES[toTemplateKey(project.templateKey)];
   let migrated: MigrateOutcome | null = null;
+  let backendAdded = false;
 
-  if (!template.hasServer) {
+  if (!template.hasServer && template.generation === 2) {
+    // Generation 2: the backend is added to the running sandbox, so there is no
+    // rebuild and no second call — this one carries straight on. Not started
+    // here: the restart further down does that, after `.env` is written, so
+    // the server's first boot already has the key.
+    const added = await addBackend(
+      { sandbox, projectId, userId, jobId, indexer },
+      { start: false },
+    );
+    if (!added.ok) {
+      return {
+        error: `AI features need a server, and setting one up for this app failed: ${added.error} Do NOT call a model from frontend code and do NOT ask the user for an API key. Tell the user plainly that AI could not be turned on, then build the rest of what they asked for without it.`,
+      };
+    }
+    backendAdded = true;
+  } else if (!template.hasServer) {
     migrated = await migrateTemplate(projectId, userId);
 
     if (!migrated.migrated && migrated.reason === "hand_rolled_server") {
@@ -276,6 +293,12 @@ export async function enableAi(
     envVars: ["TAU_API_KEY", "TAU_AI_URL", "TAU_PROJECT_ID"],
     endpoint: "POST ${TAU_AI_URL}/chat",
     models: ["tau-fast", "tau-smart", "tau-max"],
+    ...(backendAdded
+      ? {
+          backendAdded:
+            "This app had no server, so one was set up in place: `server/index.ts`, a Hono API the frontend reaches at `/api/*`. Nothing was rebuilt and the existing UI is untouched. Add the AI route there, as the recipe shows.",
+        }
+      : {}),
     recipe: recipe(),
   };
 }

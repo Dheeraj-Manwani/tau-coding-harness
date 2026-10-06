@@ -314,11 +314,17 @@ export async function writeEnvFile(
  *
  * Only the API process is touched. Vite keeps running, so the preview URL and
  * the browser's hot-reload connection both survive.
+ *
+ * This is also how a generation-2 app's server gets started in the first place
+ * (lib/appStack.ts): that image's start command runs Vite only, so "restart"
+ * with nothing to kill is simply "start".
+ *
+ * @returns whether `/api/health` answered. Never throws.
  */
 export async function restartAppServer(
   sandbox: Sandbox,
   jobId: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await sandbox.commands.run("mkdir -p .tau/logs", { cwd: WORK_DIR });
 
@@ -348,9 +354,11 @@ export async function restartAppServer(
     const ready = await waitForApi(sandbox);
     if (ready) log.info("ai.server_restarted", { jobId });
     else log.warn("ai.server_restart_unconfirmed", { jobId });
+    return ready;
   } catch (err) {
     // Not fatal: the next full rebuild boots with the .env already in place.
     log.warn("ai.server_restart_failed", { jobId, error: String(err) });
+    return false;
   }
 }
 

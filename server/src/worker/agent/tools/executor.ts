@@ -1,6 +1,6 @@
 import { SandboxNotFoundError } from "e2b";
 import { provisionSandbox, SANDBOX_IDLE_TIMEOUT_MS } from "@/worker/lib/sandbox";
-import { isTemplateKey } from "@/worker/templates/registry";
+import { isSelectableTemplateKey } from "@/worker/templates/registry";
 import { publish } from "@/worker/lib/publish";
 import { log } from "@/worker/lib/log";
 import { bus } from "@/lib/bus";
@@ -15,6 +15,7 @@ import { createFile } from "./functions/create";
 import { editFile } from "./functions/edit";
 import { readFile } from "./functions/read";
 import { listDir } from "./functions/list-dir";
+import { grepTool } from "./functions/grep";
 import { deleteFile } from "./functions/delete";
 import { runCommand } from "./functions/run-command";
 import { tailCommandOutput } from "./functions/tail-command-output";
@@ -25,6 +26,8 @@ import { searchImages } from "./functions/search-images";
 import { imageDimensions } from "./functions/image-dimensions";
 import { downloadAsset } from "./functions/download-asset";
 import { enableAi } from "./functions/enable-ai";
+import { addBackendTool } from "./functions/add-backend";
+import { addDatabaseTool } from "./functions/add-database";
 import { requestSecret } from "./functions/request-secret";
 import { awaitAnswer } from "./functions/await-answer";
 import { redactSecrets, redactToolResult } from "@/worker/lib/redact";
@@ -139,11 +142,19 @@ async function executeToolInner(
       return awaitAnswer(jobId, toolCallId);
     }
     case "request_secret":
-      return requestSecret(input, sandboxRef, jobId, projectId, userId, toolCallId);
+      return requestSecret(
+        input,
+        sandboxRef,
+        jobId,
+        projectId,
+        userId,
+        toolCallId,
+        indexer,
+      );
     case "provision_sandbox": {
       if (!sandboxRef.current) {
         const { template } = (input ?? {}) as { template?: unknown };
-        const requestedTemplateKey = isTemplateKey(template)
+        const requestedTemplateKey = isSelectableTemplateKey(template)
           ? template
           : undefined;
         sandboxRef.current = await provisionSandbox(
@@ -230,6 +241,8 @@ async function executeToolInner(
         return await readFile(input, sandbox);
       case "list_dir":
         return await listDir(input, sandbox);
+      case "grep":
+        return await grepTool(input, sandbox);
       case "delete_file":
         return await deleteFile(input, sandbox, jobId, projectId, indexer);
       case "download_asset":
@@ -251,6 +264,24 @@ async function executeToolInner(
         }
         return result;
       }
+      case "add_backend":
+        return await addBackendTool(
+          input,
+          sandbox,
+          jobId,
+          projectId,
+          userId,
+          indexer,
+        );
+      case "add_database":
+        return await addDatabaseTool(
+          input,
+          sandbox,
+          jobId,
+          projectId,
+          userId,
+          indexer,
+        );
       case "run_command":
         return await runCommand(input, sandbox);
       case "tail_command_output":

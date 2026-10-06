@@ -13,6 +13,7 @@ import { reinjectProjectEnv } from "@/worker/lib/aiEnv";
 import { SANDBOX_IDLE_TIMEOUT_MS } from "@/worker/lib/sandbox";
 import { toTemplateKey, TEMPLATES } from "@/worker/templates/registry";
 import { migrateTemplate } from "@/worker/lib/migrateTemplate";
+import { addBackend } from "@/worker/lib/appStack";
 import type { SandboxRef } from "../../loop";
 import { awaitAnswer } from "./await-answer";
 
@@ -95,6 +96,7 @@ export async function requestSecret(
   projectId: string,
   userId: string,
   toolCallId: string | undefined,
+  indexer: () => number,
 ) {
   const { reason, secrets, replace } = (input ?? {}) as {
     reason?: unknown;
@@ -120,7 +122,25 @@ export async function requestSecret(
 
   // A key can only be kept from visitors on a server. A frontend-only app has
   // none, so give it one first — the same move `enable_ai` makes.
-  if (!TEMPLATES[toTemplateKey(project.templateKey)].hasServer) {
+  const template = TEMPLATES[toTemplateKey(project.templateKey)];
+  if (!template.hasServer && template.generation === 2) {
+    // Generation 2 adds the backend to the running sandbox — no rebuild, and
+    // this same call goes on to ask for the keys. It does need a sandbox to add
+    // it to, which this tool otherwise deliberately does without.
+    const sandbox = sandboxRef.current;
+    if (!sandbox) {
+      return {
+        error:
+          "This app has no backend yet, and a key can only be kept from visitors on a server. Call `provision_sandbox` first, then call `request_secret` again with the same keys — the backend is set up for you then.",
+      };
+    }
+    const added = await addBackend({ sandbox, projectId, userId, jobId, indexer });
+    if (!added.ok) {
+      return {
+        error: `A key can only be kept from visitors on a server, and setting one up for this app failed: ${added.error} Do NOT ask for the key in chat and do NOT put it in frontend code. Tell the user this integration could not be set up, and build the rest with a clear "not configured" state for it.`,
+      };
+    }
+  } else if (!template.hasServer) {
     const migrated = await migrateTemplate(projectId, userId);
     if (!migrated.migrated && migrated.reason === "hand_rolled_server") {
       return {

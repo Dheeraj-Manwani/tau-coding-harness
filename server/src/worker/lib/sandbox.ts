@@ -27,10 +27,13 @@ import { announceAvailablePreview } from "./previewAvailability";
 import { allocateHeadSequence } from "@/lib/headSequence";
 import { SandboxStatus } from "@/generated/prisma/enums";
 import {
+  TEMPLATES,
   e2bNameFor,
+  resolveTemplateKey,
   toTemplateKey,
   type TemplateKey,
 } from "../templates/registry";
+import { ensureAppServer } from "./appStack";
 
 export type { Sandbox } from "e2b";
 
@@ -285,6 +288,16 @@ async function createFreshSandbox(
     await reinjectProjectEnv(sandbox, projectId, userId, jobId, { restart: false });
   }
 
+  // Generation 2's image starts Vite and nothing else, because it cannot know
+  // which apps will grow a server. For one that has, this is where it comes up
+  // — after rehydration has put `server/` back and `.env` is on disk, so its
+  // first boot is the right one. Never fatal: `ensureAppServer` reports rather
+  // than throws, and a preview with a dead API beats no sandbox at all.
+  if (TEMPLATES[templateKey].generation === 2 && TEMPLATES[templateKey].hasServer) {
+    const up = await ensureAppServer(sandbox, jobId);
+    if (!up) log.warn("sandbox.app_server_down", { jobId, projectId });
+  }
+
   await prisma.project.update({
     where: { id: projectId },
     data: {
@@ -326,6 +339,12 @@ export async function provisionSandbox(
           restart: true,
         });
       }
+      // A generation-2 server is a process the harness started, not one the
+      // image supervises — if it has died since, bring it back.
+      const reconnected = TEMPLATES[toTemplateKey(project.templateKey)];
+      if (reconnected.generation === 2 && reconnected.hasServer) {
+        await ensureAppServer(sandbox, jobId);
+      }
       await syncPreviewBadge(sandbox, userId, jobId);
       await syncPreviewBanner(sandbox, projectId, jobId);
       await waitForPreviewHttp(`https://${sandbox.getHost(5173)}`);
@@ -343,16 +362,21 @@ export async function provisionSandbox(
   // The template is locked once template files have been seeded — after that
   // the agent's requested key is ignored so we never switch out from under an
   // app whose files were scaffolded against a different image. Before then
-  // (a truly fresh project) the agent's choice wins and gets persisted.
+  // (a truly fresh project) the agent's choice wins and gets persisted — or,
+  // on a generation-2 deployment, the base template does and there is no
+  // choice to make. `resolveTemplateKey` is the same call the agent loop makes
+  // when it builds the system prompt, so the two cannot disagree.
   const fileCount = await prisma.projectFile.count({ where: { projectId } });
   const templateLocked = fileCount > 0;
   if (templateLocked && !bus.isCancelled(jobId)) {
     await publish(jobId, { type: "preview_restoring" });
   }
-  const templateKey =
-    !templateLocked && requestedTemplateKey
-      ? requestedTemplateKey
-      : toTemplateKey(project.templateKey);
+  const templateKey = resolveTemplateKey({
+    storedKey: project.templateKey,
+    locked: templateLocked,
+    newProjectGeneration: env.TEMPLATE_GENERATION,
+    requested: requestedTemplateKey,
+  });
 
   // Visual edit (doc/archive/VISUAL_EDIT_PLAN.md §6 Phase 5). Projects seeded before the
   // tagger shipped carry a vite.config.ts that never loads it, and rehydration

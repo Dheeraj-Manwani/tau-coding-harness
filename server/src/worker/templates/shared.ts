@@ -18,6 +18,7 @@
  */
 import { readFileSync } from "node:fs";
 import type { TemplateBuilder } from "e2b";
+import { buildThemeCss, NEUTRAL_THEME } from "./theme";
 
 export const APP = "/home/user/app";
 
@@ -561,22 +562,15 @@ export function writeHonoApi(t: TemplateBuilder): TemplateBuilder {
     );
 }
 
-/**
- * Install the PGlite + Drizzle stack and scaffold a ready-to-use `server/db/`
- * (schema, client with an idempotent initDb, zod validation) wired into
- * `server/index.ts`. Only the DB-baked template calls this.
- */
-export function writeDbStack(t: TemplateBuilder): TemplateBuilder {
-  return (
-    t
-      .runCmd(
-        "bun add drizzle-orm @electric-sql/pglite drizzle-zod @hono/zod-validator",
-      )
-      // Persist PGlite to a gitignored directory.
-      .runCmd("printf '\\ndata/\\n' >> .gitignore")
-      .runCmd(
-        `mkdir -p server/db && cat > server/db/schema.ts <<'EOF'
-import { pgTable, serial, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+// The four files the database setup writes, as values.
+//
+// Two consumers need these exact bytes and they must not drift: `writeDbStack`
+// bakes them into the generation-1 `vite-hono-db-app` image, and the in-place
+// database setup for generation-2 apps (`lib/appStack.ts`) writes them into a
+// running sandbox. Same reasoning as `HONO_SERVER_INDEX` above.
+
+/** `server/db/schema.ts` as scaffolded: one example table. */
+export const DB_SCHEMA_TS = `import { pgTable, serial, text, boolean, timestamp } from 'drizzle-orm/pg-core'
 
 // Example table. Replace / extend with the app's real schema, then reflect the
 // change in initDb() (server/db/client.ts) so a fresh sandbox creates it.
@@ -586,11 +580,10 @@ export const items = pgTable('items', {
   done: boolean('done').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
-EOF`,
-      )
-      .runCmd(
-        `cat > server/db/client.ts <<'EOF'
-import { mkdirSync } from 'fs'
+`;
+
+/** `server/db/client.ts` as scaffolded: PGlite + Drizzle and an idempotent `initDb()`. */
+export const DB_CLIENT_TS = `import { mkdirSync } from 'fs'
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
 import * as schema from './schema'
@@ -619,24 +612,20 @@ export async function initDb() {
   \`)
   initialized = true
 }
-EOF`,
-      )
-      .runCmd(
-        `cat > server/db/validation.ts <<'EOF'
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
+`;
+
+/** `server/db/validation.ts` as scaffolded: zod schemas derived from the table. */
+export const DB_VALIDATION_TS = `import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { items } from './schema'
 
 // Single source of truth for request/response shapes. Use insertItemSchema with
 // @hono/zod-validator's zValidator('json', insertItemSchema) on write routes.
 export const insertItemSchema = createInsertSchema(items)
 export const selectItemSchema = createSelectSchema(items)
-EOF`,
-      )
-      // Rewrite server/index.ts to call initDb() at startup and show a worked
-      // DB-backed route alongside the plain examples.
-      .runCmd(
-        `mkdir -p server && cat > server/index.ts <<'EOF'
-import { Hono } from 'hono'
+`;
+
+/** `server/index.ts` with the database wired in: `initDb()` at startup and a worked CRUD example. */
+export const HONO_DB_SERVER_INDEX = `import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { eq } from 'drizzle-orm'
 import { db, initDb } from './db/client'
@@ -674,7 +663,34 @@ app.delete('/api/items/:id', async (c) => {
 })
 
 export default { port: 3000, fetch: app.fetch }
-EOF`,
+`;
+
+/**
+ * Install the PGlite + Drizzle stack and scaffold a ready-to-use `server/db/`
+ * (schema, client with an idempotent initDb, zod validation) wired into
+ * `server/index.ts`. Only the DB-baked template calls this.
+ */
+export function writeDbStack(t: TemplateBuilder): TemplateBuilder {
+  return (
+    t
+      .runCmd(
+        "bun add drizzle-orm @electric-sql/pglite drizzle-zod @hono/zod-validator",
+      )
+      // Persist PGlite to a gitignored directory.
+      .runCmd("printf '\\ndata/\\n' >> .gitignore")
+      .runCmd(
+        `mkdir -p server/db && cat > server/db/schema.ts <<'EOF'\n${DB_SCHEMA_TS}EOF`,
+      )
+      .runCmd(
+        `cat > server/db/client.ts <<'EOF'\n${DB_CLIENT_TS}EOF`,
+      )
+      .runCmd(
+        `cat > server/db/validation.ts <<'EOF'\n${DB_VALIDATION_TS}EOF`,
+      )
+      // Rewrite server/index.ts to call initDb() at startup and show a worked
+      // DB-backed route alongside the plain examples.
+      .runCmd(
+        `mkdir -p server && cat > server/index.ts <<'EOF'\n${HONO_DB_SERVER_INDEX}EOF`,
       )
   );
 }
@@ -914,5 +930,89 @@ No DB is baked in. When persistence is required, use this stack:
 - Delete: \`await db.delete(todos).where(eq(todos.id, id)).returning()\`
 - Import \`eq\`/\`and\`/\`desc\` from \`drizzle-orm\`. Validate request bodies with
   \`createInsertSchema(todos)\` (drizzle-zod) so the shape is defined once.
+`;
+}
+
+// ── Generation 2 (`tau-app-v2`) ──────────────────────────────────────────────
+//
+// One base image instead of three (doc/CONTEXT_AND_MEMORY_PLAN.md §6). These
+// are new helpers rather than edits to the ones above, on purpose: the
+// generation-1 templates still compose `writeTheme`, `writeContext` and
+// friends, production still boots from the images they build, and those images
+// have to stay rebuildable exactly as they are.
+
+/** Overwrite src/index.css with the neutral starting palette (see theme.ts). */
+export function writeNeutralTheme(t: TemplateBuilder): TemplateBuilder {
+  return t.runCmd(
+    `cat > src/index.css <<'EOF'\n${buildThemeCss(NEUTRAL_THEME)}EOF`,
+  );
+}
+
+/** What adding a backend installs. Same range `migrateTemplate` writes. */
+export const BACKEND_PACKAGES = "hono@^4";
+
+/** What adding a database installs. Same set as `writeDbStack`. */
+export const DATABASE_PACKAGES =
+  "drizzle-orm @electric-sql/pglite drizzle-zod @hono/zod-validator";
+
+/**
+ * Download the backend and database packages into Bun's global install cache
+ * without adding them to the app.
+ *
+ * The base image is frontend-only, but an app can grow a server or a database
+ * later, in place. Installing into a throwaway directory leaves the tarballs in
+ * `~/.bun/install/cache`, so that later `bun add` links from disk instead of
+ * waiting on the registry mid-conversation — while the app's own
+ * `package.json` keeps listing only what the app actually uses.
+ */
+export function warmBackendPackages(t: TemplateBuilder): TemplateBuilder {
+  return t.runCmd(
+    `mkdir -p /tmp/tau-warm && cd /tmp/tau-warm && echo '{}' > package.json && bun add ${BACKEND_PACKAGES} ${DATABASE_PACKAGES} && cd / && rm -rf /tmp/tau-warm`,
+  );
+}
+
+/** ripgrep, for searching a project without reading it file by file. */
+export function installSearchTools(t: TemplateBuilder): TemplateBuilder {
+  return t.aptInstall(["ripgrep"], { noInstallRecommends: true });
+}
+
+/**
+ * Write `.tau/CONTEXT.md` — the per-app memory tau carries across runs.
+ *
+ * Generation 1 put a template manifest above a DYNAMIC marker and the app's
+ * state below it. The manifest half duplicated the system prompt and could only
+ * be changed by rebuilding the image, so here the file is app memory and
+ * nothing else: there is no static section and no marker.
+ */
+export function writeAppMemory(t: TemplateBuilder): TemplateBuilder {
+  return t.runCmd(
+    `mkdir -p .tau && cat > .tau/CONTEXT.md <<'EOF'\n${buildAppMemoryMd()}EOF`,
+  );
+}
+
+/** The empty app-memory file, ending in a newline. */
+export function buildAppMemoryMd(): string {
+  return `# App memory
+
+<!-- tau keeps this file current. Rewrite a section when it changes; do not
+     append a log. Keep the whole file short enough to read in one go. -->
+
+## What this app is
+_Nothing built yet._
+
+## Routes and where they live
+_None yet._
+
+## Data model
+_None yet._
+
+## Decisions and why
+_None yet._
+
+## User preferences
+_None yet._
+
+## Known issues
+_None yet._
 `;
 }

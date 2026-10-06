@@ -28,6 +28,7 @@ import { prisma } from "@/lib/prisma";
 import { log } from "./log";
 import { readManifestFile, writeManifestFile } from "./manifestFiles";
 import { SandboxStatus } from "@/generated/prisma/enums";
+import { TEMPLATES, toTemplateKey } from "../templates/registry";
 import {
   HONO_SERVER_INDEX,
   VITE_ALLOWED_HOSTS_LINE,
@@ -108,6 +109,18 @@ export async function migrateTemplate(
     where: { id: projectId },
     select: { templateKey: true },
   });
+
+  // Generation 2 is one base image; this transform moves a project between two
+  // generation-1 images and must never run against it. Its backend is added in
+  // place by `addBackend` (lib/appStack.ts), and both callers branch on the
+  // generation before they get here. Thrown rather than returned: the guard
+  // below would report `already_has_server` for a generation-2 key, and a
+  // caller would then carry on as if a server existed.
+  if (TEMPLATES[toTemplateKey(project?.templateKey)].generation === 2) {
+    throw new Error(
+      "migrateTemplate is generation-1 only; use addBackend for a generation-2 project",
+    );
+  }
 
   // Guard: only ever `frontend` → `fullstack`. Never the reverse (destructive),
   // and never → `fullstack-db` (the no-DB template already carries the PGlite

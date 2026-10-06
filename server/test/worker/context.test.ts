@@ -79,6 +79,39 @@ describe("compact", () => {
     expect(second.content).toBe(body);
   });
 
+  test("two pages of one file do not supersede each other", () => {
+    // `read_file` pages long files. The second page is not a newer copy of the
+    // first — collapsing the first would throw away the only copy of those
+    // lines the model has.
+    const msgs: MessageParam[] = [
+      { role: "system", content: "sys" },
+      assistantToolCall("r1", "read_file", { path: "src/big.ts" }),
+      toolResult("r1", "lines 1-600"),
+      assistantToolCall("r2", "read_file", { path: "src/big.ts", offset: 601 }),
+      toolResult("r2", "lines 601-1200"),
+      assistantToolCall("r3", "read_file", { path: "src/big.ts", offset: 601, limit: 50 }),
+      toolResult("r3", "lines 601-650"),
+    ];
+    const res = compact(msgs, { maxToolResultTokens: 10_000 });
+    expect(res.changed).toBe(false);
+    expect(res.messages[2]!.content).toBe("lines 1-600");
+    expect(res.messages[4]!.content).toBe("lines 601-1200");
+  });
+
+  test("the same page read twice still collapses to the later one", () => {
+    const msgs: MessageParam[] = [
+      { role: "system", content: "sys" },
+      assistantToolCall("r1", "read_file", { path: "src/big.ts", offset: 601 }),
+      toolResult("r1", "old page"),
+      assistantToolCall("r2", "read_file", { path: "src/big.ts", offset: 601 }),
+      toolResult("r2", "new page"),
+    ];
+    const res = compact(msgs, { maxToolResultTokens: 10_000 });
+    expect(res.changed).toBe(true);
+    expect(res.messages[2]!.content).toContain("superseded");
+    expect(res.messages[4]!.content).toBe("new page");
+  });
+
   test("no-op returns the same reference when nothing exceeds limits", () => {
     const messages: MessageParam[] = [
       { role: "user", content: "small" },

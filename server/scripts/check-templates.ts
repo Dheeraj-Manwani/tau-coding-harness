@@ -7,6 +7,7 @@
  *   - lint              bun run lint                     (if the script exists)
  *   - build             bun run build                    (tsc -b && vite build)
  *   - server bundle     bun build server/index.ts …      (server templates only)
+ *   - ripgrep           rg --version                     (generation 2 only)
  *
  * This catches a template whose baseline no longer typechecks / builds / lints
  * after a dependency bump or a scaffold edit, without waiting for a real
@@ -17,16 +18,20 @@
  *   bun run check:template --stream           # stream in-pod output live
  *   bun run check:template --keep             # leave the pods running to debug
  *
- * Valid keys: frontend | fullstack | fullstack-db (see src/templates/registry.ts).
+ * Valid keys: frontend | fullstack | fullstack-db | v2-frontend (see
+ * src/templates/registry.ts).
  * Requires E2B_API_KEY (worker-service/.env, auto-loaded by Bun). Exits non-zero
  * if any check fails, so it is CI-usable.
  */
 import { Sandbox } from "e2b";
 
 import {
+  IMAGE_KEYS,
   TEMPLATES,
   TEMPLATE_KEYS,
+  imageKeyFor,
   isTemplateKey,
+  type TemplateGeneration,
   type TemplateKey,
 } from "@/worker/templates/registry";
 
@@ -65,7 +70,9 @@ function parseArgs(argv: string[]): Args {
     }
   }
 
-  return { keys: key ? [key] : [...TEMPLATE_KEYS], keep, stream };
+  // Per image, not per key: the v2-* levels share one image, and it is the
+  // bare (frontend) image that gets published and checked.
+  return { keys: key ? [imageKeyFor(key)] : [...IMAGE_KEYS], keep, stream };
 }
 
 interface Check {
@@ -152,6 +159,7 @@ async function runCheck(
 async function checksFor(
   sandbox: Sandbox,
   hasServer: boolean,
+  generation: TemplateGeneration,
 ): Promise<Check[]> {
   let scripts: Record<string, string> = {};
   try {
@@ -187,6 +195,11 @@ async function checksFor(
     });
   }
 
+  // The generation-2 image installs ripgrep itself; the older ones never had it.
+  if (generation === 2) {
+    checks.push({ name: "ripgrep", cmd: "rg --version", timeoutMs: 30_000 });
+  }
+
   return checks;
 }
 
@@ -218,7 +231,11 @@ async function checkTemplate(
 
   const results: CheckResult[] = [];
   try {
-    const checks = await checksFor(sandbox, entry.hasServer);
+    const checks = await checksFor(
+      sandbox,
+      entry.hasServer,
+      entry.generation,
+    );
     for (const check of checks) {
       // When streaming, the check's live output follows on its own lines, so
       // print the header + result on separate lines; otherwise keep it inline.

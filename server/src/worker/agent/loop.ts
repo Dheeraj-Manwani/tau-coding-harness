@@ -13,7 +13,11 @@ import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
 import { putScreenshot } from "@/lib/s3";
 import type { Sandbox } from "../lib/sandbox";
 import { waitForPreviewHttp, previewSupportsHealth } from "../lib/previewReadiness";
-import { TOOL_DEFINITIONS } from "./tools/tools";
+import {
+  BASE_APP_TOOLS,
+  PROVISION_SANDBOX_BASE_TOOL,
+  TOOL_DEFINITIONS,
+} from "./tools/tools";
 
 export type SandboxRef = { current: Sandbox | null };
 import { executeTool } from "./tools/executor";
@@ -47,7 +51,11 @@ import {
   recalibrate,
 } from "./context/tokens";
 import type { Entry } from "./context/types";
-import { toTemplateKey } from "../templates/registry";
+import {
+  TEMPLATES,
+  resolveTemplateKey,
+  type TemplateGeneration,
+} from "../templates/registry";
 import type { Tool } from "./tools/tools";
 import type { Effort } from "@/generated/prisma/enums";
 
@@ -92,13 +100,30 @@ const LOW_EXCLUDED_TOOLS = new Set<string>([
   "update_todo",
 ]);
 
-function toolsForEffort(
+function toolsForRun(
   effort: Effort,
+  generation: TemplateGeneration,
 ): OpenAI.Chat.Completions.ChatCompletionTool[] {
-  const defs =
+  const byEffort =
     effort === "LOW"
       ? TOOL_DEFINITIONS.filter((t) => !LOW_EXCLUDED_TOOLS.has(t.function.name))
       : TOOL_DEFINITIONS;
+  // Generation 2 has no stack to choose, so its `provision_sandbox` takes no
+  // `template` argument (replaced in place to keep the tool order stable), and
+  // it grows a backend or database through two tools generation 1 never sees.
+  // The list is the same at every stack level, so adding a backend mid-project
+  // does not change the tools the provider has cached.
+  const defs =
+    generation === 2
+      ? [
+          ...byEffort.map((t) =>
+            t.function.name === "provision_sandbox"
+              ? PROVISION_SANDBOX_BASE_TOOL
+              : t,
+          ),
+          ...BASE_APP_TOOLS,
+        ]
+      : byEffort;
   return defs as unknown as OpenAI.Chat.Completions.ChatCompletionTool[];
 }
 
@@ -107,6 +132,8 @@ const FILE_MUTATING_TOOLS = new Set<string>([
   "edit_file",
   "delete_file",
   "dispatch_implementer",
+  "add_backend",
+  "add_database",
 ]);
 
 const TOOL_SCHEMA_TOKENS = estimateStringTokens(
@@ -396,7 +423,6 @@ export async function runAgentLoop(
   const nextIndex = makeIndexer(jobId);
   const model = modelForEffort(effort);
   const budget = budgetForEffort(effort);
-  const tools = toolsForEffort(effort);
   const deadline = Date.now() + budget.maxWallClockMs;
   // Declared out here so the catch can report which turn the run died on —
   // "failed on turn 1" and "failed on turn 180" are very different incidents.
@@ -415,8 +441,18 @@ export async function runAgentLoop(
       projectSecretNames(projectId),
     ]);
     const selected = fileCount > 0;
+    // Same resolution `provisionSandbox` does, so the stack the prompt
+    // describes is the one the sandbox boots. The agent's own `template`
+    // argument is not known yet; on generation 1 an unselected project shows
+    // the stack chooser instead, so the key does not matter until it is.
+    const templateKey = resolveTemplateKey({
+      storedKey: project?.templateKey,
+      locked: selected,
+      newProjectGeneration: env.TEMPLATE_GENERATION,
+    });
+    const tools = toolsForRun(effort, TEMPLATES[templateKey].generation);
     const systemPrompt = buildSystemPrompt({
-      templateKey: toTemplateKey(project?.templateKey),
+      templateKey,
       selected,
       effort,
       secretNames,

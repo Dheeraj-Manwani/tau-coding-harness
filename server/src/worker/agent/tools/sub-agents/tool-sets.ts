@@ -13,6 +13,7 @@ function pick(...names: string[]): ChatCompletionToolDef[] {
 export const EXPLORATION_TOOLS = pick(
   "read_file",
   "list_dir",
+  "grep",
   "run_command",
   "tail_command_output",
   "wait_for_port",
@@ -25,6 +26,7 @@ export const EXPLORATION_TOOLS = pick(
 export const IMPLEMENTER_TOOLS = pick(
   "read_file",
   "list_dir",
+  "grep",
   "run_command",
   "tail_command_output",
   "wait_for_port",

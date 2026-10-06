@@ -25,7 +25,8 @@ import { shapeHistory, type HistoryRow } from "@/worker/agent/context/history";
 import { estimateTokens } from "@/worker/agent/context/tokens";
 import { readDocTool } from "@/worker/agent/tools/functions/read-doc";
 import { BASE_APP_TOOLS, TOOL_DEFINITIONS } from "@/worker/agent/tools/tools";
-import { THEME_COLOR_TOKENS, NEUTRAL_THEME, buildThemeCss } from "@/worker/templates/theme";
+import { THEME_COLOR_TOKENS } from "@/worker/templates/theme";
+import { designFiles, resolveDesign } from "@/worker/design";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -81,17 +82,42 @@ describe("the guides", () => {
     }
   });
 
-  test("the theme guide describes the file the template actually writes", () => {
+  test("the theme guide describes the file tau actually writes", () => {
     const doc = readDoc("theme");
-    const css = buildThemeCss(NEUTRAL_THEME);
-    for (const block of [":root {", ".dark {", "@theme inline {"]) {
-      expect(css).toContain(block);
-      expect(doc).toContain(block.replace(" {", ""));
+    const design = resolveDesign({
+      style: "bento",
+      accent: "#c2410c",
+      accentExact: false,
+      mode: "light",
+      dials: { variance: 5, motion: 5, density: 5 },
+      read: "Reading this as: a sample for a test, with a plain visual language.",
+      source: "director",
+    });
+    const { css } = designFiles(design, { fontsInstalled: true });
+
+    // The four parts it names are the four parts of the file.
+    for (const part of [":root {", ".dark {", "@theme inline {", "@layer base {", "@layer skin {"]) {
+      expect(css).toContain(part);
+      expect(doc).toContain(part.replace(" {", ""));
     }
-    expect(css).toContain("--color-primary: var(--primary);");
-    expect(doc).toContain("--color-primary: var(--primary)");
+    // Every variable and selector it tells the agent to change exists there.
+    for (const name of [
+      "--font-sans", "--font-heading", "--font-mono", "--spacing", "--radius",
+      "--control-radius", "--card-radius", "--field-radius", "--shadow-xs", "--shadow-xl",
+    ]) {
+      expect(doc).toContain(name);
+      expect(css).toContain(`${name}:`);
+    }
+    for (const slot of ["button", "card", "input", "badge", "tabs-trigger", "dialog-content"]) {
+      expect(doc).toContain(`[data-slot="${slot}"]`);
+      expect(css).toContain(`[data-slot="${slot}"]`);
+    }
+    for (const token of ["--primary", "--ring", "--chart-1", "--sidebar-primary", "--sidebar-ring", "--primary-foreground"]) {
+      expect(doc).toContain(token);
+      expect(css).toContain(`${token}:`);
+    }
     // Every token family the guide explains is one the file declares.
-    for (const token of ["background", "primary", "muted-foreground", "destructive", "chart-1", "chart-5"]) {
+    for (const token of ["background", "primary", "destructive", "chart-1", "chart-5"]) {
       expect(THEME_COLOR_TOKENS as readonly string[]).toContain(token);
       expect(doc).toContain(`\`${token}\``);
     }
@@ -169,8 +195,35 @@ describe("what a path or a tool attaches", () => {
     expect(docsForPath("server/db/client.ts")).toEqual(["database"]);
   });
 
+  test("the files a screen is made of bring the layouts guide", () => {
+    for (const p of ["src/App.tsx", "src/pages/Home.tsx", "src/components/Header.tsx", "src/components/site/Footer.tsx"]) {
+      expect(docsForPath(p)).toEqual(["layouts", "components"]);
+    }
+  });
+
+  test("opening a stock component to see how it works brings the guide that says", () => {
+    expect(docsForPath("src/components/ui/select.tsx")).toEqual(["components"]);
+  });
+
+  test("the components guide matches the scaffold it describes", () => {
+    const doc = readDoc("components");
+    // Checked against the real scaffold by compiling these usages in a sandbox;
+    // this pins the claims so an edit cannot quietly drop one.
+    for (const claim of [
+      "There is no `asChild`",
+      "render={<Button variant=\"outline\" />}",
+      "nativeButton={false}",
+      "<Select items={SIZES}",
+      "{ label: \"Choose a size\", value: null }",
+      "data-active:",
+      "Import `cn` from `@/lib/utils`",
+    ]) {
+      expect(doc).toContain(claim);
+    }
+  });
+
   test("most files attach nothing", () => {
-    for (const p of ["src/App.tsx", "src/components/ui/button.tsx", "package.json", "src/server/x.ts", "src/index.css.bak"]) {
+    for (const p of ["src/main.tsx", "src/lib/utils.ts", "package.json", "src/server/x.ts", "src/index.css.bak"]) {
       expect(docsForPath(p)).toEqual([]);
     }
   });
@@ -184,10 +237,11 @@ describe("what a path or a tool attaches", () => {
   });
 
   test("every guide has something that brings it without being asked", () => {
-    // `read_doc` alone is the route a model skips. `ai` is the one exception:
-    // `enable_ai` returns it, and it is no use before that call.
+    // `read_doc` alone is the route a model skips. Two exceptions: `ai`, which
+    // `enable_ai` returns and which is no use before that call; and `motion`,
+    // which has nothing tau could hang it on — any file can hold an animation.
     for (const name of DOC_NAMES) {
-      if (name === "ai") continue;
+      if (name === "ai" || name === "motion") continue;
       const spec = DOCS[name];
       const returnedBySetupTool = spec.when.includes("Returned by `add_");
       expect(

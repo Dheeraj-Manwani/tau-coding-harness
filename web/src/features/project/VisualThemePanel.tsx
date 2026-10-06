@@ -179,15 +179,18 @@ function toPickerValue(value: string | undefined): string {
  *
  * Light and dark are edited separately and deliberately never together: they
  * hold genuinely different values, so an "apply to both" convenience would
- * flatten light mode the first time anyone changed a background. The app ships
- * `<html class="dark">`, so dark is the default tab.
+ * flatten light mode the first time anyone changed a background. The panel
+ * opens on whichever palette the app itself opens in — editing the other one
+ * changes nothing the user can see in the preview.
  */
 export function VisualThemePanel({ onClose }: { onClose: () => void }) {
   const projectId = useProjectStore((s) => s.projectId);
   const theme = useProjectTheme(projectId ?? undefined);
   const themeEdit = useThemeEdit(projectId ?? undefined);
 
-  const [scope, setScope] = useState<ThemeScope>("dark");
+  // Null until the user picks a tab; until then, follow the app.
+  const [scopeChoice, setScope] = useState<ThemeScope | null>(null);
+  const scope: ThemeScope = scopeChoice ?? theme.data?.activeScope ?? "dark";
 
   /**
    * Values the user has picked, held here until they hit Save.

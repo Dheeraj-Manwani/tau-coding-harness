@@ -4,7 +4,7 @@ When the app needs real imagery — product photos, hero and background images, 
 
 ## The four steps
 1. **Search.** `search_images("<precise query>")` returns candidate image URLs, each with a description of what the image actually shows. Write the query for the use: the subject, plus what matters — `transparent PNG`, `front view`, `wide`, the exact product name. For example `"Diet Coke can transparent PNG front view"`.
-2. **Choose by description.** Read the descriptions and pick the right one: the correct subject, a photograph rather than a vector logo (or the reverse), and a transparent background when you need a cut-out. Discard anything that does not match. If nothing matches, search again with a better query.
+2. **Choose by description.** Read the descriptions and pick the right one: the correct subject, a photograph rather than a vector logo (or the reverse), and a transparent background when you need a cut-out. Discard anything that does not match, and anything whose description or URL suggests a watermark or a stock-site preview (`shutterstock`, `istockphoto`, `gettyimages`, `vecteezy`, `alamy`, `dreamstime`, `123rf`, `depositphotos`, "watermark", "preview"). If nothing matches, search again with a better query.
 3. **Check the size.** `image_dimensions("<url>")` returns the width, height and format without downloading the file. A full-width hero or a background needs a large image; a thumbnail does not.
 4. **Save it into the project.** `download_asset(url, "public/<name>.<ext>")`, then use it by its local path: a file saved as `public/hero.jpg` is `/hero.jpg` in the app.
 

@@ -51,7 +51,7 @@ describe("system prompt — generation 2, every level", () => {
     for (const key of levels) {
       const prompt = buildSystemPrompt({ templateKey: key, selected: false });
       expect(prompt).not.toContain("## Choosing your stack");
-      expect(prompt).toContain("`provision_sandbox` takes no arguments");
+      expect(prompt).toContain("`provision_sandbox` creates it: pass a `brief`");
     }
   });
 
@@ -99,7 +99,8 @@ describe("system prompt — generation 2, every level", () => {
       expect(prompt).toContain("Never hardcode a key or write one into any file");
       expect(prompt).toContain("never `curl` a file you want to keep");
       expect(prompt).toContain("Never run git commands yourself");
-      expect(prompt).toContain("never hardcode a color there");
+      expect(prompt).toContain("Never a hex value");
+      expect(prompt).toContain("Do not add another component library");
     }
   });
 
@@ -146,16 +147,27 @@ describe("system prompt — generation 2, every level", () => {
     }
   });
 
-  test("is shorter than what generation 1 sends for the same stack", () => {
-    const pairs = [
-      ["v2-frontend", "frontend"],
-      ["v2-fullstack", "fullstack"],
-      ["v2-fullstack-db", "fullstack-db"],
-    ] as const;
-    for (const [v2, v1] of pairs) {
-      const base = buildSystemPrompt({ templateKey: v2 }).length;
-      const legacy = buildSystemPrompt({ templateKey: v1, selected: true }).length;
-      expect(base).toBeLessThan(legacy * 0.9);
+  test("stays within a budget", () => {
+    // Everything here is paid for on every turn of every app. A new rule earns
+    // its place by replacing one, or by moving detail out to a guide.
+    for (const key of levels) {
+      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(18_500);
+    }
+  });
+
+  test("carries the design core: follow the design, avoid the defaults, write real content", () => {
+    for (const key of levels) {
+      const prompt = buildSystemPrompt({ templateKey: key });
+      const section = prompt.slice(prompt.indexOf("## Design"), prompt.indexOf("## Guides"));
+      expect(section).toContain("`.tau/DESIGN.md` is the look");
+      expect(section).toContain("`src/index.css` already implements it");
+      expect(section).toContain("No centred hero over three equal cards");
+      expect(section).toContain("Lorem ipsum");
+      expect(section).toContain("One accent");
+      // About 400 tokens was the target; allow some room, not a second essay.
+      expect(section.length).toBeLessThan(2_900);
+      // The look is not described here — that is DESIGN.md's job.
+      expect(prompt).not.toContain("neutral grayscale");
     }
   });
 
@@ -248,8 +260,9 @@ describe("tools for generation 2", () => {
     expect(PROVISION_SANDBOX_BASE_TOOL.function.name).toBe("provision_sandbox");
   });
 
-  test("provision_sandbox offers no template to pick", () => {
-    expect(PROVISION_SANDBOX_BASE_TOOL.function.parameters.properties).toEqual({});
+  test("provision_sandbox offers no template to pick, only a brief to design from", () => {
+    expect(Object.keys(PROVISION_SANDBOX_BASE_TOOL.function.parameters.properties)).toEqual(["brief"]);
+    expect(PROVISION_SANDBOX_BASE_TOOL.function.parameters.required).toEqual([]);
   });
 
   test("the setup and guide tools exist only outside the generation-1 list", () => {

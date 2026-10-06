@@ -88,7 +88,7 @@ const WIRING_NOTE =
 
 const fail = (error: string): StackResult => ({ ok: false, error });
 
-async function readOrNull(sandbox: Sandbox, rel: string): Promise<string | null> {
+export async function readOrNull(sandbox: Sandbox, rel: string): Promise<string | null> {
   try {
     return await sandbox.files.read(`${WORK_DIR}/${rel}`);
   } catch {
@@ -97,7 +97,7 @@ async function readOrNull(sandbox: Sandbox, rel: string): Promise<string | null>
 }
 
 /** Write a file into the sandbox and the project manifest. */
-async function writeTracked(
+export async function writeTracked(
   ctx: StackContext,
   rel: string,
   content: string,
@@ -131,7 +131,7 @@ export function hasDependency(packageJson: string | null, name: string): boolean
   }
 }
 
-async function bunAdd(
+export async function bunAdd(
   ctx: StackContext,
   packages: string,
 ): Promise<{ ok: true } | { ok: false; detail: string }> {

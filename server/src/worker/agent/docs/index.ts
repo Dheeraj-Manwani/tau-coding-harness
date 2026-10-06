@@ -36,6 +36,9 @@ export const DOC_NAMES = [
   "ai",
   "secrets",
   "theme",
+  "layouts",
+  "components",
+  "motion",
   "assets",
   "github",
 ] as const;
@@ -78,8 +81,31 @@ export const DOCS: Record<DocName, DocSpec> = {
     firstUseOf: ["request_secret"],
   },
   theme: {
-    when: "before choosing or changing colors, roundness, or light and dark mode — anything in `src/index.css`.",
+    when: "before changing colors, typefaces, roundness, shadows, or light and dark mode — anything in `src/index.css`.",
     covers: (p) => p === "src/index.css",
+  },
+  layouts: {
+    when: "before building or restructuring a page or a screen.",
+    // The files a screen is made of. `src/App.tsx` is in here on purpose: it is
+    // the first file an agent opens before building anything, so the guide is
+    // in hand before the first screen is written.
+    covers: (p) =>
+      p === "src/App.tsx" ||
+      p.startsWith("src/pages/") ||
+      (p.startsWith("src/components/") && !p.startsWith("src/components/ui/")),
+  },
+  components: {
+    when: "before using a shadcn component — they are built on Base UI here, so there is no `asChild`, and `Select` needs its labels.",
+    // Arrives with `layouts`, on the first file of a screen, and again for
+    // anyone who opens a component file to find out how it works: an agent
+    // that does that has already lost turns this guide would have saved.
+    covers: (p) =>
+      p === "src/App.tsx" ||
+      p.startsWith("src/pages/") ||
+      p.startsWith("src/components/"),
+  },
+  motion: {
+    when: "before adding animation or transitions beyond a simple hover state.",
   },
   assets: {
     when: "before adding real images: photos, backgrounds, logos.",

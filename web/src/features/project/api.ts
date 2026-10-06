@@ -383,6 +383,8 @@ export interface ProjectThemeResponse {
   contentHash: string;
   root: Record<string, string>;
   dark: Record<string, string>;
+  /** The palette the app opens in: `dark` when `index.html` has `<html class="dark">`. */
+  activeScope?: ThemeScope;
 }
 
 export type ThemeEditRefusal =

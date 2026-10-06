@@ -21,6 +21,43 @@ interface TavilyImageSearchResponse {
 }
 
 /**
+ * Hosts whose freely reachable images are previews with the seller's watermark
+ * across them. A model cannot see the watermark — it picks by description, and
+ * the description says "a baker shaping dough" — so the result is an app with
+ * a stock site's name stamped over its hero photo. Dropped here, before the
+ * model is offered them.
+ */
+const WATERMARKED_HOSTS = [
+  "shutterstock.com",
+  "istockphoto.com",
+  "gettyimages.",
+  "alamy.com",
+  "dreamstime.com",
+  "123rf.com",
+  "depositphotos.com",
+  "vecteezy.com",
+  "stock.adobe.com",
+  "ftcdn.net",
+  "bigstockphoto.com",
+  "freepik.com",
+  "canstockphoto.",
+  "pond5.com",
+  "agefotostock.com",
+];
+
+/** Whether an image URL is a stock site's watermarked preview. */
+export function isWatermarkedSource(url: string, description?: string | null): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (WATERMARKED_HOSTS.some((h) => host.includes(h))) return true;
+  return /\bwatermark/i.test(description ?? "");
+}
+
+/**
  * Find real image URLs for a query, each already described by Tavily's vision
  * pass — so the agent can tell a photo of a can from a vector logo, read the
  * brand, and check for a transparent background *without* downloading anything.
@@ -52,7 +89,8 @@ export async function searchImages(input: unknown) {
         api_key: env.TAVILY_API_KEY,
         query: q,
         // We only want the image sidecar, so keep the (billed) text results
-        // minimal — but Tavily requires a positive max_results.
+        // minimal — but Tavily requires a positive max_results. (This does not
+        // limit the images; those are cut to `maxResults` after filtering.)
         max_results: 1,
         include_images: true,
         include_image_descriptions: true,
@@ -73,6 +111,7 @@ export async function searchImages(input: unknown) {
           : { url: img.url, description: img.description ?? null },
       )
       .filter((img) => typeof img.url === "string" && img.url.length > 0)
+      .filter((img) => !isWatermarkedSource(img.url, img.description))
       .slice(0, maxResults);
 
     if (images.length === 0) {

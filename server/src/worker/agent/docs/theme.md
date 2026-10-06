@@ -1,44 +1,49 @@
-# Theme guide — colors, radius, light and dark
+# Theme guide — what is in `src/index.css`, and how to change it
 
-Every color in the app is a CSS variable in `src/index.css`. Components never name a color; they use the token.
+`src/index.css` is the app's whole look in one file. tau writes it from `.tau/DESIGN.md` when the app is created. Change the look here, and only here.
 
-## How `src/index.css` is laid out
-- `:root { … }` holds the **light** palette, and `--radius`.
-- `.dark { … }` holds the **dark** palette. The app is dark by default because `index.html` has `<html class="dark">`.
-- `@theme inline { … }` maps each variable to a Tailwind color (`--color-primary: var(--primary)`). That mapping is what makes `bg-primary` exist. Leave it alone unless you add a token.
+## The four parts of the file
 
-Keep that shape: both blocks, one flat `--name: value;` per line, every color a **hex** value (`#1a1a1a`). The user can change colors from tau's theme panel, which finds a token by this shape and writes hex. Nested rules, a renamed block or a second color system break it.
+1. **The palette** — `:root { … }` is the light palette, `.dark { … }` the dark one. Flat `--name: value;` lines, every colour a hex value. Whether the app opens dark is decided in `index.html`: `<html class="dark">` or no class.
+2. **Theme tokens** — `@theme inline { … }` holds the fonts (`--font-sans`, `--font-heading`, `--font-mono`), the radius scale, the spacing unit (`--spacing`), the shadow scale (`--shadow-xs` … `--shadow-xl`) and any type-scale overrides. Tailwind's utilities read these, so `shadow-md` or `p-4` already mean what this style means by them.
+3. **Base rules** — `@layer base`: the body font, and how headings are set.
+4. **The skin** — `@layer skin`: rules that reshape the shadcn components by their `data-slot` attribute. It is declared after Tailwind's layers, so it wins over the classes written on the components.
 
-## The tokens
+## Rules that keep the theme panel working
+The user can change colours from tau's theme panel, which finds each token by the shape of this file.
+- Keep both palette blocks, `:root` first.
+- One flat `--name: value;` per line. No nesting inside those two blocks.
+- Colours as hex (`#1a1a1a`), not `oklch()` or `hsl()`.
+
+## The colour tokens
 - `background` / `foreground` — the page and the text on it.
 - `card`, `popover`, each with a `-foreground` — raised surfaces and their text.
-- `primary` / `primary-foreground` — the main action and the app's own color. One per app.
-- `secondary`, `muted`, `accent`, each with a `-foreground` — quieter fills: secondary buttons, subdued areas and captions, hover states.
+- `primary` / `primary-foreground` — the accent, and text on it.
+- `secondary`, `muted`, `accent`, each with a `-foreground` — quiet fills; `accent` is the faint tint used for hover.
 - `destructive` — delete and error.
 - `border`, `input`, `ring` — lines, field outlines, the focus ring.
-- `chart-1` … `chart-5` — data series.
+- `chart-1` … `chart-5` — data series; `chart-1` is the accent.
 - `sidebar-*` — a sidebar, when the app has one.
 
-## Choosing a palette
-The palette the app starts with is neutral grayscale. It is a blank, not a design: an app left on it looks unfinished.
+Use them as classes: `bg-card`, `text-muted-foreground`, `border-border`, `bg-primary/10`. Never a literal colour in a component.
 
-On the first build, before any UI:
-1. Decide what the app is and who it is for, and pick colors that suit that — not the first blue that comes to mind.
-2. Pick **one** primary. Build the surfaces from a neutral tinted slightly toward it, unless the app calls for pure gray.
-3. Write **both** blocks, light and dark, so a theme switch works later without rework.
-4. Check each pair: text in an `x-foreground` color must be easy to read on `x` (aim for a contrast ratio of 4.5:1), and `muted-foreground` must stay readable on `background`.
-5. Make the five chart colors clearly different from each other and at home next to the primary.
-6. Set `--radius` to match the feel: `0` is sharp, `0.5rem` moderate, `1rem` soft. Every component's roundness follows from it.
+## Changing things
 
-## In components
-- Use the token classes: `bg-background`, `text-foreground`, `bg-card`, `bg-primary`, `text-primary-foreground`, `text-muted-foreground`, `border-border`, and so on.
-- Never hardcode a color in a component: no hex, no `bg-[#1db954]`, no `text-blue-500`. Those do not follow a theme change and do not switch between light and dark.
-- Opacity variants of a token are fine: `bg-primary/10`, `border-border/50`.
-- If a color the design needs has no token, add one: declare it in both `:root` and `.dark`, then map it in `@theme inline` as `--color-<name>: var(--<name>);`.
+**A colour.** Edit the hex value in **both** palette blocks. Check that every `x-foreground` is still easy to read on `x` — aim for a contrast ratio of 4.5:1. Then update the colour named in `.tau/DESIGN.md`.
 
-## Light and dark
-- For a light app, remove `class="dark"` from `<html>` in `index.html`.
-- A theme switch toggles the `dark` class on `document.documentElement` and saves the choice in `localStorage`. Apply the saved choice before the app renders, or the page flashes the wrong theme on load.
+**The accent.** Change `--primary`, `--ring`, `--chart-1`, `--sidebar-primary` and `--sidebar-ring` together, in both blocks, and re-check `--primary-foreground` against the new colour.
 
-## Changing the look later
-Change the values in `src/index.css`. Do not restyle components one at a time to change a color — that is what the tokens are for.
+**Light or dark by default.** Add or remove `class="dark"` on `<html>` in `index.html`. For a switch, toggle that class on `document.documentElement`, save the choice in `localStorage`, and apply the saved choice before the app renders so the page does not flash.
+
+**Roundness.** `--radius` in `:root` drives the `rounded-*` utilities. The components take their corners from the skin variables at the top of `@layer skin` (`--control-radius`, `--card-radius`, `--field-radius`); change those to change the components.
+
+**Density.** `--spacing` scales every padding, gap and size utility at once. Raise it for an airier app, lower it for a tighter one; stay between `0.22rem` and `0.29rem`.
+
+**How a component looks.** Change its rule in `@layer skin` — `[data-slot="button"]`, `[data-slot="card"]`, `[data-slot="input"]`, `[data-slot="badge"]`, `[data-slot="tabs-trigger"]`, `[data-slot="dialog-content"]`. Classes added where the component is used will not override the skin for the properties it sets, by design: one place decides how a button looks.
+
+**A new colour the design needs.** Declare it in both palette blocks, then map it in `@theme inline` as `--color-<name>: var(--<name>);`. Only do this for something the existing tokens cannot express.
+
+**A different typeface.** Install it with `bun add @fontsource-variable/<name>`, add `@import "@fontsource-variable/<name>";` beside the other font imports, and set it in `--font-sans` or `--font-heading`. Then update `.tau/DESIGN.md`.
+
+## An app with no `.tau/DESIGN.md`
+An older app may have only the palette blocks, in neutral grey. Give it a real palette: pick one accent that suits the subject, tint the neutrals slightly toward it, and write both blocks. Everything else in this guide applies.

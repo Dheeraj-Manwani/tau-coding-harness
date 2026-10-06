@@ -385,3 +385,41 @@ describe("grep", () => {
     });
   });
 });
+
+// ── Image search ─────────────────────────────────────────────────────────────
+
+import { isWatermarkedSource } from "@/worker/agent/tools/functions/search-images";
+
+describe("image search drops watermarked previews", () => {
+  test("stock-site preview hosts are recognised", () => {
+    for (const url of [
+      "https://www.shutterstock.com/image-photo/baker-260nw-123.jpg",
+      "https://media.istockphoto.com/id/1/photo/bread.jpg",
+      "https://static.vecteezy.com/system/resources/previews/1/large_2x/dough.jpg",
+      "https://c8.alamy.com/comp/ABC/loaf.jpg",
+      "https://t4.ftcdn.net/jpg/01/02/03/360_F_1.jpg",
+    ]) {
+      expect(isWatermarkedSource(url)).toBe(true);
+    }
+  });
+
+  test("ordinary photo hosts are kept", () => {
+    for (const url of [
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff",
+      "https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg",
+      "https://upload.wikimedia.org/wikipedia/commons/3/33/Fresh_made_bread_05.jpg",
+      "https://example-bakery.co.uk/assets/counter.jpg",
+    ]) {
+      expect(isWatermarkedSource(url)).toBe(false);
+    }
+  });
+
+  test("a description that mentions a watermark is enough", () => {
+    expect(isWatermarkedSource("https://example.com/a.jpg", "A loaf of bread with a watermark across it")).toBe(true);
+    expect(isWatermarkedSource("https://example.com/a.jpg", "A loaf of bread on a board")).toBe(false);
+  });
+
+  test("something that is not a URL is not thrown on", () => {
+    expect(isWatermarkedSource("not a url")).toBe(false);
+  });
+});

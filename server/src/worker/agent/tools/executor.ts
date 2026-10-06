@@ -41,6 +41,9 @@ import { dispatchExplorer } from "./sub-agents/dispatch-explorer";
 import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
 import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
 import { dispatchImplementer } from "./sub-agents/dispatch-implementer";
+import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
+import { finishDesign, startDesign } from "@/worker/design/provision";
 
 class SandboxDeadError extends Error {
   readonly code = "SANDBOX_DEAD" as const;
@@ -154,16 +157,37 @@ async function executeToolInner(
       );
     case "provision_sandbox": {
       if (!sandboxRef.current) {
-        const { template } = (input ?? {}) as { template?: unknown };
+        const { template, brief } = (input ?? {}) as {
+          template?: unknown;
+          brief?: unknown;
+        };
         const requestedTemplateKey = isSelectableTemplateKey(template)
           ? template
           : undefined;
+
+        // A brand-new app on the base image gets a design of its own, decided
+        // while the sandbox boots and applied the moment it is up
+        // (worker/design). An app that already has files keeps the look it has.
+        const isNewApp =
+          env.TEMPLATE_GENERATION === 2 &&
+          (await prisma.projectFile.count({ where: { projectId } })) === 0;
+        const designing = isNewApp
+          ? startDesign(projectId, typeof brief === "string" ? brief : "")
+          : null;
+
         sandboxRef.current = await provisionSandbox(
           projectId,
           userId,
           jobId,
           requestedTemplateKey,
         );
+
+        if (designing) {
+          await finishDesign(
+            { sandbox: sandboxRef.current, projectId, userId, jobId, indexer },
+            designing,
+          );
+        }
       }
       return { success: true };
     }

@@ -19,13 +19,18 @@
  * that was not new anyway. It is attached to the request in progress only —
  * an older request is replayed without it, since a newer copy follows.
  *
- * ## Two halves, on purpose
+ * ## Three parts, on purpose
  *
  *   - **Memory** (`.tau/CONTEXT.md`) is what code cannot say: what the app is
  *     for, why it was built this way, what the user prefers, what is known to
  *     be broken. The agent writes it. It has a fixed set of sections and a size
  *     limit (`memoryProblems`), so it stays something that can be handed over
  *     whole on every request.
+ *   - **Design** (`.tau/DESIGN.md`) is how the app should look: the style it
+ *     was given, in prose. tau writes it when the app is created
+ *     (`worker/design`). Only the prose is sent — the token values live in
+ *     `src/index.css` — so a look that takes a page to describe costs about a
+ *     thousand tokens a request, and every request builds in the same style.
  *   - **The map** is what code can say: which files exist, which pages are
  *     routed, which API routes and tables are defined. tau computes it, so it
  *     is never stale and nobody has to remember to update it.
@@ -44,6 +49,7 @@ import { getBlobText } from "@/lib/s3";
 import { log } from "@/worker/lib/log";
 import { TEMPLATES, toTemplateKey } from "@/worker/templates/registry";
 import { MEMORY_MAX_CHARS, MEMORY_PATH, appRelativePath } from "./memoryFile";
+import { DESIGN_PATH, designProse } from "@/worker/design/designMd";
 
 export {
   MEMORY_MAX_CHARS,
@@ -229,6 +235,8 @@ export function tableNames(schemaTs: string): string[] {
 export interface AppBriefParts {
   /** `.tau/CONTEXT.md`, or null when the app has none saved. */
   memory: string | null;
+  /** `.tau/DESIGN.md`, when the app has one. */
+  design?: string | null;
   files: readonly FileEntry[];
   /** `src/App.tsx`, when it could be read. */
   appTsx?: string | null;
@@ -273,6 +281,13 @@ export function renderAppBrief(parts: AppBriefParts, audience: BriefAudience): s
     }
   }
 
+  const design = parts.design ? designProse(parts.design) : "";
+  if (design) {
+    sections.push(
+      `<design file="${DESIGN_PATH}">\n${design}\n</design>\nThat is how this app looks. Everything you build or change follows it.`,
+    );
+  }
+
   const map = fileMap(parts.files);
   if (map) sections.push(`<files>\n${map}\n</files>`);
 
@@ -289,7 +304,7 @@ export function renderAppBrief(parts: AppBriefParts, audience: BriefAudience): s
     sections.push(`<tables from="server/db/schema.ts">\n${tables.join("\n")}\n</tables>`);
   }
 
-  return `<tau_app>\n${INTRO[audience]} The memory is written by you; the rest is computed by tau from the saved files and can miss unusual code — the files themselves are the truth.\n\n${sections.join("\n\n")}\n</tau_app>`;
+  return `<tau_app>\n${INTRO[audience]} The memory is written by you; the file, page, route and table lists are computed by tau from the saved files and can miss unusual code — the files themselves are the truth.\n\n${sections.join("\n\n")}\n</tau_app>`;
 }
 
 // ── Loading ──────────────────────────────────────────────────────────────────
@@ -353,8 +368,9 @@ export async function loadAppBriefParts(projectId: string): Promise<AppBriefPart
       .sort()
       .slice(0, MAX_SERVER_SOURCES);
 
-    const [memory, appTsx, schemaTs, serverTexts] = await Promise.all([
+    const [memory, design, appTsx, schemaTs, serverTexts] = await Promise.all([
       read(MEMORY_PATH),
+      read(DESIGN_PATH),
       read("src/App.tsx"),
       read("server/db/schema.ts"),
       Promise.all(serverPaths.map(read)),
@@ -362,6 +378,7 @@ export async function loadAppBriefParts(projectId: string): Promise<AppBriefPart
 
     return {
       memory,
+      design,
       files: rows,
       appTsx,
       schemaTs,

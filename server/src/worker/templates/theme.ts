@@ -77,8 +77,13 @@ export function buildThemeCss(theme: Theme): string {
     (name) => `  --color-${name}: var(--${name});`,
   ).join("\n");
 
+  // `shadcn/tailwind.css` is not optional decoration: the stock components'
+  // classes use variants it defines (`data-horizontal:`, `data-active:` …) and
+  // keyframes it declares. Without it, tabs lay out sideways and accordions
+  // do not animate.
   return `@import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 

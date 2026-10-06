@@ -1204,9 +1204,24 @@ export async function getProjectTheme(projectId: string, userId: string) {
   if (!record) throw Errors.notFound("This project has no theme file");
 
   const file = await readProjectFileContent(project, userId, THEME_FILE);
+
+  // Which palette is on screen. An app opens dark only when `index.html` puts
+  // the `dark` class on `<html>`; the panel uses this to open on the palette
+  // the user is actually looking at.
+  let activeScope: "root" | "dark" = "dark";
+  try {
+    const html = await readProjectFileContent(project, userId, "index.html");
+    const tag = /<html\b[^>]*>/i.exec(html.content)?.[0] ?? "";
+    const classes = /\sclass=(["'])(.*?)\1/i.exec(tag)?.[2] ?? "";
+    activeScope = classes.split(/\s+/).includes("dark") ? "dark" : "root";
+  } catch {
+    // No index.html to read: keep the historical default.
+  }
+
   return {
     path: THEME_FILE,
     contentHash: file.contentHash,
+    activeScope,
     ...readThemeTokens(file.content),
   };
 }

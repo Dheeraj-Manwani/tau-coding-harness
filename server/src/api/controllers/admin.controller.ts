@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
   reconcileAccount,
@@ -7,6 +8,7 @@ import {
   type ReconcileAccountResult,
 } from "@/lib/credits";
 import { Errors } from "../lib/errors";
+import { parse } from "../lib/utils";
 import { bus } from "@/lib/bus";
 import { ADMIN_COOKIE } from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
@@ -67,6 +69,25 @@ export const sandboxes = handler((req) =>
 export const userDetail = handler((req) =>
   admin.getUserDetail(String(req.params.id)),
 );
+
+const grantCreditsSchema = z.object({
+  amountCredits: z.number().positive(),
+  reason: z.string().trim().max(200).optional(),
+});
+
+/** POST /users/:id/credits/grant — manual top-up outside purchase/promo/plan. */
+export const grantCredits = handler((req) => {
+  const { amountCredits, reason } = parse(grantCreditsSchema, req.body);
+  return admin.grantUserCredits(String(req.params.id), amountCredits, reason);
+});
+
+const setPlanSchema = z.object({ plan: z.enum(["FREE", "PRO"]) });
+
+/** POST /users/:id/plan — manual plan comp, not a real Razorpay subscription. */
+export const setPlan = handler((req) => {
+  const { plan } = parse(setPlanSchema, req.body);
+  return admin.setUserPlan(String(req.params.id), plan);
+});
 
 export const projectDetail = handler((req) =>
   admin.getProjectDetail(String(req.params.id)),

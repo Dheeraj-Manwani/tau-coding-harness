@@ -495,7 +495,7 @@ export async function searchUsers(q: string | undefined) {
       role: true,
       createdAt: true,
       emailVerifiedAt: true,
-      billing: { select: { plan: true } },
+      billing: { select: { plan: true, freeBalance: true, planBalance: true, bonusBalance: true } },
       _count: { select: { projects: true } },
     },
   });
@@ -503,6 +503,9 @@ export async function searchUsers(q: string | undefined) {
   return users.map(({ billing, _count, ...u }) => ({
     ...u,
     plan: billing?.plan ?? null,
+    availableCredits: billing
+      ? toCredits(billing.freeBalance + billing.planBalance + billing.bonusBalance)
+      : 0,
     projects: _count.projects,
   }));
 }

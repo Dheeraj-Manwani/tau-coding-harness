@@ -1,10 +1,12 @@
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useApi } from "@/lib/useApi";
 import { post } from "@/lib/api";
 import { ago, credits, dateTime, int, label, num, shortId } from "@/lib/format";
-import type { UserDetail as UserDetailData } from "@/types";
+import type { GrantCreditsResult, SetPlanResult, UserDetail as UserDetailData } from "@/types";
 import {
   Badge,
+  Button,
   Card,
   ConfirmButton,
   ErrorBox,
@@ -20,6 +22,8 @@ import {
   StatGrid,
   Table,
   Td,
+  ToneIcon,
+  inputClass,
 } from "@/components/ui";
 import { JobLinks } from "./Jobs";
 
@@ -60,6 +64,41 @@ function Body({ d, onChange }: { d: UserDetailData; onChange: () => void }) {
         <Stat label="Bonus" value={credits(b?.bonusCredits)} sub="promos, top-ups" />
         <Stat label="Projects" value={int(d.projects)} sub={`joined ${ago(d.user.createdAt)}`} />
       </StatGrid>
+
+      <Card title="Billing actions" className="mt-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-fg-2">
+            Plan <Badge tone={b?.plan === "PRO" ? "good" : "neutral"}>{b ? label(b.plan) : "—"}</Badge>
+          </span>
+          {b?.plan === "PRO" ? (
+            <ConfirmButton
+              label="Revert to Free"
+              title="Revert this account to the Free plan?"
+              description="Clears PRO status. Any plan credits already granted stay spendable until used. This does not cancel a real Razorpay subscription if one exists — check the Subscription record separately so it doesn't keep charging."
+              variant="danger"
+              onConfirm={async () => {
+                const r = await post<SetPlanResult>(`/users/${d.user.id}/plan`, { plan: "FREE" });
+                return `Reverted to Free. Available: ${credits(r.availableCredits)}.`;
+              }}
+              onDone={onChange}
+            />
+          ) : (
+            <ConfirmButton
+              label="Grant Pro"
+              title="Grant this account PRO status?"
+              description="Sets the plan to PRO and immediately grants the monthly PRO credit allotment. This is a manual comp, not a real Razorpay subscription — it will not appear in billing history and will not auto-renew."
+              variant="primary"
+              onConfirm={async () => {
+                const r = await post<SetPlanResult>(`/users/${d.user.id}/plan`, { plan: "PRO" });
+                return `Granted Pro. Available: ${credits(r.availableCredits)}.`;
+              }}
+              onDone={onChange}
+            />
+          )}
+          <div className="h-5 w-px bg-line" />
+          <GrantCreditsButton userId={d.user.id} onDone={onChange} />
+        </div>
+      </Card>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <Card title="Account">
@@ -189,6 +228,104 @@ function Body({ d, onChange }: { d: UserDetailData; onChange: () => void }) {
           ))}
         </Table>
       </Section>
+    </>
+  );
+}
+
+/** A dialog taking a credit amount + optional reason, then POSTs the grant. */
+function GrantCreditsButton({ userId, onDone }: { userId: string; onDone: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string }>();
+  const succeeded = useRef(false);
+
+  const open = () => {
+    setAmount("");
+    setReason("");
+    setResult(undefined);
+    succeeded.current = false;
+    ref.current?.showModal();
+  };
+  const close = () => ref.current?.close();
+
+  const parsed = Number(amount);
+  const valid = amount.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await post<GrantCreditsResult>(`/users/${userId}/credits/grant`, {
+        amountCredits: parsed,
+        reason: reason.trim() || undefined,
+      });
+      succeeded.current = true;
+      setResult({ ok: true, text: `Granted ${credits(r.granted)}. Available: ${credits(r.availableCredits)}.` });
+    } catch (err) {
+      setResult({ ok: false, text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button onClick={open} className="px-2 py-1 text-xs">
+        Gift credits
+      </Button>
+      <dialog
+        ref={ref}
+        onClose={() => succeeded.current && onDone()}
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-left text-sm font-normal whitespace-normal text-fg shadow-2xl"
+      >
+        <div className="p-5">
+          <h3 className="text-base font-semibold">Gift credits</h3>
+          <p className="mt-2 text-sm text-fg-2">
+            Adds bonus credits to this account's balance right away, recorded as an ADJUSTMENT ledger entry.
+          </p>
+          {!result?.ok && (
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs text-fg-2">
+                Credits
+                <input
+                  className={`${inputClass} mt-1.5 w-full`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  autoFocus
+                  placeholder="e.g. 500"
+                />
+              </label>
+              <label className="block text-xs text-fg-2">
+                Reason (optional)
+                <input
+                  className={`${inputClass} mt-1.5 w-full`}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. support goodwill credit"
+                />
+              </label>
+            </div>
+          )}
+          {result && (
+            <div className={`mt-4 flex items-start gap-2 text-sm ${result.ok ? "text-good-text" : "text-critical-text"}`} role="status">
+              <ToneIcon tone={result.ok ? "good" : "critical"} className="mt-0.5 size-4 shrink-0" />
+              <span className="break-words">{result.text}</span>
+            </div>
+          )}
+          <div className="mt-5 flex justify-end gap-2">
+            <Button onClick={close}>{result?.ok ? "Close" : "Cancel"}</Button>
+            {!result?.ok && (
+              <Button variant="primary" disabled={!valid || busy} onClick={run}>
+                {busy ? "Granting…" : "Grant"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </dialog>
     </>
   );
 }

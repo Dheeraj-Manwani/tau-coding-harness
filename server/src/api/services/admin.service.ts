@@ -1,14 +1,17 @@
+import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { bus, type JobRegistryEntry } from "@/lib/bus";
 import { env } from "@/lib/env";
 import { Errors } from "../lib/errors";
-import { settle } from "@/lib/credits";
+import { settle, grantBonusCredits, grantPlanCycle, ensureBillingAccount } from "@/lib/credits";
 import { terminateStrandedJob, reapStaleJobs } from "../lib/jobs";
-import { toCredits } from "@/lib/pricing";
+import { toCredits, MICRO } from "@/lib/pricing";
 import {
   FinishReason,
   HoldStatus,
   JobStatus,
+  LedgerType,
+  Plan,
   SandboxStatus,
   ToolCallStatus,
 } from "@/generated/prisma/enums";
@@ -512,6 +515,68 @@ export async function releaseUserHolds(
     await settle(jobId).catch(() => {});
   }
   return { released: holds.length };
+}
+
+/**
+ * Gift bonus credits to a user's account — a manual top-up outside the normal
+ * purchase/promo/plan paths. Recorded as an ADJUSTMENT ledger entry so it's
+ * distinguishable from a real purchase or promo redemption.
+ */
+export async function grantUserCredits(
+  userId: string,
+  amountCredits: number,
+  reason?: string,
+): Promise<{ granted: number; availableCredits: number }> {
+  if (!Number.isFinite(amountCredits) || amountCredits <= 0) {
+    throw Errors.badRequest("amountCredits must be a positive number");
+  }
+  const amountMicro = BigInt(Math.round(amountCredits * Number(MICRO)));
+  const result = await grantBonusCredits(userId, amountMicro, {
+    idempotencyKey: `admin-grant:${crypto.randomUUID()}`,
+    type: LedgerType.ADJUSTMENT,
+    reason: reason?.trim() || "admin credit grant",
+  });
+  return {
+    granted: toCredits(result.granted),
+    availableCredits: toCredits(result.available),
+  };
+}
+
+/**
+ * Set a user's plan directly from the console — a manual comp, not a real
+ * Razorpay subscription. Going to PRO grants the monthly allotment
+ * immediately via the same ledger path a subscription webhook uses
+ * (`grantPlanCycle`); no `Subscription` row is created, so it won't show up
+ * as billing history and will not auto-renew. Going back to FREE only flips
+ * the flag — any plan credits already granted stay spendable, mirroring what
+ * a real cancellation does (`handleTerminal` in billing.service.ts).
+ */
+export async function setUserPlan(
+  userId: string,
+  plan: "FREE" | "PRO",
+): Promise<{ plan: string; availableCredits: number }> {
+  await ensureBillingAccount(userId);
+
+  if (plan === "PRO") {
+    const now = new Date();
+    const cycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    await prisma.billingAccount.update({
+      where: { userId },
+      data: { plan: Plan.PRO },
+    });
+    await grantPlanCycle(userId, `admin-comp:${userId}:${now.getTime()}`, now, cycleEnd);
+  } else {
+    await prisma.billingAccount.update({
+      where: { userId },
+      data: { plan: Plan.FREE },
+    });
+  }
+
+  const acc = await prisma.billingAccount.findUnique({ where: { userId } });
+  const availableCredits = acc
+    ? toCredits(acc.freeBalance + acc.planBalance + acc.bonusBalance)
+    : 0;
+  return { plan, availableCredits };
 }
 
 // ── per-user / per-project views ─────────────────────────────────────────────

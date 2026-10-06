@@ -379,6 +379,7 @@ export interface UserSearchRow {
   createdAt: ISODate;
   emailVerifiedAt: ISODate | null;
   plan: string | null;
+  availableCredits: number;
   projects: number;
 }
 
@@ -510,6 +511,16 @@ export interface ReapResult {
   reaped: number;
   jobIds: string[];
   errors: string[];
+}
+
+export interface GrantCreditsResult {
+  granted: number;
+  availableCredits: number;
+}
+
+export interface SetPlanResult {
+  plan: string;
+  availableCredits: number;
 }
 
 export interface ReconcileAccountResult {

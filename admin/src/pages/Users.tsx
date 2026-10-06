@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApi } from "@/lib/useApi";
-import { ago, int, label } from "@/lib/format";
+import { ago, credits, int, label } from "@/lib/format";
 import type { UserSearchRow } from "@/types";
 import { Badge, Button, ErrorBox, Loading, PageHeader, Table, Td, inputClass } from "@/components/ui";
 
@@ -44,7 +44,7 @@ export default function Users() {
       {error && <ErrorBox message={error} onRetry={() => reload()} />}
       {!data && loading && <Loading />}
       {data && (
-        <Table head={["Email", "Name", "Plan", "Projects", "Verified", "Joined"]} empty="No accounts match.">
+        <Table head={["Email", "Name", "Plan", "Credits", "Projects", "Verified", "Joined"]} empty="No accounts match.">
           {data.map((u) => (
             <tr key={u.id}>
               <Td>
@@ -63,6 +63,7 @@ export default function Users() {
                   {label(u.plan ?? "none")}
                 </Badge>
               </Td>
+              <Td num>{credits(u.availableCredits)}</Td>
               <Td num>{int(u.projects)}</Td>
               <Td className="text-xs text-fg-2">{u.emailVerifiedAt ? "Yes" : "No"}</Td>
               <Td className="text-xs text-fg-2">{ago(u.createdAt)}</Td>

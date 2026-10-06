@@ -235,12 +235,16 @@ const PRO_FEATURES = [
 function PlanSection() {
   const { data: user } = useMe();
   const { data: sub, isLoading, refetch: refetchSub } = useSubscription();
-  const { refetch: refetchBalance } = useBalance();
+  const { data: balance, refetch: refetchBalance } = useBalance();
   const subscribePro = useSubscribePro();
   const cancelSub = useCancelSubscription();
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const isActive = sub ? ACTIVE_STATUSES.has(sub.status) : false;
+  // The account can be PRO without an active Subscription row (e.g. an
+  // admin-granted comp plan) — gate the upgrade CTA on the actual plan, not
+  // just on there being a live Razorpay subscription to cancel.
+  const isPro = balance?.plan === "PRO";
 
   const handleUpgrade = () => {
     subscribePro.mutate(undefined, {
@@ -284,7 +288,7 @@ function PlanSection() {
         <span className="rounded-full bg-[#ff7a2e] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#160700]">
           PRO
         </span>
-        {!isActive && (
+        {!isPro && (
           <span className="mono text-silver-600">Cancel anytime</span>
         )}
         {sub && (
@@ -322,13 +326,19 @@ function PlanSection() {
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {isLoading ? (
           <DataSpinner label="Loading subscription" />
-        ) : !isActive ? (
+        ) : !isPro ? (
           <UpgradeProButton
             onClick={handleUpgrade}
             disabled={subscribePro.isPending}
           >
             {subscribePro.isPending ? "Preparing checkout…" : "Upgrade to PRO ↗"}
           </UpgradeProButton>
+        ) : !isActive ? (
+          // PRO without a live Subscription row — a manually granted comp
+          // plan. Nothing to cancel, so no cancel-subscription affordance.
+          <p className="text-sm text-muted-foreground">
+            PRO plan active
+          </p>
         ) : (
           <>
             {sub?.cancelAtCycleEnd ? (

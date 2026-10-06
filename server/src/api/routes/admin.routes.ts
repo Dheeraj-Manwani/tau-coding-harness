@@ -28,6 +28,8 @@ import {
   liveSandboxes,
   searchUsers,
   killSandbox,
+  grantCredits,
+  setPlan,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -65,6 +67,8 @@ router.get("/jobs/:id", jobDetail);
 router.get("/jobs/:id/events", jobEvents); // replay what the browser received
 router.get("/users", searchUsers); // ?q=email fragment or id
 router.get("/users/:id", userDetail);
+router.post("/users/:id/credits/grant", grantCredits); // { amountCredits, reason? }
+router.post("/users/:id/plan", setPlan); // { plan: "FREE" | "PRO" } — manual comp
 
 // Runtime inference across every key — who is spending, on what. `?hours=`.
 router.get("/gateway", gatewayOverview);

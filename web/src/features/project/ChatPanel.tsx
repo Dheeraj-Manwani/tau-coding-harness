@@ -28,20 +28,24 @@ import {
   GitPullRequestIcon,
   CircleDotIcon,
   DownloadIcon,
+  EraserIcon,
   HammerIcon,
   HeartPulseIcon,
   HomeIcon,
   ImagesIcon,
+  InfoIcon,
   ListPlusIcon,
   Loader2Icon,
   RulerIcon,
   MessageCircleQuestionMark,
+  MessageSquareIcon,
   MinusIcon,
   PanelLeftCloseIcon,
   PencilIcon,
   PlayIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   SquareCheckBigIcon,
   SquareMousePointerIcon,
   TelescopeIcon,
@@ -49,6 +53,7 @@ import {
   TimerIcon,
   Trash2Icon,
   XIcon,
+  Summary,
 } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
@@ -75,8 +80,10 @@ import {
   fetchOlderMessages,
   submitJobAnswer,
   useProject,
+  useSummarizeChat,
 } from "@/src/features/project/api";
 import { useSendMessage } from "@/src/features/project/useSendMessage";
+import { useContextUsage } from "@/src/features/project/useContextUsage";
 import { SecretRequestPrompt } from "@/src/features/project/SecretRequestPrompt";
 import {
   CREDIT_RESUME_PROMPT,
@@ -84,11 +91,14 @@ import {
 } from "@/src/features/project/creditResume";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import { EditProjectDialog } from "@/src/features/project/EditProjectDialog";
+import { ClearChatDialog } from "@/src/features/project/ClearChatDialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
+import { CircularProgress } from "@/src/components/ui/circular-progress";
+import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
 import { UserMenu } from "@/src/components/UserMenu";
@@ -767,6 +777,25 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   const [isTruncated, setIsTruncated] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const jobActive = Boolean(detail?.activeJobId);
+  const summarizeChat = useSummarizeChat(projectId);
+  const setContextUsage = useProjectStore((s) => s.setContextUsage);
+
+  const handleSummarize = () => {
+    summarizeChat.mutate(undefined, {
+      onSuccess: (data) => {
+        toast.success("Chat summarized");
+        // Apply the fresh usage snapshot immediately — no flash, the user
+        // already knows why this changed, they just triggered it themselves.
+        setContextUsage(data);
+      },
+      onError: (err) =>
+        toast.error(
+          err instanceof ApiError ? err.message : "Failed to summarize chat",
+        ),
+    });
+  };
 
   useEffect(() => {
     const el = nameRef.current;
@@ -812,7 +841,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
           <DropdownMenu.Content
             align="start"
             sideOffset={6}
-            className="z-50 w-44 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
+            className="z-50 w-52 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
           >
             <DropdownMenu.Item
               onSelect={() => navigate(APP_HOME)}
@@ -832,6 +861,66 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
               Edit project
             </DropdownMenu.Item>
 
+            <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
+
+            <DropdownMenu.Item
+              onSelect={() => setClearOpen(true)}
+              disabled={jobActive}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+            >
+              <EraserIcon className="size-3.5 shrink-0" />
+              <span className="flex-1">Clear chat</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="flex size-4 shrink-0 items-center justify-center text-[var(--silver-400)] hover:text-[var(--silver-600)]"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <InfoIcon className="size-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-56">
+                  {jobActive
+                    ? "Finish or cancel the current run first."
+                    : "Deletes the current chat and starts a fresh chat. Recommended before starting work on a new, unrelated piece of work."}
+                </TooltipContent>
+              </Tooltip>
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Item
+              onSelect={handleSummarize}
+              disabled={jobActive || summarizeChat.isPending}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+            >
+              {summarizeChat.isPending ? (
+                <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
+              ) : (
+                <Summary className="size-3.5 shrink-0" />
+              )}
+              <span className="flex-1">
+                {summarizeChat.isPending ? "Summarizing…" : "Summarize chat"}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="flex size-4 shrink-0 items-center justify-center text-[var(--silver-400)] hover:text-[var(--silver-600)]"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <InfoIcon className="size-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-56">
+                  {jobActive
+                    ? "Finish or cancel the current run first."
+                    : "Summarizes the chat history, resulting in a shorter context window. Usually results in better responses. Recommended when a conversation has been running long."}
+                </TooltipContent>
+              </Tooltip>
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
+
             <DropdownMenu.Item
               onSelect={() => setDeleteOpen(true)}
               className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
@@ -847,6 +936,12 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
         project={projectAsListItem}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <ClearChatDialog
+        projectId={projectId}
+        open={clearOpen}
+        onOpenChange={setClearOpen}
       />
 
       <DeleteProjectDialog
@@ -1068,10 +1163,17 @@ export function ChatPanel({
   const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const answerPendingQuestion = useProjectStore((s) => s.answerPendingQuestion);
   const currentJobId = useProjectStore((s) => s.currentJobId);
+  const {
+    usage: contextUsage,
+    flashKind: contextUsageFlashKind,
+    flashToken: contextUsageFlashToken,
+  } = useContextUsage();
 
   const { data: balance } = useBalance();
   const isStreaming = status === "streaming";
   const chatLoading = !hydrated && messages.length === 0 && !isStreaming;
+  // Genuinely empty, not just "not loaded yet" — e.g. right after "Clear chat".
+  const chatEmpty = hydrated && !isStreaming && messages.length === 0;
 
   // Shared with the Home composer and the visual-edit inspector, so a MAX
   // choice made anywhere carries everywhere.
@@ -1229,6 +1331,23 @@ export function ChatPanel({
           {projectId && <ProjectSwitcher projectId={projectId} />}
         </div>
         <div className="flex items-center gap-2">
+          {contextUsage && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center justify-center rounded-[var(--radius-md)] p-1.5">
+                  <CircularProgress
+                    percent={contextUsage.usagePercent}
+                    flashKind={contextUsageFlashKind}
+                    flashToken={contextUsageFlashToken}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-56">
+                {Math.round(contextUsage.usagePercent)}% of context window used.
+                Auto-compacts at 60%, summarizes at 75%.
+              </TooltipContent>
+            </Tooltip>
+          )}
           {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
           {showCollapse && (
@@ -1263,6 +1382,12 @@ export function ChatPanel({
               <DataSpinner label="Loading chat" />
             </div>
           )}
+          {chatEmpty && (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-[var(--silver-500)]">
+              <MessageSquareIcon className="size-6" />
+              <p className="text-sm">No messages yet</p>
+            </div>
+          )}
           {messages.map((m, i) => {
             // Consecutive messages from the same speaker (tau narrating a
             // multi-step turn: "I'll set up...", "4 Actions", "Adding a
@@ -1290,7 +1415,11 @@ export function ChatPanel({
                   <ChatBubble
                     message={m}
                     delay={
-                      prependedIds.has(m.id) ? 0 : i < initialCount ? i * 0.04 : 0
+                      prependedIds.has(m.id)
+                        ? 0
+                        : i < initialCount
+                          ? i * 0.04
+                          : 0
                     }
                     noAnimate={prependedIds.has(m.id)}
                   />

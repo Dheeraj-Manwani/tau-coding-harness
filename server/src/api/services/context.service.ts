@@ -18,6 +18,7 @@ import { estimateTokens } from "@/worker/agent/context/tokens";
 import {
   CONTEXT_KEEP_TAIL_TOKENS,
   MAX_TOOL_RESULT_TOKENS,
+  contextBudgetForModel,
   modelForEffort,
 } from "@/worker/agent/config";
 import type { Entry } from "@/worker/agent/context/types";
@@ -41,6 +42,33 @@ async function requireNoActiveJob(projectId: string, action: string) {
   }
 }
 
+/**
+ * These two actions never run inside a job, so there's no `jobId` to publish
+ * a live `context_usage` SSE event through (that event only exists mid-turn
+ * in `loop.ts`, over the job-scoped stream — see
+ * doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md). The action already completes
+ * in a single request/response round trip, so the caller doesn't need a
+ * push — it gets the fresh usage snapshot straight back from the fetch.
+ */
+export function usageSnapshot(tokensUsed: number) {
+  const tokensBudget = contextBudgetForModel(modelForEffort("HIGH"));
+  return {
+    tokensUsed,
+    tokensBudget,
+    usagePercent: Number(((tokensUsed / tokensBudget) * 100).toFixed(1)),
+  };
+}
+
+/**
+ * The ring's value on first page load — before any turn has run and before
+ * any manual action has happened, neither the SSE event nor a mutation
+ * response has fired yet. `getProject` calls this once per load.
+ */
+export async function getContextUsage(projectId: string) {
+  const history = await loadHistory(projectId);
+  return usageSnapshot(estimateTokens(history.map((e) => e.param)));
+}
+
 export async function clearProjectChat(projectId: string, userId: string) {
   await requireOwnedProject(projectId, userId);
   await requireNoActiveJob(projectId, "clear this chat");
@@ -50,7 +78,7 @@ export async function clearProjectChat(projectId: string, userId: string) {
     loadHistory(projectId),
   ]);
   if (upToSequence === null) {
-    return { cleared: false, upToSequence: null };
+    return { cleared: false, upToSequence: null, ...usageSnapshot(0) };
   }
 
   const tokensBefore = estimateTokens(history.map((e) => e.param));
@@ -63,7 +91,7 @@ export async function clearProjectChat(projectId: string, userId: string) {
     tokensAfter: 0,
   });
 
-  return { cleared: true, upToSequence };
+  return { cleared: true, upToSequence, ...usageSnapshot(0) };
 }
 
 export async function summarizeProjectChat(projectId: string, userId: string) {
@@ -99,5 +127,6 @@ export async function summarizeProjectChat(projectId: string, userId: string) {
     upToSequence: result.upToSequence,
     tokensBefore: result.tokensBefore,
     tokensAfter: result.tokensAfter,
+    ...usageSnapshot(result.tokensAfter),
   };
 }

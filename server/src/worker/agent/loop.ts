@@ -589,6 +589,20 @@ export async function runAgentLoop(
         contextBudget,
         contextPct: Number(((contextTokens / contextBudget) * 100).toFixed(1)),
       });
+      // Live feed for the context-usage ring (doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md).
+      // `triggeredAutoRun` is set only on the turn that actually ran compaction/
+      // summarization, so the frontend knows to flash rather than just update.
+      await publish(jobId, {
+        type: "context_usage",
+        usagePercent: Number(((contextTokens / contextBudget) * 100).toFixed(1)),
+        tokensUsed: contextTokens,
+        tokensBudget: contextBudget,
+        ...(mgmt.summarized
+          ? { triggeredAutoRun: "summarize" as const }
+          : mgmt.compacted
+            ? { triggeredAutoRun: "compact" as const }
+            : {}),
+      });
       bus.setPhase(jobId, "llm", {
         turn,
         model,

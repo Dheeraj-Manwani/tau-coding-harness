@@ -134,6 +134,8 @@ export interface ProjectDetail {
     pendingQuestion: PendingQuestion | null;
   } | null;
   checkpoints: ProjectCheckpoint[];
+  /** Ring value on first load — before any turn runs or any manual action fires. */
+  contextUsage: ContextUsageSnapshot;
 }
 
 /** Lightweight `GET /project/:id/job-status` recovery-poll response. */
@@ -158,6 +160,27 @@ export interface InitProjectResponse {
 export interface AddMessageResponse {
   jobId: string;
 }
+
+/** Shared "where context usage stands right now" snapshot, echoed back by
+ *  both chat-context actions below so the UI can update without waiting on
+ *  a live event (doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md). */
+export interface ContextUsageSnapshot {
+  tokensUsed: number;
+  tokensBudget: number;
+  usagePercent: number;
+}
+
+/** `POST /project/:id/chat/clear` response. */
+export type ClearChatResponse = ContextUsageSnapshot &
+  ({ cleared: true; upToSequence: number } | { cleared: false; upToSequence: null });
+
+/** `POST /project/:id/chat/summarize` response. */
+export type SummarizeChatResponse = ContextUsageSnapshot & {
+  summarized: true;
+  upToSequence: number;
+  tokensBefore: number;
+  tokensAfter: number;
+};
 
 /** `GET /project/:id/preview/status`: is the live E2B sandbox reachable? */
 export interface PreviewStatusResponse {
@@ -261,4 +284,10 @@ export type JobEvent = BaseEvent &
         tokensBefore: number;
         tokensAfter: number;
       }
+    | ({
+        type: "context_usage";
+        /** Set only on the turn that actually ran compaction/summarization,
+         *  so the ring knows when to flash rather than just update. */
+        triggeredAutoRun?: "compact" | "summarize";
+      } & ContextUsageSnapshot)
   );

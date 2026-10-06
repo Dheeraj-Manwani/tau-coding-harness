@@ -8,6 +8,7 @@ import {
 } from "@/src/stores/useProjectStore";
 import type {
   AddMessageResponse,
+  ClearChatResponse,
   Effort,
   InitProjectResponse,
   ListProjectsResponse,
@@ -19,6 +20,7 @@ import type {
   ProjectTree,
   RestartPreviewResponse,
   SaveProjectFileResponse,
+  SummarizeChatResponse,
   VisualMessageContext,
 } from "./types";
 
@@ -162,6 +164,45 @@ export function useDeleteProject() {
       api.delete(`/project/${projectId}`).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+/**
+ * `POST /project/:id/chat/clear`: start a fresh conversation. The server
+ * writes a boundary checkpoint rather than deleting rows, but every read path
+ * (messages, `loadHistory`) floors on it, so old messages are gone from both
+ * the UI and the model from here on. Invalidating the detail query lets the
+ * existing `hydrate(data)` effect in `useProjectBootstrap` rebuild
+ * `chatMessages` from the now-filtered response — no manual store write needed.
+ */
+export function useClearChat(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<ClearChatResponse>(`/project/${projectId}/chat/clear`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    },
+  });
+}
+
+/**
+ * `POST /project/:id/chat/summarize`: manually compress the older part of the
+ * conversation right now, instead of waiting for the agent loop's own
+ * high-water-mark auto-summarize. Rejects with 409 while a job is running and
+ * 400 when there's not enough history yet — both surfaced as the mutation's
+ * error for the caller to toast.
+ */
+export function useSummarizeChat(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post<SummarizeChatResponse>(`/project/${projectId}/chat/summarize`)
+        .then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     },
   });
 }

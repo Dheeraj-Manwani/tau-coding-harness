@@ -8,7 +8,7 @@ import { MotionIntroDialog } from "@/src/features/settings/MotionIntroDialog";
 import { FeedbackModal } from "@/src/features/feedback/FeedbackModal";
 import { SupportTauModal } from "@/src/features/support/SupportTauModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
-import { APP_BILLING, APP_HOME } from "@/src/lib/routes";
+import { APP_ACCOUNT, APP_BILLING, APP_HOME } from "@/src/lib/routes";
 import { cn } from "@/src/lib/utils";
 
 /**
@@ -25,6 +25,7 @@ export function AppShell() {
   // The buy-credits flow is a focused purchase decision - the watermark is a
   // flourish for pages someone lingers on, not one mid-checkout.
   const isBilling = pathname === APP_BILLING;
+  const isAccount = pathname === APP_ACCOUNT;
 
   return (
     <div className="flex h-[100svh] flex-col">
@@ -53,7 +54,9 @@ export function AppShell() {
       )}
 
       <main className="min-h-0 flex-1 overflow-auto">{outlet}</main>
-      {!isProject && !isHome && <SiteFooter watermark={!isBilling} />}
+      {!isProject && !isHome && (
+        <SiteFooter watermark={!isBilling && !isAccount} />
+      )}
       <OutOfCreditsModal />
       <UpgradeModal />
       <SettingsModal />

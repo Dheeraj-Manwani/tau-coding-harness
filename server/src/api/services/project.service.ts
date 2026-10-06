@@ -5,6 +5,7 @@ import { createProjectArchive } from "../lib/projectArchive";
 import { Sandbox } from "e2b";
 import { prisma } from "@/lib/prisma";
 import * as projectRepo from "../repositories/project.repository";
+import { getContextUsage } from "./context.service";
 import { getNextSequence } from "@/lib/sequence";
 import { enqueueJob } from "../lib/queue";
 import { deepseek } from "@/lib/deepseek";
@@ -648,12 +649,14 @@ export async function getProject(projectId: string, userId: string) {
   }
 
   const clearFloor = await projectRepo.findLatestClearSequence(projectId);
-  const [messages, latestFragment, activeJob, previewImageUrl] = await Promise.all([
-    projectRepo.findRecentMessages(projectId, 50, clearFloor),
-    projectRepo.findLatestFragment(projectId),
-    projectRepo.findActiveJob(projectId),
-    project.previewImageKey ? presignGet(project.previewImageKey) : Promise.resolve(null),
-  ]);
+  const [messages, latestFragment, activeJob, previewImageUrl, contextUsage] =
+    await Promise.all([
+      projectRepo.findRecentMessages(projectId, 50, clearFloor),
+      projectRepo.findLatestFragment(projectId),
+      projectRepo.findActiveJob(projectId),
+      project.previewImageKey ? presignGet(project.previewImageKey) : Promise.resolve(null),
+      getContextUsage(projectId),
+    ]);
 
   const checkpoints = messages.length
     ? await projectRepo.findCheckpointsInRange(
@@ -715,6 +718,7 @@ export async function getProject(projectId: string, userId: string) {
       error: latestJob.error,
       pendingQuestion,
     } : null,
+    contextUsage,
     checkpoints,
   };
 }

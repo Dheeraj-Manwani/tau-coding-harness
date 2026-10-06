@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type {
+  ContextUsageSnapshot,
   JobEvent,
   MessageAttachment,
   PendingQuestion,
@@ -950,6 +951,15 @@ interface ProjectState {
   // Pending ask_user question waiting for the user's response.
   pendingQuestion: PendingQuestion | null;
 
+  // Context usage ring (doc/CHAT_CLEAR_SUMMARIZE_CONTEXT_UI_PLAN.md)
+  /** Null only before the first hydrate; every load has a value from `getProject`. */
+  contextUsage: ContextUsageSnapshot | null;
+  /** Set only on the turn an auto-run actually fired, so the ring knows to
+   *  flash rather than just update. `flashToken` changes on every flash even
+   *  when `flashKind` repeats, so a consumer's effect can always detect a new one. */
+  contextUsageFlashKind: "compact" | "summarize" | null;
+  contextUsageFlashToken: number;
+
   // Generated app
   files: Record<string, ProjectFile>;
   headSequence: number | null;
@@ -1026,6 +1036,13 @@ interface ProjectState {
   resyncFromDetail: (detail: ProjectDetail) => void;
   /** Populate the file tree from the manifest (paths only, no bodies). */
   hydrateTree: (tree: ProjectTree) => void;
+  /** Update the context-usage ring: from a live `context_usage` SSE event
+   *  (pass `triggeredAutoRun` to flash), or directly from a "Clear chat" /
+   *  "Summarize chat" response (no flash — the user already knows why). */
+  setContextUsage: (
+    usage: ContextUsageSnapshot,
+    triggeredAutoRun?: "compact" | "summarize",
+  ) => void;
   /** Cache a lazily-loaded file body in the store. */
   setFileContent: (path: string, content: string, contentHash?: string) => void;
   /** Record the user's in-progress edits to a file (see {@link isFileDirty}). */
@@ -1130,6 +1147,9 @@ const FRESH = {
   oldestSequence: null as number | null,
   currentPlan: null as Plan | null,
   pendingQuestion: null as PendingQuestion | null,
+  contextUsage: null as ContextUsageSnapshot | null,
+  contextUsageFlashKind: null as "compact" | "summarize" | null,
+  contextUsageFlashToken: 0,
   files: {} as Record<string, ProjectFile>,
   headSequence: null as number | null,
   writingPath: null as string | null,
@@ -1209,6 +1229,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         buildStarted,
         hasMoreMessages,
         oldestSequence,
+        contextUsage: detail.contextUsage,
       };
     }),
 
@@ -1256,6 +1277,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         streamingId: null,
         writingPath: null,
         pendingActions: [],
+        contextUsage: detail.contextUsage,
       };
     }),
 
@@ -1522,6 +1544,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setPreviewErrorDismissed: (previewErrorDismissed) =>
     set({ previewErrorDismissed }),
   setCodeTreeWidth: (codeTreeWidth) => set({ codeTreeWidth }),
+
+  setContextUsage: (usage, triggeredAutoRun) =>
+    set((s) => ({
+      contextUsage: usage,
+      ...(triggeredAutoRun
+        ? {
+            contextUsageFlashKind: triggeredAutoRun,
+            contextUsageFlashToken: s.contextUsageFlashToken + 1,
+          }
+        : {}),
+    })),
 }));
 
 // ── Event reducer ───────────────────────────────────────────────────────────
@@ -2042,6 +2075,25 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         };
         return { chatMessages: [...s.chatMessages, divider] };
       });
+      return;
+
+    case "context_usage":
+      // Live tick for the context-usage ring, emitted after every agent turn.
+      // Flash only on the turn that actually ran compaction/summarization —
+      // every other turn is a plain, unflashed update.
+      set((s) => ({
+        contextUsage: {
+          usagePercent: event.usagePercent,
+          tokensUsed: event.tokensUsed,
+          tokensBudget: event.tokensBudget,
+        },
+        ...(event.triggeredAutoRun
+          ? {
+              contextUsageFlashKind: event.triggeredAutoRun,
+              contextUsageFlashToken: s.contextUsageFlashToken + 1,
+            }
+          : {}),
+      }));
       return;
 
     case "resync":

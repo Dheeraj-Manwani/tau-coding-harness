@@ -43,6 +43,26 @@ export const SANDBOX_IDLE_TIMEOUT_MS = 10 * 60_000;
 
 const PROVISION_GRACE_WINDOW_MS = 30_000;
 
+// Restoring one file is a blob fetch and a write into the sandbox: normally
+// well under a second. Neither call has a deadline of its own, and a stalled
+// connection on either one used to hold the whole restore — and the job, which
+// has not reached the agent loop's own time limit yet — until the process was
+// restarted. Seen twice on a development machine, ten minutes each time.
+const RESTORE_FILE_TIMEOUT_MS = 30_000;
+const RESTORE_FILE_ATTEMPTS = 2;
+
+/** Reject if `work` has not settled within `ms`. The work itself is not cancelled. */
+export function withDeadline<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${what} did not finish within ${ms / 1000}s`)),
+      ms,
+    );
+  });
+  return Promise.race([work, deadline]).finally(() => clearTimeout(timer));
+}
+
 function sha256Hex(content: string): string {
   return createHash("sha256").update(content, "utf-8").digest("hex");
 }
@@ -166,19 +186,38 @@ async function rehydrateSandbox(
       files.slice(i, i + BATCH).map(async ({ path, contentHash }) => {
         // Support both legacy absolute paths (/home/user/app/…) and relative paths.
         const absPath = path.startsWith("/") ? path : `${WORK_DIR}/${path}`;
-        // Binary assets must round-trip as raw bytes — a UTF-8 decode/encode
-        // would corrupt them. Text files go through the string path as before.
-        if (isBinaryPath(path)) {
-          const bytes = await getBlob(userId, projectId, contentHash);
-          // e2b's write takes an ArrayBuffer; hand it the blob's exact bytes.
-          const ab = bytes.buffer.slice(
-            bytes.byteOffset,
-            bytes.byteOffset + bytes.byteLength,
-          ) as ArrayBuffer;
-          await sandbox.files.write(absPath, ab);
-        } else {
-          const content = await getBlobText(userId, projectId, contentHash);
-          await sandbox.files.write(absPath, content);
+        const restore = async (): Promise<void> => {
+          // Binary assets must round-trip as raw bytes — a UTF-8 decode/encode
+          // would corrupt them. Text files go through the string path as before.
+          if (isBinaryPath(path)) {
+            const bytes = await getBlob(userId, projectId, contentHash);
+            // e2b's write takes an ArrayBuffer; hand it the blob's exact bytes.
+            const ab = bytes.buffer.slice(
+              bytes.byteOffset,
+              bytes.byteOffset + bytes.byteLength,
+            ) as ArrayBuffer;
+            await sandbox.files.write(absPath, ab);
+          } else {
+            const content = await getBlobText(userId, projectId, contentHash);
+            await sandbox.files.write(absPath, content);
+          }
+        };
+        // A stall is usually one dead connection, so a second attempt on a new
+        // one normally succeeds. If it does not, the rejection is logged below
+        // like any other file that could not be restored.
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await withDeadline(restore(), RESTORE_FILE_TIMEOUT_MS, `restoring ${path}`);
+            return;
+          } catch (err) {
+            if (attempt >= RESTORE_FILE_ATTEMPTS) throw err;
+            log.warn("sandbox.rehydrate.retry", {
+              jobId,
+              projectId,
+              path,
+              reason: String(err),
+            });
+          }
         }
       }),
     );

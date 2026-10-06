@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import { DOC_NAMES } from "../docs";
 
 type ChatCompletionToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
@@ -85,6 +86,26 @@ export const BASE_APP_TOOLS = [
           },
         },
         required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_doc",
+      description:
+        "Read one of tau's guides: the exact way a part of this app's stack is used here — API routes, database tables, AI calls, API keys, the theme, images, GitHub. Your instructions list the guides and say when to read each. Read the guide before writing code in its area, and follow it over what you remember. Needs no sandbox. A guide that is already in the conversation does not need reading again.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            enum: DOC_NAMES,
+            description: "Which guide to read.",
+          },
+        },
+        required: ["name"],
         additionalProperties: false,
       },
     },
@@ -506,7 +527,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "search_images",
       description:
-        "Find real, usable image URLs for a query — each returned with an AI description of what it actually depicts (e.g. 'front-facing photo of a silver Diet Coke can, transparent background' vs 'red Coca-Cola vector logo'). Use this to source assets (product photos, backgrounds, icons, hero images) instead of guessing at download URLs from web_search text results. Read each result's description to pick the right one — the correct subject, a photo vs a logo, and a transparent background when you need a cutout. Then verify resolution with image_dimensions and download the winner with run_command(\"curl -L -o public/<name> <url>\"). Does not require a sandbox.",
+        "Find real, usable image URLs for a query — each returned with an AI description of what it actually depicts (e.g. 'front-facing photo of a silver Diet Coke can, transparent background' vs 'red Coca-Cola vector logo'). Use this to source assets (product photos, backgrounds, icons, hero images) instead of guessing at download URLs from web_search text results. Read each result's description to pick the right one — the correct subject, a photo vs a logo, and a transparent background when you need a cutout. Then verify resolution with image_dimensions and save the winner into the project with download_asset. Does not require a sandbox.",
       parameters: {
         type: "object",
         properties: {

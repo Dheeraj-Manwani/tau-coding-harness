@@ -440,6 +440,13 @@ function deriveActionItem(
       };
     case "grep":
       return { kind: "list_dir", label: "Searched the project" };
+    case "read_doc": {
+      const topic = String(input.name ?? "").trim();
+      return {
+        kind: "list_dir",
+        label: topic ? `Read the ${topic} guide` : "Read a guide",
+      };
+    }
     case "add_backend":
       return { kind: "provision_sandbox", label: "Set up the server" };
     case "add_database":

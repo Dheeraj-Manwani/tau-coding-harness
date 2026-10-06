@@ -90,3 +90,23 @@ export function estimateTokensCalibrated(
 ): number {
   return Math.ceil(estimateTokens(messages) * cal.factor);
 }
+
+/**
+ * Prompt tokens the provider served from its prefix cache, from a completion's
+ * `usage`.
+ *
+ * The field is not standard. DeepSeek reports `prompt_cache_hit_tokens`;
+ * OpenAI-compatible providers that follow OpenAI report
+ * `prompt_tokens_details.cached_tokens`. Zero when neither is present, which
+ * is also what a provider with no cache reports.
+ */
+export function cachedPromptTokens(usage: unknown): number {
+  if (!usage || typeof usage !== "object") return 0;
+  const u = usage as {
+    prompt_cache_hit_tokens?: unknown;
+    prompt_tokens_details?: { cached_tokens?: unknown } | null;
+  };
+  if (typeof u.prompt_cache_hit_tokens === "number") return u.prompt_cache_hit_tokens;
+  const nested = u.prompt_tokens_details?.cached_tokens;
+  return typeof nested === "number" ? nested : 0;
+}

@@ -28,6 +28,7 @@ import { downloadAsset } from "./functions/download-asset";
 import { enableAi } from "./functions/enable-ai";
 import { addBackendTool } from "./functions/add-backend";
 import { addDatabaseTool } from "./functions/add-database";
+import { readDocTool } from "./functions/read-doc";
 import { requestSecret } from "./functions/request-secret";
 import { awaitAnswer } from "./functions/await-answer";
 import { redactSecrets, redactToolResult } from "@/worker/lib/redact";
@@ -174,6 +175,8 @@ async function executeToolInner(
       return addTodos(input, jobId, indexer);
     case "report_progress":
       return { success: true };
+    case "read_doc":
+      return readDocTool(input);
     case "web_search":
       return webSearch(input);
     case "search_images":

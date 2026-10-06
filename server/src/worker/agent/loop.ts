@@ -42,8 +42,19 @@ import {
   budgetForEffort,
 } from "./config";
 import { manageContext } from "./context/manager";
-import { SUMMARY_HEADER } from "./context/summarize";
+import { createClearingState } from "./context/clearing";
+import { jobIdsIn, shapeHistory } from "./context/history";
+import { deliverDocs, docStateFrom } from "./docs/delivery";
 import {
+  MEMORY_PATH,
+  appRelativePath,
+  isMemoryPath,
+  loadAppBrief,
+  memoryProblems,
+} from "./context/appBrief";
+import { getBlobText } from "@/lib/s3";
+import {
+  cachedPromptTokens,
   createCalibration,
   estimateStringTokens,
   estimateTokens,
@@ -200,41 +211,9 @@ function deriveTitle(content: string | null): string {
   return title.slice(0, 80) || "Untitled";
 }
 
-interface StoredAssistant {
-  content: string | null;
-  tool_calls: ToolCall[] | null;
-}
-
 interface StoredToolResult {
   tool_call_id: string;
   content: string;
-}
-
-/** Content of a hidden USER_EDIT row — a manual edit the user made in the code
- *  editor. Written by the api (`saveProjectFile`). See doc/USER_CODE_EDITING.md. */
-interface StoredUserEdit {
-  path: string;
-  diff: string;
-  truncated: boolean;
-  linesAdded: number;
-  linesRemoved: number;
-}
-
-/**
- * Render a hidden USER_EDIT row as a user-role turn.
- *
- * The user's edit is already applied to the file — this is a notification, not
- * a request, and the prompt says so explicitly to stop the model "helpfully"
- * re-applying or reverting it. We send the diff rather than the content because
- * the model can always `read_file` the live sandbox for bytes; what it can't do
- * is notice that something moved.
- */
-function userEditPrompt(edit: StoredUserEdit): string {
-  const stat = `+${edit.linesAdded}/-${edit.linesRemoved}`;
-  if (edit.truncated) {
-    return `[The user manually edited ${edit.path} in the code editor (${stat} lines). This is not a request — the change is already applied to the file. The diff was too large to include in full; re-read the file before relying on your memory of it.]\n\n${edit.diff}`;
-  }
-  return `[The user manually edited ${edit.path} in the code editor (${stat} lines). This is not a request — the change is already applied to the file. Unified diff:]\n\n${edit.diff}`;
 }
 
 /**
@@ -300,7 +279,23 @@ export function balanceToolResults(entries: Entry[]): Entry[] {
   return out;
 }
 
-export async function loadHistory(projectId: string): Promise<Entry[]> {
+/**
+ * Load the history the model is sent for a project.
+ *
+ * The shaping — earlier requests cleared, each request's effort note attached
+ * — is `shapeHistory` in context/history.ts; this does the three queries it
+ * needs and makes the result legal for the API.
+ *
+ * @param currentJob the request being run. Its own rows are replayed in full,
+ *                   and its effort is used directly rather than looked up.
+ *                   `note` is attached to the message that started it.
+ *                   Omitted by callers outside a run (chat summarize, the
+ *                   context-usage figure), for which every request is earlier.
+ */
+export async function loadHistory(
+  projectId: string,
+  currentJob?: { id: string; effort: Effort; note?: string | null },
+): Promise<Entry[]> {
   const checkpoint = await prisma.contextCheckpoint.findFirst({
     where: { projectId },
     orderBy: { upToSequence: "desc" },
@@ -314,76 +309,134 @@ export async function loadHistory(projectId: string): Promise<Entry[]> {
     orderBy: { sequence: "asc" },
   });
 
-  const entries: Entry[] = [];
+  const jobIds = jobIdsIn(rows);
+  const jobs =
+    jobIds.length > 0
+      ? await prisma.job.findMany({
+          where: { id: { in: jobIds } },
+          select: { id: true, effort: true },
+        })
+      : [];
+  const effortByJob = new Map<string, Effort>(jobs.map((j) => [j.id, j.effort]));
+  if (currentJob) effortByJob.set(currentJob.id, currentJob.effort);
 
-  // A "Clear chat" checkpoint carries no summary — nothing of it should
-  // carry forward into the model's context.
-  if (checkpoint && checkpoint.summary) {
-    entries.push({
-      param: {
-        role: "system",
-        content: `${SUMMARY_HEADER}${checkpoint.summary}`,
-      },
-      seq: null,
+  return balanceToolResults(
+    shapeHistory(rows, {
+      checkpointSummary: checkpoint?.summary,
+      currentJobId: currentJob?.id,
+      effortByJob,
+      currentRequestNote: currentJob?.note,
+    }),
+  );
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** What a run has done to the app so far. See `memoryNudge`. */
+interface WorkLog {
+  /** Paths written by `create_file`, memory file excluded. */
+  created: Set<string>;
+  /** Paths changed by `edit_file`, memory file excluded. */
+  edited: Set<string>;
+  deleted: number;
+  /** `add_backend` / `add_database` set something up. */
+  stackGrew: boolean;
+  /** The memory file was written or edited. */
+  memoryTouched: boolean;
+}
+
+function createWorkLog(): WorkLog {
+  return {
+    created: new Set(),
+    edited: new Set(),
+    deleted: 0,
+    stackGrew: false,
+    memoryTouched: false,
+  };
+}
+
+/** Record one finished tool call. Failed calls changed nothing. */
+export function noteWork(
+  work: WorkLog,
+  tool: string,
+  input: unknown,
+  output: unknown,
+): void {
+  if (!isPlainRecord(output) || "error" in output) return;
+  const path =
+    isPlainRecord(input) && typeof input.path === "string"
+      ? appRelativePath(input.path)
+      : null;
+
+  if (tool === "create_file" || tool === "edit_file") {
+    if (!path) return;
+    if (path === MEMORY_PATH) work.memoryTouched = true;
+    else (tool === "create_file" ? work.created : work.edited).add(path);
+  } else if (tool === "delete_file") {
+    work.deleted++;
+  } else if (tool === "add_backend" || tool === "add_database") {
+    if (!output.alreadySetUp) work.stackGrew = true;
+  }
+}
+
+/**
+ * Whether a run changed the app enough that its memory should have changed
+ * too. Deliberately not "any file changed": a color tweak or a copy fix leaves
+ * nothing to record, and asking anyway would put a second closing message in
+ * front of the user for no reason. New files, removed files, a new server or
+ * database, or edits spread over several files are what a later request would
+ * want to have been told about.
+ */
+export function isSubstantialWork(work: WorkLog): boolean {
+  return (
+    work.stackGrew ||
+    work.created.size > 0 ||
+    work.deleted > 0 ||
+    work.edited.size >= 4
+  );
+}
+
+const MEMORY_NUDGE_TAIL =
+  "Then close with one short sentence for the user, in plain language — do not repeat the summary you already gave, and do not mention this note or any file.";
+
+/**
+ * The message to send instead of finishing, or null when the memory file is
+ * fine. Two reasons, checked in order: the run reshaped the app and never
+ * touched the file; or it touched the file and left it over its limits.
+ */
+async function memoryNudge(
+  projectId: string,
+  userId: string,
+  work: WorkLog,
+): Promise<{ reason: "stale" | "invalid"; text: string } | null> {
+  if (!work.memoryTouched) {
+    if (!isSubstantialWork(work)) return null;
+    return {
+      reason: "stale",
+      text: `Before you finish: this request changed what the app is made of, and \`${MEMORY_PATH}\` — the app's memory, which is all the next request will know beyond the code — was not updated. Update it now so it describes the app as it is: rewrite the sections that changed, keep all six sections, and keep it short. ${MEMORY_NUDGE_TAIL}`,
+    };
+  }
+
+  // Edits are not checked as they happen (the result is not in hand), so look
+  // at what was actually saved.
+  try {
+    const row = await prisma.projectFile.findUnique({
+      where: { projectId_path: { projectId, path: MEMORY_PATH } },
+      select: { contentHash: true },
     });
+    if (!row) return null;
+    const problems = memoryProblems(await getBlobText(userId, projectId, row.contentHash));
+    if (problems.length === 0) return null;
+    return {
+      reason: "invalid",
+      text: `Before you finish: \`${MEMORY_PATH}\` needs fixing — ${problems.join("; and ")}. Fix it now. ${MEMORY_NUDGE_TAIL}`,
+    };
+  } catch {
+    // Never hold a finished run over a check that could not be made.
+    return null;
   }
-
-  for (const row of rows) {
-    if (row.type === MessageType.TOOL_RES) {
-      const results = row.content as unknown as StoredToolResult[];
-      for (const r of results) {
-        entries.push({
-          param: {
-            role: "tool",
-            tool_call_id: r.tool_call_id,
-            content: r.content,
-          },
-          seq: row.sequence,
-        });
-      }
-    } else if (row.role === MessageRole.ASSISTANT) {
-      const stored = row.content as unknown as StoredAssistant;
-      const hasToolCalls = !!stored.tool_calls?.length;
-      const hasContent =
-        typeof stored.content === "string" && stored.content.trim().length > 0;
-      // Skip empty assistant rows — e.g. the anchor row a PREVIEW job writes to
-      // hang a fragment on, or a final turn the model ended with null content.
-      // Replaying one sends `{ role: "assistant" }` with neither content nor
-      // tool_calls, which the completions API rejects with a 400.
-      if (!hasToolCalls && !hasContent) continue;
-      entries.push({
-        param: {
-          role: "assistant",
-          content: stored.content,
-          ...(stored.tool_calls?.length
-            ? { tool_calls: stored.tool_calls }
-            : {}),
-        },
-        seq: row.sequence,
-      });
-    } else if (row.role === MessageRole.USER && row.type === MessageType.USER) {
-      entries.push({
-        param: {
-          role: "user",
-          content:
-            row.content as unknown as OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"],
-        },
-        seq: row.sequence,
-      });
-    } else if (row.type === MessageType.USER_EDIT) {
-      // Hidden row: the model sees it, the chat transcript doesn't (web's
-      // toConversation has no branch for this type). doc/USER_CODE_EDITING.md.
-      entries.push({
-        param: {
-          role: "user",
-          content: userEditPrompt(row.content as unknown as StoredUserEdit),
-        },
-        seq: row.sequence,
-      });
-    }
-  }
-
-  return balanceToolResults(entries);
 }
 
 /**
@@ -450,17 +503,36 @@ export async function runAgentLoop(
       locked: selected,
       newProjectGeneration: env.TEMPLATE_GENERATION,
     });
-    const tools = toolsForRun(effort, TEMPLATES[templateKey].generation);
+    const generation = TEMPLATES[templateKey].generation;
+    const tools = toolsForRun(effort, generation);
+    // No `effort` here: it travels with each request's own message (see
+    // context/history.ts), so the system prompt is the same at every effort.
     const systemPrompt = buildSystemPrompt({
       templateKey,
       selected,
-      effort,
       secretNames,
+    });
+
+    // The app's memory file and a computed map of the app, handed over with
+    // the request so the run does not open by reading them (context/appBrief.ts).
+    // Null on generation 1, and for an app that does not exist yet — that one
+    // gets it from `provision_sandbox` instead, below.
+    let briefGiven = false;
+    const brief =
+      generation === 2 && selected
+        ? await loadAppBrief(projectId, "request")
+        : null;
+    if (brief) briefGiven = true;
+    log.info("job.brief", {
+      jobId,
+      projectId,
+      given: brief !== null,
+      chars: brief?.length ?? 0,
     });
 
     let entries: Entry[] = [
       { param: { role: "system", content: systemPrompt }, seq: null },
-      ...(await loadHistory(projectId)),
+      ...(await loadHistory(projectId, { id: jobId, effort, note: brief })),
     ];
     let truncationRetries = 0;
     let intentNudges = 0;
@@ -470,7 +542,21 @@ export async function runAgentLoop(
     let filesChanged = false;
     let verifierRan = false;
     let maxVerifyForced = false;
+    // What this run did to the app, for the end-of-run memory check.
+    const work = createWorkLog();
+    let memoryNudged = false;
     const calibration = createCalibration();
+    // What has been cleared from the model-facing context so far this run.
+    // Carried across turns so a decision, once made, is never undone.
+    const clearing = createClearingState();
+    // Which guides are already in the conversation, so tau attaches each one
+    // once (docs/delivery.ts). Generation 1 carries its instructions in the
+    // system prompt and gets no attachments.
+    let docs =
+      generation === 2 ? docStateFrom(entries.map((e) => e.param)) : null;
+    // Running totals for the end-of-run cache summary.
+    let totalInputTokens = 0;
+    let totalCachedTokens = 0;
 
     type StopReason = Exclude<CleanFinishReason, "DONE">;
     let stopReason: StopReason | null = null;
@@ -537,12 +623,16 @@ export async function runAgentLoop(
           captureException(err, { jobId, detail: "heartbeat update failed" }),
         );
 
-      const mgmt = await manageContext(entries, { model, calibration });
+      const mgmt = await manageContext(entries, { model, calibration, clearing });
       entries = mgmt.entries;
 
       if (mgmt.summarized) {
         summarizations++;
         const s = mgmt.summarized;
+        // The summary replaced the results that carried the guides, so they
+        // are no longer in front of the model: look again, and let the next
+        // trigger attach them afresh.
+        if (docs) docs = docStateFrom(entries.map((e) => e.param));
         try {
           await prisma.contextCheckpoint.create({
             data: {
@@ -674,6 +764,27 @@ export async function runAgentLoop(
 
       const inputTokens = completion.usage?.prompt_tokens ?? 0;
       const outputTokens = completion.usage?.completion_tokens ?? 0;
+
+      // How much of this request the provider served from its prefix cache.
+      // Cached input is billed at a fraction of the normal rate, so this — not
+      // the raw input count — is what says whether the context is being kept
+      // stable from turn to turn. Logged only: metering is unchanged.
+      const cachedTokens = cachedPromptTokens(completion.usage);
+      totalInputTokens += inputTokens;
+      totalCachedTokens += cachedTokens;
+      log.info("job.usage", {
+        jobId,
+        projectId,
+        turn,
+        model,
+        inputTokens,
+        cachedTokens,
+        cachedPct:
+          inputTokens > 0
+            ? Number(((cachedTokens / inputTokens) * 100).toFixed(1))
+            : 0,
+        outputTokens,
+      });
 
       // Ground-truth correction: compare what we guessed for this exact payload
       // (messages + tool schema) against what the model actually reports.
@@ -856,6 +967,30 @@ export async function runAgentLoop(
         continue;
       }
 
+      // The memory file is all the next request will know about this app beyond
+      // what its files say. If this run changed the app's shape and left the
+      // file alone, or left it over its limits, say so once before finishing.
+      if (
+        !isToolTurn &&
+        generation === 2 &&
+        !memoryNudged &&
+        sandboxRef.current
+      ) {
+        const nudge = await memoryNudge(projectId, userId, work);
+        if (nudge) {
+          memoryNudged = true;
+          log.info("job.memory_nudge", { jobId, projectId, turn, reason: nudge.reason });
+          if (assistant.content?.trim()) {
+            entries.push({
+              param: { role: "assistant", content: assistant.content },
+              seq: null,
+            });
+          }
+          entries.push({ param: { role: "user", content: nudge.text }, seq: null });
+          continue;
+        }
+      }
+
       if (!isToolTurn) {
         let previewUrl: string | null = null;
         if (sandboxRef.current) {
@@ -966,6 +1101,45 @@ export async function runAgentLoop(
             effort,
             toolCallRow.id,
           );
+          if (generation === 2) {
+            noteWork(work, toolName, input, output);
+            // An app that did not exist when the request started could not be
+            // described then. It exists now: hand over the same block.
+            if (toolName === "provision_sandbox" && !briefGiven) {
+              const created = await loadAppBrief(projectId, "provisioned");
+              if (created && isPlainRecord(output) && !("error" in output)) {
+                briefGiven = true;
+                output = { ...output, app: created };
+              }
+            }
+            // The file was just written whole, so its limits can be checked
+            // here rather than at the end of the run.
+            if (toolName === "create_file" && isPlainRecord(input) && isMemoryPath(input.path)) {
+              const problems =
+                typeof input.content === "string" ? memoryProblems(input.content) : [];
+              if (problems.length > 0 && isPlainRecord(output) && !("error" in output)) {
+                output = {
+                  ...output,
+                  memoryNote: `Saved, but fix this now: ${problems.join("; and ")}.`,
+                };
+              }
+            }
+          }
+          if (docs) {
+            const withDocs = deliverDocs(docs, toolName, input, output);
+            output = withDocs.output;
+            for (const d of withDocs.delivered) {
+              log.info("job.doc", {
+                jobId,
+                projectId,
+                turn,
+                doc: d.name,
+                via: d.via,
+                tool: toolName,
+                ...(d.repeat ? { repeat: true } : {}),
+              });
+            }
+          }
           await prisma.toolCall.update({
             where: { id: toolCallRow.id },
             data: {
@@ -1045,6 +1219,19 @@ export async function runAgentLoop(
         });
       }
     }
+
+    log.info("job.cache", {
+      jobId,
+      projectId,
+      model,
+      turns: turn,
+      inputTokens: totalInputTokens,
+      cachedTokens: totalCachedTokens,
+      cachedPct:
+        totalInputTokens > 0
+          ? Number(((totalCachedTokens / totalInputTokens) * 100).toFixed(1))
+          : 0,
+    });
 
     if (stopReason) {
       await finishRun(stopReason);

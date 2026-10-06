@@ -1,22 +1,27 @@
 import {
   contextBudgetForModel,
+  CONTEXT_CLEAR_TARGET_RATIO,
   CONTEXT_COMPACT_RATIO,
   CONTEXT_KEEP_TAIL_TOKENS,
   CONTEXT_SUMMARIZE_RATIO,
   MAX_TOOL_RESULT_TOKENS,
 } from "../config";
 import { log } from "../../lib/log";
-import { compact } from "./compact";
+import { applyClearing, planClearing, type ClearingState } from "./clearing";
 import { summarize, type SummarizeResult } from "./summarize";
-import { estimateTokensCalibrated, type TokenCalibration } from "./tokens";
+import {
+  estimateTokens,
+  estimateTokensCalibrated,
+  type TokenCalibration,
+} from "./tokens";
 import type { Entry, MessageParam } from "./types";
 
 export interface ManageResult {
   /** The (possibly rebuilt) working history to carry forward. */
   entries: Entry[];
-  /** The compacted array to send to the model this turn. */
+  /** The array to send to the model this turn. */
   ctx: MessageParam[];
-  /** Present only when mechanical compaction actually trimmed something. */
+  /** Present only on a turn that took a new batch of clearing. */
   compacted?: { tokensBefore: number; tokensAfter: number };
   /** Present only when the older prefix was summarized this turn. */
   summarized?: SummarizeResult;
@@ -42,39 +47,62 @@ async function summarizeWithRetry(
 }
 
 /**
- * Bound the model-facing context for one turn. Compaction is ephemeral (the full
- * `entries` are preserved); summarization is persistent (it rebuilds `entries`
- * and the caller must write a checkpoint). Runs before each model call.
+ * Bound the model-facing context for one turn. Runs before each model call.
+ *
+ * Two mechanisms, cheapest first:
+ *
+ *   1. **Clearing** (context/clearing.ts) — old, re-fetchable tool results are
+ *      replaced with one-line placeholders. The full `entries` are untouched;
+ *      what is cleared is recorded in `opts.clearing`, which the caller keeps
+ *      for the whole run. Decisions already in it are applied on every turn,
+ *      and a new batch is taken only when the context passes the compaction
+ *      mark — and then enough to bring it down to the target, so the prefix the
+ *      provider has cached changes once per batch instead of once per turn.
+ *   2. **Summarization** — persistent: it rebuilds `entries`, and the caller
+ *      must write a checkpoint. Only if clearing was not enough.
  */
 export async function manageContext(
   entries: Entry[],
-  opts: { model: string; calibration: TokenCalibration },
+  opts: {
+    model: string;
+    calibration: TokenCalibration;
+    clearing: ClearingState;
+  },
 ): Promise<ManageResult> {
-  const raw = entries.map((e) => e.param);
-  const before = estimateTokensCalibrated(raw, opts.calibration);
   const budget = contextBudgetForModel(opts.model);
+  const estimate = (m: MessageParam[]) =>
+    estimateTokensCalibrated(m, opts.calibration);
 
-  // 1. Mechanical compaction (ephemeral) once past the compaction ratio.
+  const raw = entries.map((e) => e.param);
+  let ctx = applyClearing(raw, opts.clearing);
+  const before = estimate(ctx);
+
+  // 1. Take a batch once past the compaction mark.
   let compacted: ManageResult["compacted"];
-  let ctx = raw;
   if (before > CONTEXT_COMPACT_RATIO * budget) {
-    const res = compact(raw, { maxToolResultTokens: MAX_TOOL_RESULT_TOKENS });
-    ctx = res.messages;
-    if (res.changed) {
-      compacted = { tokensBefore: res.tokensBefore, tokensAfter: res.tokensAfter };
+    // The planner keeps a running total as it clears; this converts the
+    // characters it frees into the calibrated tokens the thresholds are in.
+    const uncalibrated = estimateTokens(ctx);
+    const calibrationFactor = uncalibrated > 0 ? before / uncalibrated : 1;
+    const added = planClearing(raw, opts.clearing, {
+      tokensNow: before,
+      targetTokens: CONTEXT_CLEAR_TARGET_RATIO * budget,
+      tokensPerChar: calibrationFactor / 4,
+      maxToolResultTokens: MAX_TOOL_RESULT_TOKENS,
+    });
+    if (added > 0) {
+      ctx = applyClearing(raw, opts.clearing);
+      compacted = { tokensBefore: before, tokensAfter: estimate(ctx) };
     }
   }
 
   // 2. Summarization (persistent) if still over the high-water mark.
   let summarized: SummarizeResult | undefined;
   let outEntries = entries;
-  if (
-    estimateTokensCalibrated(ctx, opts.calibration) >
-    CONTEXT_SUMMARIZE_RATIO * budget
-  ) {
+  if (estimate(ctx) > CONTEXT_SUMMARIZE_RATIO * budget) {
     // Summarization makes a live LLM call, so it can fail transiently. It must
     // never take the whole job down with it — a summarize failure just means we
-    // proceed with the (already compacted) ctx for this turn and try again next
+    // proceed with the (already cleared) ctx for this turn and try again next
     // turn. Retry once before giving up.
     const res = await summarizeWithRetry(entries, {
       model: opts.model,
@@ -84,10 +112,12 @@ export async function manageContext(
     if (res) {
       summarized = res;
       outEntries = res.entries;
-      // Recompute the model-facing array from the rebuilt, smaller history.
-      ctx = compact(outEntries.map((e) => e.param), {
-        maxToolResultTokens: MAX_TOOL_RESULT_TOKENS,
-      }).messages;
+      // The rebuilt history is the summary plus the recent tail. Whatever was
+      // cleared in that tail stays cleared.
+      ctx = applyClearing(
+        outEntries.map((e) => e.param),
+        opts.clearing,
+      );
     }
   }
 

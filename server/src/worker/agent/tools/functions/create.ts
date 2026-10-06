@@ -10,6 +10,7 @@ import {
 } from "./utils";
 import { publish } from "@/worker/lib/publish";
 import { markProjectWorkspaceStarted } from "@/worker/lib/projectWorkspace";
+import { assertRealContent } from "../../context/clearing";
 
 export async function createFile(
   input: unknown,
@@ -22,6 +23,7 @@ export async function createFile(
   const { path, content } = input as { path?: unknown; content?: unknown };
   const p = asString(path, "path");
   const c = asString(content, "content");
+  assertRealContent(c, "content");
 
   const relPath = toRelativePath(p);
   await markProjectWorkspaceStarted(projectId);

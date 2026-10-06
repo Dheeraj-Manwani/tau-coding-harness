@@ -1,6 +1,6 @@
 import type Sandbox from "e2b";
 import { addDatabase } from "@/worker/lib/appStack";
-import { readDoc } from "../../docs";
+import { guideText } from "../../docs";
 
 /**
  * `add_database`: give a generation-2 app a PGlite + Drizzle database, in
@@ -28,7 +28,7 @@ export async function addDatabaseTool(
       : { changed: result.changed }),
     serverRunning: result.serverRunning,
     ...(result.notes.length > 0 ? { warnings: result.notes } : {}),
-    guide: readDoc("database"),
-    ...(result.backendAdded ? { backendGuide: readDoc("backend") } : {}),
+    guide: guideText("database"),
+    ...(result.backendAdded ? { backendGuide: guideText("backend") } : {}),
   };
 }

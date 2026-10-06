@@ -1,6 +1,6 @@
 import type Sandbox from "e2b";
 import { addBackend } from "@/worker/lib/appStack";
-import { readDoc } from "../../docs";
+import { guideText } from "../../docs";
 
 /**
  * `add_backend`: give a generation-2 app a Hono API, in place.
@@ -30,6 +30,6 @@ export async function addBackendTool(
       : { changed: result.changed }),
     serverRunning: result.serverRunning,
     ...(result.notes.length > 0 ? { warnings: result.notes } : {}),
-    guide: readDoc("backend"),
+    guide: guideText("backend"),
   };
 }

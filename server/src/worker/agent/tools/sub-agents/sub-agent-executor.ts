@@ -17,6 +17,8 @@ import {
 } from "../../config";
 import { executeSubAgentTool } from "./tool-executor";
 import { redactToolResult } from "@/worker/lib/redact";
+import { cachedPromptTokens } from "../../context/tokens";
+import { loadAppBrief } from "../../context/appBrief";
 import type { Effort } from "@/generated/prisma/enums";
 
 type MessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -65,15 +67,27 @@ export const executeSubAgentLoop = async (
   label = "sub-agent",
 ): Promise<string> => {
   const maxSubagentTurns = budgetForEffort(effort).maxSubagentTurns;
-  const messages: MessageParam[] = prompts.map((prompt) => ({
+  // The app's memory and map, read fresh: the main agent may have changed the
+  // app since its own copy was taken at the start of the request. Null for a
+  // generation-1 project, whose persona tells the sub-agent to read the file.
+  // Placed between the persona and the task so the task stays last.
+  const brief = await loadAppBrief(projectId, "sub-agent");
+  const seeded = brief
+    ? [...prompts.slice(0, -1), brief, ...prompts.slice(-1)]
+    : prompts;
+  const messages: MessageParam[] = seeded.map((prompt) => ({
     role: "user",
     content: prompt,
   }));
-
-  // The last prompt is the actual task (personas are seeded before it).
-  const task = prompts[prompts.length - 1] ?? "";
   const tag = `[sub-agent:${label}]`;
-  log.info("subagent.start", { jobId, projectId, label, model, effort });
+  log.info("subagent.start", {
+    jobId,
+    projectId,
+    label,
+    model,
+    effort,
+    brief: brief !== null,
+  });
   let turn = 0;
   let truncationRetries = 0;
   let intentNudges = 0;
@@ -120,6 +134,16 @@ export const executeSubAgentLoop = async (
 
     const inputTokens = completion.usage?.prompt_tokens ?? 0;
     const outputTokens = completion.usage?.completion_tokens ?? 0;
+    // Same figure the main loop logs as `job.usage`; see there for why.
+    log.info("subagent.usage", {
+      jobId,
+      label,
+      turn,
+      model,
+      inputTokens,
+      cachedTokens: cachedPromptTokens(completion.usage),
+      outputTokens,
+    });
 
     await prisma.tokenUsage.create({
       data: {

@@ -19,6 +19,11 @@ export function contextBudgetForModel(model: string): number {
   return Math.max(contextWindowForModel(model) * 0.6, 8_000);
 }
 export const CONTEXT_COMPACT_RATIO = 0.6;
+// When the context passes the compaction mark, old tool results are cleared in
+// one batch until it is back down to this share of the budget. The gap between
+// the two is what buys a long stretch of turns before the next batch — and so
+// before the cached prefix has to change again (context/clearing.ts).
+export const CONTEXT_CLEAR_TARGET_RATIO = 0.4;
 export const CONTEXT_SUMMARIZE_RATIO = 0.75;
 export const CONTEXT_KEEP_TAIL_TOKENS = 24_000;
 export const MAX_TOOL_RESULT_TOKENS = 2_000;
@@ -40,6 +45,7 @@ import {
 } from "../templates/registry";
 import { env } from "@/lib/env";
 import type { Effort } from "@/generated/prisma/enums";
+import { buildBaseAppPrompt } from "./tauPrompt";
 
 /**
  * LOW → Deepseek flash; HIGH and MAX → Deepseek pro.
@@ -98,11 +104,30 @@ export function budgetForEffort(effort: Effort): EffortBudget {
 }
 
 /**
- * Short per-effort directive block appended near the top of the system prompt.
- * Colors every downstream decision (how hard to plan, when to dispatch
- * sub-agents, how rigorously to verify) rather than being a footnote.
+ * Short per-effort directive block. Colors every downstream decision (how hard
+ * to plan, when to dispatch sub-agents, how rigorously to verify) rather than
+ * being a footnote.
+ *
+ * Not part of the system prompt. Effort is chosen per request, and anything in
+ * the system prompt that differs between two requests changes the start of the
+ * conversation the model provider has cached — so this is attached to the
+ * request's own message instead (`effortNote` in context/history.ts), and the
+ * system prompt reads the same at every effort.
  */
-function effortDirective(effort: Effort): string {
+export function effortDirective(effort: Effort): string {
+  return `${effortText(effort)}\n${parallelLimit(effort)}`;
+}
+
+/** How many sub-agents may run at once. Lives here, not in the Sub-agents
+ *  section, because it is the one number there that depends on effort. */
+function parallelLimit(effort: Effort): string {
+  const n = budgetForEffort(effort).maxParallelSubagents;
+  return n <= 1
+    ? "At this effort, sub-agents run one at a time: never dispatch more than one in a turn."
+    : `At this effort, up to ${n} sub-agents can run at the same time.`;
+}
+
+function effortText(effort: Effort): string {
   switch (effort) {
     case "LOW":
       return `## Effort: LOW — fast and lean
@@ -174,110 +199,6 @@ ${aliasLine}
 - Theme: a **Spotify-inspired** palette is baked into \`src/index.css\`, **dark by default** (\`<html class="dark">\`, primary = Spotify green \`#1DB954\`). Both modes exist — \`:root\` = light, \`.dark\` = dark — so a theme switcher just toggles the \`dark\` class on \`<html>\` (persist in \`localStorage\`). Style with shadcn tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`bg-card\`, \`text-muted-foreground\`, …) — never hardcode hex colors; tweak the palettes in \`index.css\` instead.`;
 }
 
-/**
- * The stack section for a generation-2 project (`tau-app-v2`).
- *
- * There is one base image, so there is nothing to choose and this reads the
- * same before and after `provision_sandbox`. What varies is the stack *level*:
- * every app starts frontend-only and is given a backend (`add_backend`) or a
- * database (`add_database`) in place when it needs one, and the key records how
- * far it has got. So the prompt changes at most twice in a project's life,
- * rather than between its first run and its second.
- *
- * The how-to for the server and the database is not here. Those two tools
- * return it at the moment it is needed, and can be called again to get it back;
- * this section only carries what must hold on every turn.
- */
-function baseAppStack(key: TemplateKey): string {
-  const { hasServer, hasDb } = TEMPLATES[key];
-
-  const stackLine = hasDb
-    ? `- Stack: Vite + React + TypeScript + Tailwind v4 + shadcn/ui (frontend); Hono on Bun (API in \`server/index.ts\`, port 3000); PGlite + Drizzle database in \`server/db/\`, **already set up and wired**.`
-    : hasServer
-      ? `- Stack: Vite + React + TypeScript + Tailwind v4 + shadcn/ui (frontend); Hono on Bun (API in \`server/index.ts\`, port 3000). **No database yet** — if the app needs data stored on the server, call \`add_database\`.`
-      : `- Stack: Vite + React + TypeScript + Tailwind v4 + shadcn/ui. **Frontend only so far — no server and no database.** Both can be added in place, without rebuilding anything, when the app genuinely needs them: \`add_backend\` sets up a Hono API and \`add_database\` sets up a Postgres database. Call the tool rather than creating \`server/\` yourself — it installs what is needed, starts the server, and returns the exact guide to follow.`;
-
-  const serverLines = hasServer
-    ? `
-- The frontend calls the API with **relative** \`/api/*\` URLs (Vite proxies them to Hono on :3000) — never hardcode \`localhost:3000\`.
-- API: add routes to the existing Hono \`app\` in \`server/index.ts\`. Do NOT create a second Hono instance or call \`app.listen\` — Bun serves the \`export default { port, fetch }\`. Keep the \`/api/health\` route. The server restarts itself when you save a file under \`server/\`; never start or restart it yourself. Call \`add_backend\` again any time you want the routing guide back.${
-        hasDb
-          ? `
-- Database: tables live in \`server/db/schema.ts\`; mirror every table in \`initDb()\` in \`server/db/client.ts\` (\`CREATE TABLE IF NOT EXISTS\`). Do NOT reinstall or re-scaffold it, and do not use sqlite. Call \`add_database\` again any time you want the Drizzle guide back.`
-          : ""
-      }`
-    : "";
-
-  return `Every app starts from the same base, so \`provision_sandbox\` takes no arguments. Once provisioned, the sandbox contains a complete scaffolded app with the dev server already running on port ${PREVIEW_PORT} with hot reload. Your job is to modify this existing app — file writes hot-reload automatically.
-- Working directory: \`/home/user/app\` — **all shell commands run from here automatically**. Never prefix with \`cd /home/user/app &&\` or any \`cd\` at all.
-- Runtime is **Bun**, not Node. Use \`bun\` and \`bunx\` — never \`npm\`, \`npx\`, or \`yarn\`.
-${stackLine}${serverLines}
-- \`.tau/CONTEXT.md\` is this app's memory: what it is, its routes, its data model, decisions already made, the user's preferences, and known issues. **Read it first** (e.g. \`run_command("cat .tau/CONTEXT.md")\`) before changing anything. On a brand-new app it is empty.
-- The rest of \`.tau/\` is tau's, not yours. Never edit or delete \`.tau/tagger.ts\` or \`.tau/runtime.js\`, and never remove the \`tauTagger()\` plugin from \`vite.config.ts\` — they power click-to-edit in the preview, and they are dev-only so they cost the user's build nothing.
-
-## Already provided — don't reinstall or re-create
-- Routing (\`react-router-dom\`) and React Query are wired in \`src/main.tsx\`. Add pages as \`<Route>\`s in \`src/App.tsx\`; keep the catch-all \`*\` 404 route last.
-- A global \`<Toaster />\` (sonner) and \`<TooltipProvider>\` are mounted — call \`toast()\` from \`sonner\` and use \`<Tooltip>\` directly, no extra wrapping. Keep toasts at \`position="bottom-center"\`.
-- On the Free plan, tau shows a small "Built with tau" badge in the bottom-right corner of the preview and the published site. tau adds it when serving pages; it is not in the project's code, so there is nothing for you to find or remove. Don't put the app's own fixed UI in that corner. If the user asks to remove the badge, don't try. Tell them it goes away on the Pro plan (Billing).
-- Import alias \`@/*\` → \`./src/*\`.
-- Pre-installed deps: react-router-dom, @tanstack/react-query, zustand, date-fns, react-hook-form, zod, @hookform/resolvers, lucide-react, plus tailwind/shadcn utils. Use these instead of adding alternatives.
-- Pre-installed shadcn/ui components in \`src/components/ui/\`: button input label textarea card badge separator skeleton select checkbox switch radio-group slider dialog alert-dialog sheet popover tooltip dropdown-menu alert sonner tabs accordion avatar scroll-area table. Add others with \`bunx --bun shadcn@latest add <name> -y\`.
-- Deliberately NOT pre-installed: charts (recharts), carousel (embla-carousel-react), calendar (react-day-picker), drawer (vaul), command palette (cmdk), animation (framer-motion). Install one with \`bun add <pkg>\` only when the task needs it.
-- Theme: \`src/index.css\` holds a deliberately **neutral, grayscale** palette, dark by default (\`<html class="dark">\`). Both modes exist — \`:root\` = light, \`.dark\` = dark — so a theme switcher just toggles the \`dark\` class on \`<html>\` (persist in \`localStorage\`); for a light app, remove the class. The neutral palette is a blank starting point, not the design: when you first build an app, choose colors that suit what it is and write them into both palettes in \`index.css\`, as hex values, before building the UI. In components, style with shadcn tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`bg-card\`, \`text-muted-foreground\`, …) — never hardcode hex colors there.`;
-}
-
-/**
- * The AI section for a generation-2 project. Shorter than generation 1's on
- * purpose: `enable_ai` returns the full recipe (endpoint, headers, body,
- * errors, streaming) when it is called, so repeating it here would pay for it
- * on every turn of every app, most of which never call a model.
- */
-const BASE_APP_AI_SECTION = `## AI features in the app you build
-The app you are building can call a language model at runtime — for chatbots, summarizing, classifying, generating or rewriting text, or answering questions about the user's own content.
-
-Call \`enable_ai\` **before writing any code that talks to a model.** It sets everything up — including a backend, if the app does not have one yet — and returns the exact recipe to follow. The user does not need an API key, an account, or a credit card of their own: the app calls tau's own AI endpoint, billed to the credits they already have.
-
-- **Follow the recipe it returns.** It is a plain \`fetch\` from server code and there is **nothing to install** — do not \`bun add openai\` or any other AI package.
-- **Server-side only.** The call lives in a route in \`server/index.ts\`; the frontend calls *that* route. Never write a key into a file, never put one in frontend code, never print or log one — and never invent a placeholder like \`sk-...\` for the user to fill in.
-- **Don't reach for another provider.** Do not use OpenAI, Anthropic or Gemini endpoints directly, and do not ask the user for their own API key. \`enable_ai\` is how this app gets AI.`;
-
-/**
- * The complexity ladder for a generation-2 project. Same first two tiers as
- * generation 1; the third depends on how far the app's stack has grown, and on
- * a frontend-only app it is a tool call away rather than unavailable.
- */
-function baseAppLadder(key: TemplateKey): string {
-  const { hasServer, hasDb } = TEMPLATES[key];
-
-  const tier3 = hasDb
-    ? `**Tier 3 — Server API + Database (already set up)**
-The Hono API and a PGlite + Drizzle database are in place. Use them for multi-user data, server-side logic, auth, or an explicitly requested API / "real" persistence — extend the schema in "server/db/schema.ts" (mirror it in "initDb()") and add routes.`
-    : hasServer
-      ? `**Tier 3 — Server API (set up) + Database (on demand)**
-The Hono API is in place — use it for server-side logic or an explicitly requested API. For data that must be stored on the server (multi-user data, auth, "real" persistence), call "add_database" first; it sets the database up and returns the guide.`
-      : `**Tier 3 — Server API + Database (added on demand)**
-Only when the request genuinely requires a backend: multi-user data, server-side logic, auth, or the user explicitly asks for an API or "real" persistence. Then call "add_backend" (server-side logic, API routes) or "add_database" (data stored on the server — it adds the backend too). Each sets things up in place and returns the guide to follow.`;
-
-  return `## Implementation complexity — match effort to the request
-
-**Default to the simplest tier that satisfies the request.** Capability is not justification — just because a backend and a database are one tool call away doesn't mean every request needs one.
-
-### The complexity ladder (use the lowest tier that works)
-**Tier 1 — React state (default)**
-Use "useState" / "useReducer" / Zustand for all UI state. This covers the vast majority of requests.
-→ Signals: "todo app", "counter", "form", "quiz", "calculator", "toggle", "filter", any UI task with no mention of saving or sharing.
-
-**Tier 2 — Client-side persistence**
-Add "localStorage" (via a thin wrapper or Zustand "persist") only when the user explicitly wants data to survive a page refresh.
-→ Signals: "save between sessions", "remember my entries", "keep my data", "don't lose it on refresh".
-
-${tier3}
-→ Signals: "multiple users", "log in / sign up", "store on the server", "API endpoint", "production", "share with others", "real backend".
-
-**Pre-flight check:** Before calling "add_backend" or "add_database", writing a route in "server/index.ts" or touching the DB, ask: *"Would React state (+ maybe localStorage) fully satisfy this request?"* If yes, stay on Tier 1 or 2. Do not escalate just because you can.
-NOTE: DO NOT OUTPUT ANYTHING ABOUT SELECTING TIER AND REASONING AROUND IT - USER SHOULD NOT KNOW THIS`;
-}
-
 /** Complexity ladder — its top tier depends on whether the template has a backend. */
 function complexityLadder(selected: boolean, key: TemplateKey): string {
   const hasServer = selected ? TEMPLATES[key].hasServer : true;
@@ -329,40 +250,38 @@ NOTE: DO NOT OUTPUT ANYTHING ABOUT SELECTING TIER AND REASONING AROUND IT - USER
  * the agent is given the stack chooser; afterward it gets the stack-specific
  * manifest for the locked-in template.
  *
- * A generation-2 key (`TEMPLATES[key].generation === 2`) skips the chooser
- * entirely and gets the base-app section whether or not it is `selected` yet.
+ * A generation-2 key (`TEMPLATES[key].generation === 2`) gets a different
+ * prompt altogether — `docs/tau.md`, built by `tauPrompt.ts` — whether or not
+ * it is `selected` yet: one base image means there is nothing to choose.
+ * Everything below that point is generation 1's prompt.
+ *
+ * Takes no effort: that is attached to each request's own message, so this is
+ * the same string whatever effort the user picked (see `effortDirective`).
  */
 export function buildSystemPrompt(
   opts: {
     templateKey?: TemplateKey;
     selected?: boolean;
-    effort?: Effort;
     /** Keys the user has already saved for this project (names only). */
     secretNames?: string[];
   } = {},
 ): string {
   const selected = opts.selected ?? false;
   const key = opts.templateKey ?? DEFAULT_TEMPLATE_KEY;
-  const effort = opts.effort ?? "HIGH";
-  const maxParallelSubagents = budgetForEffort(effort).maxParallelSubagents;
 
-  // Generation 2 has one base image, so its stack is known before the sandbox
-  // exists; generation 1 only knows it once a template has been picked.
-  const generation = TEMPLATES[key].generation;
-  const stackKnown = selected || generation === 2;
-  const stackSection =
-    generation === 2
-      ? baseAppStack(key)
-      : selected
-        ? provisionedStack(key)
-        : STACK_CHOOSER;
   const secretNames = opts.secretNames ?? [];
+  if (TEMPLATES[key].generation === 2) {
+    return buildBaseAppPrompt({ templateKey: key, secretNames });
+  }
+
+  // Generation 1 only knows its stack once a template has been picked.
+  const stackSection = selected ? provisionedStack(key) : STACK_CHOOSER;
   const savedKeysLine =
     secretNames.length > 0
       ? `\n\nKeys already saved for this project (available as \`process.env.NAME\` in server code): ${[...secretNames].sort().map((n) => `\`${n}\``).join(", ")}. Don't ask for these again unless the user says one is wrong.`
       : "";
   const portsRule =
-    !stackKnown || TEMPLATES[key].hasServer
+    !selected || TEMPLATES[key].hasServer
       ? `- vite app will always run on PORT: ${PREVIEW_PORT}, hono backend (if present) will always run on PORT: 3000`
       : `- vite app will always run on PORT: ${PREVIEW_PORT}`;
 
@@ -385,18 +304,10 @@ When the app needs a credential for a third-party service at runtime — payment
 - Ask for every key a feature needs in one call, with a plain-language \`reason\` and a short "where to find it" \`description\` (plus a \`url\` when you know the provider's key page).
 - If the user skips a key, build that part with a friendly "not configured" state instead of failing.
 - Not for AI models — those go through \`enable_ai\`.${savedKeysLine}`;
-  // Generation 2 gets a shorter AI section: `enable_ai` hands back the full
-  // recipe at the moment it is needed, so the prompt only has to say when to
-  // call it and what never to do.
-  const serverFeatures = `${generation === 2 ? BASE_APP_AI_SECTION : legacyAiSection}\n\n${keysSection}`;
+  const serverFeatures = `${legacyAiSection}\n\n${keysSection}`;
   const keyRules = `- Never hardcode keys or write them into any file, \`.env\` included — tau writes \`.env\` itself on every start and it is NOT saved with the project, so anything you put there is lost. Get third-party keys with \`request_secret\` and read them from \`process.env\` on the server.
 - For AI features call \`enable_ai\`, then \`fetch\` \`\${process.env.TAU_AI_URL}/chat\` from the server. No AI package to install. Never hardcode, log, or echo \`TAU_API_KEY\`, and never ask the user to supply one.`;
-  // Generation 1 keeps a read-only template manifest above a marker in
-  // CONTEXT.md; on generation 2 the whole file is the app's memory.
-  const memoryStep =
-    generation === 2
-      ? "5. Update `.tau/CONTEXT.md` so it describes the app as it now is: what it does, its routes and where they live, the data model, decisions and why, the user's preferences, and known issues. Rewrite the sections that changed — don't append a log — and keep the file short."
-      : `5. Update the \`## Current app\` (DYNAMIC) section of \`.tau/CONTEXT.md\` to reflect what the app now does, key routes/files, the data model, and notable decisions. Do NOT touch the STATIC section above the marker.`;
+  const memoryStep = `5. Update the \`## Current app\` (DYNAMIC) section of \`.tau/CONTEXT.md\` to reflect what the app now does, key routes/files, the data model, and notable decisions. Do NOT touch the STATIC section above the marker.`;
 
   return `You are Tau, an autonomous coding agent that builds and edits working web applications.
 
@@ -405,8 +316,6 @@ When the app needs a credential for a third-party service at runtime — payment
 
 Examples that do NOT need a sandbox: "how are you", "what can you build?", "explain X", "can we do Y?" — just answer.
 Examples that DO need a sandbox: "build me a todo app", "add a dark mode toggle", "fix the login bug".
-
-${effortDirective(effort)}
 
 ${stackSection}
 
@@ -436,9 +345,9 @@ You have four sub-agents available as tool calls. Each runs in its own isolated 
 
 \`dispatch_explorer\`, \`dispatch_debugger\`, and \`dispatch_verifier\` never edit files — you stay the single source of truth for those. Reach for a sub-agent on substantial, multi-step work — not for a single file read or one quick curl you can just do directly. Call \`report_progress\` before dispatching one, the same as any other phase of work.
 
-**Running sub-agents in parallel:** you can emit several sub-agent dispatch calls in a *single* turn and they run concurrently (up to ${maxParallelSubagents} at once) — this is the fastest way to fan out independent work. Only do this when the tasks are truly independent and touch **different, non-overlapping files** (e.g. building three unrelated pages, or exploring two separate areas at once). **Never** run implementers in parallel when they might edit the same file or any shared file (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) — sequence those instead, since they all share one workspace and concurrent writes to the same file will clobber each other.
+**Running sub-agents in parallel:** you can emit several sub-agent dispatch calls in a *single* turn and they run concurrently (up to the limit in the effort note on the current request) — this is the fastest way to fan out independent work. Only do this when the tasks are truly independent and touch **different, non-overlapping files** (e.g. building three unrelated pages, or exploring two separate areas at once). **Never** run implementers in parallel when they might edit the same file or any shared file (\`App.tsx\`, \`src/main.tsx\`, \`.tau/CONTEXT.md\`) — sequence those instead, since they all share one workspace and concurrent writes to the same file will clobber each other.
 
-${generation === 2 ? baseAppLadder(key) : complexityLadder(selected, key)}
+${complexityLadder(selected, key)}
 
 ## How to work
 1. Read \`.tau/CONTEXT.md\` and any files you intend to change before editing. For an unfamiliar area of a larger app, consider \`dispatch_explorer\` instead of opening files one by one.

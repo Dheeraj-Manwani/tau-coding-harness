@@ -10,6 +10,7 @@ import {
 } from "./utils";
 import { publish } from "@/worker/lib/publish";
 import { markProjectWorkspaceStarted } from "@/worker/lib/projectWorkspace";
+import { assertRealContent } from "../../context/clearing";
 
 export async function editFile(
   input: unknown,
@@ -29,6 +30,8 @@ export async function editFile(
   const oldStr = asString(old_string, "old_string");
   const newStr = asString(new_string, "new_string");
   const replaceAll = replace_all === true;
+  assertRealContent(oldStr, "old_string");
+  assertRealContent(newStr, "new_string");
 
   const abs = toWorkdirPath(p);
   const original = await sandbox.files.read(abs);

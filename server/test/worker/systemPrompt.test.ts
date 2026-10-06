@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { buildSystemPrompt } from "@/worker/agent/config";
-import { DOC_NAMES, readDoc } from "@/worker/agent/docs";
+import {
+  PREVIEW_PORT,
+  buildSystemPrompt,
+  effortDirective,
+} from "@/worker/agent/config";
+import { DOCS, DOC_NAMES, readDoc } from "@/worker/agent/docs";
 import {
   BASE_APP_TOOLS,
   PROVISION_SANDBOX_BASE_TOOL,
@@ -8,9 +12,10 @@ import {
 } from "@/worker/agent/tools/tools";
 import { BASE_TEMPLATE_KEY } from "@/worker/templates/registry";
 
-// A generation-2 project (the `tau-app-v2` base image) gets its own stack
-// section; generation-1 projects must keep getting exactly the prompt they had.
-// See doc/CONTEXT_AND_MEMORY_PLAN.md §6.
+// A generation-2 project (the `tau-app-v2` base image) gets its own prompt —
+// `docs/tau.md`, the rules plus an index of guides; generation-1 projects must
+// keep getting exactly the prompt they had.
+// See doc/CONTEXT_AND_MEMORY_PLAN.md §3 and §6.
 
 describe("system prompt — generation 1", () => {
   test("an unselected project is shown the stack chooser", () => {
@@ -77,20 +82,111 @@ describe("system prompt — generation 2, every level", () => {
     // the prompt does not carry them on every turn of every app.
     for (const key of levels) {
       const prompt = buildSystemPrompt({ templateKey: key });
-      expect(prompt).toContain("## AI features in the app you build");
-      expect(prompt).toContain("Call `enable_ai`");
-      expect(prompt).toContain("## API keys for other services");
+      expect(prompt).toContain("call `enable_ai` **before writing any code that talks to a model**");
+      expect(prompt).toContain("`request_secret` is the only way to get one");
       expect(prompt).not.toContain("X-Tau-Project");
+      expect(prompt).not.toContain("TAU_AI_URL");
       // The reprovision round trip is a generation-1 mechanism.
       expect(prompt).not.toContain("needsReprovision");
     }
   });
 
-  test("still carries the effort directive and the shared rules", () => {
-    const max = buildSystemPrompt({ templateKey: BASE_TEMPLATE_KEY, effort: "MAX" });
-    expect(max).toContain("## Effort: MAX");
-    expect(max).toContain("## Sub-agents");
-    expect(max).toContain("## Final message");
+  test("keeps the rules that break something before a guide could arrive", () => {
+    for (const key of levels) {
+      const prompt = buildSystemPrompt({ templateKey: key });
+      expect(prompt).toContain("Runtime is **Bun**, not Node");
+      expect(prompt).toContain("NEVER start or restart the dev server or the API server");
+      expect(prompt).toContain("Never hardcode a key or write one into any file");
+      expect(prompt).toContain("never `curl` a file you want to keep");
+      expect(prompt).toContain("Never run git commands yourself");
+      expect(prompt).toContain("never hardcode a color there");
+    }
+  });
+
+  test("lists every guide, with when to read it, and nothing else as a guide", () => {
+    for (const key of levels) {
+      const prompt = buildSystemPrompt({ templateKey: key });
+      const section = prompt.slice(
+        prompt.indexOf("## Guides"),
+        prompt.indexOf("## What the app can use"),
+      );
+      const listed = [...section.matchAll(/^- `([a-z-]+)` — /gm)].map((m) => m[1]);
+      expect(listed).toEqual([...DOC_NAMES]);
+      for (const name of DOC_NAMES) {
+        expect(section).toContain(`- \`${name}\` — ${DOCS[name].when}`);
+      }
+    }
+  });
+
+  test("leaves no slot unfilled", () => {
+    for (const key of levels) {
+      expect(buildSystemPrompt({ templateKey: key })).not.toContain("{{");
+      expect(buildSystemPrompt({ templateKey: key, secretNames: ["A"] })).not.toContain("{{");
+    }
+  });
+
+  test("names the ports the harness actually uses", () => {
+    const prompt = buildSystemPrompt({ templateKey: BASE_TEMPLATE_KEY });
+    expect(prompt).toContain(`running on port ${PREVIEW_PORT} with hot reload`);
+    expect(prompt).toContain(`always runs on port ${PREVIEW_PORT}`);
+  });
+
+  test("saved key names come last, so saving a key changes only the end", () => {
+    for (const key of levels) {
+      const without = buildSystemPrompt({ templateKey: key });
+      const withKeys = buildSystemPrompt({
+        templateKey: key,
+        secretNames: ["STRIPE_SECRET_KEY", "RESEND_API_KEY"],
+      });
+      expect(withKeys.startsWith(without)).toBe(true);
+      // Sorted, so the order the user saved them in does not change the prompt.
+      expect(withKeys.slice(without.length)).toContain(
+        "`RESEND_API_KEY`, `STRIPE_SECRET_KEY`",
+      );
+    }
+  });
+
+  test("is shorter than what generation 1 sends for the same stack", () => {
+    const pairs = [
+      ["v2-frontend", "frontend"],
+      ["v2-fullstack", "fullstack"],
+      ["v2-fullstack-db", "fullstack-db"],
+    ] as const;
+    for (const [v2, v1] of pairs) {
+      const base = buildSystemPrompt({ templateKey: v2 }).length;
+      const legacy = buildSystemPrompt({ templateKey: v1, selected: true }).length;
+      expect(base).toBeLessThan(legacy * 0.9);
+    }
+  });
+
+  test("still carries the shared rules", () => {
+    const prompt = buildSystemPrompt({ templateKey: BASE_TEMPLATE_KEY });
+    expect(prompt).toContain("## Sub-agents");
+    expect(prompt).toContain("## Final message");
+  });
+});
+
+describe("effort is not part of the system prompt", () => {
+  // Effort is chosen per request. Anything in the system prompt that differs
+  // between two requests changes the first tokens of the conversation, and the
+  // provider's cache is keyed on exactly those. So the directive rides on the
+  // request's own message instead (context/history.ts).
+  test("no generation's prompt mentions an effort level", () => {
+    for (const key of ["frontend", "fullstack", "fullstack-db", "v2-frontend", "v2-fullstack", "v2-fullstack-db"] as const) {
+      for (const selected of [false, true]) {
+        const prompt = buildSystemPrompt({ templateKey: key, selected });
+        expect(prompt).not.toContain("## Effort:");
+        expect(prompt).not.toMatch(/up to \d+ at once/);
+      }
+    }
+  });
+
+  test("the directive carries the one number that depended on effort", () => {
+    expect(effortDirective("LOW")).toContain("## Effort: LOW");
+    expect(effortDirective("LOW")).toContain("one at a time");
+    expect(effortDirective("HIGH")).toContain("up to 3 sub-agents");
+    expect(effortDirective("MAX")).toContain("## Effort: MAX");
+    expect(effortDirective("MAX")).toContain("up to 5 sub-agents");
   });
 });
 
@@ -111,7 +207,11 @@ describe("system prompt — generation 2, by level", () => {
   test("with a backend: the API rules appear, and the database is still on demand", () => {
     expect(fullstack).toContain("API in `server/index.ts`, port 3000");
     expect(fullstack).toContain("**No database yet**");
-    expect(fullstack).toContain("Do NOT create a second Hono instance");
+    // One line that it exists and where the rules are; the rules themselves
+    // are the `backend` guide's.
+    expect(fullstack).toContain("routes go on the existing Hono `app` in `server/index.ts`");
+    expect(fullstack).toContain("The `backend` guide has the rules");
+    expect(fullstack).not.toContain("Do NOT create a second Hono instance");
     expect(fullstack).toContain("Tier 3 — Server API (set up) + Database (on demand)");
     expect(fullstack).not.toContain("server/db/schema.ts");
   });
@@ -119,6 +219,7 @@ describe("system prompt — generation 2, by level", () => {
   test("with a database: says it is set up, so it is not scaffolded twice", () => {
     expect(withDb).toContain("already set up and wired");
     expect(withDb).toContain("server/db/schema.ts");
+    expect(withDb).toContain("The `database` guide has the rules");
     expect(withDb).toContain("Tier 3 — Server API + Database (already set up)");
     expect(withDb).not.toContain("**No database yet**");
   });
@@ -126,9 +227,15 @@ describe("system prompt — generation 2, by level", () => {
   test("the three levels differ only where the stack does", () => {
     // The rest of the prompt must not move when a backend is added, or adding
     // one would invalidate more of the provider's cache than it has to.
-    const tail = (p: string) => p.slice(p.indexOf("## Already provided"), p.indexOf("## Implementation complexity"));
-    expect(tail(frontend)).toBe(tail(fullstack));
-    expect(tail(fullstack)).toBe(tail(withDb));
+    const start = (p: string) => p.slice(0, p.indexOf("- Stack:"));
+    const middle = (p: string) =>
+      p.slice(p.indexOf("- `.tau/CONTEXT.md` is this app's memory"), p.indexOf("**Tier 3"));
+    const end = (p: string) => p.slice(p.indexOf('→ Signals: "multiple users"'));
+    for (const part of [start, middle, end]) {
+      expect(part(frontend).length).toBeGreaterThan(200);
+      expect(part(frontend)).toBe(part(fullstack));
+      expect(part(fullstack)).toBe(part(withDb));
+    }
   });
 });
 
@@ -145,9 +252,9 @@ describe("tools for generation 2", () => {
     expect(PROVISION_SANDBOX_BASE_TOOL.function.parameters.properties).toEqual({});
   });
 
-  test("the setup tools exist only outside the generation-1 list", () => {
+  test("the setup and guide tools exist only outside the generation-1 list", () => {
     const names = BASE_APP_TOOLS.map((t) => t.function.name);
-    expect(names).toEqual(["add_backend", "add_database"]);
+    expect(names).toEqual(["add_backend", "add_database", "read_doc"]);
     const legacyNames = TOOL_DEFINITIONS.map((t) => t.function.name) as string[];
     for (const name of names) expect(legacyNames).not.toContain(name);
   });

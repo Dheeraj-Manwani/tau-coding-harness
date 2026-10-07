@@ -252,7 +252,9 @@ export type BriefAudience =
   /** In `provision_sandbox`'s result, for an app that did not exist until then. */
   | "provisioned"
   /** Ahead of a sub-agent's task. */
-  | "sub-agent";
+  | "sub-agent"
+  /** After a summary, with the rest of a run's restored state. */
+  | "restored";
 
 const INTRO: Record<BriefAudience, string> = {
   request:
@@ -261,6 +263,8 @@ const INTRO: Record<BriefAudience, string> = {
     "The app as it has just been created. You do not need to read `.tau/CONTEXT.md` or list the project to get this.",
   "sub-agent":
     "What tau knows about this app right now. You do not need to read `.tau/CONTEXT.md` or list the project to get it.",
+  restored:
+    "What tau knows about this app right now, read from its saved files a moment ago — it includes everything this request has done so far. You do not need to read `.tau/CONTEXT.md` or list the project to get it.",
 };
 
 /** Render the `<tau_app>` block. Pure. */

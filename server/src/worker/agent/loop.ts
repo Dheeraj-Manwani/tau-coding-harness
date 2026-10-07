@@ -42,11 +42,14 @@ import {
   budgetForEffort,
 } from "./config";
 import { manageContext } from "./context/manager";
+import { requestText, restoredEntry } from "./context/restore";
+import { loadPlan, unfinishedPlanNote } from "./plan";
 import { createClearingState } from "./context/clearing";
 import { jobIdsIn, shapeHistory } from "./context/history";
 import { deliverDocs, docStateFrom } from "./docs/delivery";
 import {
   isMemoryPath,
+  loadAppBrief,
   loadAppBriefParts,
   memoryProblems,
   renderAppBrief,
@@ -444,9 +447,15 @@ export async function runAgentLoop(
       chars: brief?.length ?? 0,
     });
 
+    // If the request before this one stopped part-way, what it had planned
+    // and how far it got (agent/plan.ts).
+    const previousPlan = await unfinishedPlanNote(projectId, jobId).catch(() => null);
+    if (previousPlan) log.info("job.previous_plan", { jobId, projectId });
+    const requestNote = [brief, previousPlan].filter(Boolean).join("\n\n") || null;
+
     let entries: Entry[] = [
       { param: { role: "system", content: systemPrompt }, seq: null },
-      ...(await loadHistory(projectId, { id: jobId, effort, note: brief })),
+      ...(await loadHistory(projectId, { id: jobId, effort, note: requestNote })),
     ];
     let truncationRetries = 0;
     let intentNudges = 0;
@@ -538,7 +547,40 @@ export async function runAgentLoop(
           captureException(err, { jobId, detail: "heartbeat update failed" }),
         );
 
-      const mgmt = await manageContext(entries, { model, calibration, clearing });
+      const mgmt = await manageContext(entries, {
+        model,
+        calibration,
+        clearing,
+        // What a summary would otherwise lose, put back exactly. Read at the
+        // moment of the summary: `docs` still lists the guides the summary is
+        // about to drop, and the brief is the app as this run has left it.
+        restore: async () => {
+          const state = {
+            request: await requestText(projectId, jobId).catch(() => null),
+            effort,
+            plan: await loadPlan(jobId).catch(() => null),
+            work:
+              generation === 2
+                ? { created: [...work.created], edited: [...work.edited], deleted: work.deleted }
+                : null,
+            guides: docs ? [...docs.loaded] : [],
+            brief: generation === 2 ? await loadAppBrief(projectId, "restored") : null,
+          };
+          const entry = restoredEntry(state);
+          log.info("context.restored", {
+            jobId,
+            projectId,
+            turn,
+            request: state.request !== null,
+            todos: state.plan?.todos.length ?? 0,
+            filesChanged: state.work ? state.work.created.length + state.work.edited.length : 0,
+            guides: state.guides,
+            brief: state.brief !== null,
+            chars: String(entry.param.content).length,
+          });
+          return entry;
+        },
+      });
       entries = mgmt.entries;
 
       if (mgmt.summarized) {

@@ -1,9 +1,7 @@
 import type Sandbox from "e2b";
 import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "../functions/utils";
-import { DEBUGGER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
-import { EXPLORATION_TOOLS } from "./tool-sets";
 
 export async function dispatchDebugger(
   input: unknown,
@@ -25,9 +23,9 @@ export async function dispatchDebugger(
       ? `${problemDescription}\n\nKnown context: ${known_context}`
       : problemDescription;
 
-  const summary = await executeSubAgentLoop(
-    [DEBUGGER_PROMPT, task],
-    EXPLORATION_TOOLS,
+  const summary = await executeSubAgentLoop({
+    kind: "debugger",
+    task,
     sandbox,
     jobId,
     projectId,
@@ -35,8 +33,7 @@ export async function dispatchDebugger(
     nextIndex,
     model,
     effort,
-    "debugger",
-  );
+  });
 
   return { summary };
 }

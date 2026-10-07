@@ -194,11 +194,11 @@ async function executeToolInner(
       return { success: true };
     }
     case "create_plan":
-      return createPlan(input, jobId, indexer);
+      return createPlan(input, jobId);
     case "update_todo":
-      return updateTodo(input, jobId, indexer);
+      return updateTodo(input, jobId, toolCallId);
     case "add_todos":
-      return addTodos(input, jobId, indexer);
+      return addTodos(input, jobId, toolCallId);
     case "report_progress":
       return { success: true };
     case "read_doc":

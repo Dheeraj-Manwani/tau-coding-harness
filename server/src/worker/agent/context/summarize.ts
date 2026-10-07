@@ -2,26 +2,53 @@ import { clientForModel } from "@/lib/kimi";
 import { SUMMARY_MAX_TOKENS } from "../config";
 import { pickBoundary } from "./boundary";
 import { compact } from "./compact";
+import { isRestoredState, messageText } from "./marks";
 import { estimateTokens } from "./tokens";
 import type { Entry, MessageParam } from "./types";
 
 /** Marks an injected summary entry so it can be recognised + folded in later. */
 export const SUMMARY_HEADER = "## Summary of earlier conversation\n";
 
-const SUMMARIZER_SYSTEM = `You compress the earlier part of a long coding-agent conversation into a durable summary the agent will rely on as its memory of everything that happened before the retained recent turns.
+/**
+ * The summary's sections, in order. Fixed, so that a summary of a summary
+ * keeps its shape and the agent always knows where to look for what.
+ */
+export const SUMMARY_SECTIONS = ["Requests", "State of the work", "Decisions", "Problems", "Next"] as const;
 
-Your output has a hard token limit, and reducing size is the entire point of this step — it must always come out substantially smaller than the transcript, no matter how large or eventful that transcript was. You will not fit everything in. Be ruthless about what earns a place:
+export const SUMMARIZER_SYSTEM = `You compress the earlier part of a long conversation between a user and a coding agent that is building the user's web app. Your summary replaces those messages: it is all the agent will remember of them.
 
-Keep, in this priority order (drop lower-priority items first if space runs short):
-1. What the app is and does now; the stack/template it was built on.
-2. Current plan / todo state: what's done, what's in progress, what's left.
-3. Anything unresolved: bugs, blockers, open questions, things the user asked for but not yet built.
-4. Decisions and conventions already made (naming, patterns, libraries chosen) — only ones that still matter going forward.
-5. Key files, routes, components, and data model / types — only the ones still relevant, not an exhaustive inventory.
+Some things are restored for the agent separately, exactly and in full, right after your summary: the user's most recent request word for word, the agent's plan with the status of each item, the list of files changed, the app's own memory file, its design, and a map of its files. Do not spend space repeating any of those. Spend it on what only the conversation held.
 
-Discard aggressively: exploratory dead-ends, superseded decisions, routine tool-call narration, verbose command output, anything a later step already made moot. When in doubt, omit — a short summary that drops a minor detail beats a long one that trails off mid-thought because it hit the token limit.
+Write these five sections, with these headings, in this order. Write "None." under one with nothing to say.
 
-Write plain, dense markdown — no greetings, no restating these instructions, no commentary. Prefer concrete names (files, routes, functions) over vague prose, but only for things that survive the cut above. This replaces the raw messages, so omitting something means the agent forgets it — omit the unimportant, not the load-bearing.`;
+## Requests
+What the user has asked for, oldest first, in their terms — one line each. Include corrections, preferences and things they said not to do, however briefly they said them: these are the first things a summary loses and the most expensive to lose. Mark the request in progress.
+
+## State of the work
+Where things stand, concretely: what is built and working, what is half-done and in what state it was left, what has not been started. Name the files, routes and components involved.
+
+## Decisions
+Choices already made that later work has to respect, each with its reason in a few words: a library picked, a structure settled on, an approach the user approved or rejected.
+
+## Problems
+Errors hit and how each was fixed; approaches that were tried and failed, so they are not tried again; anything still broken or unanswered.
+
+## Next
+What the agent was about to do when this part of the conversation ended, most immediate first.
+
+Your output has a hard token limit, and it must come out far smaller than the transcript however long that was. You will not fit everything. Leave out routine tool-call narration, command output, file contents, and anything a later step made moot. When short of space, cut from "State of the work" before cutting a user's stated preference or a failed approach. Plain, dense markdown; concrete names over vague prose; no greeting, no commentary, nothing outside the five sections.`;
+
+/**
+ * Blocks tau attaches to a user's message — the app's memory and map, the
+ * effort note, a previous plan. They are restored fresh after a summary, so
+ * handing them to the summarizer would only invite it to copy them.
+ */
+const TAU_BLOCK = /\n*<(tau_app|tau_effort|tau_previous_plan)>[\s\S]*?<\/\1>/g;
+
+/** A user message as the summarizer should read it: the user's words only. */
+export function withoutTauBlocks(text: string): string {
+  return text.replace(TAU_BLOCK, "").trim();
+}
 
 /** Render a slice of messages as a plain-text transcript for the summarizer. */
 function renderTranscript(messages: MessageParam[]): string {
@@ -29,9 +56,8 @@ function renderTranscript(messages: MessageParam[]): string {
   for (const m of messages) {
     if (m.role === "system") continue;
     if (m.role === "user") {
-      const text =
-        typeof m.content === "string" ? m.content : JSON.stringify(m.content);
-      lines.push(`User: ${text}`);
+      const text = withoutTauBlocks(messageText(m.content));
+      if (text) lines.push(`User: ${text}`);
     } else if (m.role === "assistant") {
       if (typeof m.content === "string" && m.content.trim()) {
         lines.push(`Assistant: ${m.content}`);
@@ -94,6 +120,9 @@ export async function summarize(
       e.param.content.startsWith(SUMMARY_HEADER)
     ) {
       prevSummary = e.param.content.slice(SUMMARY_HEADER.length);
+    } else if (isRestoredState(e.param)) {
+      // State restored after the last summary. It is not conversation, and a
+      // fresh copy follows this summary too.
     } else {
       prefixBody.push(e);
     }
@@ -122,7 +151,7 @@ export async function summarize(
         ? [
             {
               role: "user" as const,
-              content: `Summary of the conversation before this point:\n${prevSummary}`,
+              content: `Your summary of the conversation before this point, in the same five sections. Fold it into the new one: keep what still matters, drop what the newer messages made moot.\n\n${prevSummary}`,
             },
           ]
         : []),

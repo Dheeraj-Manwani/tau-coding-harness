@@ -2389,6 +2389,7 @@ export const ProjectScalarFieldEnum = {
   templateKey: 'templateKey',
   aiEnabled: 'aiEnabled',
   designConfig: 'designConfig',
+  instructions: 'instructions',
   previewImageKey: 'previewImageKey',
   previewImageUpdatedAt: 'previewImageUpdatedAt',
   slug: 'slug',

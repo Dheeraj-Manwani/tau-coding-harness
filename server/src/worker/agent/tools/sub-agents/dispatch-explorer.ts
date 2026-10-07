@@ -1,9 +1,7 @@
 import type Sandbox from "e2b";
 import type { Effort } from "@/generated/prisma/enums";
 import { asString } from "../functions/utils";
-import { EXPLORER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
-import { EXPLORATION_TOOLS } from "./tool-sets";
 
 export async function dispatchExplorer(
   input: unknown,
@@ -17,9 +15,9 @@ export async function dispatchExplorer(
 ) {
   const task = asString((input as { task?: unknown }).task, "task");
 
-  const summary = await executeSubAgentLoop(
-    [EXPLORER_PROMPT, task],
-    EXPLORATION_TOOLS,
+  const summary = await executeSubAgentLoop({
+    kind: "explorer",
+    task,
     sandbox,
     jobId,
     projectId,
@@ -27,8 +25,7 @@ export async function dispatchExplorer(
     nextIndex,
     model,
     effort,
-    "explorer",
-  );
+  });
 
   return { summary };
 }

@@ -59,7 +59,9 @@ async function summarizeWithRetry(
  *      mark — and then enough to bring it down to the target, so the prefix the
  *      provider has cached changes once per batch instead of once per turn.
  *   2. **Summarization** — persistent: it rebuilds `entries`, and the caller
- *      must write a checkpoint. Only if clearing was not enough.
+ *      must write a checkpoint. Only if clearing was not enough. What a
+ *      summary must not lose — the request, the plan, the app's memory — is
+ *      put back straight after it (`opts.restore`, context/restore.ts).
  */
 export async function manageContext(
   entries: Entry[],
@@ -67,6 +69,12 @@ export async function manageContext(
     model: string;
     calibration: TokenCalibration;
     clearing: ClearingState;
+    /**
+     * Builds the block that follows a summary. Called only when a summary is
+     * made. May resolve to null, and a failure is treated as null: a run
+     * without its state restored is worse off, but still a run.
+     */
+    restore?: () => Promise<Entry | null>;
   },
 ): Promise<ManageResult> {
   const budget = contextBudgetForModel(opts.model);
@@ -110,6 +118,18 @@ export async function manageContext(
       maxToolResultTokens: MAX_TOOL_RESULT_TOKENS,
     });
     if (res) {
+      // The summary is [system, summary, ...tail]; the restored state goes
+      // between the summary and the tail.
+      const restored = opts.restore
+        ? await opts.restore().catch((err) => {
+            log.warn("context.restore.failed", { error: String(err) });
+            return null;
+          })
+        : null;
+      if (restored) {
+        res.entries = [...res.entries.slice(0, 2), restored, ...res.entries.slice(2)];
+        res.tokensAfter = estimateTokens(res.entries.map((e) => e.param));
+      }
       summarized = res;
       outEntries = res.entries;
       // The rebuilt history is the summary plus the recent tail. Whatever was

@@ -10,6 +10,7 @@ import { createFile } from "../functions/create";
 import { editFile } from "../functions/edit";
 import { deleteFile } from "../functions/delete";
 import { webSearch } from "../functions/web-search";
+import { readDocTool } from "../functions/read-doc";
 
 /** Restricted tool surface for sub-agents — no ask_user, plans, or nested dispatch. */
 export async function executeSubAgentTool(
@@ -38,6 +39,8 @@ export async function executeSubAgentTool(
       return checkSandbox(input, sandbox);
     case "web_search":
       return webSearch(input);
+    case "read_doc":
+      return readDocTool(input);
     case "create_file":
       return createFile(input, sandbox, jobId, projectId, userId, indexer);
     case "edit_file":

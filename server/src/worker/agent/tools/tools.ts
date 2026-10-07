@@ -414,7 +414,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "create_plan",
       description:
-        "Create a plan to implement the request - recommended for longer tasks.",
+        "Create a plan to implement the request - recommended for longer tasks. Returns the plan as tau has recorded it; every later plan call returns it again with its current statuses, so you never need to remember it.",
       parameters: {
         type: "object",
         properties: {
@@ -445,7 +445,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "add_todos",
       description:
-        "Append new todo items to the current plan without replacing existing ones or their statuses. Use this when you discover more work mid-task instead of re-running create_plan, which would reset every todo back to pending.",
+        "Append new todo items to the current plan without replacing existing ones or their statuses. Use this when you discover more work mid-task instead of re-running create_plan, which would reset every todo back to pending. Returns the whole plan as it now stands.",
       parameters: {
         type: "object",
         properties: {
@@ -466,7 +466,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "update_todo",
       description:
-        "Update the status of a todo item in the current plan by its serial number. Call this immediately after completing each item — do not batch multiple updates at the end.",
+        "Update the status of a todo item in the current plan by its serial number. Call this immediately after completing each item — do not batch multiple updates at the end. Returns the whole plan with every todo's current status and which one is next: read it, and work from it rather than from memory.",
       parameters: {
         type: "object",
         properties: {

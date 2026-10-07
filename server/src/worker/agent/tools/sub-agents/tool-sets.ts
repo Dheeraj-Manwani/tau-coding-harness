@@ -1,10 +1,14 @@
 import type OpenAI from "openai";
-import { TOOL_DEFINITIONS } from "../tools";
+import type { TemplateGeneration } from "@/worker/templates/registry";
+import { BASE_APP_TOOLS, TOOL_DEFINITIONS } from "../tools";
+import type { SubAgentKind } from "./config";
 
 type ChatCompletionToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
+const ALL_TOOLS = [...TOOL_DEFINITIONS, ...BASE_APP_TOOLS];
+
 function pick(...names: string[]): ChatCompletionToolDef[] {
-  return TOOL_DEFINITIONS.filter((t) =>
+  return ALL_TOOLS.filter((t) =>
     names.includes(t.function.name),
   ) as unknown as ChatCompletionToolDef[];
 }
@@ -35,3 +39,20 @@ export const IMPLEMENTER_TOOLS = pick(
   "edit_file",
   "delete_file",
 );
+
+/**
+ * tau's guides, for a sub-agent on the base app. Its persona lists them
+ * (`config.ts`): without the list it would not know to ask, and without the
+ * tool it could not — which is how a debugger came to spend its turns reading
+ * `node_modules` to learn what the `components` guide says in a paragraph.
+ */
+const GUIDE_TOOLS = pick("read_doc");
+
+/** The tools a sub-agent of this kind gets on an app of this generation. */
+export function toolsFor(
+  kind: SubAgentKind,
+  generation: TemplateGeneration,
+): ChatCompletionToolDef[] {
+  const base = kind === "implementer" ? IMPLEMENTER_TOOLS : EXPLORATION_TOOLS;
+  return generation === 2 ? [...base, ...GUIDE_TOOLS] : base;
+}

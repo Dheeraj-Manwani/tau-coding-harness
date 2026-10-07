@@ -1,9 +1,7 @@
 import type Sandbox from "e2b";
 import type { Effort } from "@/generated/prisma/enums";
 import { asString, asStringArray } from "../functions/utils";
-import { IMPLEMENTER_PROMPT } from "./config";
 import { executeSubAgentLoop } from "./sub-agent-executor";
-import { IMPLEMENTER_TOOLS } from "./tool-sets";
 
 export async function dispatchImplementer(
   input: unknown,
@@ -31,9 +29,9 @@ export async function dispatchImplementer(
         .join("\n")}`
     : goalDescription;
 
-  const summary = await executeSubAgentLoop(
-    [IMPLEMENTER_PROMPT, task],
-    IMPLEMENTER_TOOLS,
+  const summary = await executeSubAgentLoop({
+    kind: "implementer",
+    task,
     sandbox,
     jobId,
     projectId,
@@ -41,8 +39,7 @@ export async function dispatchImplementer(
     nextIndex,
     model,
     effort,
-    "implementer",
-  );
+  });
 
   return { summary };
 }

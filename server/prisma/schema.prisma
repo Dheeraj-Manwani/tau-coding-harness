@@ -124,6 +124,13 @@ model Project {
   /// only the record of which parts of that were the user's own decision.
   designConfig Json?
 
+  /// Standing instructions the user wrote for this project, in their own
+  /// words: "all copy in Spanish", "never change the pricing page without
+  /// asking". Attached to every request and never rewritten by the agent
+  /// (`worker/agent/context/standing.ts`). The app's own memory, which the
+  /// agent does write, is `.tau/CONTEXT.md`.
+  instructions String?
+
   previewImageKey       String?
   previewImageUpdatedAt DateTime?
 

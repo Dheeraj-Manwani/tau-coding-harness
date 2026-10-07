@@ -26,6 +26,21 @@ export const CONTEXT_COMPACT_RATIO = 0.6;
 export const CONTEXT_CLEAR_TARGET_RATIO = 0.4;
 export const CONTEXT_SUMMARIZE_RATIO = 0.75;
 export const CONTEXT_KEEP_TAIL_TOKENS = 24_000;
+/**
+ * How much recent conversation a summary leaves as it is: the usual tail, but
+ * never more than a quarter of the budget.
+ *
+ * The cap is for small windows. A summary is made at three quarters of the
+ * budget, and what it cannot shrink — the system prompt, the summary itself,
+ * the restored state, this tail — has to fit well under that or the next turn
+ * is over the mark again. At a 60,000-token budget the fixed tail left so
+ * little that one build was summarized nine times in thirty turns, each
+ * summary freeing a few thousand tokens. At the configured window the cap is
+ * never reached.
+ */
+export function keepTailTokensFor(budget: number): number {
+  return Math.min(CONTEXT_KEEP_TAIL_TOKENS, Math.floor(budget * 0.25));
+}
 export const MAX_TOOL_RESULT_TOKENS = 2_000;
 export const SUMMARY_MAX_TOKENS = 2_000;
 

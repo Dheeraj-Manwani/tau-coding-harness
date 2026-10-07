@@ -139,14 +139,21 @@ export interface UpdateProjectResponse {
   name: string;
   description: string | null;
   tags: string[];
+  instructions: string | null;
 }
 
-/** `PATCH /project/:id`: edit name, description and/or tags from the edit
- *  dialog shared by Home and the project page. */
+/** `PATCH /project/:id`: edit name, description, tags and/or the standing
+ *  instructions from the edit dialog shared by Home and the project page. */
 export function useUpdateProject(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { name?: string; description?: string; tags?: string[] }) =>
+    mutationFn: (vars: {
+      name?: string;
+      description?: string;
+      tags?: string[];
+      /** An empty string clears them. */
+      instructions?: string;
+    }) =>
       api
         .patch<UpdateProjectResponse>(`/project/${projectId}`, vars)
         .then((r) => r.data),

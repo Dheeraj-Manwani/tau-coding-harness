@@ -11,6 +11,10 @@ import {
   DialogTitle,
 } from "@/src/components/ui/dialog";
 import { useSettings } from "@/src/hooks/useSettings";
+import {
+  DefaultLookCard,
+  StandingInstructionsCard,
+} from "@/src/features/settings/BuildDefaults";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
 import {
@@ -67,7 +71,7 @@ export function SettingsModal() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="scrollbar-thin sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -77,6 +81,9 @@ export function SettingsModal() {
         </DialogHeader>
 
         <div className="space-y-3">
+          <StandingInstructionsCard />
+          <DefaultLookCard />
+
           <label
             htmlFor="reduce-motion"
             className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 p-4"

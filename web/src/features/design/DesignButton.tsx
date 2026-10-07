@@ -14,7 +14,9 @@ import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { cn } from "@/src/lib/utils";
 import {
   countChoices,
+  sameDesign,
   useDesignCatalog,
+  withoutImport,
   type DesignConfig,
 } from "@/src/features/design/api";
 import { DesignPicker } from "@/src/features/design/DesignPicker";
@@ -35,10 +37,16 @@ export function DesignButton({
   value,
   onChange,
   disabled = false,
+  savedDefault = null,
+  onSaveDefault,
 }: {
   value: DesignConfig;
   onChange: (next: DesignConfig) => void;
   disabled?: boolean;
+  /** The user's default look, which the composer starts from. */
+  savedDefault?: DesignConfig | null;
+  /** Keep the current choice as the default look for new projects. */
+  onSaveDefault?: (config: Omit<DesignConfig, "designMd">) => void;
 }) {
   const [open, setOpen] = useState(false);
   const catalog = useDesignCatalog();
@@ -46,6 +54,9 @@ export function DesignButton({
   if (!catalog.data?.enabled) return null;
 
   const chosen = countChoices(value);
+  // What of this choice could be a default: everything but an imported file.
+  const keepable = withoutImport(value);
+  const isDefault = savedDefault != null && sameDesign(value, savedDefault);
   const style = catalog.data.styles.find((s) => s.key === value.style);
   const label = value.designMd
     ? "Your design"
@@ -85,6 +96,7 @@ export function DesignButton({
             <DialogDescription>
               All of this is optional. Whatever you leave on Auto, tau decides
               from what you ask it to build.
+              {isDefault && " This is your default look."}
             </DialogDescription>
           </DialogHeader>
 
@@ -102,6 +114,20 @@ export function DesignButton({
             >
               Reset to auto
             </Button>
+            {savedDefault && !isDefault && (
+              <Button variant="ghost" onClick={() => onChange(savedDefault)}>
+                Use my default
+              </Button>
+            )}
+            {onSaveDefault && keepable && !isDefault && (
+              <Button
+                variant="ghost"
+                title="New projects will start from this look"
+                onClick={() => onSaveDefault(keepable)}
+              >
+                Make this my default
+              </Button>
+            )}
             <Button onClick={() => setOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>

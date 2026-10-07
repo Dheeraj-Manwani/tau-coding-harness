@@ -74,6 +74,7 @@ import {
 } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizeDesignConfig } from "@/worker/design/config";
+import { readPreferences } from "../schemas/preferences.schema";
 import { syncDesignAfterThemeEdit } from "./design.service";
 import type { Effort } from "@/generated/prisma/enums";
 
@@ -267,15 +268,31 @@ function promptWithAttachments(
   return text.trim().length > 0 ? `${text}\n\n[Attached: ${names}]` : `[Attached: ${names}]`;
 }
 
+/** The look a user has set as their default for new projects, if any. */
+async function defaultDesignOf(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { preferences: true },
+  });
+  return normalizeDesignConfig(readPreferences(user?.preferences).defaultDesign);
+}
+
 export interface InitializeProjectResult {
   projectId: string;
   jobId: string;
 }
 
 /**
- * @param design  the look the user chose in the composer, if they chose
- *                anything. Stored with the project; the worker reads it when
- *                it designs the new app (`worker/design/provision.ts`).
+ * @param design  the look the user chose in the composer. Stored with the
+ *                project; the worker reads it when it designs the new app
+ *                (`worker/design/provision.ts`). Three cases, and the first
+ *                two are different on purpose:
+ *                  - left out entirely: the client has no picker (or sent
+ *                    nothing), so the user's default look applies, if they
+ *                    have set one;
+ *                  - present but empty: the user saw their default and chose
+ *                    "let tau decide" for this project — no default;
+ *                  - anything else: what they chose.
  */
 export async function initializeProject(
   userId: string,
@@ -284,7 +301,10 @@ export async function initializeProject(
   attachmentIds: string[] = [],
   design?: unknown,
 ): Promise<InitializeProjectResult> {
-  const designConfig = normalizeDesignConfig(design);
+  const designConfig =
+    design === undefined
+      ? await defaultDesignOf(userId)
+      : normalizeDesignConfig(design);
   // Before the transaction — this can block on extraction. When the user sent
   // an image with no words, name off the extracted text instead.
   const { content, resolved } = await buildUserMessage(
@@ -549,6 +569,7 @@ export async function listProjects(
         name: p.name,
         description: p.description,
         tags: p.tags,
+        instructions: p.instructions,
         sandboxStatus: p.sandboxStatus,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
@@ -577,7 +598,7 @@ export async function getProjectShowcase(userId: string) {
 export async function updateProject(
   projectId: string,
   userId: string,
-  input: { name?: string; description?: string; tags?: string[] },
+  input: { name?: string; description?: string; tags?: string[]; instructions?: string },
 ) {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");
@@ -585,8 +606,15 @@ export async function updateProject(
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  const data: { name?: string; description?: string | null; tags?: string[] } = {};
+  const data: {
+    name?: string;
+    description?: string | null;
+    tags?: string[];
+    instructions?: string | null;
+  } = {};
   if (input.name !== undefined) data.name = input.name;
+  // Like the description: an empty string clears them.
+  if (input.instructions !== undefined) data.instructions = input.instructions || null;
   // An empty string is the form's "clear the description" — store it as the
   // unset `null` rather than a lingering empty row.
   if (input.description !== undefined) data.description = input.description || null;
@@ -607,6 +635,7 @@ export async function updateProject(
     name: updated.name,
     description: updated.description,
     tags: updated.tags,
+    instructions: updated.instructions,
   };
 }
 
@@ -658,6 +687,8 @@ export async function getProject(projectId: string, userId: string) {
     throw Errors.forbidden("You do not have access to this project");
   }
 
+  const { designConfig: _designConfig, ...summary } = project;
+
   const clearFloor = await projectRepo.findLatestClearSequence(projectId);
   const [messages, latestFragment, activeJob, previewImageUrl, contextUsage] =
     await Promise.all([
@@ -708,7 +739,9 @@ export async function getProject(projectId: string, userId: string) {
         : null;
 
   return {
-    project: { ...project, previewImageUrl },
+    // Everything on the row but the design choice: that can hold a whole
+    // imported DESIGN.md, and the page reads the design from its own endpoint.
+    project: { ...summary, previewImageUrl },
     messages,
     latestFragment,
     activeJobId: activeJob?.id ?? null,

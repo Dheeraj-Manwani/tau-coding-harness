@@ -201,6 +201,36 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function",
     function: {
+      name: "search_history",
+      description:
+        "Look something up in this project's earlier conversation. Everything the user said and you said or did is still stored, including what a summary replaced. Use it when you need a detail the summary does not have: the exact words of something the user asked for, why a decision was made, which file something was done in. Give `query` to find messages containing all of some words (newest first, as short excerpts), or `around` with a message number from a search to read that message and its neighbours. It does not search file contents or command output — read the file or run the command for those.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Words to look for, e.g. 'pricing page' or 'stripe webhook'. A message must contain all of them. Put the query in double quotes to match an exact phrase.",
+          },
+          around: {
+            type: "number",
+            description:
+              "A message number (`n`) from an earlier search: returns that message at length and the three either side of it more briefly.",
+          },
+          from: {
+            type: "string",
+            enum: ["user", "assistant", "any"],
+            description: "Whose messages to search. Defaults to any.",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "grep",
       description:
         "Search file contents in the project for a regular expression. Returns matching lines as `path:line:text`. Use this to find where something is defined or used instead of opening files one by one, and instead of running grep through run_command. Skips node_modules, build output and anything gitignored. Also works on a saved command log (pass its `logPath` as `path`).",

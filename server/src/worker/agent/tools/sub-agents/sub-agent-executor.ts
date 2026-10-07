@@ -50,6 +50,7 @@ import {
 } from "../../context/clearing";
 import { cachedPromptTokens, estimateTokens } from "../../context/tokens";
 import { loadAppBrief } from "../../context/appBrief";
+import { loadStandingNote } from "../../context/standing";
 import { headTail } from "../functions/output";
 import type { Effort } from "@/generated/prisma/enums";
 import {
@@ -173,11 +174,13 @@ export const executeSubAgentLoop = async (run: SubAgentRun): Promise<string> => 
   // generation-1 project, whose persona tells the sub-agent to read the file.
   // Ahead of the task, so the task is the last thing it reads.
   const brief = await loadAppBrief(projectId, "sub-agent");
+  // The user's standing instructions bind whoever is doing the work.
+  const standing = await loadStandingNote(projectId);
   const messages: MessageParam[] = [
     { role: "system", content: subAgentPersona(kind, app) },
     {
       role: "user",
-      content: `${brief ? `${brief}\n\n## Your task\n` : ""}${run.task}\n\n${turnBudgetNote(maxSubagentTurns)}`,
+      content: `${[standing, brief].filter(Boolean).join("\n\n")}${standing || brief ? "\n\n## Your task\n" : ""}${run.task}\n\n${turnBudgetNote(maxSubagentTurns)}`,
     },
   ];
   const clearing = createClearingState();

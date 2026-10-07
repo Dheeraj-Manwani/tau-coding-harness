@@ -175,6 +175,58 @@ export function countChoices(config: DesignConfig): number {
   ].filter(Boolean).length;
 }
 
+/**
+ * The part of a choice that can be kept as a default look: everything but an
+ * imported file. Null when nothing is left.
+ */
+export function withoutImport(
+  config: DesignConfig,
+): Omit<DesignConfig, "designMd"> | null {
+  return compactConfig({ ...config, designMd: undefined });
+}
+
+/** Whether two choices are the same look, however their keys are ordered. */
+export function sameDesign(a: DesignConfig | null, b: DesignConfig | null): boolean {
+  const key = (config: DesignConfig | null) => {
+    const c = compactConfig(config ?? {}) ?? {};
+    return JSON.stringify([
+      c.style,
+      c.accent,
+      c.mode,
+      c.fonts,
+      c.dials?.variance,
+      c.dials?.motion,
+      c.dials?.density,
+      c.designMd,
+    ]);
+  };
+  return key(a) === key(b);
+}
+
+/** A choice in a few words, for places that show one without the picker. */
+export function describeChoice(
+  config: DesignConfig,
+  catalog: DesignCatalog | undefined,
+): string[] {
+  const style = catalog?.styles.find((s) => s.key === config.style);
+  const parts: string[] = [];
+  if (config.style) parts.push(style?.name ?? config.style);
+  if (config.mode) parts.push(config.mode === "dark" ? "Dark" : "Light");
+  if (config.fonts && config.fonts !== "default") {
+    parts.push(style?.fonts.find((f) => f.key === config.fonts)?.label ?? config.fonts);
+  }
+  if (config.dials && Object.keys(config.dials).length > 0) {
+    const preset = (Object.entries(catalog?.feelPresets ?? {}) as [FeelPreset, Dials][]).find(
+      ([, dials]) =>
+        (["variance", "motion", "density"] as const).every(
+          (dial) => config.dials?.[dial] === dials[dial],
+        ),
+    )?.[0];
+    parts.push(preset ? `${preset[0].toUpperCase()}${preset.slice(1)} feel` : "Custom feel");
+  }
+  return parts;
+}
+
 /** A config with empty parts removed, or null when nothing is left to send. */
 export function compactConfig(config: DesignConfig): DesignConfig | null {
   const out: DesignConfig = {};

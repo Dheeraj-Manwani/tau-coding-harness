@@ -68,7 +68,12 @@ export function findProjectById(id: string): Promise<Project | null> {
 
 export function updateProject(
   projectId: string,
-  data: { name?: string; description?: string | null; tags?: string[] },
+  data: {
+    name?: string;
+    description?: string | null;
+    tags?: string[];
+    instructions?: string | null;
+  },
 ): Promise<Project> {
   return prisma.project.update({ where: { id: projectId }, data });
 }

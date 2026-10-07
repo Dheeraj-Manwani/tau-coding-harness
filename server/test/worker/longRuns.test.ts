@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
+import {
+  CONTEXT_KEEP_TAIL_TOKENS,
+  CONTEXT_SUMMARIZE_RATIO,
+  keepTailTokensFor,
+} from "@/worker/agent/config";
 import { renderAppBrief } from "@/worker/agent/context/appBrief";
 import { createClearingState } from "@/worker/agent/context/clearing";
 import { shapeHistory } from "@/worker/agent/context/history";
@@ -264,6 +269,19 @@ describe("the summary", () => {
 
   test("a summary is still recognised by its header", () => {
     expect(SUMMARY_HEADER).toBe("## Summary of earlier conversation\n");
+  });
+
+  test("what it leaves unsummarized fits the window it is working in", () => {
+    // Seen in a real run at a 60,000-token budget: a fixed 24,000-token tail
+    // left each summary a few thousand tokens to free, and one build was
+    // summarized nine times in thirty turns.
+    expect(keepTailTokensFor(600_000)).toBe(CONTEXT_KEEP_TAIL_TOKENS);
+    expect(keepTailTokensFor(60_000)).toBe(15_000);
+    for (const budget of [8_000, 60_000, 120_000, 600_000]) {
+      const summarizeAt = CONTEXT_SUMMARIZE_RATIO * budget;
+      // At least half the budget is there to be summarized each time.
+      expect(summarizeAt - keepTailTokensFor(budget)).toBeGreaterThanOrEqual(budget / 2);
+    }
   });
 });
 

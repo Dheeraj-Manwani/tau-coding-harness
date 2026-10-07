@@ -2,6 +2,7 @@ import { z } from "zod";
 import { EDITABLE_ATTRS } from "../lib/visualEdit";
 import { THEME_TOKENS } from "../lib/themeEdit";
 import { MAX_IMPORTED_DESIGN_CHARS } from "@/worker/design/config";
+import { MAX_PROJECT_INSTRUCTIONS_CHARS } from "@/worker/agent/context/standing";
 import { STYLE_KEYS } from "@/worker/design/types";
 
 const MAX_PROMPT = 10_000;
@@ -117,9 +118,20 @@ export const updateProjectSchema = z
       .array(z.string().trim().min(1, "Tag can't be empty").max(MAX_TAG_LENGTH))
       .max(MAX_TAGS, `At most ${MAX_TAGS} tags`)
       .optional(),
+    // Standing instructions for tau in this project. Empty string clears them.
+    instructions: z
+      .string()
+      .trim()
+      .max(MAX_PROJECT_INSTRUCTIONS_CHARS, `Instructions can be at most ${MAX_PROJECT_INSTRUCTIONS_CHARS} characters`)
+      .refine((text) => !text.includes("\0"), "Instructions must be plain text")
+      .optional(),
   })
   .refine(
-    (v) => v.name !== undefined || v.description !== undefined || v.tags !== undefined,
+    (v) =>
+      v.name !== undefined ||
+      v.description !== undefined ||
+      v.tags !== undefined ||
+      v.instructions !== undefined,
     { message: "Nothing to update" },
   );
 

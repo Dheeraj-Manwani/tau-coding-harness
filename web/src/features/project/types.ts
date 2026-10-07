@@ -79,6 +79,9 @@ export interface ProjectSummary {
   description: string | null;
   /** User-edited labels. Empty, never null — same shape the API always sends. */
   tags: string[];
+  /** Standing instructions the user wrote for tau in this project; tau reads
+   *  them with every request and never edits them. Null when none are set. */
+  instructions: string | null;
   sandboxStatus: string;
   /** Durable one-way transition from the initial chat-only view. */
   workspaceStartedAt: string | null;
@@ -92,6 +95,7 @@ export interface ProjectListItem {
   name: string;
   description: string | null;
   tags: string[];
+  instructions: string | null;
   sandboxStatus: string;
   createdAt: string;
   updatedAt: string;

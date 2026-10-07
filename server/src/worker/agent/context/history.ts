@@ -29,7 +29,7 @@
 import type OpenAI from "openai";
 import type { Effort } from "@/generated/prisma/enums";
 import { effortDirective } from "../config";
-import { SUMMARY_HEADER } from "./summarize";
+import { summaryMessage } from "./summarize";
 import {
   clearedResultText,
   isClearable,
@@ -168,7 +168,7 @@ export function shapeHistory(
     entries.push({
       param: {
         role: "system",
-        content: `${SUMMARY_HEADER}${opts.checkpointSummary}`,
+        content: summaryMessage(opts.checkpointSummary),
       },
       seq: null,
     });

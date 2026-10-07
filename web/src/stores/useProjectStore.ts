@@ -468,6 +468,15 @@ function deriveActionItem(
         label: topic ? `Read the ${topic} guide` : "Read a guide",
       };
     }
+    case "search_history": {
+      const query = String(input.query ?? "").trim();
+      return {
+        kind: "list_dir",
+        label: query
+          ? `Looked back for: ${truncateLabel(query, 50)}`
+          : "Re-read an earlier message",
+      };
+    }
     case "add_backend":
       return { kind: "provision_sandbox", label: "Set up the server" };
     case "add_database":

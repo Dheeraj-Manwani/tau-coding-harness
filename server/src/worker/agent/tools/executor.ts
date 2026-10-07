@@ -30,6 +30,7 @@ import { enableAi } from "./functions/enable-ai";
 import { addBackendTool } from "./functions/add-backend";
 import { addDatabaseTool } from "./functions/add-database";
 import { readDocTool } from "./functions/read-doc";
+import { searchHistory } from "./functions/search-history";
 import { requestSecret } from "./functions/request-secret";
 import { awaitAnswer } from "./functions/await-answer";
 import { redactSecrets, redactToolResult } from "@/worker/lib/redact";
@@ -203,6 +204,8 @@ async function executeToolInner(
       return { success: true };
     case "read_doc":
       return readDocTool(input);
+    case "search_history":
+      return searchHistory(input, projectId);
     case "web_search":
       return webSearch(input);
     case "search_images":

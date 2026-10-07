@@ -808,6 +808,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
         name: detail.project.name,
         description: detail.project.description,
         tags: detail.project.tags,
+        instructions: detail.project.instructions,
         sandboxStatus: detail.project.sandboxStatus,
         createdAt: "",
         updatedAt: "",

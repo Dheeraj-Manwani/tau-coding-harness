@@ -19,6 +19,8 @@ import {
 } from "@/src/features/project/api";
 
 const MAX_DESCRIPTION = 2_000;
+/** Mirrors `MAX_PROJECT_INSTRUCTIONS_CHARS` on the server. */
+const MAX_INSTRUCTIONS = 4_000;
 const MAX_TAGS = 10;
 const MAX_TAG_LENGTH = 32;
 
@@ -27,6 +29,7 @@ export interface EditableProject {
   name: string;
   description: string | null;
   tags: string[];
+  instructions: string | null;
 }
 
 interface EditProjectDialogProps {
@@ -55,6 +58,7 @@ function EditProjectForm({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [tags, setTags] = useState<string[]>(project.tags ?? []);
+  const [instructions, setInstructions] = useState(project.instructions ?? "");
   const [tagDraft, setTagDraft] = useState("");
   const update = useUpdateProject(project.id);
 
@@ -81,7 +85,12 @@ function EditProjectForm({
   const handleSave = () => {
     if (!canSave) return;
     update.mutate(
-      { name: trimmedName, description: description.trim(), tags },
+      {
+        name: trimmedName,
+        description: description.trim(),
+        tags,
+        instructions: instructions.trim(),
+      },
       {
         onSuccess: (updated) => {
           toast.success("Project updated");
@@ -98,7 +107,8 @@ function EditProjectForm({
       <DialogHeader>
         <DialogTitle>Edit project</DialogTitle>
         <DialogDescription>
-          Update the name, description and tags.
+          Update the name, description and tags, and tell tau what to keep in
+          mind here.
         </DialogDescription>
       </DialogHeader>
 
@@ -178,6 +188,35 @@ function EditProjectForm({
           </p>
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="edit-project-instructions">
+            Instructions for tau{" "}
+            <span className="text-muted-foreground">(optional)</span>
+          </Label>
+          <textarea
+            id="edit-project-instructions"
+            value={instructions}
+            maxLength={MAX_INSTRUCTIONS}
+            disabled={update.isPending}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder={"e.g. The pricing page is signed off, don't change it without asking.\nPrices are in pounds."}
+            rows={4}
+            className="w-full resize-y rounded-lg border border-input bg-background p-3 text-sm outline-none transition-shadow focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/25"
+          />
+          <p className="flex justify-between gap-3 text-xs text-muted-foreground">
+            <span>
+              tau reads these with every request in this project, so you
+              don&rsquo;t have to repeat them.
+            </span>
+            {instructions.length > MAX_INSTRUCTIONS * 0.8 && (
+              <span className="shrink-0 tabular-nums">
+                {instructions.length.toLocaleString()} /{" "}
+                {MAX_INSTRUCTIONS.toLocaleString()}
+              </span>
+            )}
+          </p>
+        </div>
+
         {update.error && (
           <p role="alert" className="text-sm text-red-400">
             Couldn't update the project. Try again.
@@ -213,7 +252,7 @@ export function EditProjectDialog({
 }: EditProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         {project && (
           <EditProjectForm
             key={project.id}

@@ -13,6 +13,7 @@ import { api } from "@/src/lib/api-client";
 import { queryClient } from "@/src/lib/query-client";
 import { authKeys, useMe } from "@/src/features/auth/queries";
 import type { AuthUser } from "@/src/features/auth/types";
+import type { DesignConfig } from "@/src/features/design/api";
 import type { Effort } from "@/src/features/project/types";
 
 export type TourId = "workspace" | "preview";
@@ -34,28 +35,54 @@ export interface Preferences {
    *  is what lets the plan default apply (see useEffortChoice). */
   lastEffort?: Effort;
   tours?: Partial<Record<TourId, TourRecord>>;
+  /** Standing instructions for everything the user builds, in their own
+   *  words. tau reads them with every request. Absent when none are set. */
+  instructions?: string;
+  /** The look new projects start from unless another is chosen. */
+  defaultDesign?: DefaultDesign;
 }
+
+/** A default look is a choice of style, colour and feel; never an imported
+ *  `DESIGN.md`, which belongs to the project it was written for. */
+export type DefaultDesign = Omit<DesignConfig, "designMd">;
 
 export interface PreferencesPatch {
   reduceMotion?: boolean;
   hasSeenMotionIntro?: boolean;
   lastEffort?: Effort;
   tours?: Partial<Record<TourId, Pick<TourRecord, "version" | "outcome">>>;
+  /** An empty string clears them. */
+  instructions?: string;
+  /** Replaced whole; `null` clears it. */
+  defaultDesign?: DefaultDesign | null;
 }
 
 const EMPTY: Preferences = {};
 
 /**
  * The same merge the server runs: top-level keys replace, `tours` merges one
- * level deeper. Used for the optimistic cache write.
+ * level deeper, and a cleared value reads back as not set. Used for the
+ * optimistic cache write.
  */
 export function mergePreferences(
   prev: Preferences,
   patch: PreferencesPatch,
   now: Date = new Date(),
 ): Preferences {
-  const { tours, ...top } = patch;
+  const { tours, instructions, defaultDesign, ...top } = patch;
   const next: Preferences = { ...prev, ...top };
+  if (instructions !== undefined) {
+    const text = instructions.trim();
+    if (text) next.instructions = text;
+    else delete next.instructions;
+  }
+  if (defaultDesign !== undefined) {
+    if (defaultDesign && Object.keys(defaultDesign).length > 0) {
+      next.defaultDesign = defaultDesign;
+    } else {
+      delete next.defaultDesign;
+    }
+  }
   if (tours) {
     const stamped: Partial<Record<TourId, TourRecord>> = {};
     for (const [id, result] of Object.entries(tours) as [

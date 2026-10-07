@@ -68,6 +68,9 @@ export const CLEARABLE_TOOLS: ReadonlySet<string> = new Set([
   "tail_command_output",
   "web_search",
   "search_images",
+  // The stored conversation does not change; the same search gives the same
+  // answer whenever it is asked.
+  "search_history",
   // Normally `{ success: true }`, far too small to clear. On the request that
   // creates an app it also carries the new app's memory and map (`appBrief.ts`),
   // which every later request is given afresh.

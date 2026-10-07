@@ -2,8 +2,8 @@ import {
   contextBudgetForModel,
   CONTEXT_CLEAR_TARGET_RATIO,
   CONTEXT_COMPACT_RATIO,
-  CONTEXT_KEEP_TAIL_TOKENS,
   CONTEXT_SUMMARIZE_RATIO,
+  keepTailTokensFor,
   MAX_TOOL_RESULT_TOKENS,
 } from "../config";
 import { log } from "../../lib/log";
@@ -114,7 +114,7 @@ export async function manageContext(
     // turn. Retry once before giving up.
     const res = await summarizeWithRetry(entries, {
       model: opts.model,
-      keepTailTokens: CONTEXT_KEEP_TAIL_TOKENS,
+      keepTailTokens: keepTailTokensFor(budget),
       maxToolResultTokens: MAX_TOOL_RESULT_TOKENS,
     });
     if (res) {

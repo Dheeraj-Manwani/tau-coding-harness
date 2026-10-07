@@ -10,6 +10,24 @@ import type { Entry, MessageParam } from "./types";
 export const SUMMARY_HEADER = "## Summary of earlier conversation\n";
 
 /**
+ * Said after every summary. A summary reads as the whole of what happened; the
+ * agent has to be told that it is not, and where the rest is.
+ */
+export const SUMMARY_FOOTER =
+  "\n\n[The messages this summary replaces are still stored. `search_history` finds a detail it left out.]";
+
+/** A summary as it sits in the conversation. */
+export function summaryMessage(summary: string): string {
+  return `${SUMMARY_HEADER}${summary}${SUMMARY_FOOTER}`;
+}
+
+/** The summary inside such a message. */
+export function summaryOf(message: string): string {
+  const body = message.slice(SUMMARY_HEADER.length);
+  return body.endsWith(SUMMARY_FOOTER) ? body.slice(0, -SUMMARY_FOOTER.length) : body;
+}
+
+/**
  * The summary's sections, in order. Fixed, so that a summary of a summary
  * keeps its shape and the agent always knows where to look for what.
  */
@@ -40,10 +58,11 @@ Your output has a hard token limit, and it must come out far smaller than the tr
 
 /**
  * Blocks tau attaches to a user's message — the app's memory and map, the
- * effort note, a previous plan. They are restored fresh after a summary, so
+ * effort note, a previous plan, the user's standing instructions. They are
+ * restored fresh after a summary, so
  * handing them to the summarizer would only invite it to copy them.
  */
-const TAU_BLOCK = /\n*<(tau_app|tau_effort|tau_previous_plan)>[\s\S]*?<\/\1>/g;
+const TAU_BLOCK = /\n*<(tau_app|tau_effort|tau_previous_plan|tau_instructions)>[\s\S]*?<\/\1>/g;
 
 /** A user message as the summarizer should read it: the user's words only. */
 export function withoutTauBlocks(text: string): string {
@@ -119,7 +138,7 @@ export async function summarize(
       typeof e.param.content === "string" &&
       e.param.content.startsWith(SUMMARY_HEADER)
     ) {
-      prevSummary = e.param.content.slice(SUMMARY_HEADER.length);
+      prevSummary = summaryOf(e.param.content);
     } else if (isRestoredState(e.param)) {
       // State restored after the last summary. It is not conversation, and a
       // fresh copy follows this summary too.
@@ -166,7 +185,7 @@ export async function summarize(
   if (!summaryText) return null;
 
   const summaryEntry: Entry = {
-    param: { role: "system", content: `${SUMMARY_HEADER}${summaryText}` },
+    param: { role: "system", content: summaryMessage(summaryText) },
     seq: null,
   };
 

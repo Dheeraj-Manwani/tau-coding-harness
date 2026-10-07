@@ -53,6 +53,8 @@ export interface RunState {
   work: { created: readonly string[]; edited: readonly string[]; deleted: number } | null;
   /** Guides that were in the conversation before it was summarized. */
   guides: readonly string[];
+  /** The `<tau_instructions>` block: what the user told tau to do every time. */
+  standing?: string | null;
   /** The `<tau_app>` block, read fresh. */
   brief: string | null;
 }
@@ -67,7 +69,7 @@ function pathList(label: string, paths: readonly string[]): string | null {
 /** The block's text. Pure. */
 export function renderRestoredState(state: RunState): string {
   const sections: string[] = [
-    `${RESTORED_HEADER}\nThe conversation before this point was summarized to save space; the summary is above. What follows is tau's own record of where this request stands, restored in full rather than summarized. It is not a new message from the user and needs no reply: carry on with the work.`,
+    `${RESTORED_HEADER}\nThe conversation before this point was summarized to save space; the summary is above. What follows is tau's own record of where this request stands, restored in full rather than summarized. It is not a new message from the user and needs no reply: carry on with the work. Anything else from before the summary is still stored, and \`search_history\` finds it.`,
   ];
 
   if (state.request?.trim()) {
@@ -112,6 +114,7 @@ export function renderRestoredState(state: RunState): string {
     );
   }
 
+  if (state.standing) sections.push(state.standing);
   if (state.brief) sections.push(state.brief);
 
   return sections.join("\n\n");

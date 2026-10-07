@@ -167,6 +167,11 @@ interface DesignPickerProps {
    * is "keep what it has".
    */
   current?: DesignSummary | null;
+  /**
+   * Whether a DESIGN.md can be brought. False where the choice outlives the
+   * project — a default look — because a design file is written for one app.
+   */
+  allowImport?: boolean;
 }
 
 /**
@@ -178,7 +183,13 @@ interface DesignPickerProps {
  * Editorial apps without having chosen to, and the point of tau deciding is
  * that the look fits what is being built.
  */
-export function DesignPicker({ catalog, value, onChange, current }: DesignPickerProps) {
+export function DesignPicker({
+  catalog,
+  value,
+  onChange,
+  current,
+  allowImport = true,
+}: DesignPickerProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [fineTune, setFineTune] = useState(false);
   const [importOpen, setImportOpen] = useState(Boolean(value.designMd));
@@ -404,6 +415,7 @@ export function DesignPicker({ catalog, value, onChange, current }: DesignPicker
         )}
       </Section>
 
+      {allowImport && (
       <section className="rounded-lg border border-silver-400/20">
         <button
           type="button"
@@ -471,6 +483,7 @@ export function DesignPicker({ catalog, value, onChange, current }: DesignPicker
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

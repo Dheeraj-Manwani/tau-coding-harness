@@ -25,6 +25,7 @@ import { useBalance } from "@/src/features/billing/api";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { StormCanvas } from "@/src/components/StormCanvas";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+import { useSettings } from "@/src/hooks/useSettings";
 import { cn } from "@/src/lib/utils";
 
 // Free plan may own at most this many concurrent projects (mirrors
@@ -58,9 +59,13 @@ function Home() {
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
   const attachments = useAttachments();
-  // The look chosen for this project, if any. Not persisted between projects:
-  // a style picked for a bakery should not quietly dress the next dashboard.
-  const [design, setDesign] = useState<DesignConfig>({});
+  // The look chosen for this project. Null until the user touches the picker,
+  // and the composer then shows their default look, if they have set one in
+  // Settings. A choice made here is not carried to the next project: a style
+  // picked for a bakery should not quietly dress the next dashboard.
+  const [chosenDesign, setChosenDesign] = useState<DesignConfig | null>(null);
+  const { defaultDesign, setDefaultDesign } = useSettings();
+  const design: DesignConfig = chosenDesign ?? defaultDesign ?? {};
   const isSubmitting = initProject.isPending;
   // Otherwise the suggestion carousel animates over the chip rail.
   const showPlaceholder =
@@ -113,11 +118,20 @@ function Home() {
     // route. The prompt + jobId ride along in router state so the workspace can
     // show the message and subscribe to the live stream immediately.
     initProject.mutate(
-      { message, effort, attachmentIds, design: compactConfig(design) ?? undefined },
+      {
+        message,
+        effort,
+        attachmentIds,
+        // What the composer shows is what is sent. Untouched and empty is left
+        // out, so the server applies the default look itself (it may not have
+        // loaded here yet). Emptied by hand is sent empty: that is the user
+        // saying "not my default, let tau decide".
+        design: compactConfig(design) ?? (chosenDesign ? {} : undefined),
+      },
       {
         onSuccess: ({ projectId, jobId }) => {
           attachments.clear();
-          setDesign({});
+          setChosenDesign(null);
           // Flag this project so its page plays the centered → split reveal once.
           markFreshBuild(projectId);
           navigate(projectPath(projectId), {
@@ -194,8 +208,13 @@ function Home() {
                   <>
                     <DesignButton
                       value={design}
-                      onChange={setDesign}
+                      onChange={setChosenDesign}
                       disabled={atProjectLimit || isSubmitting}
+                      savedDefault={defaultDesign}
+                      onSaveDefault={(look) => {
+                        setDefaultDesign(look);
+                        toast.success("New projects will start from this look");
+                      }}
                     />
                     <EffortToggle effort={effort} onChange={setEffort} />
                   </>

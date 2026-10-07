@@ -19,6 +19,7 @@
 import { prisma } from "@/lib/prisma";
 import { log } from "../lib/log";
 import { meterModelCall } from "../lib/meterCall";
+import { loadStanding } from "../agent/context/standing";
 import type { StackContext } from "../lib/appStack";
 import { applyDesign, type ApplyResult } from "./apply";
 import { normalizeDesignConfig } from "./config";
@@ -66,12 +67,17 @@ async function userChoices(projectId: string): Promise<DesignConfig> {
  */
 export function startDesign(projectId: string, agentBrief: string): Promise<DirectorResult> {
   return (async () => {
-    const [said, config] = await Promise.all([
+    const [said, config, standing] = await Promise.all([
       firstUserMessage(projectId).catch(() => ""),
       userChoices(projectId).catch((): DesignConfig => ({})),
+      loadStanding(projectId),
     ]);
+    // Standing instructions can be about the look — "always dark", "our brand
+    // colour is #0b5fff" — and the director is who acts on those.
+    const told = [standing.user, standing.project].filter(Boolean).join("\n");
     const brief = [
       said.trim() ? `What the user asked for:\n${said.trim()}` : "",
+      told ? `Standing instructions from the user, which apply to everything they build:\n${told}` : "",
       agentBrief.trim() ? `What is about to be built:\n${agentBrief.trim()}` : "",
     ]
       .filter(Boolean)

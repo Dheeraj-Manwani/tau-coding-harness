@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { MAX_USER_INSTRUCTIONS_CHARS } from "@/worker/agent/context/standing";
+import { normalizeDesignConfig } from "@/worker/design/config";
+import { STYLE_KEYS, type DesignConfig } from "@/worker/design/types";
 
 /**
  * Account-level preferences, stored as one jsonb column on `User`.
@@ -32,11 +35,46 @@ const tourRecordSchema = z.object({
 
 export type TourRecord = z.infer<typeof tourRecordSchema>;
 
+/**
+ * The look a user wants new projects to start from: any of a style, an accent,
+ * light or dark, a font pairing and the feel. Never an imported `DESIGN.md` —
+ * a file belongs to the project it was written for.
+ */
+export type DefaultDesign = Omit<DesignConfig, "designMd">;
+
+const dial = z.number().int().min(1).max(10);
+
+const defaultDesignSchema = z
+  .object({
+    style: z.enum(STYLE_KEYS),
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    mode: z.enum(["light", "dark"]),
+    fonts: z.string().min(1).max(40),
+    dials: z.object({ variance: dial, motion: dial, density: dial }).partial().strict(),
+  })
+  .partial()
+  .strict();
+
+/** A stored default look with anything unusable dropped; undefined when nothing is left. */
+function readDefaultDesign(raw: unknown): DefaultDesign | undefined {
+  const config = normalizeDesignConfig(raw);
+  if (!config) return undefined;
+  const { designMd: _file, ...rest } = config;
+  return Object.keys(rest).length > 0 ? rest : undefined;
+}
+
 export interface Preferences {
   reduceMotion?: boolean;
   hasSeenMotionIntro?: boolean;
   lastEffort?: z.infer<typeof effortSchema>;
   tours?: Partial<Record<TourId, TourRecord>>;
+  /**
+   * Standing instructions for everything the user builds, in their own words.
+   * Attached to every request (`worker/agent/context/standing.ts`).
+   */
+  instructions?: string;
+  /** The look new projects start from unless the user chooses another. */
+  defaultDesign?: DefaultDesign;
 }
 
 export const patchPreferencesSchema = z
@@ -51,6 +89,14 @@ export const patchPreferencesSchema = z
       })
       .partial()
       .strict(),
+    // An empty string clears them.
+    instructions: z
+      .string()
+      .max(MAX_USER_INSTRUCTIONS_CHARS, `Instructions can be at most ${MAX_USER_INSTRUCTIONS_CHARS} characters`)
+      .refine((text) => !text.includes("\0"), "Instructions must be plain text"),
+    // `null` clears it. Replaced whole, never merged: half of one default and
+    // half of another is a look nobody chose.
+    defaultDesign: defaultDesignSchema.nullable(),
   })
   .partial()
   .strict()
@@ -67,6 +113,12 @@ const storedPreferencesSchema = z.object({
   reduceMotion: z.boolean().optional().catch(undefined),
   hasSeenMotionIntro: z.boolean().optional().catch(undefined),
   lastEffort: effortSchema.optional().catch(undefined),
+  instructions: z
+    .string()
+    .transform((text) => text.trim().slice(0, MAX_USER_INSTRUCTIONS_CHARS) || undefined)
+    .optional()
+    .catch(undefined),
+  defaultDesign: z.unknown().transform(readDefaultDesign).optional().catch(undefined),
   tours: z
     .object({
       workspace: tourRecordSchema.optional().catch(undefined),

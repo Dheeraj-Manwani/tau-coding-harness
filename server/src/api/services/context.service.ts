@@ -16,9 +16,9 @@ import { loadHistory } from "@/worker/agent/loop";
 import { summarize } from "@/worker/agent/context/summarize";
 import { estimateTokens } from "@/worker/agent/context/tokens";
 import {
-  CONTEXT_KEEP_TAIL_TOKENS,
   MAX_TOOL_RESULT_TOKENS,
   contextBudgetForModel,
+  keepTailTokensFor,
   modelForEffort,
 } from "@/worker/agent/config";
 import type { Entry } from "@/worker/agent/context/types";
@@ -106,7 +106,7 @@ export async function summarizeProjectChat(projectId: string, userId: string) {
 
   const result = await summarize(entries, {
     model: modelForEffort("HIGH"),
-    keepTailTokens: CONTEXT_KEEP_TAIL_TOKENS,
+    keepTailTokens: keepTailTokensFor(contextBudgetForModel(modelForEffort("HIGH"))),
     maxToolResultTokens: MAX_TOOL_RESULT_TOKENS,
   });
   if (!result) {

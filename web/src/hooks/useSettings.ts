@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import {
   usePreferences,
   useUpdatePreferences,
+  type DefaultDesign,
   type TourId,
   type TourOutcome,
 } from "@/src/features/settings/preferences";
@@ -13,7 +14,8 @@ import { useSettingsStore } from "@/src/stores/useSettingsStore";
  * One read/write surface for every user setting, wherever it is stored.
  *
  *   account (server, follows the user): reduceMotion, hasSeenMotionIntro,
- *                                       lastEffort, tours
+ *                                       lastEffort, tours, instructions,
+ *                                       defaultDesign
  *   device  (localStorage):             notifyWhenReady, notificationSound
  *
  * Callers should not need to know which is which; moving a setting between the
@@ -45,12 +47,23 @@ export function useSettings() {
       mutate({ tours: { [id]: { version, outcome } } }),
     [mutate],
   );
+  const setInstructions = useCallback(
+    (instructions: string) => mutate({ instructions: instructions.trim() }),
+    [mutate],
+  );
+  // Null clears it: new projects go back to tau deciding.
+  const setDefaultDesign = useCallback(
+    (defaultDesign: DefaultDesign | null) => mutate({ defaultDesign }),
+    [mutate],
+  );
 
   return {
     reduceMotion: preferences.reduceMotion ?? false,
     hasSeenMotionIntro: preferences.hasSeenMotionIntro ?? false,
     lastEffort: preferences.lastEffort ?? null,
     tours: preferences.tours ?? {},
+    instructions: preferences.instructions ?? "",
+    defaultDesign: preferences.defaultDesign ?? null,
     notifyWhenReady,
     notificationSound,
 
@@ -58,6 +71,8 @@ export function useSettings() {
     markMotionIntroSeen,
     setLastEffort,
     recordTour,
+    setInstructions,
+    setDefaultDesign,
     setNotifyWhenReady,
     setNotificationSound,
   };

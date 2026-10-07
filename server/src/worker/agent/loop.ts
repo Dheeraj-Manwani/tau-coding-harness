@@ -43,6 +43,7 @@ import {
 } from "./config";
 import { manageContext } from "./context/manager";
 import { requestText, restoredEntry } from "./context/restore";
+import { loadStandingNote } from "./context/standing";
 import { loadPlan, unfinishedPlanNote } from "./plan";
 import { createClearingState } from "./context/clearing";
 import { jobIdsIn, shapeHistory } from "./context/history";
@@ -451,7 +452,10 @@ export async function runAgentLoop(
     // and how far it got (agent/plan.ts).
     const previousPlan = await unfinishedPlanNote(projectId, jobId).catch(() => null);
     if (previousPlan) log.info("job.previous_plan", { jobId, projectId });
-    const requestNote = [brief, previousPlan].filter(Boolean).join("\n\n") || null;
+    // What the user has told tau to do every time, in their settings
+    // (context/standing.ts). First, so it frames everything after it.
+    const standing = await loadStandingNote(projectId);
+    const requestNote = [standing, brief, previousPlan].filter(Boolean).join("\n\n") || null;
 
     let entries: Entry[] = [
       { param: { role: "system", content: systemPrompt }, seq: null },
@@ -564,6 +568,7 @@ export async function runAgentLoop(
                 ? { created: [...work.created], edited: [...work.edited], deleted: work.deleted }
                 : null,
             guides: docs ? [...docs.loaded] : [],
+            standing: await loadStandingNote(projectId),
             brief: generation === 2 ? await loadAppBrief(projectId, "restored") : null,
           };
           const entry = restoredEntry(state);

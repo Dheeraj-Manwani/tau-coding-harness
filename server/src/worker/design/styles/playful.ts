@@ -14,6 +14,26 @@ export const playful: StyleSpec = {
     body: variableFont("Nunito", "nunito", SANS_FALLBACK),
     mono: SYSTEM_MONO,
   },
+  fontOptions: [
+    {
+      key: "baloo",
+      label: "Baloo 2 + Quicksand",
+      fonts: {
+        display: variableFont("Baloo 2", "baloo-2", SANS_FALLBACK),
+        body: variableFont("Quicksand", "quicksand", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+    {
+      key: "grandstander",
+      label: "Grandstander + Nunito",
+      fonts: {
+        display: variableFont("Grandstander", "grandstander", SANS_FALLBACK),
+        body: variableFont("Nunito", "nunito", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 7, motion: 8, density: 3 },
   radius: "1rem",

@@ -117,6 +117,13 @@ model Project {
   /// never persisted to the manifest, so it has to be rewritten each rebuild.
   aiEnabled Boolean @default(false)
 
+  /// What the user chose about the app's look — a style, an accent, light or
+  /// dark, a font pairing, the three feel dials, or a DESIGN.md they brought
+  /// (`DesignConfig` in worker/design/types.ts). Null means they chose nothing
+  /// and tau decided. How the app looks now is in its `.tau/DESIGN.md`; this is
+  /// only the record of which parts of that were the user's own decision.
+  designConfig Json?
+
   previewImageKey       String?
   previewImageUpdatedAt DateTime?
 

@@ -12,6 +12,26 @@ export const swiss: StyleSpec = {
   avoid: "Not for anything that should feel warm, handmade, cosy or playful.",
 
   fonts: { display: grotesk, body: grotesk, mono: SYSTEM_MONO },
+  fontOptions: [
+    {
+      key: "schibsted",
+      label: "Schibsted Grotesk",
+      fonts: {
+        display: variableFont("Schibsted Grotesk", "schibsted-grotesk", SANS_FALLBACK),
+        body: variableFont("Schibsted Grotesk", "schibsted-grotesk", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+    {
+      key: "space",
+      label: "Space Grotesk",
+      fonts: {
+        display: variableFont("Space Grotesk", "space-grotesk", SANS_FALLBACK),
+        body: variableFont("Space Grotesk", "space-grotesk", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 5, motion: 3, density: 5 },
   radius: "0.25rem",

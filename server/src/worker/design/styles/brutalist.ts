@@ -14,6 +14,26 @@ export const brutalist: StyleSpec = {
     body: variableFont("Archivo", "archivo", SANS_FALLBACK),
     mono: staticFont("Space Mono", "space-mono", [400, 700], MONO_FALLBACK),
   },
+  fontOptions: [
+    {
+      key: "unbounded",
+      label: "Unbounded + Space Grotesk",
+      fonts: {
+        display: variableFont("Unbounded", "unbounded", SANS_FALLBACK),
+        body: variableFont("Space Grotesk", "space-grotesk", SANS_FALLBACK),
+        mono: staticFont("Space Mono", "space-mono", [400, 700], MONO_FALLBACK),
+      },
+    },
+    {
+      key: "syne",
+      label: "Syne + Archivo",
+      fonts: {
+        display: variableFont("Syne", "syne", SANS_FALLBACK),
+        body: variableFont("Archivo", "archivo", SANS_FALLBACK),
+        mono: staticFont("Space Mono", "space-mono", [400, 700], MONO_FALLBACK),
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 8, motion: 5, density: 5 },
   radius: "0rem",

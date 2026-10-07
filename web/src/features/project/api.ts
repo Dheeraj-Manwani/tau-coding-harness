@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, isTerminalRequestError } from "@/src/lib/api-client";
 import { projectGithubKeys } from "@/src/features/project/github";
+import type { DesignConfig } from "@/src/features/design/api";
 import {
   locToPath,
   type VisualEditOpInput,
@@ -86,6 +87,8 @@ export function useInitProject() {
       message: string;
       effort: Effort;
       attachmentIds?: string[];
+      /** The look chosen in the composer, if any; everything left out is tau's to decide. */
+      design?: DesignConfig;
     }) => api.post<InitProjectResponse>("/project", vars).then((r) => r.data),
   });
 }

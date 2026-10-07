@@ -9,6 +9,10 @@
  * Only a brand-new app is designed this way. An app that already has files
  * has a look already — one tau gave it, or one the user has since changed —
  * and overwriting its stylesheet on a later request would undo their work.
+ * Changing that look on purpose is a restyle (`api/services/design.service.ts`).
+ *
+ * Whatever the user chose in the composer (`Project.designConfig`) is read
+ * here and handed to the director, which decides only what they left open.
  *
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
@@ -17,8 +21,10 @@ import { log } from "../lib/log";
 import { meterModelCall } from "../lib/meterCall";
 import type { StackContext } from "../lib/appStack";
 import { applyDesign, type ApplyResult } from "./apply";
+import { normalizeDesignConfig } from "./config";
 import { directDesign, type DirectorResult } from "./director";
-import type { DesignChoice } from "./types";
+import { parseImportedDesign } from "./importDesign";
+import type { DesignChoice, DesignConfig } from "./types";
 
 /** The user's own words: the message that started the project. */
 async function firstUserMessage(projectId: string): Promise<string> {
@@ -42,6 +48,15 @@ async function firstUserMessage(projectId: string): Promise<string> {
   return "";
 }
 
+/** What the user chose for this project's look; empty when they chose nothing. */
+async function userChoices(projectId: string): Promise<DesignConfig> {
+  const row = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { designConfig: true },
+  });
+  return normalizeDesignConfig(row?.designConfig) ?? {};
+}
+
 /**
  * Begin deciding the design. Resolves to the choice; never rejects.
  *
@@ -51,14 +66,18 @@ async function firstUserMessage(projectId: string): Promise<string> {
  */
 export function startDesign(projectId: string, agentBrief: string): Promise<DirectorResult> {
   return (async () => {
-    const said = await firstUserMessage(projectId).catch(() => "");
+    const [said, config] = await Promise.all([
+      firstUserMessage(projectId).catch(() => ""),
+      userChoices(projectId).catch((): DesignConfig => ({})),
+    ]);
     const brief = [
       said.trim() ? `What the user asked for:\n${said.trim()}` : "",
       agentBrief.trim() ? `What is about to be built:\n${agentBrief.trim()}` : "",
     ]
       .filter(Boolean)
       .join("\n\n");
-    return directDesign(brief, projectId);
+    const imported = config.designMd ? parseImportedDesign(config.designMd) : undefined;
+    return directDesign(brief, projectId, config, imported);
   })();
 }
 

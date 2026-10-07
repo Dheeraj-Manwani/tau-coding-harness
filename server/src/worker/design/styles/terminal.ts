@@ -12,6 +12,26 @@ export const terminal: StyleSpec = {
   avoid: "Not for consumer apps, or for people who do not work at a keyboard.",
 
   fonts: { display: mono, body: mono, mono },
+  fontOptions: [
+    {
+      key: "fira",
+      label: "Fira Code",
+      fonts: {
+        display: variableFont("Fira Code", "fira-code", MONO_FALLBACK),
+        body: variableFont("Fira Code", "fira-code", MONO_FALLBACK),
+        mono: variableFont("Fira Code", "fira-code", MONO_FALLBACK),
+      },
+    },
+    {
+      key: "source-code",
+      label: "Source Code Pro",
+      fonts: {
+        display: variableFont("Source Code Pro", "source-code-pro", MONO_FALLBACK),
+        body: variableFont("Source Code Pro", "source-code-pro", MONO_FALLBACK),
+        mono: variableFont("Source Code Pro", "source-code-pro", MONO_FALLBACK),
+      },
+    },
+  ],
   defaultMode: "dark",
   dials: { variance: 4, motion: 3, density: 8 },
   radius: "0rem",

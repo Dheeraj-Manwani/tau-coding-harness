@@ -26,6 +26,9 @@ export const STYLE_KEYS = [
   "playful",
   "luxe",
   "workbench",
+  "craft",
+  "neon",
+  "formal",
 ] as const;
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
@@ -46,6 +49,26 @@ export interface FontRef {
    */
   pkg?: string;
   imports?: readonly string[];
+}
+
+/** The three typefaces of a look. */
+export interface FontSet {
+  display: FontRef;
+  body: FontRef;
+  mono: FontRef;
+}
+
+/**
+ * Another set of typefaces a style works in, for a user who likes the style
+ * and not its type. Chosen to keep the style's character: a magazine style
+ * offers other serifs, not a rounded sans.
+ */
+export interface FontPairing {
+  /** Stable, lower-case: stored with the project. */
+  key: string;
+  /** What to call it where someone chooses: "Playfair Display + Karla". */
+  label: string;
+  fonts: FontSet;
 }
 
 /** A lightness and a chroma; the hue comes from the accent or the neutral. */
@@ -178,7 +201,9 @@ export interface StyleSpec {
   /** What it is wrong for — "Not for …" — which narrows a choice more than praise does. */
   avoid: string;
 
-  fonts: { display: FontRef; body: FontRef; mono: FontRef };
+  fonts: FontSet;
+  /** Other pairings the style works in. `fonts` is the default and is not repeated here. */
+  fontOptions: readonly FontPairing[];
   defaultMode: Mode;
   dials: Dials;
   /** The base `--radius`. */
@@ -218,17 +243,61 @@ export interface StyleSpec {
   };
 }
 
+/**
+ * What a user asked for, when starting an app or restyling one. Every part is
+ * optional, and whatever is left out is tau's to decide: someone who picks a
+ * style and nothing else still gets a colour that suits the subject.
+ *
+ * Stored on the project (`Project.designConfig`) as the record of what the
+ * user chose, as opposed to what tau chose for them.
+ */
+export interface DesignConfig {
+  style?: StyleKey;
+  /** `#rrggbb`. Used exactly as given. */
+  accent?: string;
+  mode?: Mode;
+  /** A font pairing of the style: `"default"` or a key from its `fontOptions`. */
+  fonts?: string;
+  dials?: Partial<Dials>;
+  /** A `DESIGN.md` the user brought with them, whole. */
+  designMd?: string;
+}
+
 /** What was decided for one app: a style, and how it is tuned. */
 export interface DesignChoice {
   style: StyleKey;
   /** The accent colour, as hex. */
   accent: string;
-  /** The brief named this exact colour, so it is used as given rather than fitted to the style. */
+  /** This exact colour was asked for, so it is used as given rather than fitted to the style. */
   accentExact: boolean;
   mode: Mode;
   dials: Dials;
+  /** Which of the style's font pairings. Omitted for the style's own. */
+  fonts?: string;
   /** "Reading this as …" — one sentence on what is being built and how it should feel. */
   read: string;
-  /** How the choice was made, for the run log. */
-  source: "director" | "fallback";
+  /**
+   * How the choice was made, for the run log: by the director from the brief,
+   * by the fallback when the director could not, or with something the user
+   * chose (`user`) or brought (`import`).
+   */
+  source: "director" | "fallback" | "user" | "import";
+  /** A design the user imported, which this choice is built around. */
+  imported?: ImportedDesign;
+}
+
+/** The parts of an imported `DESIGN.md` that tau can turn into a stylesheet. */
+export interface ImportedTokens {
+  /** Theme token name (`primary`, `background`, `card`, …) to hex. */
+  colors: Record<string, string>;
+  /** Family names as written: "Inter", "Playfair Display". */
+  fonts: { display?: string; body?: string; mono?: string };
+  /** A CSS length for `--radius`. */
+  radius?: string;
+}
+
+export interface ImportedDesign {
+  /** The file as the user gave it. */
+  text: string;
+  tokens: ImportedTokens;
 }

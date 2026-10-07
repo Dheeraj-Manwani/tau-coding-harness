@@ -29,6 +29,7 @@
  *
  * Pure: text in, findings out. The loop decides when to run it (`agent/loop.ts`).
  */
+import { fontSetsOf } from "./styles";
 import type { StyleSpec } from "./types";
 
 export type RuleId =
@@ -335,9 +336,13 @@ export function checkPackageJson(text: string, ctx: CheckContext = {}): Finding[
     return [];
   }
 
+  // Any of the style's pairings: the user may have chosen one of the others.
   const allowedFonts = new Set(
     ctx.style
-      ? Object.values(ctx.style.fonts).map((f) => f.pkg).filter((p): p is string => !!p)
+      ? fontSetsOf(ctx.style)
+          .flatMap((fonts) => Object.values(fonts))
+          .map((f) => f.pkg)
+          .filter((p): p is string => !!p)
       : [],
   );
   // The scaffold ships with this one; it is not something the agent added.

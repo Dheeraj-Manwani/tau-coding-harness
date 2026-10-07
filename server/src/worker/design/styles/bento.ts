@@ -14,6 +14,26 @@ export const bento: StyleSpec = {
     body: variableFont("Onest", "onest", SANS_FALLBACK),
     mono: variableFont("Geist Mono", "geist-mono", MONO_FALLBACK),
   },
+  fontOptions: [
+    {
+      key: "sora",
+      label: "Sora + DM Sans",
+      fonts: {
+        display: variableFont("Sora", "sora", SANS_FALLBACK),
+        body: variableFont("DM Sans", "dm-sans", SANS_FALLBACK),
+        mono: variableFont("Geist Mono", "geist-mono", MONO_FALLBACK),
+      },
+    },
+    {
+      key: "urbanist",
+      label: "Urbanist + Albert Sans",
+      fonts: {
+        display: variableFont("Urbanist", "urbanist", SANS_FALLBACK),
+        body: variableFont("Albert Sans", "albert-sans", SANS_FALLBACK),
+        mono: variableFont("Geist Mono", "geist-mono", MONO_FALLBACK),
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 6, motion: 5, density: 5 },
   radius: "0.875rem",

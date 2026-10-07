@@ -9,6 +9,8 @@ import { useAttachments } from "@/src/features/composer/attachments/useAttachmen
 import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortToggle } from "@/src/features/composer/EffortToggle";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
+import { DesignButton } from "@/src/features/design/DesignButton";
+import { compactConfig, type DesignConfig } from "@/src/features/design/api";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { CommunityProjects } from "@/src/features/project/CommunityProjects";
 import { HomeFooter } from "@/src/components/HomeFooter";
@@ -56,6 +58,9 @@ function Home() {
   const [suggestion, setSuggestion] = useState(0);
   const [initializing, setInitializing] = useState(false);
   const attachments = useAttachments();
+  // The look chosen for this project, if any. Not persisted between projects:
+  // a style picked for a bakery should not quietly dress the next dashboard.
+  const [design, setDesign] = useState<DesignConfig>({});
   const isSubmitting = initProject.isPending;
   // Otherwise the suggestion carousel animates over the chip rail.
   const showPlaceholder =
@@ -108,10 +113,11 @@ function Home() {
     // route. The prompt + jobId ride along in router state so the workspace can
     // show the message and subscribe to the live stream immediately.
     initProject.mutate(
-      { message, effort, attachmentIds },
+      { message, effort, attachmentIds, design: compactConfig(design) ?? undefined },
       {
         onSuccess: ({ projectId, jobId }) => {
           attachments.clear();
+          setDesign({});
           // Flag this project so its page plays the centered → split reveal once.
           markFreshBuild(projectId);
           navigate(projectPath(projectId), {
@@ -184,7 +190,16 @@ function Home() {
                 onRemoveAttachment={attachments.remove}
                 onPasteLarge={attachments.addPaste}
                 attachmentsBusy={attachments.isBusy}
-                rightSlot={<EffortToggle effort={effort} onChange={setEffort} />}
+                rightSlot={
+                  <>
+                    <DesignButton
+                      value={design}
+                      onChange={setDesign}
+                      disabled={atProjectLimit || isSubmitting}
+                    />
+                    <EffortToggle effort={effort} onChange={setEffort} />
+                  </>
+                }
                 placeholderText={
                   showPlaceholder ? SUGGESTIONS[suggestion] : undefined
                 }

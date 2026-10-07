@@ -28,12 +28,13 @@ export const initializeProject = async (
 ) => {
   try {
     const userId = requireUserId(req);
-    const { message, effort, attachmentIds } = parse(messageSchema, req.body);
+    const { message, effort, attachmentIds, design } = parse(messageSchema, req.body);
     const result = await projectService.initializeProject(
       userId,
       message,
       effort,
       attachmentIds,
+      design,
     );
     res.status(201).json(result);
   } catch (err) {

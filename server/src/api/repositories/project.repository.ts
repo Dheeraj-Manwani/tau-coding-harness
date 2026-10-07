@@ -14,7 +14,7 @@ import {
 
 export function createProject(
   tx: Prisma.TransactionClient,
-  data: { name: string; userId: string },
+  data: { name: string; userId: string; designConfig?: Prisma.InputJsonValue },
 ): Promise<Project> {
   return tx.project.create({ data });
 }

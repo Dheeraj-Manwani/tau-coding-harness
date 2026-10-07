@@ -35,7 +35,7 @@ export const PROVISION_SANDBOX_BASE_TOOL = {
   function: {
     name: "provision_sandbox",
     description:
-      "Call this to get a sandbox to work in. Without it you cannot call create_file, read_file, edit_file, run_command and the like. For a new app it creates the app from tau's base and gives it a design of its own — a style, colours, typefaces — chosen from the `brief` you pass, then returns the app's memory, its design and a map of its files. For an existing app it reconnects to the app as it is; `brief` is ignored.",
+      "Call this to get a sandbox to work in. Without it you cannot call create_file, read_file, edit_file, run_command and the like. For a new app it creates the app from tau's base and gives it a design of its own — a style, colours, typefaces — as the user chose it when they started the project, and otherwise chosen from the `brief` you pass, then returns the app's memory, its design and a map of its files. For an existing app it reconnects to the app as it is; `brief` is ignored.",
     parameters: {
       type: "object",
       properties: {

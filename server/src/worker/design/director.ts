@@ -30,18 +30,32 @@
  * the creation of an app. `fallbackChoice` picks deterministically from the
  * project's id, which is at least different from one project to the next.
  *
+ * ## What the user chose is not up for discussion
+ *
+ * A user can choose any part of the look before the app is built — a style, a
+ * colour, light or dark, a font pairing, the feel — or bring a whole
+ * `DESIGN.md` (`DesignConfig`). The director still runs, because whatever they
+ * left open still has to suit the subject, and it is told what is already
+ * settled. But nothing it says can change a choice: `chooseFrom` takes each
+ * part from the user first and from the director only where the user said
+ * nothing. A chosen colour is used exactly as given; a chosen dial is not
+ * averaged with the style's.
+ *
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import { clientForModel } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import { log } from "@/worker/lib/log";
 import { hexToOklch, isHexColor } from "./color";
-import { ALL_STYLES, STYLES } from "./styles";
+import { importedMode, splitFrontMatter } from "./importDesign";
+import { ALL_STYLES, STYLES, chosenPairing } from "./styles";
 import {
   STYLE_KEYS,
   isStyleKey,
   type DesignChoice,
+  type DesignConfig,
   type Dials,
+  type ImportedDesign,
   type Mode,
   type StyleKey,
 } from "./types";
@@ -58,6 +72,8 @@ const DIRECTOR_TIMEOUT_MS = 20_000;
  */
 const NO_THINKING = { thinking: { type: "disabled" } } as object;
 const MAX_BRIEF_CHARS = 4_000;
+/** How much of an imported design the director reads to find the closest style. */
+const MAX_IMPORT_BRIEF_CHARS = 3_000;
 
 /** How often the first, second and third shortlisted style is the one used. */
 const STYLE_WEIGHTS = [0.5, 0.3, 0.2] as const;
@@ -136,19 +152,68 @@ function defaultRead(styleName: string): string {
   return `Reading this as: a new app for the people who will use it, which should feel ${styleName.toLowerCase()}.`;
 }
 
-/** A choice made without a model: varied between projects, never random within one. */
-export function fallbackChoice(seed: string): DesignChoice {
+/** Where a choice came from, given what the user supplied. */
+function sourceOf(
+  config: DesignConfig,
+  imported: ImportedDesign | undefined,
+  otherwise: "director" | "fallback",
+): DesignChoice["source"] {
+  if (imported) return "import";
+  return config.style || config.accent || config.mode || config.fonts || config.dials
+    ? "user"
+    : otherwise;
+}
+
+/**
+ * A choice made without a model: varied between projects, never random within
+ * one. Whatever the user chose is still honoured; only the rest is picked here.
+ */
+export function fallbackChoice(
+  seed: string,
+  config: DesignConfig = {},
+  imported?: ImportedDesign,
+): DesignChoice {
   const h = hash(seed);
-  const style = STYLES[STYLE_KEYS[h % STYLE_KEYS.length]!];
+  const style = STYLES[config.style ?? STYLE_KEYS[h % STYLE_KEYS.length]!];
+  const given = config.accent ?? imported?.tokens.colors.primary;
   return {
     style: style.key,
-    accent: FALLBACK_ACCENTS[(h >>> 8) % FALLBACK_ACCENTS.length]!,
-    accentExact: false,
-    mode: style.defaultMode,
-    dials: { ...style.dials },
+    accent: given ?? FALLBACK_ACCENTS[(h >>> 8) % FALLBACK_ACCENTS.length]!,
+    accentExact: given !== undefined,
+    mode: config.mode ?? (imported ? importedMode(imported.tokens) : null) ?? style.defaultMode,
+    dials: { ...style.dials, ...config.dials },
+    ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
     read: defaultRead(style.name),
-    source: "fallback",
+    source: sourceOf(config, imported, "fallback"),
+    ...(imported ? { imported } : {}),
   };
+}
+
+/**
+ * What the director is told about a brief whose look is partly settled, added
+ * after the brief itself. Empty when the user chose nothing.
+ */
+export function settledNote(config: DesignConfig, imported?: ImportedDesign): string {
+  const lines: string[] = [];
+  if (imported) {
+    const prose = splitFrontMatter(imported.text).body.trim().slice(0, MAX_IMPORT_BRIEF_CHARS);
+    lines.push(
+      `The user has brought their own written design, below. List only the one style whose shapes, borders, shadows and density are closest to what it describes.
+
+<their_design>
+${prose}
+</their_design>`,
+    );
+  }
+  if (config.style) {
+    const style = STYLES[config.style];
+    lines.push(
+      `The user has chosen the style "${style.key}" (${style.look}). List only that style, and choose the rest to suit it.`,
+    );
+  }
+  if (config.accent) lines.push(`The user has chosen the accent colour ${config.accent}. List only that colour.`);
+  if (config.mode) lines.push(`The user has chosen ${config.mode} mode.`);
+  return lines.join("\n\n");
 }
 
 /** The instructions, with the catalog in this project's order. */
@@ -269,33 +334,51 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
  * has a range it works in: an "editorial" app at the density a dashboard asked
  * for stops being editorial.
  */
-export function chooseFrom(options: DirectorOptions, seed: string): DesignChoice {
-  const key = pickRanked(options.styles, STYLE_WEIGHTS, `${seed}:style`);
+export function chooseFrom(
+  options: DirectorOptions,
+  seed: string,
+  config: DesignConfig = {},
+  imported?: ImportedDesign,
+): DesignChoice {
+  // A user's style is the style. An imported design gets the closest fit, not
+  // a varied one: variety between projects is no use to someone who has
+  // already said exactly what they want.
+  const key =
+    config.style ??
+    (imported ? options.styles[0]! : pickRanked(options.styles, STYLE_WEIGHTS, `${seed}:style`));
   const style = STYLES[key];
 
+  const given = config.accent ?? imported?.tokens.colors.primary;
   const accent =
-    options.accents.length === 0
+    given ??
+    (options.accents.length === 0
       ? FALLBACK_ACCENTS[hash(`${seed}:accent`) % FALLBACK_ACCENTS.length]!
       : options.accentExact
         ? options.accents[0]!
-        : pickRanked(options.accents, ACCENT_WEIGHTS, `${seed}:accent`);
+        : pickRanked(options.accents, ACCENT_WEIGHTS, `${seed}:accent`));
 
   const blend = (asked: number | null, own: number) =>
     asked === null ? own : Math.round((asked + own) / 2);
   const dials: Dials = {
-    variance: blend(options.dials.variance, style.dials.variance),
-    motion: blend(options.dials.motion, style.dials.motion),
-    density: blend(options.dials.density, style.dials.density),
+    variance: config.dials?.variance ?? blend(options.dials.variance, style.dials.variance),
+    motion: config.dials?.motion ?? blend(options.dials.motion, style.dials.motion),
+    density: config.dials?.density ?? blend(options.dials.density, style.dials.density),
   };
 
   return {
     style: key,
     accent,
-    accentExact: options.accentExact,
-    mode: options.mode ?? style.defaultMode,
+    accentExact: given !== undefined || options.accentExact,
+    mode:
+      config.mode ??
+      (imported ? importedMode(imported.tokens) : null) ??
+      options.mode ??
+      style.defaultMode,
     dials,
+    ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
     read: options.read ?? defaultRead(style.name),
-    source: "director",
+    source: sourceOf(config, imported, "director"),
+    ...(imported ? { imported } : {}),
   };
 }
 
@@ -309,13 +392,21 @@ export interface DirectorResult {
  * Decide the design for a new app. Never throws and never takes longer than
  * `DIRECTOR_TIMEOUT_MS`: on any failure the fallback is returned.
  *
- * @param brief  what is being built, in the user's words (and the agent's)
- * @param seed   the project id — orders the catalog, picks from the
- *               shortlists, and seeds the fallback
+ * @param brief     what is being built, in the user's words (and the agent's)
+ * @param seed      the project id — orders the catalog, picks from the
+ *                  shortlists, and seeds the fallback
+ * @param config    what the user chose, if anything; never overridden
+ * @param imported  a design the user brought, if any
  */
-export async function directDesign(brief: string, seed: string): Promise<DirectorResult> {
-  const text = brief.trim().slice(0, MAX_BRIEF_CHARS);
-  if (!text) return { choice: fallbackChoice(seed), usage: null };
+export async function directDesign(
+  brief: string,
+  seed: string,
+  config: DesignConfig = {},
+  imported?: ImportedDesign,
+): Promise<DirectorResult> {
+  const settled = settledNote(config, imported);
+  const text = [brief.trim().slice(0, MAX_BRIEF_CHARS), settled].filter(Boolean).join("\n\n");
+  if (!text) return { choice: fallbackChoice(seed, config, imported), usage: null };
 
   const model = env.DEEPSEEK_MODEL_FLASH;
   try {
@@ -342,19 +433,20 @@ export async function directDesign(brief: string, seed: string): Promise<Directo
     const options = parseDirectorReply(completion.choices[0]?.message.content ?? "");
     if (!options) {
       log.warn("design.director.unusable", { seed });
-      return { choice: fallbackChoice(seed), usage };
+      return { choice: fallbackChoice(seed, config, imported), usage };
     }
-    const choice = chooseFrom(options, seed);
+    const choice = chooseFrom(options, seed, config, imported);
     log.info("design.director", {
       projectId: seed,
       offeredStyles: options.styles.join(","),
       offeredAccents: options.accents.join(","),
       chose: choice.style,
       accent: choice.accent,
+      source: choice.source,
     });
     return { choice, usage };
   } catch (err) {
     log.warn("design.director.failed", { seed, error: String(err) });
-    return { choice: fallbackChoice(seed), usage: null };
+    return { choice: fallbackChoice(seed, config, imported), usage: null };
   }
 }

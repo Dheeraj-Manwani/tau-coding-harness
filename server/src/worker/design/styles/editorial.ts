@@ -14,6 +14,26 @@ export const editorial: StyleSpec = {
     body: variableFont("Instrument Sans", "instrument-sans", SANS_FALLBACK),
     mono: SYSTEM_MONO,
   },
+  fontOptions: [
+    {
+      key: "playfair",
+      label: "Playfair Display + Karla",
+      fonts: {
+        display: variableFont("Playfair Display", "playfair-display", SERIF_FALLBACK, { italic: true }),
+        body: variableFont("Karla", "karla", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+    {
+      key: "newsreader",
+      label: "Newsreader + Public Sans",
+      fonts: {
+        display: variableFont("Newsreader", "newsreader", SERIF_FALLBACK, { italic: true }),
+        body: variableFont("Public Sans", "public-sans", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 6, motion: 3, density: 3 },
   radius: "0.125rem",

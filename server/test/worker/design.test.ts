@@ -15,6 +15,7 @@ import { buildDesignCss, fontImports, spacingUnit } from "@/worker/design/css";
 import {
   DESIGN_PROSE_MAX_CHARS,
   describeDials,
+  proseStamp,
   designProse,
   readDesignMeta,
   renderDesignMd,
@@ -373,6 +374,8 @@ describe("DESIGN.md", () => {
     const md = renderDesignMd(STYLES.luxe, choice, resolveDesign(choice).theme);
     expect(readDesignMeta(md)).toEqual({
       style: "luxe", mode: "dark", accent: "#c8a45c", variance: "7", motion: "5", density: "2",
+      // A fingerprint of the prose, so a later restyle can tell what was added.
+      base: proseStamp(md),
     });
     expect(readDesignMeta("# A design someone else wrote")).toBeNull();
   });

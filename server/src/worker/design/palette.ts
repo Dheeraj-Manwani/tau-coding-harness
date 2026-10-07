@@ -35,6 +35,8 @@ const TEXT_CONTRAST = 7;
 const QUIET_CONTRAST = 4.5;
 /** A filled control against the page: enough to be seen as a shape. */
 const SHAPE_CONTRAST = 3;
+/** Below this a fill is the page's own colour, near enough, and cannot be seen at all. */
+const SWALLOWED_CONTRAST = 1.5;
 
 /** An accent with less chroma than this is a grey, and tints nothing. */
 const GREY_CHROMA = 0.03;
@@ -88,12 +90,25 @@ function buildMode(
         c: grey ? 0 : Math.min(recipe.primary.c, Math.max(accent.c, 0.06) * 1.25),
         h: accent.h,
       };
-  if (!fenced) primary = ensureContrast(primary, background, SHAPE_CONTRAST);
-  let primaryHex = oklchToHex(primary);
+  // A colour someone named is theirs. Fitting it to the page would make it
+  // more legible and no longer the one they chose: a brand green two shades
+  // darker is a different green, and to the person who picked it, a bug. It is
+  // moved only when the page would swallow it whole — cream on white — because
+  // a button nobody can see is worse than a colour slightly off. The text on
+  // it is always picked to be readable.
+  const swallowed =
+    exactPrimary !== null && contrast(exactPrimary, background) < SWALLOWED_CONTRAST;
+  const asGiven = exactPrimary !== null && !swallowed;
+  if (!fenced && !asGiven) primary = ensureContrast(primary, background, SHAPE_CONTRAST);
+  let primaryHex = asGiven ? exactPrimary.toLowerCase() : oklchToHex(primary);
   let primaryForeground = readableOn(primaryHex);
   // Mid-lightness accents can fail against both black and white text; push the
   // fill away from whichever text colour won until the label reads.
-  for (let i = 0; i < 30 && contrast(primaryForeground, primaryHex) < QUIET_CONTRAST; i++) {
+  for (
+    let i = 0;
+    !asGiven && i < 30 && contrast(primaryForeground, primaryHex) < QUIET_CONTRAST;
+    i++
+  ) {
     const textIsLight = hexToOklch(primaryForeground).l > 0.5;
     primary = { ...primary, l: primary.l + (textIsLight ? -0.015 : 0.015) };
     primaryHex = oklchToHex(primary);

@@ -14,6 +14,26 @@ export const luxe: StyleSpec = {
     body: variableFont("Jost", "jost", SANS_FALLBACK),
     mono: SYSTEM_MONO,
   },
+  fontOptions: [
+    {
+      key: "playfair",
+      label: "Playfair Display + Raleway",
+      fonts: {
+        display: variableFont("Playfair Display", "playfair-display", SERIF_FALLBACK, { italic: true }),
+        body: variableFont("Raleway", "raleway", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+    {
+      key: "bodoni",
+      label: "Bodoni Moda + Montserrat",
+      fonts: {
+        display: variableFont("Bodoni Moda", "bodoni-moda", SERIF_FALLBACK, { italic: true }),
+        body: variableFont("Montserrat", "montserrat", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+  ],
   defaultMode: "dark",
   dials: { variance: 7, motion: 5, density: 2 },
   radius: "0rem",

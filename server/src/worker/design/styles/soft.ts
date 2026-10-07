@@ -14,6 +14,26 @@ export const soft: StyleSpec = {
     body: variableFont("Figtree", "figtree", SANS_FALLBACK),
     mono: SYSTEM_MONO,
   },
+  fontOptions: [
+    {
+      key: "quicksand",
+      label: "Quicksand + Nunito Sans",
+      fonts: {
+        display: variableFont("Quicksand", "quicksand", SANS_FALLBACK),
+        body: variableFont("Nunito Sans", "nunito-sans", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+    {
+      key: "jakarta",
+      label: "Plus Jakarta Sans",
+      fonts: {
+        display: variableFont("Plus Jakarta Sans", "plus-jakarta-sans", SANS_FALLBACK),
+        body: variableFont("Plus Jakarta Sans", "plus-jakarta-sans", SANS_FALLBACK),
+        mono: SYSTEM_MONO,
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 4, motion: 6, density: 3 },
   radius: "1rem",

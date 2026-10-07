@@ -29,6 +29,7 @@ import {
 import * as github from "../controllers/githubProject.controller";
 import * as deploy from "../controllers/deploy.controller";
 import * as context from "../controllers/context.controller";
+import * as design from "../controllers/design.controller";
 import {
   visualEditRateLimiter,
   assetImportRateLimiter,
@@ -39,6 +40,9 @@ const router = Router();
 router.post("/", initializeProject);
 router.get("/", listProjects);
 router.get("/showcase", getProjectShowcase);
+// The styles a new project can be given. Not project-scoped, so it is declared
+// before the `/:projectId` routes, like "showcase" above.
+router.get("/design/styles", design.getCatalog);
 // User-scoped, not project-scoped — declared before the `/:projectId` routes so
 // "jobs" is never captured as a projectId.
 router.post("/jobs/cancel-all", cancelAllJobs);
@@ -59,6 +63,10 @@ router.put("/:projectId/file", saveProjectFile);
 router.post("/:projectId/visual-edit", visualEditRateLimiter, applyVisualEdit);
 router.get("/:projectId/theme", getProjectTheme);
 router.post("/:projectId/theme", visualEditRateLimiter, applyThemeEdit);
+// The look as a whole: which style, accent, mode, fonts and feel the app has,
+// and changing them. Like a theme edit, a restyle costs no model call.
+router.get("/:projectId/design", design.getDesign);
+router.post("/:projectId/design", visualEditRateLimiter, design.restyle);
 router.post(
   "/:projectId/visual-asset",
   assetImportRateLimiter,

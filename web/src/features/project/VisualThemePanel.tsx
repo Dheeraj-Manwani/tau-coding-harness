@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MoonIcon, SunIcon, SwatchBookIcon, XIcon } from "lucide-react";
+import { MoonIcon, SunIcon, SwatchBookIcon, WandSparklesIcon, XIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
 import { ApiError } from "@/src/lib/api-client";
@@ -10,6 +10,12 @@ import {
   type ThemeScope,
 } from "@/src/features/project/api";
 import { useProjectStore } from "@/src/stores/useProjectStore";
+import {
+  useProjectDesign,
+  type RestyleResponse,
+} from "@/src/features/design/api";
+import { RestyleDialog } from "@/src/features/design/RestyleDialog";
+import { useSendMessage } from "@/src/features/project/useSendMessage";
 
 /**
  * The theme variables the panel offers, grouped the way someone thinks about
@@ -161,7 +167,9 @@ function SwatchTile({
 /** `<input type="color">` only accepts `#rrggbb`. */
 function toPickerValue(value: string | undefined): string {
   if (!value) return "#000000";
-  const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})/.exec(value.trim());
+  // Six digits first: tried the other way round, the three-digit branch
+  // matches the start of every six-digit colour and `#be123c` becomes `#bbee11`.
+  const m = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/.exec(value.trim());
   if (!m?.[1]) return "#000000";
   const hex = m[1];
   return hex.length === 3
@@ -187,6 +195,13 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
   const projectId = useProjectStore((s) => s.projectId);
   const theme = useProjectTheme(projectId ?? undefined);
   const themeEdit = useThemeEdit(projectId ?? undefined);
+
+  // The look as a whole — the style these colours belong to. Changing it
+  // regenerates the stylesheet this panel edits, so the two live together.
+  const design = useProjectDesign(projectId ?? undefined);
+  const [restyleOpen, setRestyleOpen] = useState(false);
+  const [restyled, setRestyled] = useState<RestyleResponse | null>(null);
+  const { send, canSend } = useSendMessage(projectId ?? undefined);
 
   // Null until the user picks a tab; until then, follow the app.
   const [scopeChoice, setScope] = useState<ThemeScope | null>(null);
@@ -321,6 +336,25 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
+  /**
+   * A restyle changes what tau can change without a model: colours, type, the
+   * shape of the components. How each screen is laid out is in the app's own
+   * code, and bringing that in line with the new style is the agent's work —
+   * offered, not assumed, because it costs credits and the user may be happy
+   * with the layouts as they are.
+   */
+  const adaptLayouts = () => {
+    const name = restyled?.design?.styleName;
+    if (!name) return;
+    const sent = send(
+      `I changed this app's style to ${name}. Go through each screen and adapt its layout and components to the new design in .tau/DESIGN.md. Keep all the content and features as they are.`,
+    );
+    if (sent) setRestyled(null);
+    else toast.error("tau is busy. Try again when it has finished.");
+  };
+
+  const current = design.data?.design ?? null;
+
   return (
     // Taller than the old flat list needed, but capped against the preview's
     // own height: a panel that covers the app you are recolouring is worse
@@ -376,6 +410,80 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
         <p className="py-2 text-[11px] text-[var(--silver-600)]">
           This project has no theme file to edit.
         </p>
+      )}
+
+      {current && projectId && (
+        <section className="flex items-center gap-2 border-b border-[var(--silver-200)] py-2">
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-xs font-semibold text-[var(--silver-900)]">
+              {current.styleName} style
+            </span>
+            <span className="block truncate text-[11px] text-[var(--silver-600)]">
+              {current.fontsLabel}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setRestyleOpen(true)}
+            disabled={saving || dirty > 0}
+            title={
+              dirty > 0
+                ? "Save or discard your colour changes first"
+                : "Change the style, typefaces, accent or feel"
+            }
+            className="shrink-0 rounded-[var(--radius-md)] border border-[var(--silver-200)] px-2 py-1 text-xs font-medium text-[var(--silver-900)] transition-colors hover:border-[var(--blue-500)] hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40"
+          >
+            Change look…
+          </button>
+          <RestyleDialog
+            projectId={projectId}
+            current={current}
+            open={restyleOpen}
+            onOpenChange={setRestyleOpen}
+            onRestyled={(result) => {
+              setPending({});
+              setRestyled(result);
+              toast.success(
+                result.live
+                  ? `Now ${result.design?.styleName ?? "restyled"}.`
+                  : `Now ${result.design?.styleName ?? "restyled"}. You'll see it when the preview starts.`,
+              );
+            }}
+          />
+        </section>
+      )}
+
+      {restyled && (
+        <div className="mt-2 flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--blue-500)]/40 bg-[var(--space-overlay)] p-2">
+          <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-[var(--silver-900)]">
+            Colours, type and component shapes are now{" "}
+            {restyled.design?.styleName ?? "the new style"}. Page layouts are as
+            they were.
+            {restyled.skipped.length > 0 && (
+              <span className="block text-[var(--silver-600)]">
+                Not done: {restyled.skipped.join("; ")}.
+              </span>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={adaptLayouts}
+            disabled={!canSend}
+            title="Sends a message to tau; uses credits like any other request"
+            className="flex shrink-0 items-center gap-1 rounded-[var(--radius-md)] bg-brand px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40"
+          >
+            <WandSparklesIcon className="size-3" />
+            Adapt layouts
+          </button>
+          <button
+            type="button"
+            onClick={() => setRestyled(null)}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
       )}
 
       {theme.data && (

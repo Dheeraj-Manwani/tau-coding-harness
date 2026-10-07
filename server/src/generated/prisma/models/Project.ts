@@ -108,6 +108,7 @@ export type ProjectCountAggregateOutputType = {
   sandboxExpiresAt: number
   templateKey: number
   aiEnabled: number
+  designConfig: number
   previewImageKey: number
   previewImageUpdatedAt: number
   slug: number
@@ -207,6 +208,7 @@ export type ProjectCountAggregateInputType = {
   sandboxExpiresAt?: true
   templateKey?: true
   aiEnabled?: true
+  designConfig?: true
   previewImageKey?: true
   previewImageUpdatedAt?: true
   slug?: true
@@ -323,6 +325,7 @@ export type ProjectGroupByOutputType = {
   sandboxExpiresAt: Date | null
   templateKey: string
   aiEnabled: boolean
+  designConfig: runtime.JsonValue | null
   previewImageKey: string | null
   previewImageUpdatedAt: Date | null
   slug: string | null
@@ -375,6 +378,7 @@ export type ProjectWhereInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  designConfig?: Prisma.JsonNullableFilter<"Project">
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -412,6 +416,7 @@ export type ProjectOrderByWithRelationInput = {
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  designConfig?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageUpdatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   slug?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -453,6 +458,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  designConfig?: Prisma.JsonNullableFilter<"Project">
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -489,6 +495,7 @@ export type ProjectOrderByWithAggregationInput = {
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  designConfig?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageUpdatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   slug?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -526,6 +533,7 @@ export type ProjectScalarWhereWithAggregatesInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringWithAggregatesFilter<"Project"> | string
   aiEnabled?: Prisma.BoolWithAggregatesFilter<"Project"> | boolean
+  designConfig?: Prisma.JsonNullableWithAggregatesFilter<"Project">
   previewImageKey?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   previewImageUpdatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
@@ -554,6 +562,7 @@ export type ProjectCreateInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -591,6 +600,7 @@ export type ProjectUncheckedCreateInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -626,6 +636,7 @@ export type ProjectUpdateInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -663,6 +674,7 @@ export type ProjectUncheckedUpdateInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -699,6 +711,7 @@ export type ProjectCreateManyInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -727,6 +740,7 @@ export type ProjectUpdateManyMutationInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -756,6 +770,7 @@ export type ProjectUncheckedUpdateManyInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -803,6 +818,7 @@ export type ProjectCountOrderByAggregateInput = {
   sandboxExpiresAt?: Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  designConfig?: Prisma.SortOrder
   previewImageKey?: Prisma.SortOrder
   previewImageUpdatedAt?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -1077,6 +1093,7 @@ export type ProjectCreateWithoutUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1112,6 +1129,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1177,6 +1195,7 @@ export type ProjectScalarWhereInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  designConfig?: Prisma.JsonNullableFilter<"Project">
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -1205,6 +1224,7 @@ export type ProjectCreateWithoutSecretsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1241,6 +1261,7 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1291,6 +1312,7 @@ export type ProjectUpdateWithoutSecretsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1327,6 +1349,7 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1361,6 +1384,7 @@ export type ProjectCreateWithoutMessagesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1397,6 +1421,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1447,6 +1472,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1483,6 +1509,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1517,6 +1544,7 @@ export type ProjectCreateWithoutJobsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1553,6 +1581,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1603,6 +1632,7 @@ export type ProjectUpdateWithoutJobsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1639,6 +1669,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1673,6 +1704,7 @@ export type ProjectCreateWithoutFilesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1709,6 +1741,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1759,6 +1792,7 @@ export type ProjectUpdateWithoutFilesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1795,6 +1829,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1829,6 +1864,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1865,6 +1901,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -1915,6 +1952,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1951,6 +1989,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1985,6 +2024,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -2021,6 +2061,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -2071,6 +2112,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2107,6 +2149,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2141,6 +2184,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -2177,6 +2221,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -2227,6 +2272,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2263,6 +2309,7 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2297,6 +2344,7 @@ export type ProjectCreateManyUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: string | null
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
@@ -2325,6 +2373,7 @@ export type ProjectUpdateWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2360,6 +2409,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2395,6 +2445,7 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2509,6 +2560,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  designConfig?: boolean
   previewImageKey?: boolean
   previewImageUpdatedAt?: boolean
   slug?: boolean
@@ -2547,6 +2599,7 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  designConfig?: boolean
   previewImageKey?: boolean
   previewImageUpdatedAt?: boolean
   slug?: boolean
@@ -2577,6 +2630,7 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  designConfig?: boolean
   previewImageKey?: boolean
   previewImageUpdatedAt?: boolean
   slug?: boolean
@@ -2607,6 +2661,7 @@ export type ProjectSelectScalar = {
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  designConfig?: boolean
   previewImageKey?: boolean
   previewImageUpdatedAt?: boolean
   slug?: boolean
@@ -2622,7 +2677,7 @@ export type ProjectSelectScalar = {
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
@@ -2679,6 +2734,14 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * never persisted to the manifest, so it has to be rewritten each rebuild.
      */
     aiEnabled: boolean
+    /**
+     * What the user chose about the app's look — a style, an accent, light or
+     * dark, a font pairing, the three feel dials, or a DESIGN.md they brought
+     * (`DesignConfig` in worker/design/types.ts). Null means they chose nothing
+     * and tau decided. How the app looks now is in its `.tau/DESIGN.md`; this is
+     * only the record of which parts of that were the user's own decision.
+     */
+    designConfig: runtime.JsonValue | null
     previewImageKey: string | null
     previewImageUpdatedAt: Date | null
     /**
@@ -3146,6 +3209,7 @@ export interface ProjectFieldRefs {
   readonly sandboxExpiresAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly templateKey: Prisma.FieldRef<"Project", 'String'>
   readonly aiEnabled: Prisma.FieldRef<"Project", 'Boolean'>
+  readonly designConfig: Prisma.FieldRef<"Project", 'Json'>
   readonly previewImageKey: Prisma.FieldRef<"Project", 'String'>
   readonly previewImageUpdatedAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly slug: Prisma.FieldRef<"Project", 'String'>

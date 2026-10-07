@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { EDITABLE_ATTRS } from "../lib/visualEdit";
 import { THEME_TOKENS } from "../lib/themeEdit";
+import { MAX_IMPORTED_DESIGN_CHARS } from "@/worker/design/config";
+import { STYLE_KEYS } from "@/worker/design/types";
 
 const MAX_PROMPT = 10_000;
 const MAX_NAME = 100;
@@ -46,6 +48,35 @@ export const buildErrorSchema = z.object({
   frame: z.string().max(4000).optional(),
 });
 
+const dial = z.number().int().min(1).max(10);
+
+/**
+ * What a user chose about an app's look. Every part is optional: whatever is
+ * left out is tau's to decide for a new app, and stays as it is on a restyle.
+ *
+ * Shape only. `normalizeDesignConfig` decides what a value means — whether a
+ * font pairing belongs to the style it came with, for one.
+ */
+export const designConfigSchema = z.object({
+  style: z.enum(STYLE_KEYS).optional(),
+  accent: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Accent must be a colour like #1a2b3c")
+    .optional(),
+  mode: z.enum(["light", "dark"]).optional(),
+  fonts: z.string().min(1).max(40).optional(),
+  dials: z
+    .object({ variance: dial, motion: dial, density: dial })
+    .partial()
+    .optional(),
+  /** A DESIGN.md the user brought, whole. */
+  designMd: z
+    .string()
+    .max(MAX_IMPORTED_DESIGN_CHARS, "That design file is too long")
+    .refine((c) => !c.includes("\0"), "That is not a text file")
+    .optional(),
+});
+
 export const messageSchema = z
   .object({
     message: messageContent,
@@ -53,6 +84,8 @@ export const messageSchema = z
     attachmentIds: z.array(z.uuid()).max(10).default([]),
     visualContext: visualContextSchema.optional(),
     buildError: buildErrorSchema.optional(),
+    /** For a new project only: the look the user chose in the composer. */
+    design: designConfigSchema.optional(),
   })
   .refine((v) => v.message.length > 0 || v.attachmentIds.length > 0, {
     message: "Message can't be empty",

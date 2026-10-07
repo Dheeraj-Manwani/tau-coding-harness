@@ -114,6 +114,14 @@ export function isHexColor(value: unknown): value is string {
   return typeof value === "string" && parseHex(value) !== null;
 }
 
+/** `#abc`, `abc123`, `#ABC123` → `#aabbcc` / `#abc123`; null for anything else. */
+export function normalizeHex(value: unknown): string | null {
+  if (!isHexColor(value)) return null;
+  let hex = value.trim().toLowerCase().replace(/^#/, "");
+  if (hex.length === 3) hex = hex.split("").map((ch) => ch + ch).join("");
+  return /^[0-9a-f]{6}$/.test(hex) ? `#${hex}` : null;
+}
+
 /** `#rrggbb` → OKLCH. Throws on anything that is not a hex colour. */
 export function hexToOklch(hex: string): Oklch {
   const rgb = parseHex(hex);

@@ -73,6 +73,8 @@ import {
   Plan,
 } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { normalizeDesignConfig } from "@/worker/design/config";
+import { syncDesignAfterThemeEdit } from "./design.service";
 import type { Effort } from "@/generated/prisma/enums";
 
 const MAX_NAME_LENGTH = 48;
@@ -270,12 +272,19 @@ export interface InitializeProjectResult {
   jobId: string;
 }
 
+/**
+ * @param design  the look the user chose in the composer, if they chose
+ *                anything. Stored with the project; the worker reads it when
+ *                it designs the new app (`worker/design/provision.ts`).
+ */
 export async function initializeProject(
   userId: string,
   message: string,
   effort: Effort,
   attachmentIds: string[] = [],
+  design?: unknown,
 ): Promise<InitializeProjectResult> {
+  const designConfig = normalizeDesignConfig(design);
   // Before the transaction — this can block on extraction. When the user sent
   // an image with no words, name off the extracted text instead.
   const { content, resolved } = await buildUserMessage(
@@ -302,6 +311,7 @@ export async function initializeProject(
     const project = await projectRepo.createProject(tx, {
       name,
       userId,
+      ...(designConfig ? { designConfig: designConfig as Prisma.InputJsonValue } : {}),
     });
 
     const job = await projectRepo.createJob(tx, {
@@ -1205,25 +1215,33 @@ export async function getProjectTheme(projectId: string, userId: string) {
 
   const file = await readProjectFileContent(project, userId, THEME_FILE);
 
-  // Which palette is on screen. An app opens dark only when `index.html` puts
-  // the `dark` class on `<html>`; the panel uses this to open on the palette
-  // the user is actually looking at.
-  let activeScope: "root" | "dark" = "dark";
+  return {
+    path: THEME_FILE,
+    contentHash: file.contentHash,
+    activeScope: await openingScope(project, userId),
+    ...readThemeTokens(file.content),
+  };
+}
+
+/**
+ * Which palette is on screen. An app opens dark only when `index.html` puts
+ * the `dark` class on `<html>`; the panel uses this to open on the palette the
+ * user is actually looking at, and a theme edit uses it to know which palette
+ * `DESIGN.md` describes.
+ */
+async function openingScope(
+  project: Parameters<typeof readProjectFileContent>[0],
+  userId: string,
+): Promise<ThemeScope> {
   try {
     const html = await readProjectFileContent(project, userId, "index.html");
     const tag = /<html\b[^>]*>/i.exec(html.content)?.[0] ?? "";
     const classes = /\sclass=(["'])(.*?)\1/i.exec(tag)?.[2] ?? "";
-    activeScope = classes.split(/\s+/).includes("dark") ? "dark" : "root";
+    return classes.split(/\s+/).includes("dark") ? "dark" : "root";
   } catch {
     // No index.html to read: keep the historical default.
+    return "dark";
   }
-
-  return {
-    path: THEME_FILE,
-    contentHash: file.contentHash,
-    activeScope,
-    ...readThemeTokens(file.content),
-  };
 }
 
 /**
@@ -1281,6 +1299,15 @@ export async function applyThemeEditToProject(
     result.content,
     before.contentHash,
   );
+
+  // The agent reads the design from DESIGN.md, not from the stylesheet. Left
+  // alone, its next request would be built to the colour just replaced.
+  const palettes = readThemeTokens(result.content);
+  const opening = await openingScope(project, userId);
+  await syncDesignAfterThemeEdit(projectId, userId, {
+    ...palettes[opening],
+    ...(palettes.root["--radius"] ? { "--radius": palettes.root["--radius"] } : {}),
+  });
 
   return { applied: true as const, ...saved, scope: result.scope };
 }

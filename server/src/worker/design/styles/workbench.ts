@@ -16,6 +16,26 @@ export const workbench: StyleSpec = {
     body: plex,
     mono: staticFont("IBM Plex Mono", "ibm-plex-mono", [400, 500, 600], MONO_FALLBACK),
   },
+  fontOptions: [
+    {
+      key: "source",
+      label: "Source Sans 3 + Source Code Pro",
+      fonts: {
+        display: variableFont("Source Sans 3", "source-sans-3", SANS_FALLBACK),
+        body: variableFont("Source Sans 3", "source-sans-3", SANS_FALLBACK),
+        mono: variableFont("Source Code Pro", "source-code-pro", MONO_FALLBACK),
+      },
+    },
+    {
+      key: "public",
+      label: "Public Sans + Red Hat Mono",
+      fonts: {
+        display: variableFont("Public Sans", "public-sans", SANS_FALLBACK),
+        body: variableFont("Public Sans", "public-sans", SANS_FALLBACK),
+        mono: variableFont("Red Hat Mono", "red-hat-mono", MONO_FALLBACK),
+      },
+    },
+  ],
   defaultMode: "light",
   dials: { variance: 3, motion: 2, density: 9 },
   radius: "0.375rem",

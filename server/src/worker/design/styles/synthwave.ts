@@ -172,6 +172,7 @@ export const synthwave: StyleSpec = {
     labelWeight: "700",
     checkRadius: "0.25rem",
     iconStroke: "2",
+    iconSize: "1.25rem",
   },
 
   skinCss: `

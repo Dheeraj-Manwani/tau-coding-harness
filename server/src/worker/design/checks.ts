@@ -369,7 +369,7 @@ export function checkPackageJson(text: string, ctx: CheckContext = {}): Finding[
     ) {
       findings.push({
         rule: "font", path: "package.json", line: 0, excerpt: name,
-        message: `\`${name}\` is a typeface the design does not use. The design's fonts are already installed; remove this one unless the user asked for a different typeface, in which case name it in \`.tau/DESIGN.md\` — a typeface the design names is part of the design.`,
+        message: `\`${name}\` is a typeface the design does not use. The design's fonts are already installed; remove this one unless the user asked for a different typeface, in which case name it under \`## Notes for this app\` in \`.tau/DESIGN.md\` — a typeface the design names is part of the design.`,
       });
     }
   }

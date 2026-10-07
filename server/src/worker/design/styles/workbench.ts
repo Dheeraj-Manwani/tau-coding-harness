@@ -129,6 +129,7 @@ export const workbench: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0.1875rem",
     iconStroke: "1.75",
+    iconSize: "1rem",
   },
 
   skinCss: `

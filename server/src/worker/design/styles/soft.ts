@@ -121,6 +121,7 @@ export const soft: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.4375rem",
     iconStroke: "2",
+    iconSize: "1.25rem",
   },
 
   skinCss: `

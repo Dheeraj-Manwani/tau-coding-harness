@@ -7,6 +7,7 @@ import {
   SearchIcon,
   SparklesIcon,
   SunIcon,
+  TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -23,6 +24,7 @@ import {
   type Dials,
   type FeelPreset,
 } from "@/src/features/design/api";
+import { accentWarning } from "@/src/features/design/contrast";
 
 /** Mirrors `MAX_IMPORTED_DESIGN_CHARS` on the server, which refuses anything longer. */
 const MAX_DESIGN_FILE_CHARS = 40_000;
@@ -183,6 +185,12 @@ interface DesignPickerProps {
    * project — a default look — because a design file is written for one app.
    */
   allowImport?: boolean;
+  /**
+   * When restyling: the accent the user chose earlier, if the app still has
+   * it. It is kept exactly as chosen through a restyle, so it is checked
+   * against the new page the way a newly chosen one is.
+   */
+  exactAccent?: string;
 }
 
 /**
@@ -200,6 +208,7 @@ export function DesignPicker({
   onChange,
   current,
   allowImport = true,
+  exactAccent,
 }: DesignPickerProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [fineTune, setFineTune] = useState(false);
@@ -226,6 +235,9 @@ export function DesignPicker({
     query,
   );
   const sections = groupStyles(shown, groups);
+
+  // An accent is used exactly as chosen, so say so when it will be hard to see.
+  const warning = accentWarning({ value, current, styles: catalog.styles, exactAccent });
 
   const preset = presetOf(value.dials, catalog.feelPresets);
   // What the sliders show for a dial nobody has set: where it will land.
@@ -377,6 +389,29 @@ export function DesignPicker({
             Custom
           </label>
         </div>
+        {warning && (
+          <div
+            role="status"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200"
+          >
+            <TriangleAlertIcon className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="font-mono">{warning.accent}</span> is hard to see on a{" "}
+              {warning.mode} page. tau uses your colour exactly as chosen.
+            </span>
+            <button
+              type="button"
+              onClick={() => set({ accent: warning.readable })}
+              className="flex shrink-0 items-center gap-1.5 rounded-[7px] border border-amber-500/40 px-2 py-0.5 font-medium text-amber-100 transition-colors hover:bg-amber-500/20"
+            >
+              <span
+                className="size-3 rounded-full border border-black/20"
+                style={{ backgroundColor: warning.readable }}
+              />
+              Make it readable
+            </button>
+          </div>
+        )}
       </Section>
 
       <div className="grid gap-5 sm:grid-cols-2">

@@ -122,6 +122,7 @@ export const formal: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.1875rem",
     iconStroke: "1.75",
+    iconSize: "1rem",
   },
 
   skinCss: `

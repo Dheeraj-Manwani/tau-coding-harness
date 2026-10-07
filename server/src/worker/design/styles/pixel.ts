@@ -183,6 +183,7 @@ export const pixel: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0",
     iconStroke: "2.5",
+    iconSize: "1.375rem",
   },
 
   skinCss: `

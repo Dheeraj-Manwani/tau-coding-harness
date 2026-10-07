@@ -145,7 +145,7 @@ export function reshapedScreens(work: WorkLog): boolean {
  * the design, where the theme panel and the next request can see it.
  */
 const USER_ASKED_EXCEPTION =
-  "If the user asked for one of these in so many words — a particular colour, a typeface — keep it, but as part of the design: put it in `src/index.css`, add the matching line to `.tau/DESIGN.md`, and use it from there rather than writing it into a screen.";
+  "If the user asked for one of these in so many words — a particular colour, a typeface — keep it, but as part of the design: put it in `src/index.css`, add a line for it under `## Notes for this app` in `.tau/DESIGN.md`, and use it from there rather than writing it into a screen.";
 
 /** How long the end-of-run checks may take before the run finishes without them. */
 export const GATE_TIMEOUT_MS = 20_000;

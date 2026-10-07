@@ -61,6 +61,10 @@ export interface CatalogStyle {
     primary: string;
     border: string;
   };
+  /** The page colour in each mode. Absent from a server that predates it. */
+  page?: Record<DesignMode, string>;
+  /** The style outlines its accent fills, so an accent near the page colour still shows. */
+  outlined?: boolean;
   sampleAccent: string;
 }
 

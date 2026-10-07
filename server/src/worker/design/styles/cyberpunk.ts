@@ -168,6 +168,7 @@ export const cyberpunk: StyleSpec = {
     labelWeight: "400",
     checkRadius: "0",
     iconStroke: "1.5",
+    iconSize: "1rem",
   },
 
   skinCss: `

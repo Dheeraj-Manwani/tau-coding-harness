@@ -128,6 +128,7 @@ export const luxe: StyleSpec = {
     labelWeight: "400",
     checkRadius: "0",
     iconStroke: "1",
+    iconSize: "1.125rem",
   },
 
   skinCss: `

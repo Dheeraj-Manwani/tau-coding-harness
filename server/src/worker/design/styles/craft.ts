@@ -126,6 +126,7 @@ export const craft: StyleSpec = {
     labelWeight: "700",
     checkRadius: "0.25rem",
     iconStroke: "1.75",
+    iconSize: "1.125rem",
   },
 
   skinCss: `

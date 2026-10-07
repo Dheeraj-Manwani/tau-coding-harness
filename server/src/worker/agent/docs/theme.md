@@ -41,9 +41,11 @@ Use them as classes: `bg-card`, `text-muted-foreground`, `border-border`, `bg-pr
 
 **How a component looks.** Change its rule in `@layer skin` — `[data-slot="button"]`, `[data-slot="card"]`, `[data-slot="input"]`, `[data-slot="badge"]`, `[data-slot="tabs-trigger"]`, `[data-slot="dialog-content"]`. Classes added where the component is used will not override the skin for the properties it sets, by design: one place decides how a button looks.
 
-**A new colour the design needs.** Declare it in both palette blocks, then map it in `@theme inline` as `--color-<name>: var(--<name>);`. Only do this for something the existing tokens cannot express.
+**A new colour the design needs.** Declare it in both palette blocks, then map it in `@theme inline` as `--color-<name>: var(--<name>);`. Only do this for something the existing tokens cannot express, and add a line saying what it is for under `## Notes for this app` in `.tau/DESIGN.md`.
 
-**A different typeface.** Install it with `bun add @fontsource-variable/<name>`, add `@import "@fontsource-variable/<name>";` beside the other font imports, and set it in `--font-sans` or `--font-heading`. Then update `.tau/DESIGN.md`.
+**A different typeface.** Install it with `bun add @fontsource-variable/<name>`, add `@import "@fontsource-variable/<name>";` beside the other font imports, and set it in `--font-sans` or `--font-heading`. Then update the typeface lines of `.tau/DESIGN.md`. For an extra typeface used in one place, give it a token of its own (`--font-<name>` in `@theme inline`) and name it under `## Notes for this app` instead.
+
+**Icons.** `--icon-size` at the top of `@layer skin` is the size of an icon nothing else sizes, and the `.lucide` rule beside it sets the stroke width. A size class on an icon (`size-8`) still wins.
 
 ## An app with no `.tau/DESIGN.md`
 An older app may have only the palette blocks, in neutral grey. Give it a real palette: pick one accent that suits the subject, tint the neutrals slightly toward it, and write both blocks. Everything else in this guide applies.

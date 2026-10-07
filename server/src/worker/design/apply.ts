@@ -61,6 +61,12 @@ export interface DesignTarget {
    * exist would break that install, so only known packages may be added.
    */
   installsNow: boolean;
+  /**
+   * Whether a package of this name is published, for a target that cannot
+   * find out by installing it. Without this, such a target adds only packages
+   * tau already knows.
+   */
+  packageExists?(name: string): Promise<boolean>;
 }
 
 /** The sandbox of a running job, with every write recorded in the project. */
@@ -124,7 +130,8 @@ function packagesOf(fonts: FontSet): string[] {
  * not carry, a licensed face, a typo. So each is tried — installed as the
  * variable-font package of that name — and kept only if the install worked.
  * A role whose font cannot be had falls back to the matching one of the style
- * the design was fitted to. Not attempted where an install cannot be checked.
+ * the design was fitted to. Where nothing can be installed yet (an app that is
+ * not running), the package is looked up first and added only if it exists.
  */
 async function importedFonts(
   target: DesignTarget,
@@ -143,9 +150,8 @@ async function importedFonts(
     const slug = fontSlug(family);
     if (!slug) continue;
     const pkg = `@fontsource-variable/${slug}`;
-    const have =
-      hasDependency(packageJson, pkg) ||
-      (target.installsNow && (await target.addPackages([pkg])).ok);
+    const canAdd = target.installsNow || ((await target.packageExists?.(pkg)) ?? false);
+    const have = hasDependency(packageJson, pkg) || (canAdd && (await target.addPackages([pkg])).ok);
     // If it fails to load, fall back as the style's own face for the role
     // would: a serif to a serif, a monospace to a monospace.
     const fallback = base[role].stack.includes(",")

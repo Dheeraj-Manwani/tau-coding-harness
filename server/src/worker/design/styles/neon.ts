@@ -128,6 +128,7 @@ export const neon: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0.375rem",
     iconStroke: "1.75",
+    iconSize: "1.125rem",
   },
 
   skinCss: `

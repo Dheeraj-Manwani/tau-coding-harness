@@ -215,7 +215,17 @@ ${prose}
       `The user has chosen the style "${style.key}" (${style.look}). List only that style, and choose the rest to suit it.`,
     );
   }
-  if (config.accent) lines.push(`The user has chosen the accent colour ${config.accent}. List only that colour.`);
+  if (config.accent) {
+    // The colour is used exactly as chosen, so light or dark is what is left
+    // to make it readable with.
+    lines.push(
+      `The user has chosen the accent colour ${config.accent}. List only that colour.${
+        config.mode
+          ? ""
+          : " Unless the brief asks for light or dark, choose the one this colour stands out against."
+      }`,
+    );
+  }
   if (config.mode) lines.push(`The user has chosen ${config.mode} mode.`);
   return lines.join("\n\n");
 }

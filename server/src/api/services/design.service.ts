@@ -104,6 +104,8 @@ function projectTarget(project: OwnedProject, sandbox: Sandbox | null): DesignTa
 
   return {
     installsNow: sandbox !== null,
+    // With no sandbox to try an install in, ask the registry instead.
+    ...(sandbox === null ? { packageExists: (name: string) => npmPackageExists(name) } : {}),
 
     async read(path) {
       if (sandbox) {
@@ -163,6 +165,29 @@ function projectTarget(project: OwnedProject, sandbox: Sandbox | null): DesignTa
       return { ok: true };
     },
   };
+}
+
+const REGISTRY_TIMEOUT_MS = 5_000;
+
+/**
+ * Whether npm has a package of this name. Any doubt — a timeout, a registry
+ * error — is a no: the name would be written into `package.json`, and one that
+ * does not exist breaks the app's next install.
+ */
+export async function npmPackageExists(
+  name: string,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean> {
+  if (!/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) return false;
+  try {
+    const res = await fetcher(`https://registry.npmjs.org/${name.replace("/", "%2f")}`, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
+    });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
 }
 
 /** What the user chose, without the text of a file they imported. */

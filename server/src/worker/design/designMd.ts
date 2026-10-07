@@ -28,6 +28,19 @@ export const DESIGN_PATH = ".tau/DESIGN.md";
 
 /** The prose is handed over whole on every request, so it has to stay small. */
 export const DESIGN_PROSE_MAX_CHARS = 6_000;
+/** The app's own notes ride along with the prose, and have a limit of their own. */
+export const DESIGN_NOTES_MAX_CHARS = 1_500;
+
+/**
+ * The one section of the file that is the app's and not the style's: what was
+ * decided for this app that its style does not say — a second colour the user
+ * asked for on one banner, a logo that must stay green. tau writes the heading
+ * and one line under it, and never anything else there, so a change of style
+ * can carry the section over whole (`restyle.ts`).
+ */
+export const NOTES_HEADING = "## Notes for this app";
+export const NOTES_INTRO =
+  "Decisions for this app that the style above does not cover go here, one per line. They are kept when the style changes; where one contradicts the style above, the style wins.";
 
 function level(value: number, low: string, mid: string, high: string): string {
   return value <= 3 ? low : value <= 6 ? mid : high;
@@ -121,12 +134,11 @@ components:
  * The comment that records how the design was chosen, for tools that read it
  * back: a restyle starts from these values, and the theme panel shows them.
  */
-function metaComment(choice: DesignChoice, stamp?: string): string {
+function metaComment(choice: DesignChoice): string {
   const d = choice.dials;
   const extra = [
     choice.fonts ? ` fonts=${choice.fonts}` : "",
     choice.source === "user" || choice.source === "import" ? ` source=${choice.source}` : "",
-    stamp ? ` base=${stamp}` : "",
   ].join("");
   return `<!-- tau: style=${choice.style} mode=${choice.mode} accent=${choice.accent} variance=${d.variance} motion=${d.motion} density=${d.density}${extra} -->`;
 }
@@ -140,35 +152,75 @@ function metaComment(choice: DesignChoice, stamp?: string): string {
 export function isVolatileLine(line: string): boolean {
   return (
     line.startsWith("<!-- tau:") ||
+    line.startsWith(LINES_OPEN) ||
     line.startsWith("- The accent is `") ||
     line.startsWith("Reading this as:")
   );
 }
 
-/**
- * A fingerprint of the prose tau wrote into a file, recorded in the file.
- *
- * It answers one question later: is what tau would write for this design
- * today the same as what it wrote then? If so, any line of the file that tau
- * would not write was added by someone, and a restyle can keep exactly those
- * lines. If tau's wording has changed since, that comparison would mistake
- * tau's own old sentences for someone's notes — and the stamp says not to
- * make it.
- */
-export function proseStamp(designMd: string): string {
-  const { body } = splitFrontMatter(designMd);
+const LINES_OPEN = "<!-- tau-lines:";
+/** tau's bookkeeping comments, each on a line of its own. */
+const TAU_COMMENTS = /^<!-- tau[:-][^\n]*-->\n?/gm;
+
+/** A short fingerprint of one line of prose. */
+export function lineMark(line: string): string {
   let h = 2166136261;
-  for (const raw of body.split("\n")) {
-    const line = raw.trim();
-    if (!line || isVolatileLine(line)) continue;
-    for (let i = 0; i < line.length; i++) {
-      h ^= line.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    h ^= 10;
+  for (let i = 0; i < line.length; i++) {
+    h ^= line.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return (h >>> 0).toString(16).padStart(8, "0");
+  return ((h >>> 0) & 0xffffff).toString(16).padStart(6, "0");
+}
+
+/**
+ * A record of the lines tau wrote into a file, kept in the file as its last
+ * line.
+ *
+ * It answers one question later: which lines of this file did somebody add?
+ * Any line not in the record. An earlier version answered that by writing the
+ * file again and comparing, which only worked while tau would still write the
+ * same words — one edited sentence in a style, and every app in that style
+ * lost its notes at the next restyle. A record of what was written does not
+ * depend on what tau would write today.
+ */
+function linesComment(body: string): string {
+  const marks = new Set<string>();
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (line && !isVolatileLine(line)) marks.add(lineMark(line));
+  }
+  return `${LINES_OPEN} ${[...marks].join(" ")} -->`;
+}
+
+/** The lines tau wrote into a file, as marks; null for a file with no record. */
+export function writtenLines(designMd: string): Set<string> | null {
+  const m = /^<!-- tau-lines:([^\n]*?)-->\s*$/m.exec(designMd);
+  return m ? new Set(m[1]!.trim().split(/\s+/).filter(Boolean)) : null;
+}
+
+/**
+ * A file's prose with its notes section taken out: the lines under
+ * `NOTES_HEADING`, up to the next section. tau's own line there and its
+ * bookkeeping comments are not notes.
+ */
+export function splitNotes(body: string): { notes: string[]; rest: string } {
+  const notes: string[] = [];
+  const rest: string[] = [];
+  let inside = false;
+  for (const raw of body.split("\n")) {
+    const line = raw.trim();
+    if (line === NOTES_HEADING) {
+      inside = true;
+      continue;
+    }
+    if (inside && /^## /.test(line)) inside = false;
+    if (!inside || isVolatileLine(line)) {
+      rest.push(raw);
+      continue;
+    }
+    if (line && line !== NOTES_INTRO) notes.push(raw.trimEnd());
+  }
+  return { notes, rest: rest.join("\n") };
 }
 
 /** The line that states the three colours an agent most needs to know. */
@@ -219,10 +271,9 @@ export function renderDesignMd(
     .join("\n");
 
   const c = prose.components;
-  const stampAt = "<!-- tau:stamp -->";
 
   const file = `${frontMatter(style, choice, theme)}
-${stampAt}
+${metaComment(choice)}
 
 # Design — ${style.name}
 
@@ -266,13 +317,16 @@ The shadcn components are already restyled for this look by the skin in \`src/in
 - **Badge** — ${c.badge}
 - **Tabs** — ${c.tabs}
 - **Dialog** — ${c.dialog}
-- **Icons** — ${prose.icons}
+- **Icons** — ${prose.icons} Left unsized, an icon is ${style.skin.iconSize}.
 
 ## Do's and Don'ts
 ${prose.dos.map((line) => `- Do: ${line}`).join("\n")}
 ${prose.donts.map((line) => `- ${line}`).join("\n")}
+
+${NOTES_HEADING}
+${NOTES_INTRO}
 `;
-  return file.replace(stampAt, metaComment(choice, proseStamp(file)));
+  return `${file}${linesComment(splitFrontMatter(file).body)}\n`;
 }
 
 /**
@@ -294,7 +348,9 @@ export function renderImportedDesignMd(
   const p = choice.mode === "dark" ? theme.dark : theme.light;
   const other = choice.mode === "dark" ? "light" : "dark";
   const { front, body } = splitFrontMatter(choice.imported?.text ?? "");
-  const theirs = body.replace(/^<!-- tau:[^\n]*-->\n?/m, "").trim();
+  // Their prose, without tau's bookkeeping or the notes section of an earlier
+  // export: this file gets a notes section of its own.
+  const theirs = splitNotes(body.replace(TAU_COMMENTS, "")).rest.trim();
   const { fonts } = style;
   const layouts = style.layouts.map((key) => LAYOUTS[key].name).join(", ");
 
@@ -314,6 +370,9 @@ ${describeDials(choice.dials).map((line) => `- ${line}`).join("\n")}
 Everything below this line is the design as the user wrote it. Follow it.
 
 ${theirs}
+
+${NOTES_HEADING}
+${NOTES_INTRO}
 `;
 }
 
@@ -392,9 +451,16 @@ export function syncDesignMd(designMd: string, tokens: Readonly<Record<string, s
   return front + rest;
 }
 
+const CUT_NOTE = `[The rest of ${DESIGN_PATH} is cut here to save space; read the file for the remainder.]`;
+
 /**
  * The part of a DESIGN.md an agent is sent: the prose, without the front
- * matter's token values or tau's bookkeeping comment.
+ * matter's token values or tau's bookkeeping comments.
+ *
+ * A long file is cut, but never through the app's notes. The style's prose is
+ * cut to its limit and the notes to theirs, because the notes are the part
+ * that exists nowhere else: an exception the user asked for is lost the moment
+ * the agent stops being told about it.
  *
  * Works on any file in the format, not only ones tau wrote — a user may
  * replace theirs with one from another tool.
@@ -405,9 +471,23 @@ export function designProse(designMd: string): string {
     const end = body.indexOf("\n---", 4);
     if (end !== -1) body = body.slice(body.indexOf("\n", end + 1) + 1);
   }
-  body = body.replace(/^<!-- tau:[^\n]*-->\n?/m, "").trim();
+  body = body.replace(TAU_COMMENTS, "").trim();
   if (body.length <= DESIGN_PROSE_MAX_CHARS) return body;
-  return `${body.slice(0, DESIGN_PROSE_MAX_CHARS)}\n\n[The rest of ${DESIGN_PATH} is cut here to save space; read the file for the remainder.]`;
+
+  const { notes, rest } = splitNotes(body);
+  const prose = rest.trim();
+  const parts = [
+    prose.length <= DESIGN_PROSE_MAX_CHARS
+      ? prose
+      : `${prose.slice(0, DESIGN_PROSE_MAX_CHARS)}\n\n${CUT_NOTE}`,
+  ];
+  if (notes.length > 0) {
+    const text = notes.join("\n");
+    parts.push(
+      `${NOTES_HEADING}\n${text.length <= DESIGN_NOTES_MAX_CHARS ? text : `${text.slice(0, DESIGN_NOTES_MAX_CHARS)}\n\n${CUT_NOTE}`}`,
+    );
+  }
+  return parts.join("\n\n");
 }
 
 /** What tau recorded about how a design was chosen, if the file still says. */

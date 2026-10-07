@@ -127,6 +127,7 @@ export const playful: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.5rem",
     iconStroke: "2.5",
+    iconSize: "1.5rem",
   },
 
   skinCss: `

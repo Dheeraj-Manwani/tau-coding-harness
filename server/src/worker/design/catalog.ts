@@ -86,6 +86,17 @@ export interface CatalogStyle {
     primary: string;
     border: string;
   };
+  /**
+   * The page colour in each mode, so the picker can tell someone that the
+   * accent they chose will be hard to see against it. An accent is used
+   * exactly as chosen (`palette.ts`), so nothing later would.
+   */
+  page: Record<Mode, string>;
+  /**
+   * The style outlines whatever it fills with the accent, so an accent close
+   * to the page colour still shows and needs no warning.
+   */
+  outlined: boolean;
   sampleAccent: string;
 }
 
@@ -113,6 +124,8 @@ function catalogStyle(style: StyleSpec): CatalogStyle {
       primary: p.primary,
       border: p.border,
     },
+    page: { light: theme.light.background, dark: theme.dark.background },
+    outlined: style.palette.fencedPrimary === true,
     sampleAccent,
   };
 }

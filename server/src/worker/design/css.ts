@@ -197,6 +197,7 @@ function sharedSkin(v: SkinVars): string {
     --card-pad: ${v.cardPad};
     --tabs-radius: ${v.tabsRadius};
     --overlay-radius: ${v.overlayRadius};
+    --icon-size: ${v.iconSize};
   }
 
   .lucide { stroke-width: ${v.iconStroke}; }
@@ -398,6 +399,13 @@ ${themeTokens}
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+  /* An icon nothing has sized is the style's size, not lucide's 24px. In the
+     base layer so that any size class wins, and only for the default size so
+     that a size prop does too. */
+  .lucide[width="24"][height="24"] {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 ${(style.baseCss + backdropBase(style.backdrop)).replace(/^\n/, "")}
 }

@@ -149,6 +149,7 @@ export const glass: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.375rem",
     iconStroke: "1.75",
+    iconSize: "1.25rem",
   },
 
   skinCss: `

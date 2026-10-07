@@ -131,6 +131,7 @@ export const neumorphic: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.375rem",
     iconStroke: "1.75",
+    iconSize: "1.25rem",
   },
 
   // Edges. The style in its pure form has no lines at all, and its controls are

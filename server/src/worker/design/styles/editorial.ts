@@ -130,6 +130,7 @@ export const editorial: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0",
     iconStroke: "1.25",
+    iconSize: "1rem",
   },
 
   skinCss: `

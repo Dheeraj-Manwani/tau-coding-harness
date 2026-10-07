@@ -438,6 +438,9 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
           <RestyleDialog
             projectId={projectId}
             current={current}
+            exactAccent={
+              design.data?.chosen.accent === current.accent ? current.accent : undefined
+            }
             open={restyleOpen}
             onOpenChange={setRestyleOpen}
             onRestyled={(result) => {

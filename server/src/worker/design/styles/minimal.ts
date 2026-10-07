@@ -126,6 +126,7 @@ export const minimal: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0.25rem",
     iconStroke: "1.5",
+    iconSize: "1rem",
   },
 
   skinCss: `

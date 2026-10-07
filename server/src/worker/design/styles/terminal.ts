@@ -128,6 +128,7 @@ export const terminal: StyleSpec = {
     labelWeight: "500",
     checkRadius: "0",
     iconStroke: "1.5",
+    iconSize: "0.875rem",
   },
 
   skinCss: `

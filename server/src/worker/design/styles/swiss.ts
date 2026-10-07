@@ -121,6 +121,7 @@ export const swiss: StyleSpec = {
     labelWeight: "600",
     checkRadius: "0.125rem",
     iconStroke: "1.75",
+    iconSize: "1.125rem",
   },
 
   skinCss: `

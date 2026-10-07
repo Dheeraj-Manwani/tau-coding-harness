@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { applyThemeEdit, readThemeTokens } from "@/api/lib/themeEdit";
 import { designConfigSchema } from "@/api/schemas/project.schema";
-import { mergedConfig } from "@/api/services/design.service";
+import { mergedConfig, npmPackageExists } from "@/api/services/design.service";
 import { applyDesignTo, type DesignTarget } from "@/worker/design/apply";
 import { SAMPLE_ACCENTS, designCatalog } from "@/worker/design/catalog";
 import { checkPackageJson, checkStylesheet } from "@/worker/design/checks";
-import { isHexColor } from "@/worker/design/color";
+import { hexToOklch, isHexColor } from "@/worker/design/color";
 import {
   FEEL_PRESETS,
   MAX_IMPORTED_DESIGN_CHARS,
@@ -13,11 +13,16 @@ import {
   normalizeDesignConfig,
 } from "@/worker/design/config";
 import {
+  DESIGN_NOTES_MAX_CHARS,
   DESIGN_PATH,
+  DESIGN_PROSE_MAX_CHARS,
+  NOTES_HEADING,
+  NOTES_INTRO,
   designProse,
-  proseStamp,
   readDesignMeta,
+  renderDesignMd,
   syncDesignMd,
+  writtenLines,
 } from "@/worker/design/designMd";
 import {
   chooseFrom,
@@ -278,13 +283,26 @@ describe("the catalog someone chooses from", () => {
     expect(catalog.styles.map((s) => s.key)).toEqual([...STYLE_KEYS]);
     for (const style of catalog.styles) {
       expect(Object.keys(style).sort()).toEqual(
-        ["aka", "defaultMode", "dials", "fonts", "group", "key", "look", "name", "sampleAccent", "suits", "swatch"].sort(),
+        ["aka", "defaultMode", "dials", "fonts", "group", "key", "look", "name", "outlined", "page", "sampleAccent", "suits", "swatch"].sort(),
       );
       expect(catalog.groups.map((g) => g.key)).toContain(style.group);
       expect(style.fonts[0]!.key).toBe(DEFAULT_FONTS);
       expect(style.fonts).toHaveLength(3);
       for (const colour of Object.values(style.swatch)) expect(isHexColor(colour)).toBe(true);
     }
+  });
+
+  test("says what page an accent will sit on, so the picker can warn about one that will not show", () => {
+    for (const style of catalog.styles) {
+      expect(isHexColor(style.page.light)).toBe(true);
+      expect(isHexColor(style.page.dark)).toBe(true);
+      // A light page and a dark one, whatever the style.
+      expect(hexToOklch(style.page.light).l).toBeGreaterThan(0.8);
+      expect(hexToOklch(style.page.dark).l).toBeLessThan(0.35);
+      expect(style.page[style.defaultMode]).toBe(style.swatch.background);
+      expect(style.outlined).toBe(STYLES[style.key].palette.fencedPrimary === true);
+    }
+    expect(catalog.styles.some((s) => s.outlined)).toBe(true);
   });
 
   test("names the families in the order they are shown, each with a short and a full name", () => {
@@ -418,6 +436,10 @@ describe("deciding a design when the user has chosen part of it", () => {
     expect(note).toContain("List only that style");
     expect(note).toContain("#39d98a");
     expect(note).toContain("dark mode");
+    // A colour is used exactly as chosen, so with light or dark left open the
+    // director is asked to pick the one the colour shows against.
+    expect(note).not.toContain("stands out against");
+    expect(settledNote({ accent: "#14213d" })).toContain("choose the one this colour stands out against");
   });
 });
 
@@ -588,11 +610,17 @@ const BUTTON = `function Button({ variant, size, ...props }) {
 /** An app as a bag of files, with a record of what was installed. */
 function fakeApp(
   files: Record<string, string>,
-  opts: { installsNow?: boolean; available?: (pkg: string) => boolean } = {},
+  opts: {
+    installsNow?: boolean;
+    available?: (pkg: string) => boolean;
+    /** What a lookup of the package says, for an app that cannot install. */
+    published?: (pkg: string) => boolean;
+  } = {},
 ) {
   const installed: string[][] = [];
   const target: DesignTarget = {
     installsNow: opts.installsNow ?? true,
+    ...(opts.published ? { packageExists: async (pkg: string) => opts.published!(pkg) } : {}),
     read: async (path) => files[path] ?? null,
     write: async (path, content) => {
       files[path] = content;
@@ -652,6 +680,41 @@ describe("applying a design", () => {
     await applyDesignTo(app.target, choice);
     expect(app.installed.flat().some((p) => p.includes("playfair") || p.includes("albert"))).toBe(false);
     expect(app.files["src/index.css"]).toContain(`--font-sans: ${STYLES.swiss.fonts.body.stack};`);
+  });
+
+  test("an app that is not running still gets an imported font, once it is known to exist", async () => {
+    const imported = parseImportedDesign(THEIRS);
+    const choice = chooseFrom(offer({ styles: ["swiss"] }), "p", {}, imported);
+    const app = fakeApp(freshApp(), { installsNow: false, published: (pkg) => pkg.includes("albert") });
+    const result = await applyDesignTo(app.target, choice);
+    // Looked up, found, and added; the one that was not found is not added.
+    expect(app.installed.flat()).toContain("@fontsource-variable/albert-sans");
+    expect(app.installed.flat().some((p) => p.includes("playfair"))).toBe(false);
+    expect(result.skipped).toEqual(["font Playfair Display (not available)"]);
+    expect(app.files["src/index.css"]).toContain('--font-sans: "Albert Sans Variable"');
+    expect(app.files["src/index.css"]).toContain(`--font-heading: ${STYLES.swiss.fonts.display.stack};`);
+  });
+
+  test("a package is looked up by name, and any doubt is a no", async () => {
+    const asked: string[] = [];
+    const answering = (status: number) =>
+      (async (url: string | URL | Request) => {
+        asked.push(String(url));
+        return new Response(null, { status });
+      }) as typeof fetch;
+    expect(await npmPackageExists("@fontsource-variable/albert-sans", answering(200))).toBe(true);
+    expect(asked).toEqual(["https://registry.npmjs.org/@fontsource-variable%2falbert-sans"]);
+    expect(await npmPackageExists("@fontsource-variable/no-such-face", answering(404))).toBe(false);
+    expect(await npmPackageExists("@fontsource-variable/albert-sans", answering(503))).toBe(false);
+    const failing = (async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+    expect(await npmPackageExists("@fontsource-variable/albert-sans", failing)).toBe(false);
+    // Never a name that is not a package name: it would end up in package.json.
+    asked.length = 0;
+    expect(await npmPackageExists("../../etc/passwd", answering(200))).toBe(false);
+    expect(await npmPackageExists("@fontsource-variable/a b", answering(200))).toBe(false);
+    expect(asked).toEqual([]);
   });
 
   test("fonts that fail to install cost the fonts, not the design", async () => {
@@ -744,18 +807,28 @@ describe("what is recorded as the user's choice after a restyle", () => {
 
 describe("what a restyle keeps of the old design file", () => {
   const original = filesFor(choiceFor("workbench", { accent: "#7a8b5a" })).designMd;
+  const noted = (md: string, ...lines: string[]) => `${md.trimEnd()}\n${lines.join("\n")}\n`;
 
   test("a file nobody has added to has nothing to keep", () => {
+    expect(original).toContain(`\n${NOTES_HEADING}\n${NOTES_INTRO}\n`);
+    expect(writtenLines(original)!.size).toBeGreaterThan(30);
     expect(keptNotes(original)).toEqual([]);
     expect(keptNotes(null)).toEqual([]);
     expect(withKeptNotes(original, [])).toBe(original);
   });
 
-  test("lines the agent or the user added are kept, wherever they were put", () => {
+  test("the notes section is the app's, and is kept whole", () => {
+    // Written at the very end of the file, after tau's own last line, which is
+    // where an agent appending to the file puts it.
+    const edited = noted(original, "- The logo is always green.", "- The sale banner may use purple.");
+    expect(keptNotes(edited)).toEqual(["- The logo is always green.", "- The sale banner may use purple."]);
+  });
+
+  test("lines added anywhere else are kept too, wherever they were put", () => {
     const edited = original
       .replace("## Typography\n", "## Typography\n- **Pacifico** — `font-fun`. The promo banner's headline only.\n")
       .replace("## Do's and Don'ts\n", "## Do's and Don'ts\n- **Promo banner exception.** The home page banner uses purple to pink, as the user asked.\n")
-      + "\n## Brand\nThe logo is always green.\n";
+      .replace(`${NOTES_HEADING}\n`, `## Brand\nThe logo is always green.\n\n${NOTES_HEADING}\n`);
     expect(keptNotes(edited)).toEqual([
       "- **Pacifico** — `font-fun`. The promo banner's headline only.",
       "- **Promo banner exception.** The home page banner uses purple to pink, as the user asked.",
@@ -770,27 +843,46 @@ describe("what a restyle keeps of the old design file", () => {
     expect(keptNotes(recoloured)).toEqual([]);
   });
 
-  test("they go at the end of the new file, and survive the restyle after that", () => {
-    const notes = ["- **Promo banner exception.** Purple to pink."];
+  test("they go into the new file's notes, and survive the restyle after that", () => {
+    const notes = ["- **Promo banner exception.** Purple to pink.", "## Brand", "The logo is always green."];
     const restyled = withKeptNotes(filesFor(choiceFor("brutalist")).designMd, notes);
-    expect(restyled).toContain("## Kept from the previous design");
-    expect(restyled.trimEnd().endsWith(notes[0]!)).toBe(true);
     expect(describeDesign(restyled)?.style).toBe("brutalist");
-    // Restyle again: the notes are still notes, and the heading is not doubled.
-    expect(keptNotes(restyled)).toEqual(notes);
+    // One notes section, with a heading that was a section of its own set a
+    // level down so that it stays inside it.
+    expect(restyled.match(/^## Notes for this app$/gm)).toHaveLength(1);
+    expect(restyled).toContain(`${NOTES_INTRO}\n\n- **Promo banner exception.** Purple to pink.\n### Brand\nThe logo is always green.\n`);
+    // The agent is sent them, and not tau's bookkeeping.
+    expect(designProse(restyled)).toContain("The logo is always green.");
+    expect(designProse(restyled)).not.toContain("<!--");
+    // Restyle again: the notes are still notes, and are not doubled.
+    const carried = ["- **Promo banner exception.** Purple to pink.", "### Brand", "The logo is always green."];
+    expect(keptNotes(restyled)).toEqual(carried);
     const again = withKeptNotes(filesFor(choiceFor("soft")).designMd, keptNotes(restyled));
-    expect(again.match(/## Kept from the previous design/g)).toHaveLength(1);
+    expect(again.match(/^## Notes for this app$/gm)).toHaveLength(1);
+    expect(keptNotes(again)).toEqual(carried);
   });
 
-  test("if tau's wording has changed since the file was written, only whole foreign sections are kept", () => {
-    // Stands in for a file written by an older tau: its prose is not what tau
-    // would write for this design today, so it cannot be compared line by line.
-    const older =
-      original.replace("## Shapes\n", "## Shapes\nAn older sentence about corners.\n") +
-      "\n## Brand\nThe logo is always green.\n";
-    expect(readDesignMeta(older)!.base).not.toBe(proseStamp(older));
-    const stale = older.replace(/ base=[0-9a-f]{8}/, " base=00000000");
-    expect(keptNotes(stale)).toEqual(["## Brand", "The logo is always green."]);
+  test("a note outlives a change to tau's own wording for the style", () => {
+    // The file as an older tau would have written it: one sentence of the
+    // style has since been reworded, so it is not what tau would write today.
+    // The file's own record says the old sentence was tau's.
+    const reworded = { ...STYLES.workbench, prose: { ...STYLES.workbench.prose, shapes: "An older sentence about corners." } };
+    const choice = choiceFor("workbench", { accent: "#7a8b5a" });
+    const older = renderDesignMd(reworded, choice, resolveDesign(choice).theme);
+    expect(older).toContain("An older sentence about corners.");
+    expect(keptNotes(older)).toEqual([]);
+    const edited = older.replace("## Typography\n", "## Typography\n- **Pacifico** — the promo banner only.\n");
+    expect(keptNotes(edited)).toEqual(["- **Pacifico** — the promo banner only."]);
+  });
+
+  test("a file with no record of tau's lines keeps its notes and whole foreign sections", () => {
+    // What is left when an agent rewrites the file from scratch, or when the
+    // file was written before tau kept a record.
+    const bare = noted(original.replace(/^<!-- tau-lines:.*\n/m, ""), "- The logo is always green.")
+      .replace("## Shapes\n", "## Shapes\nA sentence somebody slipped in.\n")
+      .replace(`${NOTES_HEADING}\n`, `## Brand\nNo stock photos.\n\n## Kept from the previous design\n- An older note.\n\n${NOTES_HEADING}\n`);
+    expect(writtenLines(bare)).toBeNull();
+    expect(keptNotes(bare)).toEqual(["- The logo is always green.", "## Brand", "No stock photos.", "", "- An older note."]);
   });
 
   test("an imported design keeps nothing of tau's, only sections tau never writes", () => {
@@ -798,6 +890,18 @@ describe("what a restyle keeps of the old design file", () => {
     // Their file is one whole foreign document; its sections are theirs.
     expect(keptNotes(imported)).toContain("- Never use gradients.");
     expect(keptNotes(imported).join("\n")).not.toContain("In this app");
+    // It has a notes section of its own, and what is put there is kept.
+    expect(imported).toContain(`\n${NOTES_HEADING}\n${NOTES_INTRO}\n`);
+    expect(keptNotes(noted(imported, "- The logo is always green."))[0]).toBe("- The logo is always green.");
+  });
+
+  test("a long file is cut for the agent, but never through its notes", () => {
+    const filler = Array.from({ length: 200 }, (_, i) => `Sentence ${i} of somebody's long design.`).join("\n");
+    const long = noted(original.replace("## Layout\n", `## Layout\n${filler}\n`), "- The logo is always green.");
+    const prose = designProse(long);
+    expect(prose).toContain("is cut here to save space");
+    expect(prose.trimEnd().endsWith(`${NOTES_HEADING}\n- The logo is always green.`)).toBe(true);
+    expect(prose.length).toBeLessThan(DESIGN_PROSE_MAX_CHARS + DESIGN_NOTES_MAX_CHARS + 300);
   });
 });
 

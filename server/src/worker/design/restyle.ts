@@ -15,9 +15,9 @@
  *     base rules and the skin. Anything else — a variable tau never declares,
  *     an extra `@import`, a rule outside tau's blocks — is the app's, and is
  *     kept (`carryOverCss`);
- *   - in `.tau/DESIGN.md`, tau owns what it would have written for the old
- *     design. Any other line was added since, and is kept as a note
- *     (`keptNotes`).
+ *   - in `.tau/DESIGN.md`, tau owns the lines it wrote, which the file keeps
+ *     a record of. The notes section and any other line were added since, and
+ *     are kept as the new file's notes (`keptNotes`).
  *
  * What a restyle deliberately does not keep is a change made *inside* what tau
  * owns — a palette colour edited in the theme panel, a rule changed within the
@@ -26,9 +26,15 @@
  * Pure. See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import { describeDesign, type DesignSummary } from "./config";
-import { isVolatileLine, proseStamp, readDesignMeta } from "./designMd";
+import {
+  NOTES_HEADING,
+  NOTES_INTRO,
+  isVolatileLine,
+  lineMark,
+  splitNotes,
+  writtenLines,
+} from "./designMd";
 import { splitFrontMatter } from "./importDesign";
-import { designFiles, resolveDesign } from "./index";
 import {
   ALL_STYLES,
   DEFAULT_FONTS,
@@ -119,9 +125,14 @@ const TAU_SECTIONS = new Set([
   "in this app",
 ]);
 
+/** What a restyle used to put its kept notes under, before the file had a notes section. */
+const OLD_KEPT_HEADING = "## Kept from the previous design";
+const OLD_KEPT_INTRO =
+  "These were added to this app's design before its style was changed. They still apply, except where the style above now says otherwise.";
+
 /**
  * Whole sections of a file that tau never writes. The cautious answer to
- * "what was added?", for a file whose lines cannot be compared one by one.
+ * "what was added?", for a file with no record of which lines are tau's.
  */
 function foreignSections(body: string): string[] {
   const notes: string[] = [];
@@ -129,75 +140,74 @@ function foreignSections(body: string): string[] {
   for (const raw of body.split("\n")) {
     const heading = /^##\s+(.*)$/.exec(raw.trim())?.[1]?.trim();
     if (heading !== undefined) {
-      const kept = raw.trim() === KEPT_HEADING;
+      const kept = raw.trim() === OLD_KEPT_HEADING;
       keep = kept || !TAU_SECTIONS.has(heading.toLowerCase());
-      // An earlier restyle's heading is written again by this one.
+      // Its lines are notes; its heading is not.
       if (kept) continue;
     }
-    if (!keep || raw.trim() === KEPT_INTRO) continue;
+    if (!keep || raw.trim() === OLD_KEPT_INTRO || isVolatileLine(raw.trim())) continue;
     if (raw.trim() || notes.length > 0) notes.push(raw.trimEnd());
   }
   while (notes.length > 0 && !notes[notes.length - 1]!.trim()) notes.pop();
-  return notes.slice(0, MAX_KEPT_NOTES);
+  return notes;
 }
 
-/**
- * Lines of an app's `DESIGN.md` that tau would not have written for its
- * design — which is to say, lines somebody added: the agent recording that a
- * banner is allowed a second colour, the user noting that the logo stays
- * green.
- *
- * Found by writing the file again from its own record of how it was made and
- * taking the difference. That is only sound while tau would still write the
- * same words for that design, which the file's stamp says (`proseStamp`). For
- * a file without a matching stamp — written by an older tau, or brought by
- * the user — only sections under headings tau never uses are kept.
- */
-export function keptNotes(designMd: string | null | undefined): string[] {
-  if (!designMd) return [];
-  const { body } = splitFrontMatter(designMd);
-  const summary = describeDesign(designMd);
-  if (!summary || summary.imported) return foreignSections(body);
-
-  const original = designFiles(
-    resolveDesign({
-      style: summary.style,
-      accent: summary.accent,
-      accentExact: false,
-      mode: summary.mode,
-      dials: summary.dials,
-      ...(summary.fonts !== "default" ? { fonts: summary.fonts } : {}),
-      read: readOf(designMd) ?? "",
-      source: "director",
-    }),
-    { fontsInstalled: true },
-  ).designMd;
-
-  // tau's wording for this design has changed since the file was written, so
-  // a line-by-line difference would be tau's old sentences, not anyone's notes.
-  if (readDesignMeta(designMd)?.base !== proseStamp(original)) return foreignSections(body);
-
-  const known = new Set(splitFrontMatter(original).body.split("\n").map((line) => line.trim()));
+/** Lines of a file that are not in its record of what tau wrote. */
+function unrecordedLines(body: string, written: ReadonlySet<string>): string[] {
   const notes: string[] = [];
   for (const raw of body.split("\n")) {
     const line = raw.trim();
-    // Notes kept by an earlier restyle are notes still; their heading is not.
-    if (!line || line === KEPT_HEADING || line === KEPT_INTRO) continue;
-    if (known.has(line) || isVolatileLine(line)) continue;
+    if (!line || line === OLD_KEPT_HEADING || line === OLD_KEPT_INTRO) continue;
+    if (isVolatileLine(line) || written.has(lineMark(line))) continue;
     notes.push(raw.trimEnd());
-    if (notes.length >= MAX_KEPT_NOTES) break;
   }
   return notes;
 }
 
-const KEPT_HEADING = "## Kept from the previous design";
-const KEPT_INTRO =
-  "These were added to this app's design before its style was changed. They still apply, except where the style above now says otherwise.";
+/**
+ * What an app's `DESIGN.md` says that tau did not write — which is to say,
+ * what somebody added: the agent recording that a banner is allowed a second
+ * colour, the user noting that the logo stays green.
+ *
+ * Two places to look. The notes section is the app's by definition, and is
+ * taken whole. Anything added elsewhere — a line slipped into "Typography", a
+ * sentence of tau's that was reworded — is found from the file's record of the
+ * lines tau wrote (`writtenLines`): a line that is not in it was added. A file
+ * with no record — one the user brought, or one rewritten from scratch — gets
+ * the cautious answer instead: only sections under headings tau never uses.
+ */
+export function keptNotes(designMd: string | null | undefined): string[] {
+  if (!designMd) return [];
+  const { notes, rest } = splitNotes(splitFrontMatter(designMd).body);
+  const written = describeDesign(designMd)?.imported ? null : writtenLines(designMd);
+  const elsewhere = written ? unrecordedLines(rest, written) : foreignSections(rest);
+  // The same note in both places is one note.
+  const seen = new Set<string>();
+  return [...notes, ...elsewhere]
+    .filter((line) => {
+      const key = line.trim();
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, MAX_KEPT_NOTES);
+}
 
-/** A new `DESIGN.md` with the notes from the old one added at the end. */
+/**
+ * A new `DESIGN.md` with the notes from the old one in its notes section.
+ *
+ * A note that was a section heading of its own (`## Brand`) is set one level
+ * down, so the notes stay one section and are found as one next time.
+ */
 export function withKeptNotes(designMd: string, notes: readonly string[]): string {
   if (notes.length === 0) return designMd;
-  return `${designMd.trimEnd()}\n\n${KEPT_HEADING}\n${KEPT_INTRO}\n\n${notes.join("\n")}\n`;
+  const text = notes.map((line) => line.replace(/^##(?=\s)/, "###")).join("\n");
+  const opening = `${NOTES_HEADING}\n${NOTES_INTRO}\n`;
+  const at = designMd.indexOf(opening);
+  if (at === -1) return `${designMd.trimEnd()}\n\n${opening}\n${text}\n`;
+  const after = at + opening.length;
+  return `${designMd.slice(0, after)}\n${text}\n${designMd.slice(after)}`;
 }
 
 // ── What the old stylesheet held that tau did not write ──────────────────────

@@ -14,6 +14,7 @@ import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { ApiError } from "@/src/lib/api-client";
 import {
   compactConfig,
+  sameDesign,
   useDesignCatalog,
   useRestyle,
   type DesignConfig,
@@ -21,6 +22,7 @@ import {
   type RestyleResponse,
 } from "@/src/features/design/api";
 import { DesignPicker } from "@/src/features/design/DesignPicker";
+import { useSettings } from "@/src/hooks/useSettings";
 
 /**
  * The form, mounted only while the dialog is open so every opening starts from
@@ -30,18 +32,24 @@ import { DesignPicker } from "@/src/features/design/DesignPicker";
 function RestyleForm({
   projectId,
   current,
+  exactAccent,
   onClose,
   onRestyled,
 }: {
   projectId: string;
   current: DesignSummary;
+  exactAccent?: string;
   onClose: () => void;
   onRestyled: (result: RestyleResponse) => void;
 }) {
   const catalog = useDesignCatalog();
   const restyle = useRestyle(projectId);
+  const { defaultDesign } = useSettings();
   const [draft, setDraft] = useState<DesignConfig>({});
   const config = compactConfig(draft);
+  // A default look is for new projects; this is how an existing one gets it.
+  // It only fills the form in: nothing changes until Apply.
+  const savedDefault = defaultDesign ? compactConfig(defaultDesign) : null;
 
   const apply = () => {
     if (!config || restyle.isPending) return;
@@ -80,12 +88,23 @@ function RestyleForm({
           value={draft}
           onChange={setDraft}
           current={current}
+          exactAccent={exactAccent}
         />
       ) : (
         <DataSpinner label="Loading styles" />
       )}
 
       <DialogFooter>
+        {savedDefault && !sameDesign(draft, savedDefault) && (
+          <Button
+            variant="ghost"
+            onClick={() => setDraft(savedDefault)}
+            disabled={restyle.isPending}
+            title="Fill in the look your new projects start from. Nothing changes until you apply."
+          >
+            Use my default look
+          </Button>
+        )}
         <Button variant="ghost" onClick={onClose} disabled={restyle.isPending}>
           Cancel
         </Button>
@@ -101,12 +120,15 @@ function RestyleForm({
 export function RestyleDialog({
   projectId,
   current,
+  exactAccent,
   open,
   onOpenChange,
   onRestyled,
 }: {
   projectId: string;
   current: DesignSummary;
+  /** The accent the user chose earlier, when the app still has it. */
+  exactAccent?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRestyled: (result: RestyleResponse) => void;
@@ -118,6 +140,7 @@ export function RestyleDialog({
           <RestyleForm
             projectId={projectId}
             current={current}
+            exactAccent={exactAccent}
             onClose={() => onOpenChange(false)}
             onRestyled={onRestyled}
           />

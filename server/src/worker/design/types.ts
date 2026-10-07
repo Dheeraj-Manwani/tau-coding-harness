@@ -202,6 +202,12 @@ export interface SkinVars {
   checkRadius: string;
   /** lucide's stroke width for every icon. */
   iconStroke: string;
+  /**
+   * How big an icon is when nothing sizes it, as a CSS length. A default, not
+   * a rule: an icon given a size class, a `size` prop, or a place inside a
+   * component that sizes its own icons keeps that size.
+   */
+  iconSize: string;
 }
 
 /** The three feel dials, 1–10. */

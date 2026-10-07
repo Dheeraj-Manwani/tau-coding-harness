@@ -152,6 +152,7 @@ export const clay: StyleSpec = {
     labelWeight: "700",
     checkRadius: "0.5rem",
     iconStroke: "2.5",
+    iconSize: "1.375rem",
   },
 
   skinCss: `

@@ -44,6 +44,10 @@ export interface DesignConfig {
 export interface CatalogStyle {
   key: string;
   name: string;
+  /** Other names the look goes by ("Neo-brutalism"). Often empty. */
+  aka: string[];
+  /** Which of the catalog's `groups` it is shown under. */
+  group: string;
   look: string;
   suits: string;
   defaultMode: DesignMode;
@@ -62,6 +66,13 @@ export interface CatalogStyle {
 
 export type FeelPreset = "calm" | "balanced" | "bold";
 
+/** A family of styles: `label` for a filter chip, `title` for a section heading. */
+export interface StyleGroup {
+  key: string;
+  label: string;
+  title: string;
+}
+
 export interface DesignCatalog {
   /**
    * False where the server builds new projects on the older templates, which
@@ -69,6 +80,8 @@ export interface DesignCatalog {
    */
   enabled: boolean;
   styles: CatalogStyle[];
+  /** The families the styles are shown in, in order. */
+  groups: StyleGroup[];
   feelPresets: Record<FeelPreset, Dials>;
   suggestedAccents: string[];
 }
@@ -112,6 +125,41 @@ export const designKeys = {
 /** Where a style's preview thumbnail lives (`server/scripts/design-previews.ts` renders them). */
 export function stylePreviewUrl(key: string): string {
   return `/design/${key}.jpg`;
+}
+
+/**
+ * The styles a search matches: every word typed has to appear somewhere in a
+ * style's name, its other names, or the lines on what it looks like and suits.
+ * So "glassmorphism" finds Glass, and "dashboard" finds the styles made for one.
+ */
+export function searchStyles(styles: CatalogStyle[], query: string): CatalogStyle[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return styles;
+  return styles.filter((style) => {
+    const text = [style.name, ...style.aka, style.look, style.suits].join(" ").toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
+
+/**
+ * Styles arranged under their families, in the catalog's order. A family with
+ * nothing in it is left out; a style whose family the catalog does not list
+ * still appears, at the end, rather than vanishing.
+ */
+export function groupStyles(
+  styles: CatalogStyle[],
+  groups: StyleGroup[],
+): { group: StyleGroup; styles: CatalogStyle[] }[] {
+  const known = new Set(groups.map((g) => g.key));
+  const sections = groups.map((group) => ({
+    group,
+    styles: styles.filter((s) => s.group === group.key),
+  }));
+  const rest = styles.filter((s) => !known.has(s.group));
+  if (rest.length > 0) {
+    sections.push({ group: { key: "", label: "Other", title: "Other" }, styles: rest });
+  }
+  return sections.filter((section) => section.styles.length > 0);
 }
 
 /** `GET /project/design/styles`: the styles, feel presets and suggested accents. */

@@ -179,6 +179,18 @@ function accentLine(primary: string, background: string, foreground: string): st
 const TOKEN_RULE =
   "- Colour only through tokens: `bg-background`, `bg-card`, `bg-muted`, `bg-primary`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-chart-1` … `bg-chart-5`. Never a literal colour in a component.";
 
+/**
+ * For a style that paints a backdrop behind the page: what an agent has to
+ * know to leave it visible. The stylesheet makes the usual full-height wrapper
+ * see-through, but a section given a background of its own still covers it.
+ */
+const BACKDROP_RULE =
+  "- The page has a backdrop, painted behind everything by `src/index.css`. Leave the page wrapper and plain sections without a background so it shows; put content on panels (`bg-card`).";
+
+function backdropRule(style: StyleSpec): string {
+  return style.backdrop ? `\n${BACKDROP_RULE}` : "";
+}
+
 /** The whole file, ending in a newline. */
 export function renderDesignMd(
   style: StyleSpec,
@@ -226,7 +238,7 @@ ${prose.colors}
 
 ${accentLine(p.primary, p.background, p.foreground)}
 - The app opens in ${choice.mode} mode. A ${other} palette is defined too, so both must keep working.
-${TOKEN_RULE}
+${TOKEN_RULE}${backdropRule(style)}
 
 ## Typography
 ${typeLines.join("\n")}
@@ -293,7 +305,7 @@ tau built this design into the app. Its colours are the palette in \`src/index.c
 
 ${accentLine(p.primary, p.background, p.foreground)}
 - The app opens in ${choice.mode} mode. A ${other} palette is defined too, so both must keep working.
-${TOKEN_RULE}
+${TOKEN_RULE}${backdropRule(style)}
 - Typefaces: headings use **${fonts.display.name}** (\`font-heading\`), text is **${fonts.body.name}** (\`font-sans\`), and \`font-mono\` is ${fonts.mono.name}. Where the design below names a typeface that is not one of these, it could not be installed; use these.
 - Use the shadcn components as they are, and do not add radius, border, shadow, font or height classes to a Button, Card, Input, Badge, Tabs or Dialog — the skin decides those.
 ${describeDials(choice.dials).map((line) => `- ${line}`).join("\n")}

@@ -8,6 +8,8 @@ export const bento: StyleSpec = {
   suits:
     "Product and feature pages, personal dashboards, analytics, trackers, link-in-bio pages, anything that shows several things of equal weight at once.",
   avoid: "Not for long reading, or for anything that should feel handmade or traditional.",
+  group: "precise",
+  aka: ["Bento grid"],
 
   fonts: {
     display: variableFont("Manrope", "manrope", SANS_FALLBACK),

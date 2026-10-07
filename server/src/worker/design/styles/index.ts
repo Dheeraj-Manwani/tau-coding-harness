@@ -10,16 +10,25 @@
 import { STYLE_KEYS, type FontSet, type StyleKey, type StyleSpec } from "../types";
 import { bento } from "./bento";
 import { brutalist } from "./brutalist";
+import { clay } from "./clay";
 import { craft } from "./craft";
+import { cybercore } from "./cybercore";
+import { cyberpunk } from "./cyberpunk";
 import { editorial } from "./editorial";
 import { formal } from "./formal";
+import { glass } from "./glass";
 import { luxe } from "./luxe";
+import { minimal } from "./minimal";
 import { neon } from "./neon";
+import { neumorphic } from "./neumorphic";
+import { pixel } from "./pixel";
 import { playful } from "./playful";
 import { soft } from "./soft";
 import { swiss } from "./swiss";
+import { synthwave } from "./synthwave";
 import { terminal } from "./terminal";
 import { workbench } from "./workbench";
+import { y2k } from "./y2k";
 
 export const STYLES: Record<StyleKey, StyleSpec> = {
   editorial,
@@ -34,6 +43,15 @@ export const STYLES: Record<StyleKey, StyleSpec> = {
   craft,
   neon,
   formal,
+  minimal,
+  glass,
+  clay,
+  neumorphic,
+  pixel,
+  y2k,
+  cybercore,
+  synthwave,
+  cyberpunk,
 };
 
 export const ALL_STYLES: readonly StyleSpec[] = STYLE_KEYS.map((k) => STYLES[k]);

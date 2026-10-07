@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   FileUpIcon,
   MoonIcon,
+  SearchIcon,
   SparklesIcon,
   SunIcon,
   XIcon,
@@ -12,6 +13,8 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import {
+  groupStyles,
+  searchStyles,
   stylePreviewUrl,
   type CatalogStyle,
   type DesignCatalog,
@@ -104,7 +107,7 @@ function StyleCard({
       onClick={onSelect}
       title={`${style.look} Suits: ${style.suits}`}
       className={cn(
-        "group relative overflow-hidden rounded-lg border text-left transition-colors",
+        "group relative flex flex-col overflow-hidden rounded-lg border text-left transition-colors",
         selected
           ? "border-blue-500 ring-2 ring-blue-500/30"
           : "border-silver-400/30 hover:border-silver-600/60",
@@ -126,12 +129,20 @@ function StyleCard({
           }}
         />
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-silver-400/20 px-2.5 py-1.5">
-        <span className="truncate text-xs font-semibold text-silver-900">
-          {style.name}
+      <div className="flex flex-1 items-start justify-between gap-2 border-t border-silver-400/20 px-2.5 py-1.5">
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-semibold text-silver-900">
+            {style.name}
+          </span>
+          {/* The name people may know it by, where tau's is different. */}
+          {style.aka?.[0] && (
+            <span className="block truncate text-[10px] text-silver-600">
+              {style.aka[0]}
+            </span>
+          )}
         </span>
         <span
-          className="size-3 shrink-0 rounded-full border border-black/10"
+          className="mt-0.5 size-3 shrink-0 rounded-full border border-black/10"
           style={{ backgroundColor: style.swatch.primary }}
         />
       </div>
@@ -193,6 +204,9 @@ export function DesignPicker({
   const fileInput = useRef<HTMLInputElement>(null);
   const [fineTune, setFineTune] = useState(false);
   const [importOpen, setImportOpen] = useState(Boolean(value.designMd));
+  /** The family the gallery is narrowed to, or null for all of them. */
+  const [group, setGroup] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const restyling = current != null;
   const unset = restyling ? "Keep" : "Auto";
@@ -202,6 +216,16 @@ export function DesignPicker({
   // one the app already has.
   const styleKey = value.style ?? current?.style;
   const style = catalog.styles.find((s) => s.key === styleKey);
+
+  // The gallery: narrowed to one family or to a search, and shown in families
+  // either way, since twenty-odd cards in one grid cannot be scanned. A catalog
+  // from a server that predates families is one unnamed section.
+  const groups = catalog.groups ?? [];
+  const shown = searchStyles(
+    group ? catalog.styles.filter((s) => s.group === group) : catalog.styles,
+    query,
+  );
+  const sections = groupStyles(shown, groups);
 
   const preset = presetOf(value.dials, catalog.feelPresets);
   // What the sliders show for a dial nobody has set: where it will land.
@@ -236,33 +260,80 @@ export function DesignPicker({
               : "tau picks one that suits what you describe"
         }
       >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <button
-            type="button"
-            aria-pressed={!value.style}
-            onClick={() => set({ style: undefined, fonts: undefined })}
-            className={cn(
-              "flex aspect-[8/5.9] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed text-center transition-colors",
-              !value.style
-                ? "border-blue-500 bg-blue-500/10 text-blue-300"
-                : "border-silver-400/40 text-silver-600 hover:border-silver-600/60 hover:text-silver-900",
-            )}
-          >
-            <SparklesIcon className="size-4" />
-            <span className="px-2 text-xs font-semibold">
-              {restyling ? `Keep ${current.styleName}` : "Let tau decide"}
-            </span>
-          </button>
-          {catalog.styles.map((s) => (
-            <StyleCard
-              key={s.key}
-              style={s}
-              selected={value.style === s.key}
-              // A pairing belongs to its style, so it does not follow a change of style.
-              onSelect={() => set({ style: s.key, fonts: undefined })}
-            />
+        <button
+          type="button"
+          aria-pressed={!value.style}
+          onClick={() => set({ style: undefined, fonts: undefined })}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left transition-colors",
+            !value.style
+              ? "border-blue-500 bg-blue-500/10 text-blue-300"
+              : "border-silver-400/40 text-silver-600 hover:border-silver-600/60 hover:text-silver-900",
+          )}
+        >
+          <SparklesIcon className="size-4 shrink-0" />
+          <span className="text-xs font-semibold">
+            {restyling ? `Keep ${current.styleName}` : "Let tau decide"}
+          </span>
+          {!value.style && <CheckIcon className="ml-auto size-3.5 shrink-0" />}
+        </button>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Chip selected={group === null} onClick={() => setGroup(null)}>
+            All
+          </Chip>
+          {groups.map((g) => (
+            <Chip
+              key={g.key}
+              selected={group === g.key}
+              onClick={() => setGroup(group === g.key ? null : g.key)}
+              title={g.title}
+            >
+              {g.label}
+            </Chip>
           ))}
+          <label className="relative ml-auto w-full sm:w-44">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-silver-600" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search styles"
+              aria-label="Search styles"
+              className="w-full rounded-[7px] border border-silver-400/30 bg-transparent py-1 pr-2 pl-6 text-xs text-silver-900 outline-none placeholder:text-silver-600/70 focus-visible:border-blue-500/60"
+            />
+          </label>
         </div>
+
+        {sections.length === 0 ? (
+          <p className="rounded-lg border border-silver-400/20 px-3 py-6 text-center text-xs text-silver-600">
+            No style matches “{query.trim()}”.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {sections.map((section) => (
+              <div key={section.group.key} className="space-y-1.5">
+                {/* One family on show needs no heading; the chip already names it. */}
+                {sections.length > 1 && (
+                  <h4 className="text-[11px] font-medium text-silver-600">
+                    {section.group.title}
+                  </h4>
+                )}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {section.styles.map((s) => (
+                    <StyleCard
+                      key={s.key}
+                      style={s}
+                      selected={value.style === s.key}
+                      // A pairing belongs to its style, so it does not follow a change of style.
+                      onSelect={() => set({ style: s.key, fonts: undefined })}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section title="Accent colour" hint={value.accent ?? (restyling ? current.accent : undefined)}>

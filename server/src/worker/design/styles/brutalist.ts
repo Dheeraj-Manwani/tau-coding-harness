@@ -8,6 +8,8 @@ export const brutalist: StyleSpec = {
   suits:
     "Indie products, creative tools, zines, music, events, personal sites, anything for an audience that is bored of polished software.",
   avoid: "Not for anything that has to feel calm and trustworthy: money, health, admin tools.",
+  group: "loud",
+  aka: ["Neo-brutalism", "Neubrutalism"],
 
   fonts: {
     display: variableFont("Bricolage Grotesque", "bricolage-grotesque", SANS_FALLBACK),

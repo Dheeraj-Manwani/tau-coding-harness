@@ -29,6 +29,15 @@ export const STYLE_KEYS = [
   "craft",
   "neon",
   "formal",
+  "minimal",
+  "glass",
+  "clay",
+  "neumorphic",
+  "pixel",
+  "y2k",
+  "cybercore",
+  "synthwave",
+  "cyberpunk",
 ] as const;
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
@@ -36,6 +45,20 @@ export type StyleKey = (typeof STYLE_KEYS)[number];
 export function isStyleKey(value: unknown): value is StyleKey {
   return typeof value === "string" && (STYLE_KEYS as readonly string[]).includes(value);
 }
+
+/**
+ * The families the library is shown in, in the order they are shown. Twenty
+ * styles in one grid is too many to scan; five short rows are not.
+ */
+export const STYLE_GROUPS = [
+  { key: "precise", label: "Clean", title: "Clean and precise" },
+  { key: "crafted", label: "Classic", title: "Editorial and classic" },
+  { key: "tactile", label: "Tactile", title: "Soft and tactile" },
+  { key: "loud", label: "Bold", title: "Bold and playful" },
+  { key: "tech", label: "Futuristic", title: "Technical and futuristic" },
+] as const;
+
+export type StyleGroupKey = (typeof STYLE_GROUPS)[number]["key"];
 
 /** A typeface, and how an app gets it. */
 export interface FontRef {
@@ -200,6 +223,15 @@ export interface StyleSpec {
   suits: string;
   /** What it is wrong for — "Not for …" — which narrows a choice more than praise does. */
   avoid: string;
+  /** Which family of looks it is shown with. */
+  group: StyleGroupKey;
+  /**
+   * The names people already know the look by — "Neo-brutalism",
+   * "Glassmorphism" — where tau calls it something else or something shorter.
+   * Shown beside the name, searched by the picker, and told to the director,
+   * so a brief that asks for a look by its familiar name gets it.
+   */
+  aka?: readonly string[];
 
   fonts: FontSet;
   /** Other pairings the style works in. `fonts` is the default and is not repeated here. */
@@ -214,6 +246,17 @@ export interface StyleSpec {
   theme: Readonly<Record<string, string>>;
   /** CSS for the base layer: headings, body. */
   baseCss: string;
+  /**
+   * A `background` value painted across the page, fixed behind everything: a
+   * gradient, a grid, scanlines. Most styles have none — the page is the
+   * background colour and the look is in the surfaces. A few are not
+   * themselves without one: glass is only glass with colour behind it.
+   *
+   * Written with the palette's variables, so it follows the accent and both
+   * modes, and kept faint enough that text placed straight on the page still
+   * reads — the palette checks contrast against the background colour alone.
+   */
+  backdrop?: string;
   skin: SkinVars;
   /** The style's own skin CSS, after the shared rules. */
   skinCss: string;

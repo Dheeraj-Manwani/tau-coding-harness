@@ -1,5 +1,6 @@
 import type { StyleSpec } from "../types";
 import { MONO_FALLBACK, variableFont } from "./fonts";
+import { TABS_TAB } from "./selectors";
 
 const mono = variableFont("JetBrains Mono", "jetbrains-mono", MONO_FALLBACK);
 
@@ -10,6 +11,7 @@ export const terminal: StyleSpec = {
   suits:
     "Developer tools, logs and monitors, crypto and trading, hacker-flavoured side projects, text adventures, anything for people who live in an editor.",
   avoid: "Not for consumer apps, or for people who do not work at a keyboard.",
+  group: "tech",
 
   fonts: { display: mono, body: mono, mono },
   fontOptions: [
@@ -146,7 +148,7 @@ export const terminal: StyleSpec = {
   [data-slot="badge"] { background: transparent; border: 1px solid currentColor; color: var(--muted-foreground); }
   [data-slot="badge"][data-variant="default"] { color: var(--primary); }
   [data-slot="badge"][data-variant="destructive"] { color: var(--destructive); }
-  [data-slot="tabs-trigger"][data-active] { color: var(--primary); border-bottom-color: var(--primary); }`,
+  ${TABS_TAB}[data-active] { color: var(--primary); border-bottom-color: var(--primary); }`,
 
   layouts: [
     "sidebar-shell",

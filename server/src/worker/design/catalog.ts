@@ -13,7 +13,14 @@
 import { FEEL_PRESETS } from "./config";
 import { buildTheme } from "./palette";
 import { ALL_STYLES, DEFAULT_FONTS, fontLabel } from "./styles";
-import type { Dials, Mode, StyleKey, StyleSpec } from "./types";
+import {
+  STYLE_GROUPS,
+  type Dials,
+  type Mode,
+  type StyleGroupKey,
+  type StyleKey,
+  type StyleSpec,
+} from "./types";
 
 /**
  * An accent that shows each style as it is meant to look, for its preview:
@@ -33,6 +40,15 @@ export const SAMPLE_ACCENTS: Record<StyleKey, string> = {
   craft: "#b5532a",
   neon: "#d63cff",
   formal: "#1f3a6e",
+  minimal: "#ff4f1a",
+  glass: "#5b8def",
+  clay: "#f47c7c",
+  neumorphic: "#e8643c",
+  pixel: "#3d46f2",
+  y2k: "#ff4fb4",
+  cybercore: "#f0331a",
+  synthwave: "#ff2fb0",
+  cyberpunk: "#fcee0a",
 };
 
 /** Accents offered as one-click choices beside the colour picker. */
@@ -52,6 +68,10 @@ export const SUGGESTED_ACCENTS = [
 export interface CatalogStyle {
   key: StyleKey;
   name: string;
+  /** Other names the look goes by, for a subtitle and for search. May be empty. */
+  aka: string[];
+  /** Which of the catalog's `groups` it is shown under. */
+  group: StyleGroupKey;
   look: string;
   suits: string;
   defaultMode: Mode;
@@ -76,6 +96,8 @@ function catalogStyle(style: StyleSpec): CatalogStyle {
   return {
     key: style.key,
     name: style.name,
+    aka: [...(style.aka ?? [])],
+    group: style.group,
     look: style.look,
     suits: style.suits,
     defaultMode: style.defaultMode,
@@ -97,6 +119,8 @@ function catalogStyle(style: StyleSpec): CatalogStyle {
 
 export interface DesignCatalog {
   styles: CatalogStyle[];
+  /** The families the styles are shown in, in order. Every one has a style. */
+  groups: { key: StyleGroupKey; label: string; title: string }[];
   feelPresets: typeof FEEL_PRESETS;
   suggestedAccents: readonly string[];
 }
@@ -104,6 +128,7 @@ export interface DesignCatalog {
 export function designCatalog(): DesignCatalog {
   return {
     styles: ALL_STYLES.map(catalogStyle),
+    groups: STYLE_GROUPS.map((g) => ({ ...g })),
     feelPresets: FEEL_PRESETS,
     suggestedAccents: SUGGESTED_ACCENTS,
   };

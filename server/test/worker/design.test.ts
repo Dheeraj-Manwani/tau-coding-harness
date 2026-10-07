@@ -448,7 +448,7 @@ describe("the design director", () => {
 
   test("the shuffle is a permutation, and no style is always first", () => {
     const firsts = new Set<string>();
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 400; i++) {
       const order = shuffled(STYLE_KEYS, `seed-${i}`);
       expect([...order].sort()).toEqual([...STYLE_KEYS].sort());
       firsts.add(order[0]!);
@@ -575,7 +575,7 @@ describe("the design director", () => {
     expect(fallbackChoice("p1")).toEqual(fallbackChoice("p1"));
     const styles = new Set<string>();
     const accents = new Set<string>();
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 400; i++) {
       const c = fallbackChoice(`project-${i}`);
       expect(c.source).toBe("fallback");
       styles.add(c.style);

@@ -8,6 +8,7 @@ export const soft: StyleSpec = {
   suits:
     "Wellness, habits, journaling, personal finance, family and consumer apps, anything people use daily and should feel kind.",
   avoid: "Not for dense professional tools, or for anything meant to be edgy or formal.",
+  group: "tactile",
 
   fonts: {
     display: variableFont("Outfit", "outfit", SANS_FALLBACK),

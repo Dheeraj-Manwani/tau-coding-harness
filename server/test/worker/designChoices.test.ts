@@ -4,7 +4,7 @@ import { designConfigSchema } from "@/api/schemas/project.schema";
 import { mergedConfig } from "@/api/services/design.service";
 import { applyDesignTo, type DesignTarget } from "@/worker/design/apply";
 import { SAMPLE_ACCENTS, designCatalog } from "@/worker/design/catalog";
-import { checkPackageJson } from "@/worker/design/checks";
+import { checkPackageJson, checkStylesheet } from "@/worker/design/checks";
 import { isHexColor } from "@/worker/design/color";
 import {
   FEEL_PRESETS,
@@ -21,6 +21,7 @@ import {
 } from "@/worker/design/designMd";
 import {
   chooseFrom,
+  directorPrompt,
   fallbackChoice,
   settledNote,
   type DirectorOptions,
@@ -51,7 +52,7 @@ import {
   fontsFor,
   isFontPairing,
 } from "@/worker/design/styles";
-import { STYLE_KEYS, type DesignChoice, type StyleKey } from "@/worker/design/types";
+import { STYLE_GROUPS, STYLE_KEYS, type DesignChoice, type StyleKey } from "@/worker/design/types";
 
 // A user can choose an app's look before it is built and change it afterwards
 // (doc/CONTEXT_AND_MEMORY_PLAN.md §5, layer 2). Three rules run through all of
@@ -85,15 +86,15 @@ const offer = (over: Partial<DirectorOptions> = {}): DirectorOptions => ({
 });
 
 describe("the style library", () => {
-  test("has twelve styles, each a different silhouette", () => {
-    expect(STYLE_KEYS).toHaveLength(12);
+  test("has twenty-one styles, each a different silhouette", () => {
+    expect(STYLE_KEYS).toHaveLength(21);
     expect(ALL_STYLES.map((s) => s.key)).toEqual([...STYLE_KEYS]);
     const silhouettes = new Set(
       ALL_STYLES.map((s) =>
         [s.skin.controlRadius, s.skin.cardRadius, s.skin.buttonCase, s.skin.field, s.skin.tabs, s.skin.borderWidth, s.fonts.display.name].join("|"),
       ),
     );
-    expect(silhouettes.size).toBe(12);
+    expect(silhouettes.size).toBe(21);
   });
 
   test("every style offers two other font pairings, each different from its own", () => {
@@ -137,7 +138,7 @@ describe("the style library", () => {
   });
 
   test("the new styles generate a stylesheet and a design file like any other", () => {
-    for (const key of ["craft", "neon", "formal"] as const) {
+    for (const key of STYLE_KEYS.slice(9)) {
       const { css, designMd } = filesFor(choiceFor(key));
       expect(css).toContain(`the ${STYLES[key].name} style`);
       expect(css).toContain("@layer skin");
@@ -146,6 +147,127 @@ describe("the style library", () => {
       expect(describeDesign(designMd)?.style).toBe(key);
     }
     expect(STYLES.neon.defaultMode).toBe("dark");
+  });
+
+  test("a display face with one weight is not asked for a bolder one", () => {
+    // A font that ships only regular, set at 700, is smeared bold by the
+    // browser. Where any pairing's display face is like that, the style's
+    // headings, buttons and titles that use it have to be set at 400.
+    for (const style of ALL_STYLES) {
+      const oneWeight = fontSetsOf(style).some(
+        (fonts) => fonts.display.imports?.length === 1 && fonts.display.imports[0]!.endsWith("/400.css"),
+      );
+      if (!oneWeight) continue;
+      expect(style.baseCss).toContain("font-weight: 400;");
+      expect(style.skin.cardTitleWeight).toBe("400");
+      if (style.skin.buttonFont === "var(--font-heading)") expect(style.skin.buttonWeight).toBe("400");
+      if (style.skin.badgeFont === "var(--font-heading)") expect(style.skin.badgeWeight).toBe("400");
+    }
+  });
+});
+
+describe("how the library is presented", () => {
+  test("every style belongs to a family, and every family has styles", () => {
+    const groups = STYLE_GROUPS.map((g) => g.key);
+    expect(new Set(groups).size).toBe(groups.length);
+    for (const style of ALL_STYLES) expect(groups).toContain(style.group);
+    for (const group of groups) {
+      expect(ALL_STYLES.filter((s) => s.group === group).length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test("the looks people ask for by another name can be found under it", () => {
+    const named = (aka: string) => ALL_STYLES.filter((s) => s.aka?.includes(aka)).map((s) => s.key);
+    expect(named("Neo-brutalism")).toEqual(["brutalist"]);
+    expect(named("Luxury typography")).toEqual(["luxe"]);
+    expect(named("Bento grid")).toEqual(["bento"]);
+    expect(named("Editorial design")).toEqual(["editorial"]);
+    expect(named("Swiss design")).toEqual(["swiss"]);
+    expect(named("Glassmorphism")).toEqual(["glass"]);
+    expect(named("Claymorphism")).toEqual(["clay"]);
+    expect(named("Neumorphism")).toEqual(["neumorphic"]);
+    // No two styles answer to the same name, and none repeats its own.
+    const all = ALL_STYLES.flatMap((s) => (s.aka ?? []).map((a) => a.toLowerCase()));
+    expect(new Set(all).size).toBe(all.length);
+    for (const s of ALL_STYLES) expect(s.aka ?? []).not.toContain(s.name);
+  });
+
+  test("the director is told those names, so a brief that uses one gets that style", () => {
+    const prompt = directorPrompt("p");
+    expect(prompt).toContain(`${STYLES.brutalist.avoid} Also called: Neo-brutalism, Neubrutalism.`);
+    expect(prompt).toContain("Also called: Glassmorphism.");
+    // A style with no other name says nothing about it.
+    expect(prompt).toContain(`${STYLES.soft.avoid}\n`);
+  });
+});
+
+describe("a style with a page backdrop", () => {
+  const withBackdrop = ALL_STYLES.filter((s) => s.backdrop);
+
+  test("glass has one: it is not glass without colour behind it", () => {
+    expect(withBackdrop.map((s) => s.key)).toContain("glass");
+    expect(STYLES.swiss.backdrop).toBeUndefined();
+  });
+
+  test("paints it behind the page, from the palette, and keeps the page wrapper from covering it", () => {
+    for (const style of withBackdrop) {
+      const { css, designMd } = filesFor(choiceFor(style.key));
+      const base = css.slice(css.indexOf("@layer base"), css.indexOf("@layer skin"));
+      expect(base).toContain("body::before {");
+      expect(base).toContain("position: fixed;");
+      expect(base).toContain("z-index: -1;");
+      // Colour comes from the theme's variables, so it follows the accent,
+      // the theme panel and both modes; nothing is written in as a literal.
+      expect(style.backdrop).toContain("var(--");
+      expect(style.backdrop).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|oklch\(/i);
+      const skin = css.slice(css.indexOf("@layer skin"));
+      expect(skin).toContain(".min-h-screen.bg-background");
+      expect(skin).toContain("background-color: transparent;");
+      // The agent is told, once, in the section about colour.
+      expect(designProse(designMd).match(/The page has a backdrop/g)).toHaveLength(1);
+    }
+  });
+
+  test("a style without one writes none of it", () => {
+    const { css, designMd } = filesFor(choiceFor("swiss"));
+    expect(css).not.toContain("body::before");
+    expect(css).not.toContain(".min-h-screen.bg-background");
+    expect(designMd).not.toContain("The page has a backdrop");
+  });
+
+  test("survives a restyle in both directions", () => {
+    const plain = filesFor(choiceFor("workbench")).css;
+    const glassy = filesFor(choiceFor("glass")).css;
+    expect(carryOverCss(plain, glassy)).toBe(glassy);
+    expect(carryOverCss(glassy, plain)).toBe(plain);
+  });
+});
+
+describe("what a style adds to the stylesheet of its own", () => {
+  test("leaves the palette where the theme panel and the checks expect it", () => {
+    // Several styles define variables of their own for both modes. They must
+    // not be mistaken for the palette, and the palette must still be found.
+    for (const style of ALL_STYLES) {
+      const choice = choiceFor(style.key);
+      const { css } = filesFor(choice);
+      const { theme } = resolveDesign(choice);
+      expect(readThemeTokens(css).root["--background"]).toBe(theme.light.background);
+      expect(readThemeTokens(css).dark["--primary"]).toBe(theme.dark.primary);
+      expect(checkStylesheet(css)).toEqual([]);
+    }
+  });
+
+  test("its rules for tabs are written to outrank the shared ones", () => {
+    // The shared skin addresses a tab bar by its orientation too, so a style's
+    // rule keyed on the slot alone loses to it for anything the shared rule
+    // also sets — which is how three styles once described an accent-coloured
+    // active tab that was never drawn.
+    for (const style of ALL_STYLES) {
+      for (const line of style.skinCss.split("\n")) {
+        if (!/^\s*\[data-slot="tabs-(list|trigger)"\]/.test(line)) continue;
+        expect(line).not.toMatch(/background|border-bottom-color|(?<![-\w])color:|box-shadow|border-radius/);
+      }
+    }
   });
 });
 
@@ -156,12 +278,19 @@ describe("the catalog someone chooses from", () => {
     expect(catalog.styles.map((s) => s.key)).toEqual([...STYLE_KEYS]);
     for (const style of catalog.styles) {
       expect(Object.keys(style).sort()).toEqual(
-        ["defaultMode", "dials", "fonts", "key", "look", "name", "sampleAccent", "suits", "swatch"].sort(),
+        ["aka", "defaultMode", "dials", "fonts", "group", "key", "look", "name", "sampleAccent", "suits", "swatch"].sort(),
       );
+      expect(catalog.groups.map((g) => g.key)).toContain(style.group);
       expect(style.fonts[0]!.key).toBe(DEFAULT_FONTS);
       expect(style.fonts).toHaveLength(3);
       for (const colour of Object.values(style.swatch)) expect(isHexColor(colour)).toBe(true);
     }
+  });
+
+  test("names the families in the order they are shown, each with a short and a full name", () => {
+    expect(catalog.groups).toEqual(STYLE_GROUPS.map((g) => ({ key: g.key, label: g.label, title: g.title })));
+    expect(catalog.styles.find((s) => s.key === "brutalist")!.aka).toEqual(["Neo-brutalism", "Neubrutalism"]);
+    expect(catalog.styles.find((s) => s.key === "soft")!.aka).toEqual([]);
   });
 
   test("each style has an accent that shows it off, and the feel presets are whole", () => {

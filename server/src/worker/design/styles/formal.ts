@@ -11,6 +11,7 @@ export const formal: StyleSpec = {
   suits:
     "Law, finance, insurance and accounting, healthcare, government and public services, universities, consultancies, business-to-business — anything that has to be believed before it is liked.",
   avoid: "Not for entertainment, children, or brands that want to feel young, playful or rebellious.",
+  group: "crafted",
 
   fonts: {
     display: variableFont("Source Serif 4", "source-serif-4", SERIF_FALLBACK, { italic: true }),

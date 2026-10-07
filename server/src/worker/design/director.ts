@@ -58,6 +58,7 @@ import {
   type ImportedDesign,
   type Mode,
   type StyleKey,
+  type StyleSpec,
 } from "./types";
 
 /** The sandbox takes longer than this to boot, so the call is free until then. */
@@ -216,10 +217,19 @@ ${prose}
   return lines.join("\n\n");
 }
 
+/**
+ * The names a style is also known by, for the catalog the director reads. A
+ * brief that says "glassmorphism" or "neo-brutalist" is naming a style, and
+ * the director can only honour that if it knows which one is meant.
+ */
+function alsoCalled(style: StyleSpec): string {
+  return style.aka?.length ? ` Also called: ${style.aka.join(", ")}.` : "";
+}
+
 /** The instructions, with the catalog in this project's order. */
 export function directorPrompt(seed: string): string {
   const catalog = shuffled(ALL_STYLES, seed)
-    .map((s) => `- ${s.key}: ${s.look} Suits: ${s.suits} ${s.avoid}`)
+    .map((s) => `- ${s.key}: ${s.look} Suits: ${s.suits} ${s.avoid}${alsoCalled(s)}`)
     .join("\n");
 
   return `You are the design director for an app builder. You are given the brief for a web app. Decide how it could look, before anyone builds it.
@@ -229,7 +239,7 @@ These are the styles available. They are equally good; none is the default.
 ${catalog}
 
 Reply with:
-- styles: up to three styles that would each genuinely suit this subject and this audience, best first. They should be different answers to the brief, not three versions of the safest one. List two, or one, when that is all that really fits: every style you list may be the one used. Never list a style whose "Not for" describes this brief — a tool people work in all day is not a magazine, and a page that sells something is not an admin panel. If the brief itself names a style or describes a look that only one of them matches, list only that one.
+- styles: up to three styles that would each genuinely suit this subject and this audience, best first. They should be different answers to the brief, not three versions of the safest one. List two, or one, when that is all that really fits: every style you list may be the one used. Never list a style whose "Not for" describes this brief — a tool people work in all day is not a magazine, and a page that sells something is not an admin panel. If the brief itself names a style, by its key or by one of the names it is also called, or describes a look that only one of them matches, list only that one.
 - accents: three colours, as hex values, each of which would suit this subject, from three clearly different parts of the colour wheel, best first. Take them from the world of the subject — what the thing is made of, where it happens, what its audience already associates with it — not from what websites usually look like. Blue, indigo and purple are what every other app uses, and warm orange-brown is the next most common default: use those only when the subject really is that colour. If the brief names a colour, list only that one.
 - accent_exact: true only if the brief gives a specific colour or a brand colour that has to be used exactly as given.
 - mode: "light" or "dark" — how the app opens. Decide from the subject and from where and when it will be used.

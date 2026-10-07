@@ -1,5 +1,6 @@
 import type { StyleSpec } from "../types";
 import { SANS_FALLBACK, SERIF_FALLBACK, SYSTEM_MONO, variableFont } from "./fonts";
+import { TABS_TAB } from "./selectors";
 
 export const luxe: StyleSpec = {
   key: "luxe",
@@ -8,6 +9,8 @@ export const luxe: StyleSpec = {
   suits:
     "Premium and boutique brands, fashion, jewellery, fine dining, hotels, weddings and events, galleries, private services.",
   avoid: "Not for utilities and dashboards, or for anything cheap and cheerful.",
+  group: "crafted",
+  aka: ["Luxury typography", "Quiet luxury"],
 
   fonts: {
     display: variableFont("Cormorant", "cormorant", SERIF_FALLBACK, { italic: true }),
@@ -138,7 +141,7 @@ export const luxe: StyleSpec = {
   [data-slot="badge"] { background: transparent; border: 1px solid var(--border); color: var(--muted-foreground); }
   [data-slot="badge"][data-variant="default"] { border-color: var(--primary); color: var(--primary); }
   [data-slot="tabs-trigger"] { text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.6875rem; font-weight: 400; }
-  [data-slot="tabs-trigger"][data-active] { border-bottom-color: var(--primary); }`,
+  ${TABS_TAB}[data-active] { border-bottom-color: var(--primary); }`,
 
   layouts: [
     "poster",

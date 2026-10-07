@@ -1,5 +1,6 @@
 import type { StyleSpec } from "../types";
 import { SANS_FALLBACK, SYSTEM_MONO, variableFont } from "./fonts";
+import { TABS_LIST, TABS_TAB } from "./selectors";
 
 export const playful: StyleSpec = {
   key: "playful",
@@ -8,6 +9,7 @@ export const playful: StyleSpec = {
   suits:
     "Games, quizzes, kids and learning, party and social apps, fun utilities, anything whose job is to make someone smile.",
   avoid: "Not for anything serious: money, health, work tools.",
+  group: "loud",
 
   fonts: {
     display: variableFont("Fredoka", "fredoka", SANS_FALLBACK),
@@ -155,8 +157,8 @@ export const playful: StyleSpec = {
   [data-slot="badge"] { border: 2px solid var(--border); }
   [data-slot="badge"][data-variant="secondary"] { background: var(--chart-4); color: var(--foreground); }
   [data-slot="checkbox"], [data-slot="switch"] { border-color: var(--border); }
-  [data-slot="tabs-list"] { border: 2px solid var(--border); background: var(--card); }
-  [data-slot="tabs-trigger"][data-active] { background: var(--primary); color: var(--primary-foreground); box-shadow: none; }`,
+  ${TABS_LIST} { border: 2px solid var(--border); background: var(--card); }
+  ${TABS_TAB}[data-active] { background: var(--primary); color: var(--primary-foreground); box-shadow: none; }`,
 
   layouts: [
     "bento",

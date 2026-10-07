@@ -32,6 +32,7 @@
  * Pure. See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import { THEME_COLOR_TOKENS, type Palette, type Theme } from "../templates/theme";
+import { TABS_LIST, TABS_TAB } from "./styles/selectors";
 import type { Dials, FontRef, Mode, SkinVars, StyleSpec } from "./types";
 
 function declarations(palette: Palette): string {
@@ -102,8 +103,8 @@ function fieldRules(v: SkinVars): string {
 
 function tabsRules(v: SkinVars): string {
   // Only horizontal tab bars are reshaped; a vertical list keeps its stock form.
-  const list = `[data-slot="tabs"][data-orientation="horizontal"] > [data-slot="tabs-list"]`;
-  const tab = `${list} > [data-slot="tabs-trigger"]`;
+  const list = TABS_LIST;
+  const tab = TABS_TAB;
   if (v.tabs === "underline") {
     return `
   ${list} {
@@ -275,6 +276,41 @@ ${tabsRules(v)}
   [data-slot="avatar"], [data-slot="avatar-image"], [data-slot="avatar-fallback"] { border-radius: ${round}; }`;
 }
 
+/**
+ * The page backdrop of a style that has one, as a base rule.
+ *
+ * Drawn on a fixed layer behind the page rather than as `body`'s own
+ * background, so it stays put while the page scrolls on every browser — a
+ * fixed background on `body` scrolls away on phones.
+ */
+function backdropBase(backdrop: string | undefined): string {
+  if (!backdrop) return "";
+  return `
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: ${backdrop};
+  }`;
+}
+
+/**
+ * What keeps a backdrop visible. Nearly every app wraps its screens in a
+ * full-height `bg-background` element, which would paint the page colour over
+ * the backdrop and leave the style looking like it has none. Those wrappers
+ * are made see-through; the page colour is still there, on `body`.
+ */
+function backdropSkin(backdrop: string | undefined): string {
+  if (!backdrop) return "";
+  return `
+
+  #root > .bg-background, .min-h-screen.bg-background, .min-h-svh.bg-background, .min-h-dvh.bg-background {
+    background-color: transparent;
+  }`;
+}
+
 export interface DesignCssInput {
   style: StyleSpec;
   theme: Theme;
@@ -363,7 +399,7 @@ ${themeTokens}
   body {
     @apply bg-background text-foreground font-sans;
   }
-${style.baseCss.replace(/^\n/, "")}
+${(style.baseCss + backdropBase(style.backdrop)).replace(/^\n/, "")}
 }
 
 /* The component skin. It restyles the stock shadcn components by their
@@ -372,7 +408,7 @@ ${style.baseCss.replace(/^\n/, "")}
    Button, Card, Input, Badge, Tabs or Dialog come from here — to change one,
    change it here, not with classes where it is used. */
 @layer skin {${sharedSkin(style.skin)}
-${style.skinCss.replace(/^\n/, "")}
+${style.skinCss.replace(/^\n/, "")}${backdropSkin(style.backdrop)}
 }
 
 /* People who ask their system for less motion get none. */

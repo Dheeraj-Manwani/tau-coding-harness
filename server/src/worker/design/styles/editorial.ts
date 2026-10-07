@@ -8,6 +8,8 @@ export const editorial: StyleSpec = {
   suits:
     "Brands with a story, food and drink, publications, portfolios, hospitality, craft, anything that should feel considered rather than technical.",
   avoid: "Not for dense tools used all day, or for anything meant to be playful.",
+  group: "crafted",
+  aka: ["Editorial design", "Magazine"],
 
   fonts: {
     display: variableFont("Fraunces", "fraunces", SERIF_FALLBACK, { italic: true }),

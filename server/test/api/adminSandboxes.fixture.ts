@@ -148,4 +148,15 @@ describe("getLiveSandboxes", () => {
     // Orphans sort first.
     expect(r.sandboxes[0]?.orphan).toBe(true);
   });
+
+  test("links a running sandbox's preview, and nothing for a paused one", async () => {
+    live = [sandbox("sbx-up", 30 * MIN), sandbox("sbx-asleep", 30 * MIN, "paused")];
+
+    const r = await getLiveSandboxes(true);
+    const previewOf = (id: string) => r.sandboxes.find((s) => s.sandboxId === id)?.previewUrl;
+
+    // The SDK's getHost shape, derived without connecting to the sandbox.
+    expect(previewOf("sbx-up")).toBe("https://5173-sbx-up.e2b.app");
+    expect(previewOf("sbx-asleep")).toBeNull();
+  });
 });

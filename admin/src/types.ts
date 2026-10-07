@@ -342,6 +342,8 @@ export interface LiveSandboxRow {
   cpuCount: number;
   memoryMB: number;
   metadata: Record<string, string>;
+  /** The dev server's public URL; null while paused. */
+  previewUrl: string | null;
   ageMinutes: number;
   project: {
     id: string;
@@ -456,6 +458,8 @@ export interface ProjectDetail {
     sandboxStatus: string;
     sandboxExpiresAt: ISODate | null;
     githubRepo: string | null;
+    /** Set while the row says READY; the row can be stale, so the link may 404. */
+    previewUrl: string | null;
   };
   fileCount: number;
   messageCount: number;

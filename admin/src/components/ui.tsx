@@ -1,6 +1,6 @@
 import { useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CheckIcon, CriticalIcon, InfoIcon, RefreshIcon, WarnIcon } from "./icons";
+import { CheckIcon, CriticalIcon, ExternalIcon, InfoIcon, RefreshIcon, WarnIcon } from "./icons";
 import { time } from "@/lib/format";
 
 // ── tone ─────────────────────────────────────────────────────────────────────
@@ -291,6 +291,22 @@ export function IdLink({ to, id, length = 8 }: { to: string; id: string; length?
     <Link to={to} className="font-mono text-xs text-accent hover:underline" title={id}>
       {id.slice(0, length)}
     </Link>
+  );
+}
+
+/** A link out of the console, e.g. to a sandbox's live preview. Opens a new tab. */
+export function ExternalLink({ href, children, title }: { href: string; children: ReactNode; title?: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={title ?? href}
+      className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-accent hover:underline"
+    >
+      {children}
+      <ExternalIcon className="size-3 shrink-0" />
+    </a>
   );
 }
 

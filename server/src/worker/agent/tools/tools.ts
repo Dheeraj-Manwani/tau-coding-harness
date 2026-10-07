@@ -20,6 +20,7 @@ export const subAgentTools = new Set<Tool>([
   "dispatch_explorer",
   "dispatch_debugger",
   "dispatch_verifier",
+  "dispatch_design_reviewer",
   // "dispatch_implementer",
 ]);
 
@@ -89,6 +90,32 @@ export const BASE_APP_TOOLS = [
             type: "string",
             description:
               "One short sentence on what needs storing on the server (e.g. 'bookings shared between all visitors').",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_design_reviewer",
+      description:
+        "Have the app looked at. You write markup and never see it rendered; this renders the screens you name at desktop and phone width, shows the screenshots to a reviewer that can see, and returns what it finds wrong: broken or overflowing layout, a phone layout that does not work, departures from the app's design, generic defaults, placeholder content, unreadable text. Each finding is marked [broken] (fix it) or [polish] (optional). Call it after you build or reshape a screen and fix what is broken; you may then call it once more for the same screens to confirm. A screen gets those two looks in a run and no more. It reviews what is on screen when it loads — a page behind a login or a button press is not seen, and an embedded map or video may not render for it. It does not edit files.",
+      parameters: {
+        type: "object",
+        properties: {
+          paths: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "The routes to review, e.g. ['/', '/pricing']. At most 4 in one call. Defaults to ['/'].",
+          },
+          focus: {
+            type: "string",
+            description:
+              "Optional: anything you want looked at in particular, e.g. 'the pricing table on a phone'.",
           },
         },
         required: [],

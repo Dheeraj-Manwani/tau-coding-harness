@@ -352,3 +352,213 @@ export async function captureAppScreenshot(url: string): Promise<Buffer> {
       .catch(() => undefined);
   }
 }
+
+// ── Whole-page views, for design review ──────────────────────────────────────
+
+/** How to look at a page: the window to lay it out in, and how much of it to keep. */
+export interface PageView {
+  /** Layout width in CSS pixels: 1280 for a desktop, 390 for a phone. */
+  width: number;
+  /** Window height in CSS pixels — what "the first screen" means for this view. */
+  height: number;
+  /** Lay out as a touch device (affects `hover`/`pointer` media queries and the viewport meta tag). */
+  mobile: boolean;
+  /** The most of the page's height, in CSS pixels, that one picture shows. */
+  maxHeight: number;
+  /** Output pixels per CSS pixel. */
+  scale: number;
+}
+
+/** One picture of a stretch of a page: from `from` to `to` pixels down it. */
+export interface PageSection {
+  jpeg: Buffer;
+  from: number;
+  to: number;
+}
+
+export interface PageCapture {
+  /** The page from the top down, a picture per section. A short page has one. */
+  sections: PageSection[];
+  /** The page's full height in CSS pixels. */
+  pageHeight: number;
+  /** How much of that the pictures show. Less than `pageHeight` when the page outran them. */
+  capturedHeight: number;
+  /**
+   * How far the page itself is wider than the window, in CSS pixels; 0 when it
+   * fits. Anything more means the whole page scrolls sideways.
+   */
+  overflowX: number;
+  /**
+   * The opening words of each area inside the page that scrolls sideways — a
+   * wide table, a row of filters. A still picture cannot show that such an
+   * area scrolls, only that its content stops at the edge.
+   */
+  sideScrollers: string[];
+}
+
+const REVIEW_SETTLE_MS = 2_500;
+const REVIEW_CAPTURE_ATTEMPTS = 4;
+const REVIEW_JPEG_QUALITY = 70;
+
+/**
+ * Where to cut a page of `pageHeight` into at most `maxSections` pictures of
+ * at most `maxHeight` each. The pictures are equal, so a page a little over
+ * one picture tall becomes two halves rather than one full picture and a
+ * sliver. Whatever lies beyond the last picture is not shown.
+ */
+export function sectionBounds(
+  pageHeight: number,
+  maxHeight: number,
+  maxSections: number,
+): { from: number; to: number }[] {
+  const covered = Math.min(pageHeight, maxHeight * Math.max(1, maxSections));
+  const count = Math.max(1, Math.ceil(covered / maxHeight));
+  const each = Math.ceil(covered / count);
+  return Array.from({ length: count }, (_, i) => ({
+    from: i * each,
+    to: Math.min(covered, (i + 1) * each),
+  }));
+}
+
+/**
+ * Capture a page from the top down, as someone scrolling it would see it.
+ *
+ * Differs from {@link captureAppScreenshot} in three ways, all because the
+ * image is for judging a design rather than decorating a card:
+ *
+ *   - it keeps going below the first screen: up to `maxSections` pictures of
+ *     up to `view.maxHeight` each, one under the other. A long page is cut
+ *     into pictures rather than shrunk into one, because a picture several
+ *     times taller than it is wide is scaled down until its text cannot be
+ *     read;
+ *   - it scrolls the page to the bottom and back first. Sections that reveal
+ *     themselves as they scroll into view start out invisible, and a capture
+ *     taken without scrolling shows them as blank bands — which a reviewer
+ *     would report as the app being broken;
+ *   - it asks for reduced motion, so nothing is caught half-way through an
+ *     entrance animation.
+ */
+export async function capturePageView(
+  url: string,
+  view: PageView,
+  maxSections = 1,
+): Promise<PageCapture> {
+  const { conn: browser, wsBase } = await getSession();
+  const { targetId } = await browser.send<{ targetId: string }>(
+    "Target.createTarget",
+    { url: "about:blank" },
+  );
+
+  let page: CdpConnection | null = null;
+  try {
+    page = await CdpConnection.connect(`${wsBase}/devtools/page/${targetId}`);
+    await page.send("Page.enable");
+    await page.send("Runtime.enable");
+    await page.send("Page.addScriptToEvaluateOnNewDocument", {
+      source: PREVIEW_CAPTURE_INIT_SCRIPT,
+    });
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: view.width,
+      height: view.height,
+      deviceScaleFactor: 1,
+      mobile: view.mobile,
+    });
+    await page.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+
+    // A page asked for moments after its files were written can still be
+    // compiling, and paints nothing. Reload and look again a few times before
+    // deciding it really is blank.
+    let lastStats: ScreenshotPixelStats | null = null;
+    for (let attempt = 1; attempt <= REVIEW_CAPTURE_ATTEMPTS; attempt++) {
+      const loaded = page.waitForEvent(
+        "Page.loadEventFired",
+        env.SCREENSHOT_TIMEOUT_MS,
+      );
+      await page.send(attempt === 1 ? "Page.navigate" : "Page.reload", attempt === 1 ? { url } : {});
+      await loaded;
+      await new Promise((r) => setTimeout(r, REVIEW_SETTLE_MS));
+
+      // Walk down the page a screen at a time so anything waiting to be seen
+      // is seen, then return to the top. Reports the page's full height.
+      // Also measures what a picture cannot show: whether the page, or an
+      // area inside it, scrolls sideways.
+      const walked = await page.send<{
+        result: { value?: { height?: number; overflowX?: number; sideScrollers?: string[] } };
+      }>(
+        "Runtime.evaluate",
+        {
+          expression: `(async () => {
+            const height = () => Math.max(
+              document.documentElement.scrollHeight,
+              document.body ? document.body.scrollHeight : 0,
+            );
+            const limit = ${Math.round(view.maxHeight * maxSections)};
+            const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
+            for (let y = 0; y < Math.min(height(), limit); y += step) {
+              window.scrollTo(0, y);
+              await new Promise((r) => setTimeout(r, 120));
+            }
+            window.scrollTo(0, 0);
+            await new Promise((r) => setTimeout(r, 250));
+            const sideScrollers = [];
+            for (const el of document.querySelectorAll("body *")) {
+              if (sideScrollers.length >= 4) break;
+              if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 8) continue;
+              const overflowX = getComputedStyle(el).overflowX;
+              if (overflowX !== "auto" && overflowX !== "scroll") continue;
+              const words = (el.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 48);
+              if (words) sideScrollers.push(words);
+            }
+            return {
+              height: height(),
+              overflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+              sideScrollers,
+            };
+          })()`,
+          awaitPromise: true,
+          returnByValue: true,
+        },
+      );
+      const measured = walked.result.value ?? {};
+      const pageHeight = Math.max(view.height, Math.round(measured.height ?? view.height));
+      const bounds = sectionBounds(pageHeight, view.maxHeight, maxSections);
+      const shoot = async ({ from, to }: { from: number; to: number }) =>
+        (
+          await page!.send<{ data: string }>("Page.captureScreenshot", {
+            format: "jpeg",
+            quality: REVIEW_JPEG_QUALITY,
+            captureBeyondViewport: true,
+            clip: { x: 0, y: from, width: view.width, height: to - from, scale: view.scale },
+          })
+        ).data;
+
+      // The top of the page says whether anything rendered at all.
+      const first = await shoot(bounds[0]!);
+      lastStats = await pixelStats(page, first);
+      if (screenshotLooksUseful(lastStats)) {
+        const sections: PageSection[] = [{ jpeg: Buffer.from(first, "base64"), ...bounds[0]! }];
+        for (const bound of bounds.slice(1)) {
+          sections.push({ jpeg: Buffer.from(await shoot(bound), "base64"), ...bound });
+        }
+        return {
+          sections,
+          pageHeight,
+          capturedHeight: bounds[bounds.length - 1]!.to,
+          overflowX: Math.round(measured.overflowX ?? 0),
+          sideScrollers: measured.sideScrollers ?? [],
+        };
+      }
+    }
+    throw new Error(
+      `the page rendered blank after ${REVIEW_CAPTURE_ATTEMPTS} attempts` +
+        (lastStats ? ` (variance=${lastStats.variance.toFixed(1)}, range=${lastStats.range.toFixed(1)})` : ""),
+    );
+  } finally {
+    page?.close();
+    await browser
+      .send("Target.closeTarget", { targetId })
+      .catch(() => undefined);
+  }
+}

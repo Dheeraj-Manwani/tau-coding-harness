@@ -13,11 +13,8 @@
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
-import { meter } from "@/lib/credits";
-import { toCredits } from "@/lib/pricing";
-import { publish } from "../lib/publish";
-import { captureException, log } from "../lib/log";
+import { log } from "../lib/log";
+import { meterModelCall } from "../lib/meterCall";
 import type { StackContext } from "../lib/appStack";
 import { applyDesign, type ApplyResult } from "./apply";
 import { directDesign, type DirectorResult } from "./director";
@@ -65,45 +62,6 @@ export function startDesign(projectId: string, agentBrief: string): Promise<Dire
   })();
 }
 
-/** Charge the director's call like any other model call in the run. */
-async function meterDirector(
-  ctx: StackContext,
-  usage: NonNullable<DirectorResult["usage"]>,
-): Promise<void> {
-  try {
-    await prisma.tokenUsage.create({
-      data: {
-        userId: ctx.userId,
-        projectId: ctx.projectId,
-        jobId: ctx.jobId,
-        model: usage.model,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-      },
-    });
-    // Negative sequence: the same namespace sub-agent turns use, which cannot
-    // collide with the main loop's message sequences (see sub-agent-executor).
-    const result = await meter(
-      ctx.userId,
-      ctx.jobId,
-      usage.model,
-      usage.inputTokens,
-      usage.outputTokens,
-      -ctx.indexer(),
-      { enforce: env.CREDITS_ENFORCE },
-    );
-    if (env.CREDITS_ENFORCE) {
-      await publish(ctx.jobId, {
-        type: "credits_update",
-        available: toCredits(result.available),
-        availableMicro: result.available.toString(),
-      });
-    }
-  } catch (err) {
-    captureException(err, { jobId: ctx.jobId, detail: "design director meter failed" });
-  }
-}
-
 /**
  * Apply the decided design to the new sandbox. Never throws: an app that
  * could not be designed keeps the neutral look it booted with.
@@ -114,7 +72,7 @@ export async function finishDesign(
 ): Promise<{ choice: DesignChoice; result: ApplyResult } | null> {
   try {
     const { choice, usage } = await pending;
-    if (usage) await meterDirector(ctx, usage);
+    if (usage) await meterModelCall(ctx, usage, "design director");
     const result = await applyDesign(ctx, choice);
     return { choice, result };
   } catch (err) {

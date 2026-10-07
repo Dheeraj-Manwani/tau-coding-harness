@@ -88,7 +88,12 @@ const WIRING_NOTE =
 
 const fail = (error: string): StackResult => ({ ok: false, error });
 
-export async function readOrNull(sandbox: Sandbox, rel: string): Promise<string | null> {
+/** The one thing reading an app's file needs from a sandbox. */
+export interface FileSource {
+  files: { read(path: string): Promise<string> };
+}
+
+export async function readOrNull(sandbox: FileSource, rel: string): Promise<string | null> {
   try {
     return await sandbox.files.read(`${WORK_DIR}/${rel}`);
   } catch {
@@ -116,6 +121,27 @@ async function persistFromSandbox(ctx: StackContext, rel: string): Promise<void>
   const content = await readOrNull(ctx.sandbox, rel);
   if (content === null) return;
   await persistFile(ctx.jobId, ctx.projectId, ctx.userId, rel, content, ctx.indexer);
+}
+
+/**
+ * Whether a shell command can rewrite `package.json` or the lockfile: a
+ * package manager adding, removing or updating something.
+ */
+export function changesDependencies(command: string): boolean {
+  return /(?:^|[\s;&|(])(?:bun|npm|pnpm|yarn)\s+(?:add|remove|rm|install|i|uninstall|update|upgrade|up)\b/.test(
+    command,
+  );
+}
+
+/**
+ * Save the manifest and lockfile as the sandbox now has them. For after a
+ * command the agent ran itself (`run_command("bun add recharts")`), which
+ * changes both without going through a file tool. Does nothing when neither
+ * changed.
+ */
+export async function persistDependencies(ctx: StackContext): Promise<void> {
+  await persistFromSandbox(ctx, "package.json");
+  await persistFromSandbox(ctx, "bun.lock");
 }
 
 export function hasDependency(packageJson: string | null, name: string): boolean {

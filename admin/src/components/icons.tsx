@@ -59,7 +59,14 @@ export const ChevronIcon = (p: SVGProps<SVGSVGElement>) => (
   </Svg>
 );
 
-export const MenuIcon = (p: SVGProps<SVGSVGElement>) => (
+export const ExternalIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="M14 4h6v6M20 4l-9 9" />
+    <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+  </Svg>
+);
+
+export const MenuIcon =(p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}>
     <path d="M4 6h16M4 12h16M4 18h16" />
   </Svg>

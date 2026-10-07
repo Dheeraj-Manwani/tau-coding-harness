@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { bus, type JobRegistryEntry } from "@/lib/bus";
 import { env } from "@/lib/env";
 import { Errors } from "../lib/errors";
+import { e2bPreviewUrl } from "../lib/providers";
 import { settle, grantBonusCredits, grantPlanCycle, ensureBillingAccount } from "@/lib/credits";
 import { terminateStrandedJob, reapStaleJobs } from "../lib/jobs";
 import { toCredits, MICRO } from "@/lib/pricing";
@@ -843,7 +844,15 @@ export async function getProjectDetail(projectId: string) {
   ]);
 
   return {
-    project,
+    project: {
+      ...project,
+      // Derived from the row, not probed: a READY row can be stale, in which
+      // case the link lands on E2B's "sandbox not found" page.
+      previewUrl:
+        project.sandboxId && project.sandboxStatus === SandboxStatus.READY
+          ? e2bPreviewUrl(project.sandboxId)
+          : null,
+    },
     fileCount,
     messageCount,
     checkpoints,

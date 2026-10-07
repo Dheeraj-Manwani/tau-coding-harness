@@ -18,6 +18,7 @@ import { listDir } from "./functions/list-dir";
 import { grepTool } from "./functions/grep";
 import { deleteFile } from "./functions/delete";
 import { runCommand } from "./functions/run-command";
+import { changesDependencies, persistDependencies } from "@/worker/lib/appStack";
 import { tailCommandOutput } from "./functions/tail-command-output";
 import { waitForPort } from "./functions/wait-for-port";
 import { checkSandbox } from "./functions/check-sandbox";
@@ -41,6 +42,7 @@ import { dispatchExplorer } from "./sub-agents/dispatch-explorer";
 import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
 import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
 import { dispatchImplementer } from "./sub-agents/dispatch-implementer";
+import { dispatchDesignReviewer } from "./sub-agents/dispatch-design-reviewer";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { finishDesign, startDesign } from "@/worker/design/provision";
@@ -309,8 +311,28 @@ async function executeToolInner(
           userId,
           indexer,
         );
-      case "run_command":
-        return await runCommand(input, sandbox);
+      case "run_command": {
+        const result = await runCommand(input, sandbox);
+        // `bun add` rewrites package.json and the lockfile in the sandbox
+        // without any file tool seeing it. Unsaved, the next sandbox is
+        // restored from the old manifest and the app fails on the import.
+        const command = (input as { command?: unknown } | null)?.command;
+        if (
+          typeof command === "string" &&
+          changesDependencies(command) &&
+          !("background" in result)
+        ) {
+          await persistDependencies({ sandbox, projectId, userId, jobId, indexer }).catch(
+            (err) =>
+              log.warn("job.dependencies.persist_failed", {
+                jobId,
+                projectId,
+                error: String(err),
+              }),
+          );
+        }
+        return result;
+      }
       case "tail_command_output":
         return await tailCommandOutput(input, sandbox);
       case "wait_for_port":
@@ -349,6 +371,15 @@ async function executeToolInner(
           indexer,
           model,
           effort,
+        );
+      case "dispatch_design_reviewer":
+        return await dispatchDesignReviewer(
+          input,
+          sandbox,
+          jobId,
+          projectId,
+          userId,
+          indexer,
         );
       // case "dispatch_implementer":
       //   return await dispatchImplementer(

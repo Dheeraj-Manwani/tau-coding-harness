@@ -357,6 +357,27 @@ function deriveActionItem(
         toolCallId,
       };
     }
+    case "dispatch_design_reviewer": {
+      const paths = Array.isArray(input.paths)
+        ? (input.paths as unknown[]).map(String).filter(Boolean)
+        : [];
+      const focus = String(input.focus ?? "").trim();
+      return {
+        // Shown like a verifier's report: an expandable step with what was
+        // asked and what came back.
+        kind: "dispatch_verifier",
+        label: "Reviewing how it looks",
+        meta: {
+          prompt: [
+            `Screens: ${paths.length ? paths.join(", ") : "/"}`,
+            focus ? `Looking at: ${focus}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        },
+        toolCallId,
+      };
+    }
     case "dispatch_implementer": {
       const goal = String(input.goal ?? "");
       const files = Array.isArray(input.relevant_files)

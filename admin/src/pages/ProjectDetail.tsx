@@ -6,6 +6,7 @@ import {
   Badge,
   Card,
   ErrorBox,
+  ExternalLink,
   IdLink,
   JobStatusBadge,
   KV,
@@ -64,6 +65,9 @@ export default function ProjectDetail() {
                 <Row k="Status"><Badge tone={SANDBOX_TONE[data.project.sandboxStatus as keyof typeof SANDBOX_TONE] ?? "neutral"}>{label(data.project.sandboxStatus)}</Badge></Row>
                 <Row k="Id"><span className="font-mono text-xs">{data.project.sandboxId ?? "—"}</span></Row>
                 <Row k="Expires">{data.project.sandboxExpiresAt ? `${dateTime(data.project.sandboxExpiresAt)} (${ago(data.project.sandboxExpiresAt)})` : "—"}</Row>
+                <Row k="Preview">
+                  {data.project.previewUrl ? <ExternalLink href={data.project.previewUrl}>Open live preview</ExternalLink> : <span className="text-fg-3">No live sandbox</span>}
+                </Row>
               </KV>
               <Link to="/sandboxes" className="mt-3 inline-block text-xs text-accent hover:underline">
                 Check against live E2B sandboxes

@@ -221,6 +221,20 @@ export interface LiveSandbox {
   cpuCount: number;
   memoryMB: number;
   metadata: Record<string, string>;
+  /** The dev server's public URL; null while paused, when nothing is serving. */
+  previewUrl: string | null;
+}
+
+/** The port every template's Vite dev server listens on (the worker's PREVIEW_PORT). */
+const PREVIEW_PORT = 5173;
+
+/**
+ * Public URL of a sandbox's dev server — what the SDK's `getHost` returns, which
+ * is a pure function of the id. Built by hand so the console never has to
+ * `Sandbox.connect`: that resumes a paused sandbox, and starts it billing.
+ */
+export function e2bPreviewUrl(sandboxId: string, domain?: string): string {
+  return `https://${PREVIEW_PORT}-${sandboxId}.${domain || process.env.E2B_DOMAIN || "e2b.app"}`;
 }
 
 /**
@@ -253,6 +267,7 @@ export function e2bSandboxes(fresh = false): Promise<Check<LiveSandbox[]>> {
             cpuCount: s.cpuCount,
             memoryMB: s.memoryMB,
             metadata: s.metadata ?? {},
+            previewUrl: s.state === "running" ? e2bPreviewUrl(s.sandboxId, s.sandboxDomain) : null,
           });
         }
       }

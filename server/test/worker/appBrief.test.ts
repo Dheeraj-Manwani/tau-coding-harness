@@ -15,7 +15,7 @@ import {
 import { clearedResultText, isClearable } from "@/worker/agent/context/clearing";
 import { effortNote, shapeHistory, type HistoryRow } from "@/worker/agent/context/history";
 import { buildSystemPrompt } from "@/worker/agent/config";
-import { isSubstantialWork, noteWork } from "@/worker/agent/loop";
+import { isSubstantialWork, noteWork } from "@/worker/agent/finishGate";
 import { buildAppMemoryMd } from "@/worker/templates/shared";
 
 // A generation-2 run is handed the app's memory file and a computed map of the

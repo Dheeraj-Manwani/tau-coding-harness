@@ -46,13 +46,22 @@ import { createClearingState } from "./context/clearing";
 import { jobIdsIn, shapeHistory } from "./context/history";
 import { deliverDocs, docStateFrom } from "./docs/delivery";
 import {
-  MEMORY_PATH,
-  appRelativePath,
   isMemoryPath,
-  loadAppBrief,
+  loadAppBriefParts,
   memoryProblems,
+  renderAppBrief,
 } from "./context/appBrief";
-import { getBlobText } from "@/lib/s3";
+import {
+  DESIGN_CHECK_TAIL,
+  createWorkLog,
+  findingsForWrite,
+  finishItems,
+  gateMessage,
+  noteWork,
+  type GateState,
+} from "./finishGate";
+import { designContextOf } from "../design";
+import { formatFindings } from "../design/checks";
 import {
   cachedPromptTokens,
   createCalibration,
@@ -99,6 +108,7 @@ const SUBAGENT_TOOLS = new Set<string>([
   "dispatch_explorer",
   "dispatch_debugger",
   "dispatch_verifier",
+  "dispatch_design_reviewer",
   // "dispatch_implementer",
 ]);
 
@@ -109,6 +119,9 @@ const LOW_EXCLUDED_TOOLS = new Set<string>([
   "create_plan",
   "add_todos",
   "update_todo",
+  // A design review is a second model looking at screenshots: worth its cost
+  // on a build someone asked to be done well, not on a quick one.
+  "dispatch_design_reviewer",
 ]);
 
 function toolsForRun(
@@ -334,111 +347,6 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** What a run has done to the app so far. See `memoryNudge`. */
-interface WorkLog {
-  /** Paths written by `create_file`, memory file excluded. */
-  created: Set<string>;
-  /** Paths changed by `edit_file`, memory file excluded. */
-  edited: Set<string>;
-  deleted: number;
-  /** `add_backend` / `add_database` set something up. */
-  stackGrew: boolean;
-  /** The memory file was written or edited. */
-  memoryTouched: boolean;
-}
-
-function createWorkLog(): WorkLog {
-  return {
-    created: new Set(),
-    edited: new Set(),
-    deleted: 0,
-    stackGrew: false,
-    memoryTouched: false,
-  };
-}
-
-/** Record one finished tool call. Failed calls changed nothing. */
-export function noteWork(
-  work: WorkLog,
-  tool: string,
-  input: unknown,
-  output: unknown,
-): void {
-  if (!isPlainRecord(output) || "error" in output) return;
-  const path =
-    isPlainRecord(input) && typeof input.path === "string"
-      ? appRelativePath(input.path)
-      : null;
-
-  if (tool === "create_file" || tool === "edit_file") {
-    if (!path) return;
-    if (path === MEMORY_PATH) work.memoryTouched = true;
-    else (tool === "create_file" ? work.created : work.edited).add(path);
-  } else if (tool === "delete_file") {
-    work.deleted++;
-  } else if (tool === "add_backend" || tool === "add_database") {
-    if (!output.alreadySetUp) work.stackGrew = true;
-  }
-}
-
-/**
- * Whether a run changed the app enough that its memory should have changed
- * too. Deliberately not "any file changed": a color tweak or a copy fix leaves
- * nothing to record, and asking anyway would put a second closing message in
- * front of the user for no reason. New files, removed files, a new server or
- * database, or edits spread over several files are what a later request would
- * want to have been told about.
- */
-export function isSubstantialWork(work: WorkLog): boolean {
-  return (
-    work.stackGrew ||
-    work.created.size > 0 ||
-    work.deleted > 0 ||
-    work.edited.size >= 4
-  );
-}
-
-const MEMORY_NUDGE_TAIL =
-  "Then close with one short sentence for the user, in plain language — do not repeat the summary you already gave, and do not mention this note or any file.";
-
-/**
- * The message to send instead of finishing, or null when the memory file is
- * fine. Two reasons, checked in order: the run reshaped the app and never
- * touched the file; or it touched the file and left it over its limits.
- */
-async function memoryNudge(
-  projectId: string,
-  userId: string,
-  work: WorkLog,
-): Promise<{ reason: "stale" | "invalid"; text: string } | null> {
-  if (!work.memoryTouched) {
-    if (!isSubstantialWork(work)) return null;
-    return {
-      reason: "stale",
-      text: `Before you finish: this request changed what the app is made of, and \`${MEMORY_PATH}\` — the app's memory, which is all the next request will know beyond the code — was not updated. Update it now so it describes the app as it is: rewrite the sections that changed, keep all six sections, and keep it short. ${MEMORY_NUDGE_TAIL}`,
-    };
-  }
-
-  // Edits are not checked as they happen (the result is not in hand), so look
-  // at what was actually saved.
-  try {
-    const row = await prisma.projectFile.findUnique({
-      where: { projectId_path: { projectId, path: MEMORY_PATH } },
-      select: { contentHash: true },
-    });
-    if (!row) return null;
-    const problems = memoryProblems(await getBlobText(userId, projectId, row.contentHash));
-    if (problems.length === 0) return null;
-    return {
-      reason: "invalid",
-      text: `Before you finish: \`${MEMORY_PATH}\` needs fixing — ${problems.join("; and ")}. Fix it now. ${MEMORY_NUDGE_TAIL}`,
-    };
-  } catch {
-    // Never hold a finished run over a check that could not be made.
-    return null;
-  }
-}
-
 /**
  * A run stopped by one of the agent's own guard rails rather than by an
  * underlying failure. Carries the specific {@link FinishReason} so the runner
@@ -518,11 +426,17 @@ export async function runAgentLoop(
     // Null on generation 1, and for an app that does not exist yet — that one
     // gets it from `provision_sandbox` instead, below.
     let briefGiven = false;
-    const brief =
-      generation === 2 && selected
-        ? await loadAppBrief(projectId, "request")
-        : null;
+    const briefParts =
+      generation === 2 && selected ? await loadAppBriefParts(projectId) : null;
+    const brief = briefParts ? renderAppBrief(briefParts, "request") : null;
     if (brief) briefGiven = true;
+    // The app's design, for checking what this run writes against it
+    // (design/checks.ts). Null when the app has no DESIGN.md: with no design
+    // there is nothing to have stepped outside of.
+    let design = designContextOf(briefParts?.design);
+    // Design faults already reported this run, so a fault is not repeated on
+    // every later save of the same file.
+    const reportedFindings = new Set<string>();
     log.info("job.brief", {
       jobId,
       projectId,
@@ -541,10 +455,11 @@ export async function runAgentLoop(
 
     let filesChanged = false;
     let verifierRan = false;
-    let maxVerifyForced = false;
-    // What this run did to the app, for the end-of-run memory check.
+    let reviewerRan = false;
+    // What this run did to the app, and which end-of-run items have been
+    // raised already (finishGate.ts).
     const work = createWorkLog();
-    let memoryNudged = false;
+    const gate: GateState = new Set();
     const calibration = createCalibration();
     // What has been cleared from the model-facing context so far this run.
     // Carried across turns so a decision, once made, is never undone.
@@ -939,54 +854,44 @@ export async function runAgentLoop(
         continue;
       }
 
-      if (
-        !isToolTurn &&
-        effort === "MAX" &&
-        filesChanged &&
-        !verifierRan &&
-        !maxVerifyForced
-      ) {
-        maxVerifyForced = true;
-        if (assistant.content?.trim()) {
-          entries.push({
-            param: { role: "assistant", content: assistant.content },
-            seq: null,
-          });
-        }
-        entries.push({
-          param: {
-            role: "user",
-            content:
-              "Before you finish: you're on MAX effort and changed files this " +
-              "run but haven't verified them. Dispatch `dispatch_verifier` over " +
-              "everything you changed (build + spot-check the affected flows), " +
-              "fix anything it reports, then give your brief final summary.",
+      // The model says it is done. Before taking its word, see what the run
+      // still owes — design faults in what it wrote, a look at the result, a
+      // verification pass, the app's memory — and send all of it back at once.
+      // Each kind is raised at most once, so this cannot loop.
+      if (!isToolTurn) {
+        const owed = await finishItems(
+          {
+            generation,
+            effort,
+            work,
+            filesChanged,
+            verifierRan,
+            reviewerRan,
+            design,
+            reported: reportedFindings,
+            sandbox: sandboxRef.current,
+            projectId,
+            userId,
           },
-          seq: null,
-        });
-        continue;
-      }
-
-      // The memory file is all the next request will know about this app beyond
-      // what its files say. If this run changed the app's shape and left the
-      // file alone, or left it over its limits, say so once before finishing.
-      if (
-        !isToolTurn &&
-        generation === 2 &&
-        !memoryNudged &&
-        sandboxRef.current
-      ) {
-        const nudge = await memoryNudge(projectId, userId, work);
-        if (nudge) {
-          memoryNudged = true;
-          log.info("job.memory_nudge", { jobId, projectId, turn, reason: nudge.reason });
+          gate,
+        );
+        if (owed.length > 0) {
+          log.info("job.finish_gate", {
+            jobId,
+            projectId,
+            turn,
+            owed: owed.map((item) => `${item.kind}: ${item.reason}`),
+          });
           if (assistant.content?.trim()) {
             entries.push({
               param: { role: "assistant", content: assistant.content },
               seq: null,
             });
           }
-          entries.push({ param: { role: "user", content: nudge.text }, seq: null });
+          entries.push({
+            param: { role: "user", content: gateMessage(owed) },
+            seq: null,
+          });
           continue;
         }
       }
@@ -1058,6 +963,7 @@ export async function runAgentLoop(
 
         if (FILE_MUTATING_TOOLS.has(toolName)) filesChanged = true;
         if (toolName === "dispatch_verifier") verifierRan = true;
+        if (toolName === "dispatch_design_reviewer") reviewerRan = true;
 
         let input: unknown;
         try {
@@ -1106,10 +1012,35 @@ export async function runAgentLoop(
             // An app that did not exist when the request started could not be
             // described then. It exists now: hand over the same block.
             if (toolName === "provision_sandbox" && !briefGiven) {
-              const created = await loadAppBrief(projectId, "provisioned");
+              const created = await loadAppBriefParts(projectId);
               if (created && isPlainRecord(output) && !("error" in output)) {
                 briefGiven = true;
-                output = { ...output, app: created };
+                design = designContextOf(created.design);
+                output = { ...output, app: renderAppBrief(created, "provisioned") };
+              }
+            }
+            // What was just written, checked against the app's design while it
+            // is still the file in hand.
+            if (design && isPlainRecord(output) && !("error" in output)) {
+              const found = await findingsForWrite(
+                design,
+                reportedFindings,
+                toolName,
+                input,
+                sandboxRef.current,
+              ).catch(() => []);
+              if (found.length > 0) {
+                log.info("job.design_check", {
+                  jobId,
+                  projectId,
+                  turn,
+                  rules: [...new Set(found.map((f) => f.rule))],
+                  count: found.length,
+                });
+                output = {
+                  ...output,
+                  designCheck: `Saved. tau checked this file against the app's design and found:\n${formatFindings(found, 8)}\n${DESIGN_CHECK_TAIL}`,
+                };
               }
             }
             // The file was just written whole, so its limits can be checked

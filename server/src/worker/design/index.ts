@@ -12,7 +12,9 @@
  */
 import type { Theme } from "../templates/theme";
 import { buildDesignCss } from "./css";
-import { renderDesignMd } from "./designMd";
+import { readDesignMeta, renderDesignMd } from "./designMd";
+import type { CheckContext } from "./checks";
+import { isStyleKey } from "./types";
 import { buildTheme } from "./palette";
 import { STYLES } from "./styles";
 import type { DesignChoice, StyleSpec } from "./types";
@@ -49,6 +51,18 @@ export function designFiles(
     }),
     designMd: renderDesignMd(design.style, design.choice, design.theme),
   };
+}
+
+/**
+ * What the design checks need to know about an app, from its `DESIGN.md` — or
+ * null when it has none, which turns the checks off. A design tau did not
+ * write (one the user imported) has no style tau knows; the checks that need
+ * one are skipped and the rest still run.
+ */
+export function designContextOf(designMd: string | null | undefined): CheckContext | null {
+  if (!designMd) return null;
+  const key = readDesignMeta(designMd)?.style;
+  return isStyleKey(key) ? { style: STYLES[key] } : {};
 }
 
 export { DESIGN_PATH, designProse } from "./designMd";

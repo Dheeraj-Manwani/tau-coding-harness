@@ -8,6 +8,7 @@ import {
   Badge,
   ConfirmButton,
   ErrorBox,
+  ExternalLink,
   IdLink,
   Loading,
   Muted,
@@ -75,6 +76,11 @@ export default function Sandboxes() {
                   <Td mono>
                     <span title={s.sandboxId}>{s.sandboxId}</span>
                     <div className="mt-0.5 font-sans text-[11px] text-fg-3">{s.name ?? s.templateId}</div>
+                    {s.previewUrl && (
+                      <div className="mt-1 font-sans">
+                        <ExternalLink href={s.previewUrl}>Open preview</ExternalLink>
+                      </div>
+                    )}
                   </Td>
                   <Td>
                     {s.orphan ? (

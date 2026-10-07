@@ -17,6 +17,7 @@ export const synthwave: StyleSpec = {
     "Music, DJs and playlists, retro games and arcades, film nights and festivals, car and synth culture, streamers, nostalgic brands and launch pages.",
   avoid: "Not for work tools, finance, health, news, or anything read at length: it is a mood, not a workspace.",
   group: "tech",
+  reach: "niche",
   aka: ["Retrowave", "Outrun"],
 
   fonts: {

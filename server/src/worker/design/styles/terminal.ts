@@ -12,6 +12,7 @@ export const terminal: StyleSpec = {
     "Developer tools, logs and monitors, crypto and trading, hacker-flavoured side projects, text adventures, anything for people who live in an editor.",
   avoid: "Not for consumer apps, or for people who do not work at a keyboard.",
   group: "tech",
+  reach: "niche",
 
   fonts: { display: mono, body: mono, mono },
   fontOptions: [

@@ -18,6 +18,7 @@ export const clay: StyleSpec = {
     "Children's and learning apps, onboarding, habit and mood trackers, casual games, savings and pocket-money apps, friendly product pages — anything that should feel cuddly and easy.",
   avoid: "Not for dense data tools, news and long reading, or for anything formal, luxurious or technical.",
   group: "tactile",
+  reach: "niche",
   aka: ["Claymorphism"],
 
   fonts: {

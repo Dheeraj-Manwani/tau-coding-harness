@@ -9,6 +9,7 @@ export const craft: StyleSpec = {
     "Cafés and bakeries, makers and small shops, farms, florists, markets, recipes, workshops, studios, anything local and made by people you could meet.",
   avoid: "Not for software dashboards, or for anything that should feel technical, corporate or futuristic.",
   group: "crafted",
+  reach: "general",
 
   fonts: {
     display: variableFont("Lora", "lora", SERIF_FALLBACK, { italic: true }),

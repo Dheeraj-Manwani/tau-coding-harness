@@ -47,7 +47,7 @@ export function isStyleKey(value: unknown): value is StyleKey {
 }
 
 /**
- * The families the library is shown in, in the order they are shown. Twenty
+ * The families the library is shown in, in the order they are shown. Twenty-one
  * styles in one grid is too many to scan; five short rows are not.
  */
 export const STYLE_GROUPS = [
@@ -225,6 +225,14 @@ export interface StyleSpec {
   avoid: string;
   /** Which family of looks it is shown with. */
   group: StyleGroupKey;
+  /**
+   * How widely the style can be used. A `general` style would not look wrong
+   * on an app tau knows nothing about; a `niche` one is a strong look that a
+   * brief has to call for. Only matters where a style is picked without the
+   * director's judgement (`fallbackChoice`): a timeout must not hand a bakery
+   * a pixel-art arcade.
+   */
+  reach: "general" | "niche";
   /**
    * The names people already know the look by — "Neo-brutalism",
    * "Glassmorphism" — where tau calls it something else or something shorter.

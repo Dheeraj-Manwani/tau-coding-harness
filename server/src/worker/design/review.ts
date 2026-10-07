@@ -47,18 +47,23 @@
  *
  * Needs two things an installation may lack — a headless browser and a model
  * that reads images — so `designReviewAvailable` is checked before anything
- * asks for a review.
+ * asks for a review. Which model is `DESIGN_REVIEW_MODEL`, and the call goes to
+ * whichever client serves that model (`clientForModel`), as the director's does.
  *
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import type OpenAI from "openai";
 import { env } from "@/lib/env";
-import { kimi } from "@/lib/kimi";
+import { clientForModel, isKimiModel, kimi } from "@/lib/kimi";
 import { capturePageView, type PageCapture, type PageView } from "../lib/screenshot";
 
-/** A browser to take the pictures and a model to look at them. */
+/**
+ * A browser to take the pictures and a model to look at them. A Kimi model
+ * needs the Kimi key; without it `clientForModel` would hand the pictures to
+ * a client that was never meant to have them.
+ */
 export function designReviewAvailable(): boolean {
-  return env.SCREENSHOT_ENABLED && kimi !== null;
+  return env.SCREENSHOT_ENABLED && (kimi !== null || !isKimiModel(designReviewModel()));
 }
 
 /** The model that looks. Has to be one that accepts images. */
@@ -522,7 +527,7 @@ export async function reviewDesign(input: {
   designProse: string | null;
   focus?: string;
 }): Promise<DesignReview> {
-  if (!kimi) throw new Error("No model that reads images is configured");
+  if (!designReviewAvailable()) throw new Error("No model that reads images is configured");
   const base = input.previewUrl.replace(/\/+$/, "");
   const recheck = input.recheck ?? [];
 
@@ -585,7 +590,7 @@ export async function reviewDesign(input: {
 
   const model = designReviewModel();
   const modelStart = Date.now();
-  const completion = await kimi.chat.completions.create(
+  const completion = await clientForModel(model).chat.completions.create(
     {
       model,
       max_tokens: REVIEW_MAX_TOKENS,

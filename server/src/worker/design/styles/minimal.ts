@@ -10,6 +10,7 @@ export const minimal: StyleSpec = {
     "Portfolios, studios, single-product pages, personal sites, galleries and collections, writing and reading tools, calm utilities — anything where the content is the design.",
   avoid: "Not for dense dashboards and data-heavy tools, or for anything that should feel loud, cosy or decorated.",
   group: "precise",
+  reach: "general",
   aka: ["Minimalism"],
 
   fonts: {

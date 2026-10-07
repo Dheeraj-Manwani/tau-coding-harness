@@ -32,7 +32,7 @@ import {
 import { designFiles, resolveDesign } from "@/worker/design";
 import { LAYOUTS, LAYOUT_KEYS } from "@/worker/design/layouts";
 import { buildTheme } from "@/worker/design/palette";
-import { ALL_STYLES, STYLES, allFontPackages } from "@/worker/design/styles";
+import { ALL_STYLES, GENERAL_STYLES, STYLES, allFontPackages } from "@/worker/design/styles";
 import { STYLE_KEYS, type DesignChoice } from "@/worker/design/types";
 import { THEME_COLOR_TOKENS } from "@/worker/templates/theme";
 
@@ -581,8 +581,18 @@ describe("the design director", () => {
       styles.add(c.style);
       accents.add(c.accent);
     }
-    expect(styles.size).toBe(STYLE_KEYS.length);
+    expect(styles.size).toBe(GENERAL_STYLES.length);
     expect(accents.size).toBeGreaterThan(5);
+  });
+
+  test("the fallback never picks a look that a brief has to call for", () => {
+    // Enough general styles that apps still differ when the director is down.
+    expect(GENERAL_STYLES.length).toBeGreaterThanOrEqual(6);
+    for (let i = 0; i < 400; i++) {
+      expect(STYLES[fallbackChoice(`project-${i}`).style].reach).toBe("general");
+    }
+    // A style the user chose is theirs, whatever its reach.
+    expect(fallbackChoice("p1", { style: "pixel" }).style).toBe("pixel");
   });
 });
 

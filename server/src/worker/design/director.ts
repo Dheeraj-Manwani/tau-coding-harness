@@ -48,9 +48,8 @@ import { env } from "@/lib/env";
 import { log } from "@/worker/lib/log";
 import { hexToOklch, isHexColor } from "./color";
 import { importedMode, splitFrontMatter } from "./importDesign";
-import { ALL_STYLES, STYLES, chosenPairing } from "./styles";
+import { ALL_STYLES, GENERAL_STYLES, STYLES, chosenPairing } from "./styles";
 import {
-  STYLE_KEYS,
   isStyleKey,
   type DesignChoice,
   type DesignConfig,
@@ -168,6 +167,10 @@ function sourceOf(
 /**
  * A choice made without a model: varied between projects, never random within
  * one. Whatever the user chose is still honoured; only the rest is picked here.
+ *
+ * Nothing here has judged what suits the app, so the style comes from the
+ * general-purpose ones only. A strong look is right when a brief calls for it
+ * and wrong, loudly, when a hash does.
  */
 export function fallbackChoice(
   seed: string,
@@ -175,7 +178,7 @@ export function fallbackChoice(
   imported?: ImportedDesign,
 ): DesignChoice {
   const h = hash(seed);
-  const style = STYLES[config.style ?? STYLE_KEYS[h % STYLE_KEYS.length]!];
+  const style = config.style ? STYLES[config.style] : GENERAL_STYLES[h % GENERAL_STYLES.length]!;
   const given = config.accent ?? imported?.tokens.colors.primary;
   return {
     style: style.key,

@@ -10,6 +10,7 @@ export const luxe: StyleSpec = {
     "Premium and boutique brands, fashion, jewellery, fine dining, hotels, weddings and events, galleries, private services.",
   avoid: "Not for utilities and dashboards, or for anything cheap and cheerful.",
   group: "crafted",
+  reach: "niche",
   aka: ["Luxury typography", "Quiet luxury"],
 
   fonts: {

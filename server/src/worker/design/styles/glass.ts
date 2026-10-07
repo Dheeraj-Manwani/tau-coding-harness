@@ -13,6 +13,7 @@ export const glass: StyleSpec = {
     "Health and wellness dashboards, weather, music and media players, smart-home and finance overviews, app landing pages, portfolios — anything that should feel light, modern and a little dreamy.",
   avoid: "Not for long reading, dense tables and admin tools, or for anything formal, handmade or austere.",
   group: "tactile",
+  reach: "niche",
   aka: ["Glassmorphism"],
 
   fonts: {

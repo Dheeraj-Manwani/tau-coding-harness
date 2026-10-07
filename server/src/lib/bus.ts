@@ -12,7 +12,6 @@ import { EventEmitter } from "node:events";
  *   3. event replay + count    — buffer behind emit/subscribe, length()
  *   4. cancellation            — requestCancel / onCancel / isCancelled
  *   6. user-response handoff    — pushUserResponse / waitForUserResponse
- *   7. plan-created flag (TTL)  — markPlan / hasPlan
  * (Role 5, the rate-limit store, becomes express-rate-limit's in-memory store
  *  and does not go through this bus.)
  */
@@ -85,7 +84,6 @@ interface JobBuffer {
 
 const RING_TTL_MS = 60 * 60 * 1000; // role 3: mirror Redis expire(events, 3600)
 const RING_MAX = 10_000; // hard cap on buffered events per job
-const PLAN_TTL_MS = 2 * 60 * 60 * 1000; // role 7: mirror plan key EX 2h
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
 class InProcessBus {
@@ -97,7 +95,6 @@ class InProcessBus {
   private readonly waiters = new Map<string, Array<(v: string | null) => void>>(); // role 6
   private readonly pendingAnswers = new Map<string, string[]>(); // role 6
   private readonly activeQuestions = new Map<string, string>(); // jobId -> questionId
-  private readonly plans = new Map<string, number>(); // role 7: jobId -> expiresAt
   private readonly resident = new Map<string, JobRegistryEntry>();
   private readonly registryEvents = new EventEmitter();
   private readonly runnerStats: RunnerStats = {
@@ -427,21 +424,6 @@ class InProcessBus {
     });
   }
 
-  // ── role 7: plan-created flag ─────────────────────────────────────────────
-  markPlan(jobId: string): void {
-    this.plans.set(jobId, Date.now() + PLAN_TTL_MS);
-  }
-
-  hasPlan(jobId: string): boolean {
-    const exp = this.plans.get(jobId);
-    if (exp === undefined) return false;
-    if (exp <= Date.now()) {
-      this.plans.delete(jobId);
-      return false;
-    }
-    return true;
-  }
-
   private sweep(): void {
     const now = Date.now();
     for (const [jobId, buf] of this.buffers) {
@@ -457,9 +439,6 @@ class InProcessBus {
         this.pendingAnswers.delete(jobId);
         this.activeQuestions.delete(jobId);
       }
-    }
-    for (const [jobId, exp] of this.plans) {
-      if (exp <= now) this.plans.delete(jobId);
     }
   }
 }

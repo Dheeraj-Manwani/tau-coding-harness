@@ -31,6 +31,7 @@ export const cyberpunk: StyleSpec = {
     "Games and esports, security and hacking tools, crypto and trading terminals, science-fiction worlds and tabletop companions, drone and hardware dashboards, launch pages with attitude.",
   avoid: "Not for anything friendly, calming, domestic or official — health, home and family, education, banking — or for long reading.",
   group: "tech",
+  reach: "niche",
   aka: ["Sci-fi HUD"],
 
   fonts: {

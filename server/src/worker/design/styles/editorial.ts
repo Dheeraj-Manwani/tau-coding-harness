@@ -9,6 +9,7 @@ export const editorial: StyleSpec = {
     "Brands with a story, food and drink, publications, portfolios, hospitality, craft, anything that should feel considered rather than technical.",
   avoid: "Not for dense tools used all day, or for anything meant to be playful.",
   group: "crafted",
+  reach: "general",
   aka: ["Editorial design", "Magazine"],
 
   fonts: {

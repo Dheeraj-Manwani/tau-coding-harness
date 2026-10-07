@@ -11,6 +11,7 @@ export const swiss: StyleSpec = {
     "Tools, software products, documentation, agencies, studios, institutions — anything that should feel exact, calm and confident.",
   avoid: "Not for anything that should feel warm, handmade, cosy or playful.",
   group: "precise",
+  reach: "general",
   aka: ["Swiss design", "International style"],
 
   fonts: { display: grotesk, body: grotesk, mono: SYSTEM_MONO },

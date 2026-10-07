@@ -32,12 +32,13 @@ import { designFiles, resolveDesign } from "./index";
 import {
   ALL_STYLES,
   DEFAULT_FONTS,
+  GENERAL_STYLES,
   STYLES,
   allFontPackages,
   chosenPairing,
   isFontPairing,
 } from "./styles";
-import { STYLE_KEYS, type DesignChoice, type DesignConfig, type ImportedDesign } from "./types";
+import type { DesignChoice, DesignConfig, ImportedDesign } from "./types";
 
 // ── The new choice ───────────────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ export function restyledChoice(
   const key =
     config.style ??
     current?.style ??
-    STYLE_KEYS[[...seed].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % STYLE_KEYS.length]!;
+    GENERAL_STYLES[[...seed].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % GENERAL_STYLES.length]!.key;
   const style = STYLES[key];
   const sameStyle = current?.style === key;
 

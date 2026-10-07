@@ -9,6 +9,7 @@ export const brutalist: StyleSpec = {
     "Indie products, creative tools, zines, music, events, personal sites, anything for an audience that is bored of polished software.",
   avoid: "Not for anything that has to feel calm and trustworthy: money, health, admin tools.",
   group: "loud",
+  reach: "niche",
   aka: ["Neo-brutalism", "Neubrutalism"],
 
   fonts: {

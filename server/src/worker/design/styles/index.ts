@@ -56,6 +56,9 @@ export const STYLES: Record<StyleKey, StyleSpec> = {
 
 export const ALL_STYLES: readonly StyleSpec[] = STYLE_KEYS.map((k) => STYLES[k]);
 
+/** The styles safe to give an app without knowing what it is (`StyleSpec.reach`). */
+export const GENERAL_STYLES: readonly StyleSpec[] = ALL_STYLES.filter((s) => s.reach === "general");
+
 /** Every font package any style uses — what the sandbox image pre-loads. */
 export function allFontPackages(): string[] {
   const pkgs = new Set<string>();

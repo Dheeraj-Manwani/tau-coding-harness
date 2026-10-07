@@ -20,6 +20,7 @@ export const neumorphic: StyleSpec = {
     "Smart-home and device controls, music players and remotes, calculators, timers and clocks, settings screens, small single-purpose tools — anything with a few large controls.",
   avoid: "Not for text-heavy pages, data tables, shops and marketing sites, or for anything read in a hurry or in bright light: it is a low-contrast look by nature.",
   group: "tactile",
+  reach: "niche",
   aka: ["Neumorphism", "Soft UI"],
 
   fonts: { display: lexend, body: lexend, mono: SYSTEM_MONO },

@@ -45,7 +45,6 @@ import {
   PlayIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
-  SparklesIcon,
   SquareCheckBigIcon,
   SquareMousePointerIcon,
   TelescopeIcon,

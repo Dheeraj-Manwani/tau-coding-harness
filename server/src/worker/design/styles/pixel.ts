@@ -50,6 +50,7 @@ export const pixel: StyleSpec = {
     "Games and game-adjacent sites, arcades and leaderboards, retro and indie brands, creative studios with a sense of humour, quizzes, hobby projects, event pages — anything that wants nostalgia and a wink.",
   avoid: "Not for long reading, professional or financial tools, health, or anything that has to look serious or refined.",
   group: "loud",
+  reach: "niche",
   aka: ["Pixel art", "8-bit"],
 
   fonts: {

@@ -25,6 +25,7 @@ export const y2k: StyleSpec = {
     "Fashion and streetwear drops, music and pop-culture fan sites, parties and club nights, youth brands, creator link pages, quizzes and social toys — anything loud, nostalgic and fun.",
   avoid: "Not for professional tools, finance, health, news, or anything that should feel calm, serious or timeless.",
   group: "loud",
+  reach: "niche",
   aka: ["Y2K aesthetic"],
 
   fonts: {

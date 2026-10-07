@@ -10,6 +10,7 @@ export const playful: StyleSpec = {
     "Games, quizzes, kids and learning, party and social apps, fun utilities, anything whose job is to make someone smile.",
   avoid: "Not for anything serious: money, health, work tools.",
   group: "loud",
+  reach: "niche",
 
   fonts: {
     display: variableFont("Fredoka", "fredoka", SANS_FALLBACK),

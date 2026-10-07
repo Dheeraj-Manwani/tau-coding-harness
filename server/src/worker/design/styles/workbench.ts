@@ -11,6 +11,7 @@ export const workbench: StyleSpec = {
     "Admin panels, internal tools, CRMs, inventory, back-office and operations dashboards, data-heavy apps used all day by people who know them well.",
   avoid: "Not for marketing pages, or for anything that has to charm a first-time visitor.",
   group: "precise",
+  reach: "general",
 
   fonts: {
     display: plex,

@@ -69,8 +69,9 @@ const envSchema = z.object({
   KIMI_BASE_URL: z.string().url().default("https://api.moonshot.ai/v1"),
   KIMI_EXTRACT_MODEL: z.string().default("kimi-k2.6"),
   // The model that looks at screenshots of a generated app for the design
-  // review (worker/design/review.ts). Must accept images, and is called through
-  // the Kimi client. Defaults to the extraction model, which does.
+  // review (worker/design/review.ts). Must accept images. A `kimi-` or
+  // `moonshot-` model is called through the Kimi client and anything else
+  // through the DeepSeek one. Defaults to the extraction model.
   DESIGN_REVIEW_MODEL: z.string().optional(),
 
   ATTACHMENTS_ENABLED: z

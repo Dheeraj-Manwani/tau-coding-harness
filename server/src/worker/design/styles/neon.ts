@@ -11,6 +11,7 @@ export const neon: StyleSpec = {
     "Music and nightlife, gaming and esports, streaming, events and festivals, creator tools, science fiction, anything meant to be used at night and to feel alive.",
   avoid: "Not for anything formal or calming — banking, health, public services — or for long reading.",
   group: "tech",
+  reach: "niche",
 
   fonts: {
     display: variableFont("Oxanium", "oxanium", SANS_FALLBACK),

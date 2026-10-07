@@ -13,6 +13,7 @@ export const cybercore: StyleSpec = {
     "Design and architecture studios, tech and AI research projects, hardware and product specifications, techwear and fashion labels, portfolios, experimental music, catalogues and archives.",
   avoid: "Not for anything warm, friendly or for everyone — family, food, wellness, children — or for a shop that has to feel easy.",
   group: "tech",
+  reach: "niche",
 
   fonts: {
     display: staticFont("Michroma", "michroma", [400], SANS_FALLBACK),

@@ -324,6 +324,7 @@ const FRONT_MATTER_COLORS: [string, string][] = [
   ["background", "--background"],
   ["on-background", "--foreground"],
   ["surface", "--card"],
+  ["on-surface", "--card-foreground"],
   ["muted", "--muted"],
   ["on-muted", "--muted-foreground"],
   ["accent", "--accent"],

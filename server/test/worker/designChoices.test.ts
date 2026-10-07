@@ -924,6 +924,12 @@ describe("the theme panel and the design file", () => {
     expect(describeDesign(synced)!.accent).toBe("#0e7490");
   });
 
+  test("the colour of text on a card follows the panel too", () => {
+    const front = splitFrontMatter(syncDesignMd(md, { "--card": "#ffffff", "--card-foreground": "#1b2b34" })).front!;
+    expect(front).toContain('  surface: "#ffffff"');
+    expect(front).toContain('  on-surface: "#1b2b34"');
+  });
+
   test("nothing else in the file moves", () => {
     const changed = synced.split("\n").filter((line, i) => line !== md.split("\n")[i]);
     expect(changed.length).toBeLessThanOrEqual(8);

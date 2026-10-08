@@ -13,7 +13,7 @@ export interface EmptyPreviewState {
   tone: "neutral" | "warning" | "error";
 }
 
-interface EmptyPreviewInput {
+export interface EmptyPreviewInput {
   status: JobStatus;
   hydrated: boolean;
   activity: string | null;
@@ -25,6 +25,13 @@ interface EmptyPreviewInput {
 
 function withEllipsis(value: string): string {
   return /[.!?…]$/.test(value) ? value : `${value}…`;
+}
+
+/** A streaming title as the tail of "tau is …": "Tau is designing…" → "designing…". */
+export function activityPhrase(title: string): string {
+  const phrase = title.replace(/^tau is\s+/i, "").trim();
+  if (!phrase) return "working…";
+  return `${phrase.charAt(0).toLowerCase()}${phrase.slice(1)}`;
 }
 
 /** Derive the no-iframe screen from durable project state, not assumptions. */

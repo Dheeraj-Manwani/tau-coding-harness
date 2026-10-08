@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { ShuffleIcon } from "lucide-react";
+import { Gamepad2Icon, ShuffleIcon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 import { cn } from "@/src/lib/utils";
@@ -25,6 +25,7 @@ export function BuildLoaderCard({
   tipCount,
   onSelectTip,
   onShuffle,
+  onPlay,
   onFeedback,
   reduceMotion,
 }: {
@@ -39,13 +40,14 @@ export function BuildLoaderCard({
   tipCount: number;
   onSelectTip: (index: number) => void;
   onShuffle: () => void;
+  onPlay: () => void;
   onFeedback: () => void;
   reduceMotion: boolean | null;
 }) {
   const TipIcon = tip.icon;
 
   return (
-    <div className="flex h-full items-center justify-center bg-black p-6">
+    <div className="flex h-full flex-col items-center justify-center gap-3 bg-black p-6">
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-blue-500/20 bg-[#060608] shadow-2xl shadow-black/40">
         <BuildWeatherCanvas />
 
@@ -134,25 +136,45 @@ export function BuildLoaderCard({
                   ))}
                 </div>
               </div>
-
-              <div className="mt-1 flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={onShuffle}
-                  aria-label="Shuffle tips"
-                  className="group flex h-7 items-center rounded-full border border-silver-400/30 px-2 text-silver-600 transition-colors hover:border-silver-400/60 hover:text-silver-900 focus-visible:border-silver-400/60 focus-visible:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
-                >
-                  <ShuffleIcon className="size-3.5 shrink-0" />
-                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-xs opacity-0 transition-[max-width,margin,opacity] duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100">
-                    Shuffle tips
-                  </span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <div className="flex items-center gap-2">
+        <LoaderAction
+          icon={ShuffleIcon}
+          label="Shuffle tips"
+          onClick={onShuffle}
+        />
+        {/* <LoaderAction icon={Gamepad2Icon} label="Play a game" onClick={onPlay} /> */}
+      </div>
     </div>
+  );
+}
+
+/** A pill under the card: an icon that spells out its label on hover or focus. */
+function LoaderAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="group flex h-7 items-center rounded-full border border-silver-400/30 px-2 text-silver-600 transition-colors hover:border-silver-400/60 hover:text-silver-900 focus-visible:border-silver-400/60 focus-visible:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
+    >
+      <Icon className="size-3.5 shrink-0" />
+      <span className="max-w-0 overflow-hidden whitespace-nowrap text-xs opacity-0 transition-[max-width,margin,opacity] duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100">
+        {label}
+      </span>
+    </button>
   );
 }
 

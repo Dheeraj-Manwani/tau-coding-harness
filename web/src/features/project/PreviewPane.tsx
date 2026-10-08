@@ -73,10 +73,14 @@ import {
   wasInterruptedForCredits,
 } from "@/src/features/project/creditResume";
 import {
+  activityPhrase,
   getEmptyPreviewState,
   type EmptyPreviewAction,
+  type EmptyPreviewInput,
   type EmptyPreviewState,
 } from "@/src/features/project/previewEmptyState";
+import { GamesModal } from "@/src/features/project/GamesModal";
+import { getGamesStatus } from "@/src/features/project/gamesStatus";
 
 const DEVICE_WIDTH: Record<string, number> = {
   mobile: 375,
@@ -203,18 +207,14 @@ function tipOrder(avoid: readonly number[] = []): number[] {
   return [0, ...rest.slice(0, VISIBLE_TIP_COUNT)];
 }
 
-function activityPhrase(title: string): string {
-  const phrase = title.replace(/^tau is\s+/i, "").trim();
-  if (!phrase) return "working…";
-  return `${phrase.charAt(0).toLowerCase()}${phrase.slice(1)}`;
-}
-
 function PreviewPlaceholder({
   state,
   onAction,
+  onPlay,
 }: {
   state: EmptyPreviewState;
   onAction: (action: EmptyPreviewAction) => void;
+  onPlay: () => void;
 }) {
   const [tipIndex, setTipIndex] = useState(0);
   const [order, setOrder] = useState(() => tipOrder());
@@ -306,6 +306,7 @@ function PreviewPlaceholder({
       tipCount={order.length}
       onSelectTip={selectTip}
       onShuffle={shuffleTips}
+      onPlay={onPlay}
       onFeedback={() =>
         useFeedbackStore
           .getState()
@@ -1430,7 +1431,7 @@ export function PreviewPane({
   // with neither, it is asked to find the error.
   const startupFix = useFixWithTau(previewError, recovery.runtimeError);
   const previewLoaded = frameKey !== null && recovery.phase === "loaded";
-  const emptyState = getEmptyPreviewState({
+  const emptyInput: EmptyPreviewInput = {
     status,
     hydrated,
     activity,
@@ -1438,7 +1439,9 @@ export function PreviewPane({
     waitingForAnswer: pendingQuestion !== null,
     interruptedForCredits: wasInterruptedForCredits(messages),
     availableCredits: balance?.credits.available,
-  });
+  };
+  const emptyState = getEmptyPreviewState(emptyInput);
+  const [gamesOpen, setGamesOpen] = useState(false);
 
   const handleEmptyAction = (action: EmptyPreviewAction) => {
     if (action === "add_credits") {
@@ -1548,9 +1551,23 @@ export function PreviewPane({
             )}
           </>
         ) : (
-          <PreviewPlaceholder state={emptyState} onAction={handleEmptyAction} />
+          <PreviewPlaceholder
+            state={emptyState}
+            onAction={handleEmptyAction}
+            onPlay={() => setGamesOpen(true)}
+          />
         )}
       </motion.div>
+      {/* Out here, not in the placeholder that opens it: it has to outlive the
+          placeholder to report that the preview replaced it. */}
+      <GamesModal
+        open={gamesOpen}
+        onOpenChange={setGamesOpen}
+        status={getGamesStatus({
+          ...emptyInput,
+          hasPreview: surface === "frame",
+        })}
+      />
     </div>
   );
 }

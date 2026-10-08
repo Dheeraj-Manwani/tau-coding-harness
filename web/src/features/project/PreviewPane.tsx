@@ -19,6 +19,14 @@ import {
   WrenchIcon,
   XIcon,
   HeartIcon,
+  KeyRoundIcon,
+  LightbulbIcon,
+  PaperclipIcon,
+  SparklesIcon,
+  DownloadIcon,
+  GaugeIcon,
+  MessagesSquareIcon,
+  TypeIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -109,9 +117,81 @@ const BUILD_TIPS = [
     icon: ListChecksIcon,
     iconClass: "text-emerald-400",
   },
+  {
+    title: "Pick a look",
+    copy: "Choose a style for your app, or restyle it later from the project settings without rewriting your prompt.",
+    icon: PaletteIcon,
+    iconClass: "text-fuchsia-400",
+  },
+  {
+    title: "Show, don't tell",
+    copy: "Attach a screenshot or image to your message and tau can use it as a reference for the look.",
+    icon: PaperclipIcon,
+    iconClass: "text-cyan-400",
+  },
+  {
+    title: "Set rules once",
+    copy: "Write standing instructions in your build defaults and tau follows them in every project.",
+    icon: SparklesIcon,
+    iconClass: "text-yellow-300",
+  },
+  {
+    title: "Be specific",
+    copy: "Say who the app is for and what it should do. A clear brief beats a long one.",
+    icon: LightbulbIcon,
+    iconClass: "text-amber-300",
+  },
+  {
+    title: "Bring your own words",
+    copy: "Paste your real copy, prices or menu items so the first version is not full of placeholder text.",
+    icon: TypeIcon,
+    iconClass: "text-lime-400",
+  },
+  {
+    title: "Ask for pictures",
+    copy: "Ask for a hero image or photos. tau can search for them, and some styles can generate artwork.",
+    icon: ImageIcon,
+    iconClass: "text-rose-400",
+  },
+  {
+    title: "Keep keys out of prompts",
+    copy: "If your app needs an API key, tau asks for it in the chat and stores it as a secret. Never paste keys into a message.",
+    icon: KeyRoundIcon,
+    iconClass: "text-orange-400",
+  },
+  {
+    title: "Long chats are fine",
+    copy: "Older messages are summarised automatically, and you can clear or summarise the chat yourself at any time.",
+    icon: MessagesSquareIcon,
+    iconClass: "text-indigo-400",
+  },
+  {
+    title: "Match effort to the job",
+    copy: "Higher effort is slower and more careful. Use lower effort for quick tweaks and higher for a whole new app.",
+    icon: GaugeIcon,
+    iconClass: "text-teal-400",
+  },
+  {
+    title: "Take your files with you",
+    copy: "Download your project's files whenever you like, or keep them on GitHub.",
+    icon: DownloadIcon,
+    iconClass: "text-blue-400",
+  },
 ] as const;
 
 const TIP_INTERVAL_MS = 5600;
+
+/** The order tips are shown in. Feedback (index 0) is always first; the rest are shuffled. */
+function tipOrder(shuffle: boolean): number[] {
+  const rest = BUILD_TIPS.map((_, i) => i).slice(1);
+  if (shuffle) {
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j]!, rest[i]!];
+    }
+  }
+  return [0, ...rest];
+}
 
 function activityPhrase(title: string): string {
   const phrase = title.replace(/^tau is\s+/i, "").trim();
@@ -127,6 +207,7 @@ function PreviewPlaceholder({
   onAction: (action: EmptyPreviewAction) => void;
 }) {
   const [tipIndex, setTipIndex] = useState(0);
+  const [order, setOrder] = useState(() => tipOrder(false));
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -137,8 +218,14 @@ function PreviewPlaceholder({
     return () => window.clearInterval(timer);
   }, [state.animated, reduceMotion]);
 
+  const shuffleTips = () => {
+    setOrder(tipOrder(true));
+    // Land on a tip, not back on the feedback card the user just saw.
+    setTipIndex(1);
+  };
+
   const selectTip = (index: number) => {
-    setTipIndex((index + BUILD_TIPS.length) % BUILD_TIPS.length);
+    setTipIndex((index + order.length) % order.length);
   };
 
   if (state.loading) {
@@ -198,7 +285,7 @@ function PreviewPlaceholder({
     );
   }
 
-  const tip = BUILD_TIPS[tipIndex]!;
+  const tip = BUILD_TIPS[order[tipIndex]!]!;
   const liveActivity = activityPhrase(state.title);
 
   return (
@@ -206,8 +293,9 @@ function PreviewPlaceholder({
       liveActivity={liveActivity}
       tip={tip}
       tipIndex={tipIndex}
-      tipCount={BUILD_TIPS.length}
+      tipCount={order.length}
       onSelectTip={selectTip}
+      onShuffle={shuffleTips}
       onFeedback={() =>
         useFeedbackStore
           .getState()

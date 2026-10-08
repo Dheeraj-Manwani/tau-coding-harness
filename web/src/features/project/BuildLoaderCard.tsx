@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { ShuffleIcon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 import { cn } from "@/src/lib/utils";
@@ -23,6 +24,7 @@ export function BuildLoaderCard({
   tipIndex,
   tipCount,
   onSelectTip,
+  onShuffle,
   onFeedback,
   reduceMotion,
 }: {
@@ -36,6 +38,7 @@ export function BuildLoaderCard({
   tipIndex: number;
   tipCount: number;
   onSelectTip: (index: number) => void;
+  onShuffle: () => void;
   onFeedback: () => void;
   reduceMotion: boolean | null;
 }) {
@@ -130,6 +133,20 @@ export function BuildLoaderCard({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-1 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={onShuffle}
+                  aria-label="Shuffle tips"
+                  className="group flex h-7 items-center rounded-full border border-silver-400/30 px-2 text-silver-600 transition-colors hover:border-silver-400/60 hover:text-silver-900 focus-visible:border-silver-400/60 focus-visible:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
+                >
+                  <ShuffleIcon className="size-3.5 shrink-0" />
+                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-xs opacity-0 transition-[max-width,margin,opacity] duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100">
+                    Shuffle tips
+                  </span>
+                </button>
               </div>
             </div>
           </div>

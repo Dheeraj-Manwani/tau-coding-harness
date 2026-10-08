@@ -14,6 +14,7 @@ import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
 import { putScreenshot } from "@/lib/s3";
 import type { Sandbox } from "../lib/sandbox";
 import { waitForPreviewHttp, previewSupportsHealth } from "../lib/previewReadiness";
+import { previewInspectAvailable } from "../lib/previewInspect";
 import {
   BASE_APP_TOOLS,
   PROVISION_SANDBOX_BASE_TOOL,
@@ -154,6 +155,9 @@ function toolsForRun(
   // tool that always says no. And never on a quick build: it costs real money.
   const withoutPictures = (t: { function: { name: string } }) =>
     t.function.name !== "generate_image" || (effort !== "LOW" && imageGenerationAvailable());
+  // The same for opening the app in a browser: no browser, no tool.
+  const withoutBrowser = (t: { function: { name: string } }) =>
+    t.function.name !== "inspect_preview" || previewInspectAvailable();
   // Generation 2 has no stack to choose, so its `provision_sandbox` takes no
   // `template` argument (replaced in place to keep the tool order stable), and
   // it grows a backend or database through two tools generation 1 never sees.
@@ -167,7 +171,7 @@ function toolsForRun(
               ? PROVISION_SANDBOX_BASE_TOOL
               : t,
           ),
-          ...BASE_APP_TOOLS.filter(withoutPictures),
+          ...BASE_APP_TOOLS.filter(withoutPictures).filter(withoutBrowser),
         ]
       : byEffort;
   return defs as unknown as OpenAI.Chat.Completions.ChatCompletionTool[];
@@ -951,6 +955,9 @@ export async function runAgentLoop(
             sandbox: sandboxRef.current,
             projectId,
             userId,
+            previewUrl: sandboxRef.current
+              ? `https://${sandboxRef.current.getHost(PREVIEW_PORT)}`
+              : null,
           },
           gate,
         );
@@ -961,6 +968,10 @@ export async function runAgentLoop(
             turn,
             owed: owed.map((item) => `${item.kind}: ${item.reason}`),
           });
+          // For the admin job page: this run said it was done over an app that
+          // did not work, and was sent back.
+          const broken = owed.find((item) => item.kind === "render");
+          if (broken) await noteInsights(jobId, { render: { sentBack: broken.reason } });
           if (assistant.content?.trim()) {
             entries.push({
               param: { role: "assistant", content: assistant.content },
@@ -980,7 +991,15 @@ export async function runAgentLoop(
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
           previewUrl = `https://${host}`;
-          await waitForPreviewHttp(previewUrl);
+          // "build-error" here means the run is ending on an app that does not
+          // compile. The end-of-run check has already sent it back once for
+          // that if it could (finishGate.ts); this is the record that it ended
+          // so anyway, which nothing kept before.
+          const previewState = await waitForPreviewHttp(previewUrl);
+          if (previewState === "build-error") {
+            log.warn("job.finished_not_compiling", { jobId, projectId, turn });
+            await noteInsights(jobId, { endedNotCompiling: true });
+          }
           await markProjectWorkspaceStarted(projectId);
           await publish(jobId, { type: "preview_ready", url: previewUrl, healthCheck: await previewSupportsHealth(previewUrl), readyAt: new Date().toISOString() });
 

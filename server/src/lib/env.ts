@@ -245,6 +245,18 @@ const envSchema = z.object({
     .transform((v) => v === "true"),
   SCREENSHOT_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
 
+  // Opening the app in tau's headless browser to read its console, errors and
+  // failed requests: the agent's `inspect_preview` tool and the check that an
+  // app renders before a run may finish. Uses the same browser as the
+  // screenshots; false turns both off (doc/PREVIEW_DIAGNOSTICS_PLAN.md).
+  PREVIEW_INSPECT_ENABLED: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
+  // Most inspections one run may ask for. A result costs no model call, but it
+  // is read again on every later step of the run.
+  PREVIEW_INSPECT_MAX_PER_RUN: z.coerce.number().int().nonnegative().default(15),
+
   // Enforcement is SEPARATE from CREDITS_ENFORCE and defaults to TRUE, because
   // the failure modes are opposite: a build metered in shadow mode costs tau one
   // job, while a gateway in shadow mode is an open, unbilled LLM proxy.

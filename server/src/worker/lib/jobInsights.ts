@@ -25,6 +25,14 @@ export interface JobInsights {
   summaries?: number;
   design?: { style: string; accent: string; mode: string; source: string; read: string };
   reviews?: DesignReviewNote[];
+  /**
+   * The run said it was finished over an app that did not work, and was sent
+   * back to fix it. `sentBack` is what was wrong: `crashed`, `blank` or
+   * `build_error` (lib/previewReport.ts).
+   */
+  render?: { sentBack: string };
+  /** The run ended with the dev server still refusing to compile the app. */
+  endedNotCompiling?: boolean;
 }
 
 /** Set some keys of a job's insights, leaving the others as they are. */

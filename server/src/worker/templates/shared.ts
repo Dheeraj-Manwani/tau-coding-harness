@@ -948,6 +948,50 @@ export function writeNeutralTheme(t: TemplateBuilder): TemplateBuilder {
   );
 }
 
+/** Where the app's icon lives, relative to the app. Vite serves it at `/favicon.svg`. */
+export const APP_ICON_PATH = "public/favicon.svg";
+
+/** The `<link>` in `index.html` that points at it. */
+export const APP_ICON_LINK_TAG = `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`;
+
+/**
+ * The icon every app starts with: the white tau mark on a black disc, the same
+ * picture `web/` and `landing/` use as their favicon.
+ *
+ * Drawn as a vector rather than copied from their PNGs, for two reasons. The
+ * template seed reads every file in the image as text (`seedTemplateFiles`),
+ * which would corrupt a binary icon on its way into the manifest. And an SVG
+ * needs no set of sizes. The mark is the path the badge uses
+ * (`lib/badge/badge.js`), scaled to sit in the disc as it does in the PNG.
+ *
+ * Unlike the badge this is part of the app's source: it is the default, the
+ * owner replaces it when they publish (doc/PUBLISHING.md D7), and until then it
+ * is what a browser tab and a shared link show.
+ */
+export const APP_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="tau">
+  <circle cx="16" cy="16" r="16" fill="#000"/>
+  <path fill="#fff" transform="translate(4.7 3.6) scale(0.98)" d="M7.5 1.8H21.4C21.9 1.8 22.1 2.2 22 2.7C21.4 4.8 20.1 5.9 18 5.9H12.8L10.9 14.4C10.5 16.5 11 19.2 12.9 19.2C14.4 19.2 15.8 18.2 17.1 16.7C17.5 16.3 18.1 16.6 17.9 17.2C16.9 20.3 14.6 22.6 11.6 22.6C7.9 22.6 5.4 20 6.3 15.7L8.2 5.9C5.4 5.9 3.3 6.4 1.9 8C1.5 8.4 0.9 8.1 1.1 7.6C2.4 4.2 4.7 1.8 7.5 1.8Z"/>
+</svg>
+`;
+
+/**
+ * Give the app its icon: write the file and link it from `index.html`.
+ *
+ * `scaffoldBase` deletes the Vite scaffold's own icon and empties `public/`,
+ * which leaves an app with no icon at all. Any icon link the scaffold still
+ * carries is dropped first, whatever file it names, so there is exactly one.
+ */
+export function writeAppIcon(t: TemplateBuilder): TemplateBuilder {
+  return t
+    .runCmd(
+      `mkdir -p public && cat > ${APP_ICON_PATH} <<'EOF'\n${APP_ICON_SVG}EOF`,
+    )
+    .runCmd(`sed -i '/rel="icon"/d' index.html`)
+    .runCmd(
+      `sed -i 's#</head>#  ${APP_ICON_LINK_TAG}\\n  </head>#' index.html`,
+    );
+}
+
 /** What adding a backend installs. Same range `migrateTemplate` writes. */
 export const BACKEND_PACKAGES = "hono@^4";
 

@@ -694,7 +694,11 @@ export function DesignPicker({
               rows={5}
               spellCheck={false}
               placeholder={"---\ncolors:\n  primary: \"#0b5fff\"\n---\n# My design\n…"}
-              className="scrollbar-thin w-full resize-y rounded-md border border-silver-400/30 bg-space-surface p-2 font-mono text-[11px] text-silver-900 outline-none placeholder:text-silver-600/60 focus-visible:border-blue-500/60"
+              className={cn(
+                "scrollbar-inset w-full resize-y rounded-md border border-silver-400/30 bg-space-surface p-2 font-mono text-[11px] text-silver-900 outline-none placeholder:text-silver-600/60 focus-visible:border-blue-500/60",
+                // A design file runs to hundreds of lines: give it room to be read.
+                value.designMd && "h-72",
+              )}
             />
             <div className="flex flex-wrap items-center gap-2">
               <button

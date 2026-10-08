@@ -19,6 +19,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { TEMPLATES, toTemplateKey, type TemplateGeneration } from "@/worker/templates/registry";
+import { previewInspectAvailable } from "@/worker/lib/previewInspect";
 import { docIndex } from "../../docs";
 
 export const SUB_AGENT_KINDS = ["explorer", "debugger", "verifier", "implementer"] as const;
@@ -29,6 +30,12 @@ export interface AppKind {
   generation: TemplateGeneration;
   hasServer: boolean;
   hasDb: boolean;
+  /**
+   * The debugger and the verifier can open the app in a browser
+   * (`inspect_preview`). Their instructions depend on it: without it they are
+   * told what they cannot see, with it they are told to look.
+   */
+  browser?: boolean;
 }
 
 /** The app's shape, from the template it is on. */
@@ -38,7 +45,12 @@ export async function appKindOf(projectId: string): Promise<AppKind> {
     select: { templateKey: true },
   });
   const entry = TEMPLATES[toTemplateKey(project?.templateKey)];
-  return { generation: entry.generation, hasServer: entry.hasServer, hasDb: entry.hasDb };
+  return {
+    generation: entry.generation,
+    hasServer: entry.hasServer,
+    hasDb: entry.hasDb,
+    browser: entry.generation === 2 && previewInspectAvailable(),
+  };
 }
 
 /** A report longer than this is cut before it enters the main conversation. */
@@ -116,6 +128,17 @@ Return a single, structured plain-text summary:
 No filler. No suggestions. No code changes. Just findings. ${REPORT_LIMIT}`;
 }
 
+/** How the debugger is told to reproduce a fault, by what it has to do it with. */
+function reproduceWith(app: AppKind): string {
+  if (!app.browser) {
+    return app.hasServer
+      ? "`curl` the route, read the runtime logs,"
+      : "type-check, run the build, read the dev server's output,";
+  }
+  const then = app.hasServer ? "`curl` an API route, read the runtime logs," : "type-check,";
+  return `for anything seen in the browser (a blank page, an error on screen, a button that does nothing) call \`inspect_preview\` on the route first, and read the error and the failed requests it returns before opening files; ${then}`;
+}
+
 function debuggerPersona(app: AppKind): string {
   return `You are a debugging sub-agent embedded in a running web app, dispatched the
 moment the main agent got stuck on a repeated failure — often before much
@@ -129,9 +152,7 @@ You investigate; the main agent applies the fix. You do not touch files.
 ## Ground rules
 ${READ_ONLY}
 ${appFacts(app)}
-- Reproduce the issue before concluding: ${
-    app.hasServer ? "`curl` the route, read the runtime logs," : "type-check, run the build, read the dev server's output,"
-  } trace the code path.
+- Reproduce the issue before concluding: ${reproduceWith(app)} trace the code path.
 - Do not stop at the first plausible cause — rule out alternatives.
 - If you cannot reproduce or fully confirm the root cause, say so explicitly.
 
@@ -150,14 +171,26 @@ ${appFacts(app)}
 No filler. No multiple possible causes unless you genuinely cannot distinguish them. ${REPORT_LIMIT}`;
 }
 
+/**
+ * The verifier's check that screens work. A page answers 200 whether or not
+ * the app in it has crashed, so with a browser to hand the check is that each
+ * screen renders, not that it answers.
+ */
+const RENDERS =
+  "call `inspect_preview` on each route in scope and read its status, its errors and its failed requests. A 200 from `curl` does not show this: the page answers 200 whether or not the app in it has crashed";
+
 function verifier(app: AppKind): string {
   const order = app.hasServer
     ? `1. Type check: \`${typeCheckCommand(app)}\`.
 2. Each API route in scope — status code (\`curl -s -o /dev/null -w "%{http_code}" ...\`) and response shape (\`curl -s ... | head -c 500\`).
-3. Any integration points (e.g. frontend calls that must match route paths and response fields).
+3. ${app.browser ? `The screens in scope render: ${RENDERS}.` : "Any integration points (e.g. frontend calls that must match route paths and response fields)."}
 4. Spot-check edge cases if time allows (missing fields, invalid input).`
     : `1. Type check: \`${typeCheckCommand(app)}\`.
-2. The page loads: \`curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/\` returns 200, and so does each route in scope.
+2. ${
+        app.browser
+          ? `Each screen in scope renders: ${RENDERS}.`
+          : 'The page loads: `curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/` returns 200, and so does each route in scope.'
+      }
 3. Read the changed files for what a type check cannot see: a route added to a page but not to the router, an import of a file that does not exist, state that is never saved or never loaded, a handler wired to nothing.
 4. Spot-check edge cases in the logic if time allows (empty lists, first run with no saved data).`;
 
@@ -173,7 +206,11 @@ ${READ_ONLY}
 ${appFacts(app)}
 - Cover every item in the \`checks\` list if provided; otherwise derive
   sensible checks from the scope description.
-- You cannot see the app rendered. Do not report on how it looks.
+${
+    app.browser
+      ? "- `inspect_preview` opens a route in a browser and tells you whether it rendered and what it logged. It does not show you the screen: do not report on how it looks."
+      : "- You cannot see the app rendered. Do not report on how it looks."
+  }
 
 ## Verification order
 ${order}

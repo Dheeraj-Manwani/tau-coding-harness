@@ -461,6 +461,16 @@ function deriveActionItem(
       };
     case "grep":
       return { kind: "list_dir", label: "Searched the project" };
+    case "inspect_preview": {
+      const route = String(input.path ?? "").trim();
+      return {
+        kind: "run_command",
+        label:
+          route && route !== "/"
+            ? `Checked ${truncateLabel(route, 40)} in a browser`
+            : "Checked the app in a browser",
+      };
+    }
     case "read_doc": {
       const topic = String(input.name ?? "").trim();
       return {

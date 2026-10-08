@@ -43,6 +43,7 @@ export const DOC_NAMES = [
   "motion",
   "assets",
   "github",
+  "debugging",
 ] as const;
 
 export type DocName = (typeof DOC_NAMES)[number];
@@ -64,6 +65,12 @@ interface DocSpec {
   covers?: (path: string) => boolean;
   /** Tools whose first result in a conversation carries the guide. */
   firstUseOf?: readonly string[];
+  /**
+   * Narrows `firstUseOf`: the guide rides on the first result this accepts,
+   * rather than the first result of any kind. For a guide that is only worth
+   * reading when the tool found something.
+   */
+  firstUseIf?: (output: Record<string, unknown>) => boolean;
 }
 
 export const DOCS: Record<DocName, DocSpec> = {
@@ -132,6 +139,17 @@ export const DOCS: Record<DocName, DocSpec> = {
     // follow-up rules (`update_pr`, not a new pull request each time) in front
     // of the agent before the second.
     firstUseOf: ["push_to_github", "create_github_issue"],
+  },
+  debugging: {
+    // Does not name `inspect_preview`: this line is shown to everyone, and not
+    // everyone has the tool (a sub-agent that only reads code, a deployment
+    // with no browser).
+    when: "before fixing a preview that is blank, crashes or will not compile.",
+    // Comes with the first inspection that finds a fault, not the first
+    // inspection: one that finds the app working needs no guide to fixing it,
+    // and would pay for it on every later step.
+    firstUseOf: ["inspect_preview"],
+    firstUseIf: (output) => typeof output.status === "string" && output.status !== "rendered",
   },
 };
 
@@ -235,7 +253,14 @@ export function docsForPath(path: string): DocName[] {
   return DOC_NAMES.filter((name) => DOCS[name].covers?.(rel) ?? false);
 }
 
-/** Guides that explain how to use `tool`. */
-export function docsForTool(tool: string): DocName[] {
-  return DOC_NAMES.filter((name) => DOCS[name].firstUseOf?.includes(tool) ?? false);
+/**
+ * Guides that explain how to use `tool`. Given the tool's result, only those
+ * whose guide that result calls for (`firstUseIf`).
+ */
+export function docsForTool(tool: string, output?: Record<string, unknown>): DocName[] {
+  return DOC_NAMES.filter((name) => {
+    const spec = DOCS[name];
+    if (!(spec.firstUseOf?.includes(tool) ?? false)) return false;
+    return output && spec.firstUseIf ? spec.firstUseIf(output) : true;
+  });
 }

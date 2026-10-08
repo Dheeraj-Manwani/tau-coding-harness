@@ -35,6 +35,7 @@ import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { BuildLoaderCard } from "@/src/features/project/BuildLoaderCard";
 import { PreviewStoppedCard } from "@/src/features/project/PreviewStoppedCard";
+import { PreviewFailedCard } from "@/src/features/project/PreviewFailedCard";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
@@ -181,16 +182,22 @@ const BUILD_TIPS = [
 
 const TIP_INTERVAL_MS = 5600;
 
-/** The order tips are shown in. Feedback (index 0) is always first; the rest are shuffled. */
-function tipOrder(shuffle: boolean): number[] {
-  const rest = BUILD_TIPS.map((_, i) => i).slice(1);
-  if (shuffle) {
-    for (let i = rest.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [rest[i], rest[j]] = [rest[j]!, rest[i]!];
-    }
+/** How many tips sit behind the feedback card at a time; shuffling swaps in others. */
+const VISIBLE_TIP_COUNT = 4;
+
+/**
+ * The cards shown in one cycle: feedback (index 0) first, then a random few of
+ * the tips. `avoid` is the set on screen now, so a shuffle brings in fresh ones.
+ */
+function tipOrder(avoid: readonly number[] = []): number[] {
+  const rest = BUILD_TIPS.map((_, i) => i)
+    .slice(1)
+    .filter((i) => !avoid.includes(i));
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j]!, rest[i]!];
   }
-  return [0, ...rest];
+  return [0, ...rest.slice(0, VISIBLE_TIP_COUNT)];
 }
 
 function activityPhrase(title: string): string {
@@ -207,19 +214,19 @@ function PreviewPlaceholder({
   onAction: (action: EmptyPreviewAction) => void;
 }) {
   const [tipIndex, setTipIndex] = useState(0);
-  const [order, setOrder] = useState(() => tipOrder(false));
+  const [order, setOrder] = useState(() => tipOrder());
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!state.animated || reduceMotion) return;
     const timer = window.setInterval(() => {
-      setTipIndex((current) => (current + 1) % BUILD_TIPS.length);
+      setTipIndex((current) => (current + 1) % (VISIBLE_TIP_COUNT + 1));
     }, TIP_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [state.animated, reduceMotion]);
 
   const shuffleTips = () => {
-    setOrder(tipOrder(true));
+    setOrder((current) => tipOrder(current));
     // Land on a tip, not back on the feedback card the user just saw.
     setTipIndex(1);
   };
@@ -639,34 +646,42 @@ function errorLocation(error: PreviewBuildError): string | null {
  * The whole error goes in a block the model reads and the transcript doesn't
  * (`server/src/api/lib/visualContext.ts`), so the chat bubble says "Fix the
  * build error in src/components/Hero.tsx" while the model gets the caret line.
+ *
+ * `error` is null when the app crashed while starting and Vite had nothing to
+ * say about it (`PreviewFailedCard`). The preview only reports that it failed,
+ * not why, so tau is asked to find the error itself.
  */
-function useFixWithTau(error: PreviewBuildError) {
+function useFixWithTau(error: PreviewBuildError | null) {
   const projectId = useProjectStore((s) => s.projectId);
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const dismiss = useProjectStore((s) => s.setPreviewErrorDismissed);
   const { send, canSend, isSending } = useSendMessage(projectId ?? undefined);
 
-  const where = errorLocation(error);
+  const where = error ? errorLocation(error) : null;
 
   const fix = () => {
     if (!canSend) return;
-    const sent = send(
-      where
-        ? `Fix the build error in \`${where}\`: the preview isn't compiling.`
-        : "Fix the build error: the preview isn't compiling.",
-      {
-        buildError: {
-          message: error.message,
-          ...(error.file ? { file: error.file } : {}),
-          ...(error.frame ? { frame: error.frame } : {}),
-        },
-      },
-    );
+    const sent = error
+      ? send(
+          where
+            ? `Fix the build error in \`${where}\`: the preview isn't compiling.`
+            : "Fix the build error: the preview isn't compiling.",
+          {
+            buildError: {
+              message: error.message,
+              ...(error.file ? { file: error.file } : {}),
+              ...(error.frame ? { frame: error.frame } : {}),
+            },
+          },
+        )
+      : send(
+          "The app crashes while it starts, so the preview shows nothing. Find the error and fix it.",
+        );
     if (!sent) return;
     setChatOpen(true);
     // Out of the way so the answer is watchable. The error itself is still
     // live, so the banner stays until the fix actually lands.
-    dismiss(true);
+    if (error) dismiss(true);
   };
 
   return { fix, where, canSend, isSending };
@@ -1380,6 +1395,9 @@ export function PreviewPane({
   );
   useVisualUndo(reselect);
   useVisualEditEscape();
+  // A frame that never came up. When Vite reported why, tau is sent that;
+  // otherwise it is asked to find the error.
+  const startupFix = useFixWithTau(previewError);
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
@@ -1476,12 +1494,17 @@ export function PreviewPane({
                     <div className="absolute inset-0 bg-black/80" />
                   </>
                 )}
+                {recovery.phase === "failed" && (
+                  <div aria-hidden="true" className="rain-streaks" />
+                )}
                 {recovery.phase === "failed" ? (
-                  <div role="alert" className="relative max-w-sm px-5 text-center text-sm text-[var(--silver-900)]">
-                    <p>{recovery.appError ? "The app encountered an error while starting." : "The preview couldn’t finish loading."}</p>
-                    <p className="mt-2 text-xs text-[var(--silver-600)]">{recovery.appError ? "Ask tau to fix the app, or try reloading the preview." : "Try reloading the preview. Your project is saved."}</p>
-                    <button type="button" onClick={reloadPreview} className="mt-4 rounded-lg bg-[var(--silver-900)] px-3 py-2 text-xs font-medium text-[var(--space-void)]">Reload preview</button>
-                  </div>
+                  <PreviewFailedCard
+                    appError={recovery.appError}
+                    onFix={startupFix.fix}
+                    onReload={reloadPreview}
+                    canFix={startupFix.canSend}
+                    isSending={startupFix.isSending}
+                  />
                 ) : (
                   <div className="relative"><DataSpinner label={recovery.attempt ? "Reconnecting preview" : "Loading preview"} /></div>
                 )}

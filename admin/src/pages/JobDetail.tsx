@@ -264,7 +264,7 @@ function Insights({ insights }: { insights: JobDetailData["job"]["insights"] }) 
       </Section>
     );
   }
-  const { cache, summaries, design, reviews } = insights;
+  const { cache, summaries, design, reviews, render, endedNotCompiling } = insights;
   return (
     <Section title="Run insights" description="Recorded by the worker; no model call.">
       <StatGrid>
@@ -280,6 +280,17 @@ function Insights({ insights }: { insights: JobDetailData["job"]["insights"] }) 
           sub={design ? `${design.accent}, ${design.mode}, by ${design.source}` : "none chosen this run"}
         />
         <Stat label="Design reviews" value={reviews?.length ?? 0} sub={reviews?.map((r) => r.verdict).join(", ") || "none"} />
+        <Stat
+          label="Render check"
+          value={render ? "Sent back" : endedNotCompiling ? "Not compiling" : "—"}
+          sub={
+            render
+              ? `app was ${label(render.sentBack)} when the run first said done${endedNotCompiling ? "; still not compiling at the end" : ""}`
+              : endedNotCompiling
+                ? "the run ended on an app that does not compile"
+                : "no fault found when the run finished"
+          }
+        />
       </StatGrid>
       {design?.read && <p className="mt-3 text-sm text-fg-2">Read as: {design.read}</p>}
       {reviews && reviews.length > 0 && (

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ToolCallStatus } from "@/generated/prisma/enums";
 import { log } from "@/worker/lib/log";
 import { withDeadline } from "@/worker/lib/sandbox";
+import { inspectPreview, previewInspectAvailable } from "@/worker/lib/previewInspect";
 import { meterModelCall } from "@/worker/lib/meterCall";
 import { readOrNull } from "@/worker/lib/appStack";
 import { designReferenceKey, getObjectBytes } from "@/lib/s3";
@@ -139,8 +140,22 @@ export async function dispatchDesignReviewer(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn("design.review.failed", { jobId, projectId, routes, error: message });
+    // A screen that would not render is not something to guess at: open it and
+    // say what the browser saw. (This used to end with "the app is probably
+    // not compiling", which is one of several things a blank screen can mean.)
+    const previewUrl = `https://${sandbox.getHost(PREVIEW_PORT)}`;
+    const found = previewInspectAvailable()
+      ? await inspectPreview(previewUrl, { path: routes[0] ?? "/", deadlineMs: 20_000 }).catch(() => null)
+      : null;
+    if (found && found.status !== "rendered") {
+      return {
+        error: `The screens could not be reviewed: ${message}`,
+        inspection: found,
+        next: "tau opened the first screen in a browser instead; what it found is in `inspection`. Fix that, then ask for the review again.",
+      };
+    }
     return {
-      error: `The screens could not be reviewed: ${message} If a screen rendered blank, the app is probably not compiling — check that first (\`bunx tsc -p tsconfig.app.json --noEmit\`), then try once more.`,
+      error: `The screens could not be reviewed: ${message} If a screen rendered blank, check that the app compiles (\`bunx tsc -b\`), then try once more.`,
     };
   }
 

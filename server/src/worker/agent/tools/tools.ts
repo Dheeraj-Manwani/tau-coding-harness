@@ -179,6 +179,47 @@ export const BASE_APP_TOOLS = [
   {
     type: "function",
     function: {
+      name: "inspect_preview",
+      description:
+        "Open one route of the running app in a real browser and get back what its developer tools would show: whether anything rendered, uncaught errors and the file they came from, console errors, failed requests with the server's answer, and the dev server's compile error if there is one. Use it when the preview is reported blank or broken, when the user describes something going wrong on screen, or to confirm you fixed one of those. Do not call it on an app you have no reason to doubt: tau checks that the app renders when you finish. It reports what happened, not how the screen looks, and does not edit files.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The route to open, e.g. '/' or '/pricing'. Defaults to '/'.",
+          },
+          steps: {
+            type: "array",
+            description:
+              "Optional: up to 4 things to do after the page loads, in order, before it is read — to reach an error that only happens after a click. Buttons and tabs are found by what they say; fields by their label or placeholder.",
+            items: {
+              type: "object",
+              properties: {
+                click: { type: "string", description: "The text of a button, link or tab to press." },
+                fill: { type: "string", description: "The label or placeholder of a field to type into." },
+                with: { type: "string", description: "What to type, with fill." },
+              },
+            },
+          },
+          viewport: {
+            type: "string",
+            enum: ["desktop", "mobile"],
+            description: "Defaults to desktop. Use mobile only for a problem seen on a phone.",
+          },
+          verbose: {
+            type: "boolean",
+            description: "Also return console.log lines. Off by default: errors and warnings only.",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "read_doc",
       description:
         "Read one of tau's guides: the exact way a part of this app's stack is used here — API routes, database tables, AI calls, API keys, the theme, images, GitHub. Your instructions list the guides and say when to read each. Read the guide before writing code in its area, and follow it over what you remember. Needs no sandbox. A guide that is already in the conversation does not need reading again.",

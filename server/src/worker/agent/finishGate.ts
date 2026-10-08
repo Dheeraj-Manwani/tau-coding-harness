@@ -35,7 +35,17 @@
  * deadline (`GATE_TIMEOUT_MS`), and so does the read behind each write-time
  * check: when the time is up the run goes on as if nothing were owed.
  *
- * See doc/CONTEXT_AND_MEMORY_PLAN.md §4 and §5.
+ * ## Whether the app works at all
+ *
+ * The one thing here that is not about the files a run wrote: before a run
+ * that changed files may finish, tau opens the app in a browser, as the user
+ * is about to (`checkRender`). An app that does not compile, throws as it
+ * starts or draws nothing is sent back with what the browser saw, ahead of
+ * everything else and at every effort. It runs beside the other checks with a
+ * deadline of its own, and like them it is raised once.
+ *
+ * See doc/CONTEXT_AND_MEMORY_PLAN.md §4 and §5, and
+ * doc/PREVIEW_DIAGNOSTICS_PLAN.md §3.4.
  */
 import { prisma } from "@/lib/prisma";
 import { getBlobText } from "@/lib/s3";
@@ -56,6 +66,15 @@ import {
 import { DESIGN_PATH } from "../design/designMd";
 import { designReviewAvailable } from "../design/review";
 import { MEMORY_PATH, appRelativePath, memoryProblems } from "./context/memoryFile";
+import { inspectPreview, previewInspectAvailable, type InspectOptions } from "../lib/previewInspect";
+import {
+  describeFindings,
+  isBroken,
+  type PreviewReport,
+  type PreviewStatus,
+} from "../lib/previewReport";
+import { probePreviewHttp, type PreviewHttpState } from "../lib/previewReadiness";
+import { redactToolResult } from "../lib/redact";
 
 // ── What a run has done ──────────────────────────────────────────────────────
 
@@ -248,7 +267,129 @@ export async function outstandingFindings(
 
 // ── The gate ─────────────────────────────────────────────────────────────────
 
-export type GateKind = "design_check" | "design_review" | "verify" | "memory";
+export type GateKind = "render" | "design_check" | "design_review" | "verify" | "memory";
+
+// ── Does the app render? ─────────────────────────────────────────────────────
+
+/** What opening the app found, when what it found is that the app is broken. */
+export interface RenderFault {
+  status: PreviewStatus;
+  /** One sentence: what state the app is in. */
+  summary: string;
+  /** The errors behind it, as markdown list items. */
+  findings: string;
+  /** The agent has `inspect_preview` and can look again after fixing. */
+  canInspect: boolean;
+}
+
+/**
+ * How long opening the app may take before the check gives up and the run is
+ * taken to be fine. Longer than the other end-of-run checks get, and measured:
+ * the first load of an app nobody has opened yet took 13 seconds on a fresh
+ * sandbox, while the dev server prepared its dependencies. A check too short
+ * to survive that would be skipped on exactly the runs that most need it — a
+ * first build. An app already loaded once answers in two or three.
+ */
+export const RENDER_CHECK_MS = 25_000;
+/** A little over `RENDER_CHECK_MS`: the backstop for a check that does not return at all. */
+export const RENDER_GATE_TIMEOUT_MS = 28_000;
+/** How long the app has to draw something before it is called blank. */
+const RENDER_WAIT_MS = 6_000;
+/** The least time worth starting a second look in. */
+const SECOND_LOOK_MIN_MS = 5_000;
+
+/** What `checkRender` is made of. Replaced in tests, which start no browser. */
+export interface RenderCheckParts {
+  available: () => boolean;
+  inspect: (previewUrl: string, options: InspectOptions) => Promise<PreviewReport>;
+  probe: (previewUrl: string) => Promise<PreviewHttpState>;
+  redact: (projectId: string, text: string) => Promise<string>;
+  budgetMs: number;
+  secondLookMinMs: number;
+}
+
+const REAL_PARTS: RenderCheckParts = {
+  available: previewInspectAvailable,
+  inspect: inspectPreview,
+  probe: probePreviewHttp,
+  redact: redactToolResult,
+  budgetMs: RENDER_CHECK_MS,
+  secondLookMinMs: SECOND_LOOK_MIN_MS,
+};
+
+/**
+ * Open the app the way the user is about to, and say whether it is broken.
+ *
+ * Every other check a run has passes on an app that shows nothing: the page
+ * answers 200 whatever the JavaScript in it does. This is the one that looks.
+ * It costs no model call, and when the app is fine nothing of it reaches the
+ * model at all.
+ *
+ * Null when the app renders, and also whenever that cannot be told — no
+ * browser on this deployment, the page did not load, time ran out. An
+ * unanswered question must not hold a run back; only a seen fault does.
+ */
+export async function checkRender(
+  previewUrl: string,
+  projectId: string,
+  parts: Partial<RenderCheckParts> = {},
+): Promise<RenderFault | null> {
+  const { available, inspect, probe, redact, budgetMs, secondLookMinMs } = { ...REAL_PARTS, ...parts };
+  if (!available()) {
+    // No browser, but the dev server still says whether the app compiles.
+    const state = await probe(previewUrl).catch(() => "starting" as const);
+    if (state !== "build-error") return null;
+    return {
+      status: "build_error",
+      summary: "The app does not compile, so nothing can render.",
+      findings:
+        "- The dev server answers 500 for the page or one of its files. Run the type check to find the error.",
+      canInspect: false,
+    };
+  }
+  const started = Date.now();
+  let report = await inspect(previewUrl, { deadlineMs: budgetMs, renderWaitMs: RENDER_WAIT_MS });
+  const first = report.status;
+  // Sending a run back costs the user a second closing message and a dozen
+  // more steps, so a fault is looked at twice before it is believed. The
+  // second look is at an app the dev server has by now finished preparing,
+  // which is where a first look goes wrong. If there is no time left for it,
+  // an error that was actually seen still counts; an empty page does not.
+  if (isBroken(report.status)) {
+    const left = budgetMs - (Date.now() - started);
+    if (left >= secondLookMinMs) {
+      report = await inspect(previewUrl, { deadlineMs: left, renderWaitMs: RENDER_WAIT_MS });
+    } else if (report.status === "blank") {
+      report = { ...report, status: "unreachable" };
+    }
+  }
+  log.info("job.render_check", {
+    projectId,
+    status: report.status,
+    ...(isBroken(first) ? { first } : {}),
+    exceptions: report.exceptions?.length ?? 0,
+    ms: Date.now() - started,
+  });
+  if (!isBroken(report.status)) return null;
+  return {
+    status: report.status,
+    summary: report.summary,
+    // A stack or a response body can carry a key, and this goes to the model.
+    findings: await redact(projectId, describeFindings(report)),
+    canInspect: true,
+  };
+}
+
+function renderItemFor(fault: RenderFault): GateItem {
+  const confirm = fault.canInspect
+    ? "Fix the cause, then call `inspect_preview` to confirm the app renders."
+    : "Fix the cause, then type-check to confirm it compiles.";
+  return {
+    kind: "render",
+    reason: fault.status,
+    text: `**Fix the app: it does not work.** tau opened it in a browser, as the user is about to. ${fault.summary}\n${fault.findings}\n${confirm} Nothing else on this list matters until it does.`,
+  };
+}
 
 export interface GateItem {
   kind: GateKind;
@@ -276,6 +417,10 @@ export interface GateInput {
   sandbox: FileSource | null;
   projectId: string;
   userId: string;
+  /** Where the app is running, when it is. Without it the render check is skipped. */
+  previewUrl?: string | null;
+  /** Opens the app and reports a fault. Replaced in tests; `checkRender` otherwise. */
+  renderCheck?: (previewUrl: string, projectId: string) => Promise<RenderFault | null>;
 }
 
 async function memoryItem(input: GateInput): Promise<GateItem | null> {
@@ -315,14 +460,36 @@ async function memoryItem(input: GateInput): Promise<GateItem | null> {
  * What the run still owes, in the order to do it. Marks each returned kind as
  * raised in `state`, so a second call returns only what is new.
  *
- * Never throws and never takes longer than `timeoutMs`: if what is owed cannot
- * be worked out in time, nothing is, and nothing is marked as raised.
+ * Never throws and never takes longer than the longer of `timeoutMs` and
+ * `renderTimeoutMs`: a check that cannot be made in its time is taken to owe
+ * nothing, and is not marked as raised.
  */
 export async function finishItems(
   input: GateInput,
   state: GateState,
   timeoutMs = GATE_TIMEOUT_MS,
+  renderTimeoutMs = RENDER_GATE_TIMEOUT_MS,
 ): Promise<GateItem[]> {
+  // Started first and awaited last: opening the app takes seconds, and the
+  // other checks, which read files, are done while it loads. At every effort —
+  // this is not polish, it is whether the app works. It has a deadline of its
+  // own (see `RENDER_CHECK_MS`), so a slow first load cannot cost the run its
+  // other checks, nor a stalled file read cost it this one.
+  const rendering: Promise<RenderFault | null> =
+    input.generation === 2 && input.filesChanged && input.previewUrl && !state.has("render")
+      ? withDeadline(
+          (input.renderCheck ?? checkRender)(input.previewUrl, input.projectId),
+          renderTimeoutMs,
+          "opening the app",
+        ).catch((err) => {
+          log.warn("job.render_check.skipped", {
+            projectId: input.projectId,
+            reason: err instanceof Error ? err.message : String(err),
+          });
+          return null;
+        })
+      : Promise.resolve(null);
+
   let items: GateItem[];
   try {
     items = await withDeadline(owedItems(input, state), timeoutMs, "the end-of-run checks");
@@ -331,8 +498,12 @@ export async function finishItems(
       projectId: input.projectId,
       reason: err instanceof Error ? err.message : String(err),
     });
-    return [];
+    items = [];
   }
+  // An app that does not start comes before everything else that is owed.
+  const fault = await rendering;
+  if (fault) items.unshift(renderItemFor(fault));
+
   for (const item of items) state.add(item.kind);
   return items;
 }
@@ -340,7 +511,8 @@ export async function finishItems(
 /**
  * Order matters: fix what the checks found before having it looked at, have it
  * looked at before verifying, and write the memory last, when the app has
- * stopped changing.
+ * stopped changing. (Whether the app renders at all is checked beside these,
+ * in `finishItems`, and goes ahead of them.)
  */
 async function owedItems(input: GateInput, state: ReadonlySet<GateKind>): Promise<GateItem[]> {
   const items: GateItem[] = [];

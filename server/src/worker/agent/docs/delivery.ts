@@ -133,7 +133,7 @@ export function deliverDocs(
   const path = PATH_TOOLS.has(tool) ? pathOf(input) : null;
   const due = [
     ...(path ? docsForPath(path).map((name) => ({ name, via: "path" as const })) : []),
-    ...docsForTool(tool).map((name) => ({ name, via: "first_use" as const })),
+    ...docsForTool(tool, output).map((name) => ({ name, via: "first_use" as const })),
   ].filter((d) => !state.loaded.has(d.name));
   if (due.length === 0) return { output, delivered };
 

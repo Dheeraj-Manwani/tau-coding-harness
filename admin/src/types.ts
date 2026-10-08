@@ -215,6 +215,10 @@ export interface JobInsights {
     captureMs: number;
     modelMs: number;
   }>;
+  /** The run said it was done over an app that did not work, and was sent back. */
+  render?: { sentBack: string };
+  /** The run ended with the app still not compiling. */
+  endedNotCompiling?: boolean;
 }
 
 export interface JobDetail {

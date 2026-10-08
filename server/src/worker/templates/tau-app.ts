@@ -14,6 +14,7 @@
  *     is what the theme panel in the web app assumes);
  *   - `.tau/CONTEXT.md` is app memory only, with no template manifest;
  *   - `/api` proxy present, backend/database packages pre-downloaded;
+ *   - an icon (`public/favicon.svg`), where generation 1 has none;
  *   - ripgrep installed.
  *
  * Composed from the shared scaffold steps. The generation-1 templates and the
@@ -32,6 +33,7 @@ import {
   writeNeutralTheme,
   writeAppShell,
   writeAppMemory,
+  writeAppIcon,
   writeVisualEdit,
   warmBackendPackages,
   installSearchTools,
@@ -40,6 +42,7 @@ import {
 let t: TemplateBuilder = Template().fromBunImage("1.3").setWorkdir(APP);
 
 t = scaffoldBase(t);
+t = writeAppIcon(t); // public/favicon.svg, the tau mark, until the owner sets their own
 t = writeViteConfig(t, { proxyApi: true }); // harmless with no server; saves an edit when one is added
 t = writeVisualEdit(t); // .tau/tagger.ts + runtime.js for visual edit
 t = writeTsconfig(t);

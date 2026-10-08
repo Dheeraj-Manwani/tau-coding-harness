@@ -580,6 +580,52 @@ a:hover > .logo-shimmer {
   background: var(--silver-600);
 }
 
+/* A scrolling text box (the DESIGN.md editor): a rounded thumb set in from the
+   edge, with no arrow buttons. Blink and WebKit only draw these pseudo-elements
+   while the two standard properties are `auto`, which the `*` rule above
+   changes, so they are put back here. Firefox has no such pseudo-elements and
+   keeps the thin bar from that rule. */
+@supports selector(::-webkit-scrollbar) {
+  .scrollbar-inset {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  .scrollbar-inset::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  .scrollbar-inset::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 2px;
+  }
+  .scrollbar-inset::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--silver-400) 70%, transparent);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    min-height: 32px;
+  }
+  .scrollbar-inset::-webkit-scrollbar-thumb:hover,
+  .scrollbar-inset::-webkit-scrollbar-thumb:active {
+    background-color: var(--silver-600);
+  }
+  .scrollbar-inset::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  /* The drag-to-resize grip, as two quiet diagonal strokes in the corner. */
+  .scrollbar-inset::-webkit-resizer {
+    background: linear-gradient(
+        135deg,
+        transparent 0 52%,
+        var(--silver-400) 52% 60%,
+        transparent 60% 72%,
+        var(--silver-400) 72% 80%,
+        transparent 80%
+      )
+      no-repeat;
+  }
+}
+
 /* Fully hidden scrollbar (e.g. the editor tab strip). */
 .scrollbar-none {
   scrollbar-width: none;

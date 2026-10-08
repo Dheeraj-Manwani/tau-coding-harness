@@ -198,6 +198,12 @@ async function checksFor(
   // The generation-2 image installs ripgrep itself; the older ones never had it.
   if (generation === 2) {
     checks.push({ name: "ripgrep", cmd: "rg --version", timeoutMs: 30_000 });
+    // ...and gives the app an icon. One link, and the file it names is there.
+    checks.push({
+      name: "app icon",
+      cmd: `test -s public/favicon.svg && test "$(grep -c 'rel="icon"' index.html)" = 1 && grep -q 'href="/favicon.svg"' index.html`,
+      timeoutMs: 30_000,
+    });
   }
 
   return checks;

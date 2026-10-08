@@ -1,5 +1,6 @@
 import type OpenAI from "openai";
 import type { TemplateGeneration } from "@/worker/templates/registry";
+import { previewInspectAvailable } from "@/worker/lib/previewInspect";
 import { BASE_APP_TOOLS, TOOL_DEFINITIONS } from "../tools";
 import type { SubAgentKind } from "./config";
 
@@ -50,11 +51,25 @@ export const IMPLEMENTER_TOOLS = pick(
  */
 const GUIDE_TOOLS = pick("read_doc", "search_history");
 
+/**
+ * Opening the app in a browser, for the two sub-agents whose job is to find
+ * out whether it works. Without it a debugger sent after "the page is blank"
+ * can only read code and guess, and a verifier can only confirm that the page
+ * answers — which it does whether or not the app in it has crashed.
+ */
+const BROWSER_TOOLS = pick("inspect_preview");
+
+/** Whether a sub-agent of this kind is given the browser on this app. */
+export function seesBrowser(kind: SubAgentKind, generation: TemplateGeneration): boolean {
+  return generation === 2 && (kind === "debugger" || kind === "verifier") && previewInspectAvailable();
+}
+
 /** The tools a sub-agent of this kind gets on an app of this generation. */
 export function toolsFor(
   kind: SubAgentKind,
   generation: TemplateGeneration,
 ): ChatCompletionToolDef[] {
   const base = kind === "implementer" ? IMPLEMENTER_TOOLS : EXPLORATION_TOOLS;
-  return generation === 2 ? [...base, ...GUIDE_TOOLS] : base;
+  if (generation !== 2) return base;
+  return [...base, ...GUIDE_TOOLS, ...(seesBrowser(kind, generation) ? BROWSER_TOOLS : [])];
 }

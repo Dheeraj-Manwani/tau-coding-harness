@@ -105,6 +105,67 @@ export function setHtmlMode(html: string, mode: Mode): string {
   });
 }
 
+const SWITCH_OPEN = "<!-- tau:theme-switch -->";
+const SWITCH_CLOSE = "<!-- /tau:theme-switch -->";
+const SWITCH_KEY = "tau-theme";
+
+/**
+ * The light and dark switch, as a script for the head of `index.html`.
+ *
+ * Two jobs in one block. Before the page paints it applies the visitor's saved
+ * choice, so a dark visitor to a light app does not see a flash of light. After
+ * it has loaded it adds a button to the page — outside the React tree, so no
+ * screen has to include it and no rewrite of `main.tsx` can drop it — that
+ * flips the `dark` class on `<html>` and remembers the choice. Its look is in
+ * `src/index.css` (`SWITCH_CSS`), in the style's own controls.
+ */
+export const THEME_SWITCH_HTML = `${SWITCH_OPEN}
+<script>
+(function () {
+  var root = document.documentElement;
+  try {
+    var saved = localStorage.getItem("${SWITCH_KEY}");
+    if (saved === "dark") root.classList.add("dark");
+    else if (saved === "light") root.classList.remove("dark");
+  } catch (e) {}
+  var SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  var MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  addEventListener("DOMContentLoaded", function () {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("data-tau-theme-toggle", "");
+    button.setAttribute("aria-label", "Switch between light and dark");
+    var show = function () { button.innerHTML = root.classList.contains("dark") ? SUN : MOON; };
+    button.addEventListener("click", function () {
+      var dark = !root.classList.contains("dark");
+      root.classList.toggle("dark", dark);
+      try { localStorage.setItem("${SWITCH_KEY}", dark ? "dark" : "light"); } catch (e) {}
+      show();
+    });
+    show();
+    document.body.appendChild(button);
+  });
+})();
+</script>
+${SWITCH_CLOSE}`;
+
+/**
+ * `index.html` with the switch in it, or without. Idempotent, and leaves the
+ * rest of the page alone; a page with no `</head>` is returned unchanged, since
+ * there is nowhere to put it.
+ */
+export function themeSwitchHtml(html: string, on: boolean): string {
+  const start = html.indexOf(SWITCH_OPEN);
+  const end = html.indexOf(SWITCH_CLOSE);
+  const without =
+    start !== -1 && end > start
+      ? html.slice(0, start).replace(/[ \t]*\n?$/, "\n") + html.slice(end + SWITCH_CLOSE.length).replace(/^\n/, "")
+      : html;
+  if (!on) return start !== -1 ? without : html;
+  if (start !== -1) return without.replace(/<\/head>/i, () => `${THEME_SWITCH_HTML}\n</head>`);
+  return html.replace(/<\/head>/i, () => `${THEME_SWITCH_HTML}\n</head>`);
+}
+
 export interface ApplyResult {
   /** Whether the stylesheet and DESIGN.md were written. */
   applied: boolean;
@@ -206,7 +267,7 @@ export async function applyDesignTo(
     const html = await target.read(INDEX_HTML);
     if (html === null) skipped.push("html mode");
     else {
-      const next = setHtmlMode(html, choice.mode);
+      const next = themeSwitchHtml(setHtmlMode(html, choice.mode), choice.switch === true);
       if (next !== html) await target.write(INDEX_HTML, next);
     }
   } catch (err) {

@@ -95,6 +95,9 @@ export function restyledChoice(
       ? current.fonts
       : undefined;
 
+  const neutral =
+    config.neutral === "style" ? undefined : (config.neutral ?? current?.neutral ?? undefined);
+
   return {
     style: key,
     accent: given ?? current?.accent ?? "#4d7c0f",
@@ -106,6 +109,10 @@ export function restyledChoice(
       ...config.dials,
     },
     ...(fonts ? { fonts } : {}),
+    // Neither belongs to a style: a switch and a lean of the greys stay with the
+    // app through a change of style, until the request says otherwise.
+    ...((config.switch ?? current?.switch) ? { switch: true } : {}),
+    ...(neutral ? { neutral } : {}),
     read: read ?? `Reading this as: an app for the people who use it, which should feel ${style.name.toLowerCase()}.`,
     source: imported ? "import" : "user",
     ...(imported ? { imported } : {}),

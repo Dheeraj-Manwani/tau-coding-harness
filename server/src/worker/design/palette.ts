@@ -27,7 +27,10 @@ import {
   readableOn,
   type Oklch,
 } from "./color";
-import type { Mode, ModeRecipe, PaletteRecipe, Tone } from "./types";
+import type { Mode, ModeRecipe, Neutral, PaletteRecipe, Tone } from "./types";
+
+/** Hues for the neutrals, in OKLCH degrees: yellow-brown, and blue. */
+const NEUTRAL_HUES = { warm: 70, cool: 255 } as const;
 
 /** Body text against its background: WCAG AAA. */
 const TEXT_CONTRAST = 7;
@@ -56,10 +59,12 @@ function buildMode(
   exactPrimary: string | null,
   fenced: boolean,
   chartLightness: readonly number[] | undefined,
+  plainNeutrals = false,
 ): Palette {
   const grey = accent.c < GREY_CHROMA;
-  // A grey accent has no hue worth spreading through the neutrals.
-  const n = (t: Tone): Oklch => tone(grey ? { ...t, c: 0 } : t, neutralHue);
+  // A grey accent has no hue worth spreading through the neutrals; neither
+  // does a user who asked for plain ones.
+  const n = (t: Tone): Oklch => tone(grey || plainNeutrals ? { ...t, c: 0 } : t, neutralHue);
 
   const background = oklchToHex(n(recipe.background));
   const surface = oklchToHex(n(recipe.surface));
@@ -204,16 +209,22 @@ export function buildTheme(
   recipe: PaletteRecipe,
   accent: string,
   radius: string,
-  opts: { exact?: boolean; mode?: Mode } = {},
+  opts: { exact?: boolean; mode?: Mode; neutral?: Neutral } = {},
 ): Theme {
   const a = hexToOklch(accent);
-  const neutralHue = recipe.neutralHue === "accent" ? a.h : recipe.neutralHue;
+  const neutralHue =
+    opts.neutral === "warm" || opts.neutral === "cool"
+      ? NEUTRAL_HUES[opts.neutral]
+      : recipe.neutralHue === "accent"
+        ? a.h
+        : recipe.neutralHue;
+  const plain = opts.neutral === "grey";
   const exactIn = opts.exact ? (opts.mode ?? "light") : null;
   const fenced = recipe.fencedPrimary === true;
 
   return {
     radius,
-    light: buildMode(recipe.light, "light", a, neutralHue, recipe.chartHues, exactIn === "light" ? accent : null, fenced, recipe.chartLightness?.light),
-    dark: buildMode(recipe.dark, "dark", a, neutralHue, recipe.chartHues, exactIn === "dark" ? accent : null, fenced, recipe.chartLightness?.dark),
+    light: buildMode(recipe.light, "light", a, neutralHue, recipe.chartHues, exactIn === "light" ? accent : null, fenced, recipe.chartLightness?.light, plain),
+    dark: buildMode(recipe.dark, "dark", a, neutralHue, recipe.chartHues, exactIn === "dark" ? accent : null, fenced, recipe.chartLightness?.dark, plain),
   };
 }

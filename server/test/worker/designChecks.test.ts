@@ -29,6 +29,9 @@ import {
   MAX_REVIEWS_PER_RUN,
   MAX_REVIEW_PATHS,
   QUESTIONS,
+  questionsFor,
+  reviewSteps,
+  systemPrompt,
   composeReport,
   designForReview,
   nextStep,
@@ -43,6 +46,7 @@ import {
   screenCaption,
   sectionsPerView,
 } from "@/worker/design/review";
+import { describeAction, performActionScript } from "@/worker/lib/screenshot";
 import { sectionBounds } from "@/worker/lib/screenshot";
 import { ALL_STYLES, STYLES } from "@/worker/design/styles";
 import { BASE_APP_TOOLS } from "@/worker/agent/tools/tools";
@@ -468,7 +472,7 @@ describe("the design reviewer", () => {
     expect(tool.function.description).toContain("never see it rendered");
     expect(tool.function.description).toContain("two looks in a run and no more");
     expect(JSON.stringify(tool.function.parameters.properties)).toContain(`At most ${MAX_REVIEW_PATHS} in one call`);
-    expect(Object.keys(tool.function.parameters.properties)).toEqual(["paths", "focus"]);
+    expect(Object.keys(tool.function.parameters.properties)).toEqual(["paths", "focus", "steps"]);
   });
 
   test("the prompt says what it is for and when to use it, and that files are checked", () => {
@@ -840,5 +844,96 @@ describe("a fault the user asked for", () => {
     });
     const left = await outstandingFindings({}, touched("src/pages/Home.tsx"), sandbox);
     expect(left.map((f) => `${f.path}:${f.rule}`).sort()).toEqual(["package.json:dependency", "src/pages/Home.tsx:emoji-icon"]);
+  });
+});
+
+// ── Phase 4: steps, a reference, and the whole page ──────────────────────────
+
+describe("what a builder can ask to be done before a screen is looked at", () => {
+  const routes = ["/", "/classes"];
+
+  test("plain presses and typing, found by what they say, a few at a time", () => {
+    expect(
+      reviewSteps(
+        [{ path: "classes", do: [{ click: "Book a class" }, { fill: "Email", with: "a@b.co" }, { click: "Confirm" }, { click: "A fourth" }] }],
+        routes,
+      ),
+    ).toEqual([{ path: "/classes", actions: [{ click: "Book a class" }, { fill: "Email", with: "a@b.co" }, { click: "Confirm" }] }]);
+  });
+
+  test("nothing that is not one of those, and no screen that is not being reviewed", () => {
+    expect(reviewSteps("click everything", routes)).toEqual([]);
+    expect(reviewSteps([{ path: "/admin", do: [{ click: "Delete" }] }], routes)).toEqual([]);
+    expect(reviewSteps([{ path: "/", do: [{ eval: "alert(1)" }, { click: "" }, { fill: "x" }] }], routes)).toEqual([]);
+    expect(reviewSteps([{ path: "/", do: "click" }], routes)).toEqual([]);
+  });
+
+  test("two screens at most", () => {
+    const step = (path: string) => ({ path, do: [{ click: "Open" }] });
+    expect(reviewSteps([step("/"), step("/classes"), step("/")], routes).map((s) => s.path)).toEqual(["/", "/classes"]);
+  });
+
+  test("a screen shown after one says so in its caption", () => {
+    const caption = screenCaption(
+      { path: "/classes", state: 'click "Book a class"', view: "phone", pageHeight: 800, capturedHeight: 800, overflowX: 0, width: 390, sideScrollers: [] },
+      false,
+    );
+    expect(caption).toContain('after you click "Book a class"');
+  });
+});
+
+describe("the reviewer's questions", () => {
+  test("a reference adds one question, optional for the builder, and the prompt counts it", () => {
+    expect(questionsFor(false)).toHaveLength(7);
+    expect(questionsFor(true)).toHaveLength(8);
+    expect(questionsFor(true)[7]!.kind).toBe("polish");
+    expect(systemPrompt(false)).toContain("exactly 7 lines");
+    expect(systemPrompt(true)).toContain("exactly 8 lines");
+    expect(systemPrompt(true)).toContain("Q8. Reference.");
+    expect(systemPrompt(false)).not.toContain("Reference.");
+  });
+
+  test("a difference from the reference is a polish finding, never a reason to fix", () => {
+    const answers = parseAnswers("Q1: no\nQ2: no\nQ3: no\nQ4: no\nQ5: no\nQ6: no\nQ7: no\nQ8: yes — `/` desktop: the page is dark and the reference is light. Fix: use light mode.");
+    expect(answers.at(-1)).toMatchObject({ question: 8, yes: true });
+    const { review, verdict } = composeReport(answers);
+    expect(verdict).toBe("pass");
+    expect(review).toContain("[polish] Reference — `/` desktop");
+  });
+
+  test("a re-check is not asked about taste, with or without a reference", () => {
+    const base = { designProse: "x", recheck: ["/"], earlier: ["VERDICT: fix"] };
+    expect(reviewBrief(base)).toContain('Answer "no" to the last question for a re-check screen');
+    expect(reviewBrief({ ...base, reference: true })).toContain("Template and Reference questions");
+    expect(reviewBrief({ ...base, reference: true })).toContain("The first picture below is a reference");
+    expect(reviewBrief(base)).not.toContain("reference");
+  });
+
+  test("a page longer than the pictures says that a shrunken view of it follows", () => {
+    const screen = { path: "/", view: "desktop" as const, pageHeight: 9000, capturedHeight: 4000, overflowX: 0, width: 1280, sideScrollers: [] };
+    const last = { index: 1, count: 2, from: 2000, to: 4000 };
+    expect(screenCaption({ ...screen, hasOverview: true }, false, last)).toContain("a shrunken view of all of it follows");
+    expect(screenCaption(screen, false, last)).toContain("The page goes on below this picture.");
+    expect(screenCaption(screen, false, last)).not.toContain("shrunken");
+  });
+});
+
+describe("the script that does a step in the page", () => {
+  test("is a script that parses, carrying its action as data and not as code", () => {
+    for (const action of [{ click: "Book a class" }, { fill: "Email", with: 'a"; alert(1); "' }]) {
+      const script = performActionScript(action);
+      // An async function expression: a syntax error here would fail every step.
+      expect(() => new Function(`return ${script}`)).not.toThrow();
+      expect(script).toContain(JSON.stringify(action));
+    }
+  });
+
+  test("normalises whitespace the way a label is read, not as a stray 's'", () => {
+    expect(performActionScript({ click: "x" })).toContain(String.raw`replace(/\s+/g`);
+  });
+
+  test("an action in words", () => {
+    expect(describeAction({ click: "Open" })).toBe('click "Open"');
+    expect(describeAction({ fill: "Email", with: "a@b.co" })).toBe('type "a@b.co" into "Email"');
   });
 });

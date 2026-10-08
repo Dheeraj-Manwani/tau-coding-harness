@@ -23,9 +23,11 @@ import { DEFAULT_FONTS, STYLES, fontLabel, fontsFor, isFontPairing } from "./sty
 import {
   isStyleKey,
   type DesignConfig,
+  NEUTRALS,
   type DesignReference,
   type Dials,
   type Mode,
+  type Neutral,
   type StyleKey,
 } from "./types";
 
@@ -83,6 +85,10 @@ export function normalizeDesignConfig(raw: unknown): DesignConfig | null {
   if (accent) config.accent = accent;
 
   if (raw.mode === "light" || raw.mode === "dark") config.mode = raw.mode;
+  if (typeof raw.switch === "boolean") config.switch = raw.switch;
+  if (raw.neutral === "style" || NEUTRALS.includes(raw.neutral as Neutral)) {
+    config.neutral = raw.neutral as DesignConfig["neutral"];
+  }
 
   // A pairing belongs to a style, so it means nothing without one. The
   // style's own pairing is kept when asked for by name: on a restyle it is how
@@ -122,6 +128,10 @@ export interface DesignSummary {
   fontsLabel: string;
   /** The design was built around a file the user brought. */
   imported: boolean;
+  /** The app has a light and dark switch of its own. */
+  switch: boolean;
+  /** Where the user asked the neutrals to lean; null for the style's own. */
+  neutral: Neutral | null;
 }
 
 /**
@@ -158,5 +168,7 @@ export function describeDesign(designMd: string | null | undefined): DesignSumma
         : `${own[1]} + ${own[2]}`
       : fontLabel(fontsFor(style, fonts)),
     imported,
+    switch: meta.switch === "1",
+    neutral: NEUTRALS.includes(meta.neutral as Neutral) ? (meta.neutral as Neutral) : null,
   };
 }

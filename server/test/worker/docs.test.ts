@@ -241,7 +241,8 @@ describe("what a path or a tool attaches", () => {
     // `enable_ai` returns and which is no use before that call; and `motion`,
     // which has nothing tau could hang it on — any file can hold an animation.
     for (const name of DOC_NAMES) {
-      if (name === "ai" || name === "motion") continue;
+      // Asked for: `ai` and `motion` by the index, `restyle` by the request that needs it.
+      if (name === "ai" || name === "motion" || name === "restyle") continue;
       const spec = DOCS[name];
       const returnedBySetupTool = spec.when.includes("Returned by `add_");
       expect(
@@ -506,5 +507,29 @@ describe("clearing a result that carries a guide", () => {
     expect(
       deliverDocs(state, "read_file", { path: "src/index.css" }, { content: "x" }).delivered,
     ).toEqual([{ name: "theme", via: "path", repeat: false }]);
+  });
+});
+
+describe("the data and restyle guides", () => {
+  test("data arrives with the files of a screen named for what it covers, and not with others", () => {
+    for (const path of ["src/pages/Dashboard.tsx", "src/components/RevenueChart.tsx", "src/pages/reports/Weekly.tsx", "src/components/MembersTable.tsx"]) {
+      expect(docsForPath(path)).toContain("data");
+    }
+    for (const path of ["src/pages/Home.tsx", "src/components/ui/table.tsx", "src/components/Hero.tsx", "server/index.ts"]) {
+      expect(docsForPath(path)).not.toContain("data");
+    }
+  });
+
+  test("restyle is told to the agent by the request that needs it, and says what is not its job", () => {
+    const text = readDoc("restyle");
+    expect(text).toContain("Neither is yours to redo");
+    expect(text).toContain("## Notes for this app");
+    expect(DOCS.restyle.when).toContain("The request that asks for it says to read this");
+  });
+
+  test("data names the chart library as not installed, and the tokens to colour with", () => {
+    const text = readDoc("data");
+    expect(text).toContain("`recharts` is **not** installed");
+    expect(text).toContain("var(--chart-1)");
   });
 });

@@ -16,6 +16,9 @@ import { projectGithubKeys } from "@/src/features/project/github";
 
 export type DesignMode = "light" | "dark";
 
+/** Where an app's greys lean. `"style"`, on a restyle, goes back to the style's own. */
+export type DesignNeutral = "warm" | "cool" | "grey";
+
 export interface Dials {
   /** 1 symmetric and predictable … 10 asymmetric and surprising. */
   variance: number;
@@ -34,6 +37,9 @@ export interface DesignConfig {
   /** `#rrggbb`. */
   accent?: string;
   mode?: DesignMode;
+  /** The app has a light and dark switch of its own. `false`, on a restyle, takes it out. */
+  switch?: boolean;
+  neutral?: DesignNeutral | "style";
   /** A font pairing of the style: `"default"` or one of its options. */
   fonts?: string;
   dials?: Partial<Dials>;
@@ -127,6 +133,9 @@ export interface DesignSummary {
   fonts: string;
   fontsLabel: string;
   imported: boolean;
+  switch: boolean;
+  /** Where the user asked the greys to lean; null for the style's own. */
+  neutral: DesignNeutral | null;
 }
 
 export interface ProjectDesignResponse {
@@ -272,6 +281,8 @@ export function countChoices(config: DesignConfig): number {
     config.style,
     config.accent,
     config.mode,
+    config.switch,
+    config.neutral,
     config.fonts,
     config.dials && Object.keys(config.dials).length > 0 ? config.dials : undefined,
     config.designMd,
@@ -296,6 +307,8 @@ export function sameDesign(a: DesignConfig | null, b: DesignConfig | null): bool
       c.style,
       c.accent,
       c.mode,
+      c.switch,
+      c.neutral,
       c.fonts,
       c.dials?.variance,
       c.dials?.motion,
@@ -316,6 +329,10 @@ export function describeChoice(
   const parts: string[] = [];
   if (config.style) parts.push(style?.name ?? config.style);
   if (config.mode) parts.push(config.mode === "dark" ? "Dark" : "Light");
+  if (config.switch) parts.push("Light and dark switch");
+  if (config.neutral && config.neutral !== "style") {
+    parts.push(`${config.neutral[0]!.toUpperCase()}${config.neutral.slice(1)} greys`);
+  }
   if (config.fonts && config.fonts !== "default") {
     parts.push(style?.fonts.find((f) => f.key === config.fonts)?.label ?? config.fonts);
   }
@@ -337,6 +354,9 @@ export function compactConfig(config: DesignConfig): DesignConfig | null {
   if (config.style) out.style = config.style;
   if (config.accent) out.accent = config.accent;
   if (config.mode) out.mode = config.mode;
+  // `false` is a request to take the switch out, which only a restyle can mean.
+  if (config.switch !== undefined) out.switch = config.switch;
+  if (config.neutral) out.neutral = config.neutral;
   if (config.fonts && config.style) out.fonts = config.fonts;
   if (config.dials && Object.keys(config.dials).length > 0) out.dials = config.dials;
   if (config.designMd?.trim()) {

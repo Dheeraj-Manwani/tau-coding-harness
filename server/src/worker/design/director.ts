@@ -77,6 +77,12 @@ const MAX_IMPORT_BRIEF_CHARS = 3_000;
 
 /** How often the first, second and third shortlisted style is the one used. */
 const STYLE_WEIGHTS = [0.5, 0.3, 0.2] as const;
+
+/**
+ * A style the director rated this or lower is a stretch it listed to fill the
+ * list. The first style is always kept: with nothing else, it is the answer.
+ */
+export const WEAK_FIT = 3;
 const ACCENT_WEIGHTS = [0.4, 0.35, 0.25] as const;
 
 /** Two accents closer in hue than this are the same colour for our purposes. */
@@ -152,6 +158,14 @@ function defaultRead(styleName: string): string {
   return `Reading this as: a new app for the people who will use it, which should feel ${styleName.toLowerCase()}.`;
 }
 
+/** The parts of a choice that are the user's alone and no style or director has a say in. */
+function userLook(config: DesignConfig): Pick<DesignChoice, "switch" | "neutral"> {
+  return {
+    ...(config.switch ? { switch: true } : {}),
+    ...(config.neutral && config.neutral !== "style" ? { neutral: config.neutral } : {}),
+  };
+}
+
 /** Where a choice came from, given what the user supplied. */
 function sourceOf(
   config: DesignConfig,
@@ -159,7 +173,13 @@ function sourceOf(
   otherwise: "director" | "fallback",
 ): DesignChoice["source"] {
   if (imported) return "import";
-  return config.style || config.accent || config.mode || config.fonts || config.dials
+  return config.style ||
+    config.accent ||
+    config.mode ||
+    config.fonts ||
+    config.dials ||
+    config.switch ||
+    (config.neutral && config.neutral !== "style")
     ? "user"
     : otherwise;
 }
@@ -191,6 +211,7 @@ export function fallbackChoice(
       ...config.dials,
     },
     ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
+    ...userLook(config),
     read: defaultRead(style.name),
     source: sourceOf(config, imported, "fallback"),
     ...(imported ? { imported } : {}),
@@ -257,6 +278,7 @@ ${catalog}
 
 Reply with:
 - styles: up to three styles that would each genuinely suit this subject and this audience, best first. They should be different answers to the brief, not three versions of the safest one. List two, or one, when that is all that really fits: every style you list may be the one used. Never list a style whose "Not for" describes this brief — a tool people work in all day is not a magazine, and a page that sells something is not an admin panel. If the brief itself names a style, by its key or by one of the names it is also called, or describes a look that only one of them matches, list only that one.
+- fits: a whole number from 1 to 5 for each style in styles, in the same order. 5: you would choose it alone. 4: a good answer. 3: it would do. 2 or 1: a stretch. Be honest: a style that is a stretch should not be in the list at all, and a list of one is a good answer.
 - accents: three colours, as hex values, each of which would suit this subject, from three clearly different parts of the colour wheel, best first. Take them from the world of the subject — what the thing is made of, where it happens, what its audience already associates with it — not from what websites usually look like. Blue, indigo and purple are what every other app uses, and warm orange-brown is the next most common default: use those only when the subject really is that colour. If the brief names a colour, list only that one.
 - accent_exact: true only if the brief gives a specific colour or a brand colour that has to be used exactly as given.
 - mode: "light" or "dark" — how the app opens. Decide from the subject and from where and when it will be used.
@@ -269,7 +291,7 @@ Reply with:
 Anything the brief itself says about the look — a colour, light or dark, a named style, a mood — overrides your own judgement.
 
 Reply with one JSON object and nothing else:
-{"styles": ["<key>", "<key>", "<key>"], "accents": ["#rrggbb", "#rrggbb", "#rrggbb"], "accent_exact": false, "mode": "light", "variance": 5, "motion": 5, "density": 5, "read": "Reading this as: …"}`;
+{"styles": ["<key>", "<key>", "<key>"], "fits": [5, 4, 4], "accents": ["#rrggbb", "#rrggbb", "#rrggbb"], "accent_exact": false, "mode": "light", "variance": 5, "motion": 5, "density": 5, "read": "Reading this as: …"}`;
 }
 
 /** What the director offered: shortlists, best first, not yet a decision. */
@@ -312,11 +334,16 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
   const list = (many: unknown, one: unknown): unknown[] =>
     Array.isArray(many) ? many : one !== undefined ? [one] : [];
 
+  // The director rated each style it listed. One it called a stretch is
+  // dropped rather than left to be picked half the time, but the first stays.
+  const fits = Array.isArray(raw.fits) ? raw.fits.map((f) => (typeof f === "number" && f >= 1 ? f : NaN)) : [];
   const styles: StyleKey[] = [];
-  for (const item of list(raw.styles, raw.style)) {
+  list(raw.styles, raw.style).forEach((item, i) => {
     const key = typeof item === "string" ? item.trim().toLowerCase() : item;
-    if (isStyleKey(key) && !styles.includes(key)) styles.push(key);
-  }
+    if (!isStyleKey(key) || styles.includes(key)) return;
+    const stretch = Number.isFinite(fits[i]) && fits[i]! <= WEAK_FIT;
+    if (styles.length === 0 || !stretch) styles.push(key);
+  });
   if (styles.length === 0) return null;
 
   // Keep accents that are real colours and are not a near-repeat of one
@@ -407,6 +434,7 @@ export function chooseFrom(
       style.defaultMode,
     dials,
     ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
+    ...userLook(config),
     read: options.read ?? defaultRead(style.name),
     source: sourceOf(config, imported, "director"),
     ...(imported ? { imported } : {}),

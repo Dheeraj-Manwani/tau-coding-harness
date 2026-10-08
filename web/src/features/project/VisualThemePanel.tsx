@@ -347,7 +347,7 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
     const name = restyled?.design?.styleName;
     if (!name) return;
     const sent = send(
-      `I changed this app's style to ${name}. Go through each screen and adapt its layout and components to the new design in .tau/DESIGN.md. Keep all the content and features as they are.`,
+      `I changed this app's style to ${name}. Read the restyle guide (read_doc restyle) first, then go through each screen and adapt its layout and components to the new design in .tau/DESIGN.md. Keep all the content and features as they are.`,
     );
     if (sent) setRestyled(null);
     else toast.error("tau is busy. Try again when it has finished.");

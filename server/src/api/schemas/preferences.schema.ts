@@ -49,6 +49,8 @@ const defaultDesignSchema = z
     style: z.enum(STYLE_KEYS),
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     mode: z.enum(["light", "dark"]),
+    switch: z.boolean(),
+    neutral: z.enum(["warm", "cool", "grey"]),
     fonts: z.string().min(1).max(40),
     dials: z.object({ variance: dial, motion: dial, density: dial }).partial().strict(),
   })

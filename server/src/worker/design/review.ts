@@ -55,7 +55,13 @@
 import type OpenAI from "openai";
 import { env } from "@/lib/env";
 import { clientForModel, isKimiModel, kimi } from "@/lib/kimi";
-import { capturePageView, type PageCapture, type PageView } from "../lib/screenshot";
+import {
+  capturePageView,
+  describeAction,
+  type PageAction,
+  type PageCapture,
+  type PageView,
+} from "../lib/screenshot";
 
 /**
  * A browser to take the pictures and a model to look at them. A Kimi model
@@ -107,8 +113,10 @@ export function sectionsPerView(screens: number): number {
 
 /** Pages photographed at once. They share one browser and one dev server. */
 const CAPTURE_CONCURRENCY = 3;
-const REVIEW_TIMEOUT_MS = 120_000;
+// Includes time spent waiting for a turn at Moonshot (lib/kimi.ts).
+const REVIEW_TIMEOUT_MS = 300_000;
 const REVIEW_MAX_TOKENS = 1_200;
+const REVIEW_MAX_TOKENS_THINKING = 6_000;
 /** A page this much wider than its window is rounding, not a fault. */
 const PAGE_OVERFLOW_TOLERANCE = 8;
 
@@ -159,21 +167,52 @@ export const QUESTIONS = [
   },
 ] as const;
 
-const SYSTEM_PROMPT = `You are checking screenshots of a web app as it actually renders — each screen at desktop width, then at phone width. The app's builder cannot see what it builds; your answers are how it finds out whether something is broken. A note on what the app is meant to look like comes first, so you know the intended style.
+/**
+ * Asked only when the user gave a picture to make the app look like. Optional
+ * for the builder like the other matter of taste: a difference from a
+ * reference is a judgement, and the content of the two will always differ.
+ */
+export const REFERENCE_QUESTION = {
+  label: "Reference",
+  kind: "polish",
+  ask: "The first picture is a reference the user gave, and the app is meant to look like it. Leave the content aside: the words, the photographs and the logos will differ. Does any screen of the app differ from the reference at a glance in what it is made of — light or dark page, the main colour, square or round corners, serif or sans type, how packed it is, how the page is arranged?",
+} as const;
+
+interface Question {
+  label: string;
+  kind: "broken" | "polish";
+  ask: string;
+}
+
+/** The questions a review asks: the usual seven, and one about the reference when there is one. */
+export function questionsFor(hasReference: boolean): readonly Question[] {
+  return hasReference ? [...QUESTIONS, REFERENCE_QUESTION] : QUESTIONS;
+}
+
+export function systemPrompt(hasReference = false): string {
+  const questions = questionsFor(hasReference);
+  return `You are checking screenshots of a web app as it actually renders — each screen at desktop width, then at phone width. The app's builder cannot see what it builds; your answers are how it finds out whether something is broken. A note on what the app is meant to look like comes first, so you know the intended style.
 
 Most screens you are shown are fine. A wrong "yes" costs the builder a rewrite of a screen that worked, so answer "yes" only to what is plainly visible in a picture and "no" to everything else. "No" to every question is the usual result.
 
-Answer these ${QUESTIONS.length} questions about the screenshots as a set, in order.
+Answer these ${questions.length} questions about the screenshots as a set, in order.
 
-${QUESTIONS.map((q, i) => `Q${i + 1}. ${q.label}. ${q.ask}`).join("\n")}
+${questions.map((q, i) => `Q${i + 1}. ${q.label}. ${q.ask}`).join("\n")}
 
-Reply in plain text with exactly ${QUESTIONS.length} lines, one per question, each in one of these two shapes:
+Reply in plain text with exactly ${questions.length} lines, one per question, each in one of these two shapes:
 Q1: no
 Q1: yes — \`/route\` phone, which part of the page: what is wrong. Fix: the smallest change that fixes it.
 
-If a question has more than one "yes", put the clearest two on its line, separated by " | ". Add nothing before or after the ${QUESTIONS.length} lines. Do not report what you cannot see in the pictures, what only shows on hover or click, or the blue notice bar at the very top of a screenshot if there is one. If the screenshots show an app with no data yet, judge the empty state as a user would first meet it.`;
+If a question has more than one "yes", put the clearest two on its line, separated by " | ". Add nothing before or after the ${questions.length} lines. Do not report what you cannot see in the pictures, or the blue notice bar at the very top of a screenshot if there is one. A caption says when a screen is shown after someone pressed or typed something: judge it in that state. If the screenshots show an app with no data yet, judge the empty state as a user would first meet it.`;
+}
 
-const RECHECK_RULES = `For a re-check screen, answer "yes" only for a fault that is in the picture now: one from the earlier report that is still there, or one that was not there before. A change made to fix an earlier finding is not itself a fault — a table that now scrolls sideways or stacks, filters that now wrap onto two lines. Answer "no" to the last question for a re-check screen.`;
+function recheckRules(hasReference: boolean): string {
+  return `For a re-check screen, answer "yes" only for a fault that is in the picture now: one from the earlier report that is still there, or one that was not there before. A change made to fix an earlier finding is not itself a fault — a table that now scrolls sideways or stacks, filters that now wrap onto two lines. ${
+    hasReference
+      ? 'Answer "no" to the Template and Reference questions for a re-check screen.'
+      : 'Answer "no" to the last question for a re-check screen.'
+  }`;
+}
 
 export type Verdict = "pass" | "fix" | "unknown";
 
@@ -195,7 +234,7 @@ export function parseAnswers(text: string): Answer[] {
     const m = /^\s*\**Q(\d)\**\s*[:.]\s*\**\s*(yes|no)\b\**\s*[—–:-]*\s*(.*)$/i.exec(line);
     if (!m) continue;
     const question = Number(m[1]);
-    if (question < 1 || question > QUESTIONS.length) continue;
+    if (question < 1 || question > QUESTIONS.length + 1) continue;
     if (answers.some((a) => a.question === question)) continue;
     const yes = m[2]!.toLowerCase() === "yes";
     answers.push({ question, yes, detail: yes ? m[3]!.trim() : "" });
@@ -219,7 +258,7 @@ export function composeReport(
   for (const kind of ["broken", "polish"] as const) {
     if (kind === "polish" && !withPolish) continue;
     for (const a of answers) {
-      const q = QUESTIONS[a.question - 1]!;
+      const q = questionsFor(true)[a.question - 1]!;
       if (!a.yes || q.kind !== kind) continue;
       findings.push(`[${kind}] ${q.label} — ${a.detail || "the reviewer did not say where."}`);
     }
@@ -245,6 +284,8 @@ export function parseVerdict(review: string): Verdict {
 
 export interface ReviewedScreen {
   path: string;
+  /** What was done first, as words, for a screen shown after someone pressed or typed something. */
+  state?: string;
   view: "desktop" | "phone";
   /** The page's full height, and how much of it the pictures show, in CSS pixels. */
   pageHeight: number;
@@ -431,15 +472,15 @@ export interface SectionOf {
  * much of it — and what tau measured that the picture cannot show.
  */
 export function screenCaption(
-  screen: ReviewedScreen & { width: number; sideScrollers: readonly string[] },
+  screen: ReviewedScreen & { width: number; sideScrollers: readonly string[]; hasOverview?: boolean },
   recheck: boolean,
   section?: SectionOf,
 ): string {
-  const name = `Screen \`${screen.path}\`${recheck ? " (re-check)" : ""} — ${screen.view}, ${screen.width}px wide`;
+  const name = `Screen \`${screen.path}\`${recheck ? " (re-check)" : ""}${screen.state ? ` after you ${screen.state}` : ""} — ${screen.view}, ${screen.width}px wide`;
   const unseen = screen.capturedHeight < screen.pageHeight;
   if (section && section.count > 1) {
     const last = section.index === section.count - 1;
-    const first = `${name}, part ${section.index + 1} of ${section.count}: from ${section.from}px to ${section.to}px down a page ${screen.pageHeight}px tall.${last && unseen ? " The page goes on below this picture." : ""}`;
+    const first = `${name}, part ${section.index + 1} of ${section.count}: from ${section.from}px to ${section.to}px down a page ${screen.pageHeight}px tall.${last && unseen ? (screen.hasOverview ? " The page goes on below this picture; a shrunken view of all of it follows." : " The page goes on below this picture.") : ""}`;
     // What was measured is about the whole screen; say it once.
     return section.index === 0 ? [first, ...measuredLines(screen)].join("\n") : first;
   }
@@ -471,6 +512,8 @@ export function reviewBrief(input: {
   focus?: string;
   recheck: readonly string[];
   earlier: readonly string[];
+  /** The user gave a picture to make the app look like, and it is the first one shown. */
+  reference?: boolean;
 }): string {
   const parts = [
     input.designProse
@@ -479,11 +522,16 @@ export function reviewBrief(input: {
   ];
   if (input.recheck.length > 0 && input.earlier.length > 0) {
     parts.push(
-      `Some of the screens below are marked "re-check": ${listed(input.recheck)}. They were reviewed earlier in this build, with the report that follows, and the builder has changed them since.\n\n<earlier_report>\n${input.earlier.join("\n\n---\n\n")}\n</earlier_report>\n\n${RECHECK_RULES}`,
+      `Some of the screens below are marked "re-check": ${listed(input.recheck)}. They were reviewed earlier in this build, with the report that follows, and the builder has changed them since.\n\n<earlier_report>\n${input.earlier.join("\n\n---\n\n")}\n</earlier_report>\n\n${recheckRules(Boolean(input.reference))}`,
     );
   }
   if (input.focus?.trim()) {
     parts.push(`The builder asks you to look in particular at: ${input.focus.trim().slice(0, 500)}`);
+  }
+  if (input.reference) {
+    parts.push(
+      "The first picture below is a reference: a screenshot the user gave, and the look this app is meant to have. The app's own screenshots come after it.",
+    );
   }
   parts.push("The screenshots follow.");
   return parts.join("\n\n");
@@ -519,6 +567,47 @@ async function pooled<T, R>(items: readonly T[], size: number, task: (item: T) =
  * Throws when no screen could be photographed or the model returned nothing;
  * the caller turns that into a tool result.
  */
+/** Most things a person does on one screen before it is looked at. */
+export const MAX_ACTIONS = 3;
+/** Most screens that are also looked at after something was done to them. */
+export const MAX_STEP_SCREENS = 2;
+
+/** What to do on a screen before looking at it again, for a route. */
+export interface ReviewStep {
+  path: string;
+  actions: PageAction[];
+}
+
+/**
+ * The steps a builder asked for, tidied: a route, then up to three plain
+ * actions — press something by what it says, or type into a field by its
+ * label. Anything else is dropped, so nothing here can be turned into a
+ * script. Only routes that are being reviewed count.
+ */
+export function reviewSteps(raw: unknown, routes: readonly string[]): ReviewStep[] {
+  if (!Array.isArray(raw)) return [];
+  const steps: ReviewStep[] = [];
+  for (const item of raw) {
+    if (steps.length >= MAX_STEP_SCREENS) break;
+    if (!item || typeof item !== "object") continue;
+    const { path, do: done } = item as { path?: unknown; do?: unknown };
+    if (typeof path !== "string" || !Array.isArray(done)) continue;
+    const route = normalizeRoute(path);
+    if (!routes.includes(route)) continue;
+    const actions: PageAction[] = [];
+    for (const a of done) {
+      if (actions.length >= MAX_ACTIONS || !a || typeof a !== "object") continue;
+      const { click, fill, with: value } = a as { click?: unknown; fill?: unknown; with?: unknown };
+      if (typeof click === "string" && click.trim()) actions.push({ click: click.trim().slice(0, 80) });
+      else if (typeof fill === "string" && fill.trim() && typeof value === "string") {
+        actions.push({ fill: fill.trim().slice(0, 80), with: value.slice(0, 120) });
+      }
+    }
+    if (actions.length > 0) steps.push({ path: route, actions });
+  }
+  return steps;
+}
+
 export async function reviewDesign(input: {
   previewUrl: string;
   fresh: readonly string[];
@@ -526,19 +615,37 @@ export async function reviewDesign(input: {
   earlier?: readonly string[];
   designProse: string | null;
   focus?: string;
+  /** Things to do on some of the screens, which are then looked at in that state too. */
+  steps?: readonly ReviewStep[];
+  /** A picture the user gave to make the app look like. */
+  reference?: { bytes: Uint8Array; mimeType: string };
+  /** Let the model reason before it answers. Defaults to `DESIGN_REVIEW_THINKING`. */
+  thinking?: boolean;
 }): Promise<DesignReview> {
   if (!designReviewAvailable()) throw new Error("No model that reads images is configured");
   const base = input.previewUrl.replace(/\/+$/, "");
   const recheck = input.recheck ?? [];
 
-  const shots = [...input.fresh, ...recheck].flatMap((path) =>
-    VIEWS.map(([name, view]) => ({ path, name, view })),
-  );
+  const steps = input.steps ?? [];
+  const shots = [
+    ...[...input.fresh, ...recheck].flatMap((path) =>
+      VIEWS.map(([name, view]) => ({ path, name, view, actions: [] as PageAction[] })),
+    ),
+    // The same screens again, after something was done to them: one picture each.
+    ...steps.flatMap((step) =>
+      VIEWS.map(([name, view]) => ({ path: step.path, name, view, actions: step.actions })),
+    ),
+  ];
   const perView = sectionsPerView(input.fresh.length + recheck.length);
   const captureStart = Date.now();
   const captured = await pooled(shots, CAPTURE_CONCURRENCY, async (shot) => {
     try {
-      return await capturePageView(`${base}${shot.path}`, shot.view, perView);
+      return await capturePageView(
+        `${base}${shot.path}`,
+        shot.view,
+        shot.actions.length > 0 ? 1 : perView,
+        shot.actions,
+      );
     } catch (err) {
       return err instanceof Error ? err : new Error(String(err));
     }
@@ -554,8 +661,10 @@ export async function reviewDesign(input: {
       skipped.push(`${shot.path} (${shot.name}): ${result.message}`);
       return;
     }
+    const state = shot.actions.map(describeAction).join(", then ");
     const screen: ReviewedScreen = {
       path: shot.path,
+      ...(state ? { state } : {}),
       view: shot.name,
       pageHeight: result.pageHeight,
       capturedHeight: result.capturedHeight,
@@ -565,16 +674,29 @@ export async function reviewDesign(input: {
       parts.push({
         type: "text",
         text: screenCaption(
-          { ...screen, width: shot.view.width, sideScrollers: result.sideScrollers },
+          { ...screen, width: shot.view.width, sideScrollers: result.sideScrollers, hasOverview: Boolean(result.overview) },
           recheck.includes(shot.path),
           { index, count: result.sections.length, from: section.from, to: section.to },
-        ),
+        ) +
+          (result.actionsFailed.length > 0 && index === 0
+            ? `\nCould not do: ${result.actionsFailed.join("; ")} — nothing on the page has that label, so this picture shows the screen as it loads.`
+            : ""),
       });
       parts.push({
         type: "image_url",
         image_url: { url: `data:image/jpeg;base64,${section.jpeg.toString("base64")}` },
       });
     });
+    if (result.overview) {
+      parts.push({
+        type: "text",
+        text: `Screen \`${shot.path}\`${state ? ` after you ${state}` : ""} — ${shot.name}: the whole page in one picture, shrunk to fit. Judge how it is arranged and whether anything lower down is missing, cut off or overlapping. The text is too small to read here and is not a fault.`,
+      });
+      parts.push({
+        type: "image_url",
+        image_url: { url: `data:image/jpeg;base64,${result.overview.toString("base64")}` },
+      });
+    }
     screens.push(screen);
   });
   if (screens.length === 0) {
@@ -586,25 +708,40 @@ export async function reviewDesign(input: {
     focus: input.focus,
     recheck,
     earlier: input.earlier ?? [],
+    reference: Boolean(input.reference),
   });
+  // The reference is shown first, so that "the first picture" is it.
+  const referencePart: Part[] = input.reference
+    ? [
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${input.reference.mimeType};base64,${Buffer.from(input.reference.bytes).toString("base64")}`,
+          },
+        },
+      ]
+    : [];
+  const thinking = input.thinking ?? env.DESIGN_REVIEW_THINKING;
 
   const model = designReviewModel();
   const modelStart = Date.now();
   const completion = await clientForModel(model).chat.completions.create(
     {
       model,
-      max_tokens: REVIEW_MAX_TOKENS,
+      // Reasoning counts against the limit, so it is given room.
+      max_tokens: thinking ? REVIEW_MAX_TOKENS_THINKING : REVIEW_MAX_TOKENS,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: [{ type: "text", text: brief }, ...parts] },
+        { role: "system", content: systemPrompt(Boolean(input.reference)) },
+        { role: "user", content: [{ type: "text", text: brief }, ...referencePart, ...parts] },
       ],
       // This model reasons before answering unless told not to, and the
       // reasoning counts against `max_tokens`: left on, it can spend the whole
-      // limit thinking and return nothing (see api/lib/attachments.ts).
-      ...({ thinking: { type: "disabled" } } as object),
+      // limit thinking and return nothing (see api/lib/attachments.ts). Off by
+      // default; `DESIGN_REVIEW_THINKING` turns it on.
+      ...(thinking ? {} : ({ thinking: { type: "disabled" } } as object)),
     },
-    // Retries cover a rate limit: a small account allows one request at a time.
-    { timeout: REVIEW_TIMEOUT_MS, maxRetries: 4 },
+    // A rate limit is waited out by the Kimi client itself, not retried here.
+    { timeout: REVIEW_TIMEOUT_MS, maxRetries: 0 },
   );
 
   const written = completion.choices[0]?.message.content?.trim();

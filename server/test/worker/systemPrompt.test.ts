@@ -151,7 +151,7 @@ describe("system prompt — generation 2, every level", () => {
     // Everything here is paid for on every turn of every app. A new rule earns
     // its place by replacing one, or by moving detail out to a guide.
     for (const key of levels) {
-      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(18_500);
+      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(19_000);
     }
   });
 

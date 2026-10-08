@@ -37,6 +37,8 @@ export const DOC_NAMES = [
   "secrets",
   "theme",
   "layouts",
+  "data",
+  "restyle",
   "components",
   "motion",
   "assets",
@@ -93,6 +95,16 @@ export const DOCS: Record<DocName, DocSpec> = {
       p === "src/App.tsx" ||
       p.startsWith("src/pages/") ||
       (p.startsWith("src/components/") && !p.startsWith("src/components/ui/")),
+  },
+  data: {
+    when: "before building a dashboard, a report, a chart or a table of records.",
+    // Screens named for what the guide covers. A dashboard that is the app's
+    // home page is not caught, and is what the index line is for.
+    covers: (p) =>
+      /^src\/(pages|components)\/(?!ui\/).*(dashboard|report|analytic|table|chart|stats|metric|overview)/i.test(p),
+  },
+  restyle: {
+    when: "before bringing the screens in line with a style the user has just changed. The request that asks for it says to read this.",
   },
   components: {
     when: "before using a shadcn component — they are built on Base UI here, so there is no `asChild`, and `Select` needs its labels.",

@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { applyThemeEdit, readThemeTokens } from "@/api/lib/themeEdit";
 import { designConfigSchema } from "@/api/schemas/project.schema";
 import { mergedConfig, npmPackageExists } from "@/api/services/design.service";
-import { applyDesignTo, type DesignTarget } from "@/worker/design/apply";
+import { THEME_SWITCH_HTML, applyDesignTo, themeSwitchHtml, type DesignTarget } from "@/worker/design/apply";
 import { SAMPLE_ACCENTS, designCatalog } from "@/worker/design/catalog";
 import { checkPackageJson, checkStylesheet } from "@/worker/design/checks";
+import { LAYOUTS } from "@/worker/design/layouts";
+import { buildTheme } from "@/worker/design/palette";
+import { contrast } from "@/worker/design/color";
 import { hexToOklch, isHexColor } from "@/worker/design/color";
 import {
   FEEL_PRESETS,
@@ -19,6 +22,7 @@ import {
   NOTES_HEADING,
   NOTES_INTRO,
   designProse,
+  leadLayout,
   readDesignMeta,
   renderDesignMd,
   syncDesignMd,
@@ -28,6 +32,7 @@ import {
   chooseFrom,
   directorPrompt,
   fallbackChoice,
+  parseDirectorReply,
   settledNote,
   type DirectorOptions,
 } from "@/worker/design/director";
@@ -91,15 +96,15 @@ const offer = (over: Partial<DirectorOptions> = {}): DirectorOptions => ({
 });
 
 describe("the style library", () => {
-  test("has twenty-one styles, each a different silhouette", () => {
-    expect(STYLE_KEYS).toHaveLength(21);
+  test("has twenty-four styles, each a different silhouette", () => {
+    expect(STYLE_KEYS).toHaveLength(24);
     expect(ALL_STYLES.map((s) => s.key)).toEqual([...STYLE_KEYS]);
     const silhouettes = new Set(
       ALL_STYLES.map((s) =>
         [s.skin.controlRadius, s.skin.cardRadius, s.skin.buttonCase, s.skin.field, s.skin.tabs, s.skin.borderWidth, s.fonts.display.name].join("|"),
       ),
     );
-    expect(silhouettes.size).toBe(21);
+    expect(silhouettes.size).toBe(24);
   });
 
   test("every style offers two other font pairings, each different from its own", () => {
@@ -148,7 +153,7 @@ describe("the style library", () => {
       expect(css).toContain(`the ${STYLES[key].name} style`);
       expect(css).toContain("@layer skin");
       expect(designMd).toContain(`# Design — ${STYLES[key].name}`);
-      expect(designProse(designMd).length).toBeLessThan(6_000);
+      expect(designProse(designMd).length).toBeLessThan(6_500);
       expect(describeDesign(designMd)?.style).toBe(key);
     }
     expect(STYLES.neon.defaultMode).toBe("dark");
@@ -738,6 +743,7 @@ describe("the design to change to", () => {
       style: "editorial", styleName: "Editorial", accent: "#a4442a", mode: "light",
       dials: { variance: 6, motion: 3, density: 2 }, fonts: "playfair",
       fontsLabel: "Playfair Display + Karla", imported: false,
+      switch: false, neutral: null,
     });
     expect(readOf(md)).toBe(READ);
     expect(describeDesign("# Someone else's design")).toBeNull();
@@ -1052,5 +1058,247 @@ describe("the theme panel and the design file", () => {
   test("a chosen pairing's fonts are not reported as off-design", () => {
     const deps = JSON.stringify({ dependencies: { "@fontsource-variable/playfair-display": "^5", "@fontsource-variable/karla": "^5", "@fontsource/pacifico": "^5" } });
     expect(checkPackageJson(deps, { style: STYLES.editorial }).map((f) => f.excerpt)).toEqual(["@fontsource/pacifico"]);
+  });
+});
+
+describe("the director's rating of its own shortlist", () => {
+  const reply = (extra: object) => JSON.stringify({ styles: ["editorial", "craft", "soft"], accents: ["#b5532a"], ...extra });
+
+  test("a style it called a stretch is dropped; the first is always kept", () => {
+    expect(parseDirectorReply(reply({ fits: [5, 4, 2] }))!.styles).toEqual(["editorial", "craft"]);
+    expect(parseDirectorReply(reply({ fits: [5, 3, 3] }))!.styles).toEqual(["editorial"]);
+    expect(parseDirectorReply(reply({ fits: [2, 2, 2] }))!.styles).toEqual(["editorial"]);
+  });
+
+  test("with no rating, or one that makes no sense, nothing is dropped", () => {
+    expect(parseDirectorReply(reply({}))!.styles).toEqual(["editorial", "craft", "soft"]);
+    expect(parseDirectorReply(reply({ fits: ["high", null, "x"] }))!.styles).toEqual(["editorial", "craft", "soft"]);
+  });
+
+  test("a rating stays with its style when an unknown one is skipped", () => {
+    const r = JSON.stringify({ styles: ["editorial", "madeup", "soft"], fits: [5, 5, 2], accents: [] });
+    expect(parseDirectorReply(r)!.styles).toEqual(["editorial"]);
+  });
+
+  test("the prompt asks for ratings and says a list of one is fine", () => {
+    expect(directorPrompt("p")).toContain("a list of one is a good answer");
+    expect(directorPrompt("p")).toContain('"fits": [5, 4, 4]');
+  });
+});
+
+describe("the structure an app opens with", () => {
+  const read = (what: string) => `Reading this as: ${what}, which should feel warm.`;
+
+  test("is one of its style's own, and the same for the same app", () => {
+    for (const style of ALL_STYLES) {
+      const lead = leadLayout(style, read("a climbing gym"));
+      expect(style.layouts.map((k) => LAYOUTS[k].name)).toContain(lead.name);
+      expect(leadLayout(style, read("a climbing gym")).name).toBe(lead.name);
+    }
+  });
+
+  test("differs between apps, so two in one style do not open alike", () => {
+    const reads = ["a climbing gym", "a plumbing ledger", "a ska band", "a recipe journal", "a drone fleet", "a tea shop"].map(read);
+    for (const style of ALL_STYLES) {
+      expect(new Set(reads.map((r) => leadLayout(style, r).name)).size).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test("is said in the design file, and kept when the style is the same", () => {
+    const md = filesFor(choiceFor("editorial")).designMd;
+    expect(md).toContain(`This app opens with **${leadLayout(STYLES.editorial, READ).name}**`);
+    expect(designProse(md)).toContain("open the screens after it a different way");
+  });
+});
+
+// ── Phase 5: a light and dark switch, and where the greys lean ───────────────
+
+describe("a light and dark switch in the app", () => {
+  const HTML = '<!doctype html>\n<html lang="en">\n<head>\n  <title>App</title>\n</head>\n<body><div id="root"></div></body>\n</html>\n';
+  const scriptOf = () => /<script>([\s\S]*)<\/script>/.exec(THEME_SWITCH_HTML)![1]!;
+
+  test("goes into the head of index.html, once, and comes out again", () => {
+    const on = themeSwitchHtml(HTML, true);
+    expect(on).toContain("data-tau-theme-toggle");
+    expect(on.indexOf("tau:theme-switch")).toBeLessThan(on.indexOf("</head>"));
+    expect(themeSwitchHtml(on, true)).toBe(on);
+    expect(themeSwitchHtml(on, false)).toBe(HTML);
+    expect(themeSwitchHtml(HTML, false)).toBe(HTML);
+    // A page with nowhere to put it is left alone.
+    expect(themeSwitchHtml("<div></div>", true)).toBe("<div></div>");
+  });
+
+  test("is a script that parses, keeps the visitor's choice, and acts before the page paints", () => {
+    const script = scriptOf();
+    expect(() => new Function(script)).not.toThrow();
+    expect(script.indexOf("localStorage.getItem")).toBeLessThan(script.indexOf("DOMContentLoaded"));
+    expect(script).toContain('localStorage.setItem("tau-theme"');
+  });
+
+  test("runs in a page: the saved choice is applied, and the button flips and remembers it", () => {
+    const store = new Map<string, string>([["tau-theme", "dark"]]);
+    const listeners: Record<string, () => void> = {};
+    const classes = new Set<string>();
+    const clicks: (() => void)[] = [];
+    const attrs: Record<string, string> = {};
+    const button: Record<string, unknown> = {
+      setAttribute: (k: string, v: string) => (attrs[k] = v),
+      addEventListener: (_: string, fn: () => void) => clicks.push(fn),
+    };
+    const root = {
+      classList: {
+        add: (c: string) => classes.add(c),
+        remove: (c: string) => classes.delete(c),
+        contains: (c: string) => classes.has(c),
+        toggle: (c: string, on: boolean) => (on ? classes.add(c) : classes.delete(c)),
+      },
+    };
+    const doc = { documentElement: root, createElement: () => button, body: { appendChild: () => undefined } };
+    new Function("document", "localStorage", "addEventListener", scriptOf())(
+      doc,
+      { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+      (name: string, fn: () => void) => (listeners[name] = fn),
+    );
+    expect(classes.has("dark")).toBe(true); // applied before DOMContentLoaded
+    listeners.DOMContentLoaded!();
+    expect(attrs["data-tau-theme-toggle"]).toBe("");
+    expect(String(button.innerHTML)).toContain("<circle"); // dark: offers the sun
+    clicks[0]!();
+    expect(classes.has("dark")).toBe(false);
+    expect(store.get("tau-theme")).toBe("light");
+    expect(String(button.innerHTML)).toContain('<path d="M21 12.8');
+  });
+
+  test("is in the stylesheet, in the style's own controls, only when asked for; and the agent is told", () => {
+    const off = filesFor(choiceFor("soft"));
+    const on = filesFor(choiceFor("soft", { switch: true }));
+    expect(off.css).not.toContain("data-tau-theme-toggle");
+    expect(on.css).toContain("[data-tau-theme-toggle]");
+    expect(on.css).toContain("border-radius: var(--control-radius)");
+    expect(off.designMd).not.toContain("light and dark switch");
+    expect(on.designMd).toContain("has its own light and dark switch");
+    expect(readDesignMeta(on.designMd)!.switch).toBe("1");
+    expect(describeDesign(on.designMd)!.switch).toBe(true);
+    expect(describeDesign(off.designMd)!.switch).toBe(false);
+  });
+
+  test("is written to the app by apply, kept through a restyle, and taken out by one that says so", async () => {
+    const app = fakeApp({ ...freshApp(), "index.html": HTML });
+    await applyDesignTo(app.target, choiceFor("soft", { switch: true }));
+    expect(app.files["index.html"]).toContain("data-tau-theme-toggle");
+    const md = app.files[DESIGN_PATH]!;
+    await applyDesignTo(app.target, restyledChoice(describeDesign(md), { style: "craft" }, readOf(md), "p"), { restyle: true });
+    expect(app.files["index.html"]).toContain("data-tau-theme-toggle");
+    expect(describeDesign(app.files[DESIGN_PATH])!.switch).toBe(true);
+    const md2 = app.files[DESIGN_PATH]!;
+    await applyDesignTo(app.target, restyledChoice(describeDesign(md2), { switch: false }, readOf(md2), "p"), { restyle: true });
+    expect(app.files["index.html"]).not.toContain("data-tau-theme-toggle");
+    expect(describeDesign(app.files[DESIGN_PATH])!.switch).toBe(false);
+  });
+
+  test("is the user's choice: the director cannot take it away, and it makes the choice theirs", () => {
+    const choice = chooseFrom(offer(), "p1", { switch: true });
+    expect(choice.switch).toBe(true);
+    expect(choice.source).toBe("user");
+    expect(fallbackChoice("p1", { switch: true }).switch).toBe(true);
+    expect(chooseFrom(offer(), "p1", {}).switch).toBeUndefined();
+  });
+});
+
+describe("where the greys lean", () => {
+  const hue = (hex: string) => hexToOklch(hex).h;
+  const chroma = (hex: string) => hexToOklch(hex).c;
+
+  test("warm and cool move the neutrals, whatever the accent, and grey takes the tint away", () => {
+    const base = buildTheme(STYLES.soft.palette, "#7c6bf2", STYLES.soft.radius);
+    const warm = buildTheme(STYLES.soft.palette, "#7c6bf2", STYLES.soft.radius, { neutral: "warm" });
+    const cool = buildTheme(STYLES.soft.palette, "#c2410c", STYLES.soft.radius, { neutral: "cool" });
+    const grey = buildTheme(STYLES.soft.palette, "#7c6bf2", STYLES.soft.radius, { neutral: "grey" });
+    expect(Math.abs(hue(warm.light.background) - 70)).toBeLessThan(8);
+    expect(Math.abs(hue(cool.light.background) - 255)).toBeLessThan(8);
+    expect(Math.abs(hue(base.light.background) - hue(warm.light.background))).toBeGreaterThan(20);
+    expect(chroma(grey.light.background)).toBeLessThan(0.004);
+    expect(chroma(grey.dark.muted)).toBeLessThan(0.004);
+    // The accent itself is not touched by any of it.
+    expect(grey.light.primary).toBe(base.light.primary);
+    expect(warm.light.primary).toBe(base.light.primary);
+  });
+
+  test("text stays readable on every combination", () => {
+    for (const style of ALL_STYLES) {
+      for (const neutral of ["warm", "cool", "grey"] as const) {
+        const theme = buildTheme(style.palette, "#2f7d6b", style.radius, { neutral });
+        for (const mode of ["light", "dark"] as const) {
+          expect(contrast(theme[mode].foreground, theme[mode].background)).toBeGreaterThanOrEqual(7);
+          expect(contrast(theme[mode]["muted-foreground"], theme[mode].background)).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  test("is kept in the design file, read back, and carried through a change of style", () => {
+    const files = filesFor(choiceFor("soft", { neutral: "warm" }));
+    expect(readDesignMeta(files.designMd)!.neutral).toBe("warm");
+    const summary = describeDesign(files.designMd)!;
+    expect(summary.neutral).toBe("warm");
+    expect(restyledChoice(summary, { style: "craft" }, READ, "p").neutral).toBe("warm");
+    // Asked for anew, or given up in favour of the style's own.
+    expect(restyledChoice(summary, { neutral: "cool" }, READ, "p").neutral).toBe("cool");
+    expect(restyledChoice(summary, { neutral: "style" }, READ, "p").neutral).toBeUndefined();
+    expect(describeDesign(filesFor(choiceFor("soft")).designMd)!.neutral).toBeNull();
+  });
+
+  test('a chosen lean is the user\'s; "style" is only for a restyle', () => {
+    expect(normalizeDesignConfig({ neutral: "warm", switch: true })).toEqual({ neutral: "warm", switch: true });
+    expect(normalizeDesignConfig({ neutral: "purple" })).toBeNull();
+    expect(chooseFrom(offer(), "p1", { neutral: "cool" }).neutral).toBe("cool");
+    expect(chooseFrom(offer(), "p1", { neutral: "style" }).neutral).toBeUndefined();
+  });
+});
+
+describe("the three styles made of paper and print", () => {
+  const NEW = ["scrapbook", "wabisabi", "victorian"] as const;
+
+  test("are found by the names people know them by, and are not for general use", () => {
+    expect(STYLES.scrapbook.aka).toContain("Collage");
+    expect(STYLES.wabisabi.name).toBe("Wabi-sabi");
+    expect(STYLES.wabisabi.aka).toContain("Wabi sabi");
+    expect(STYLES.victorian.aka).toContain("Victorian era");
+    for (const key of NEW) expect(STYLES[key].reach).toBe("niche");
+  });
+
+  test("paint their texture on the page, and the page wrapper lets it show", () => {
+    for (const key of NEW) {
+      const { css, designMd } = filesFor(choiceFor(key));
+      expect(css).toContain("body::before");
+      expect(css).toContain(".min-h-screen.bg-background");
+      expect(designMd).toContain("The page has a backdrop");
+    }
+    // The grain is a picture drawn in the stylesheet: nothing is shipped with the app.
+    expect(filesFor(choiceFor("scrapbook")).css).toContain("feTurbulence");
+    expect(filesFor(choiceFor("scrapbook")).css).not.toMatch(/url\("(?!data:)/);
+    expect(filesFor(choiceFor("wabisabi")).css).not.toMatch(/url\("(?!data:)/);
+  });
+
+  test("scrapbook cards are taped and crooked; wabi-sabi corners differ; victorian panels are ruled twice", () => {
+    expect(filesFor(choiceFor("scrapbook")).css).toContain('[data-slot="card"]::before');
+    expect(filesFor(choiceFor("scrapbook")).css).toContain("rotate(-0.5deg)");
+    expect(STYLES.wabisabi.skin.cardRadius.split(" ")).toHaveLength(4);
+    expect(new Set(STYLES.wabisabi.skin.cardRadius.split(" ")).size).toBeGreaterThan(2);
+    expect(STYLES.victorian.skin.cardBorder).toContain("double");
+    expect(STYLES.victorian.skin.cardRadius).toBe("0");
+  });
+
+  test("fonts are ones the image already holds", () => {
+    const others = new Set(
+      ALL_STYLES.filter((s) => !NEW.includes(s.key as (typeof NEW)[number])).flatMap((s) => fontSetsOf(s)).flatMap((f) => Object.values(f)).map((f) => f.pkg).filter(Boolean),
+    );
+    // Every package a new style names is one another style also names, so
+    // nothing needs the sandbox image to be built again.
+    for (const key of NEW) {
+      for (const set of fontSetsOf(STYLES[key])) {
+        for (const font of Object.values(set)) if (font.pkg) expect(others.has(font.pkg)).toBe(true);
+      }
+    }
   });
 });

@@ -65,6 +65,10 @@ export const designConfigSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Accent must be a colour like #1a2b3c")
     .optional(),
   mode: z.enum(["light", "dark"]).optional(),
+  /** A light and dark switch in the app. */
+  switch: z.boolean().optional(),
+  /** Where the neutrals lean; "style" on a restyle goes back to the style's own. */
+  neutral: z.enum(["warm", "cool", "grey", "style"]).optional(),
   fonts: z.string().min(1).max(40).optional(),
   dials: z
     .object({ variance: dial, motion: dial, density: dial })

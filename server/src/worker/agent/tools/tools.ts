@@ -102,7 +102,7 @@ export const BASE_APP_TOOLS = [
     function: {
       name: "dispatch_design_reviewer",
       description:
-        "Have the app looked at. You write markup and never see it rendered; this renders the screens you name at desktop and phone width, shows the screenshots to a reviewer that can see, and returns what it finds wrong: broken or overflowing layout, a phone layout that does not work, departures from the app's design, generic defaults, placeholder content, unreadable text. Each finding is marked [broken] (fix it) or [polish] (optional). Call it after you build or reshape a screen and fix what is broken; you may then call it once more for the same screens to confirm. A screen gets those two looks in a run and no more. It reviews what is on screen when it loads — a page behind a login or a button press is not seen, and an embedded map or video may not render for it. It does not edit files.",
+        "Have the app looked at. You write markup and never see it rendered; this renders the screens you name at desktop and phone width, shows the screenshots to a reviewer that can see, and returns what it finds wrong: broken or overflowing layout, a phone layout that does not work, departures from the app's design, generic defaults, placeholder content, unreadable text. Each finding is marked [broken] (fix it) or [polish] (optional). Call it after you build or reshape a screen and fix what is broken; you may then call it once more for the same screens to confirm. A screen gets those two looks in a run and no more. It reviews what is on screen when it loads, and with steps, a screen after a button is pressed or a field filled; a page behind a login is not seen, and an embedded map or video may not render for it. It does not edit files.",
       parameters: {
         type: "object",
         properties: {
@@ -116,6 +116,29 @@ export const BASE_APP_TOOLS = [
             type: "string",
             description:
               "Optional: anything you want looked at in particular, e.g. 'the pricing table on a phone'.",
+          },
+          steps: {
+            type: "array",
+            description:
+              "Optional: up to 2 screens to also see after something is done to them — a dialog opened, a form filled, a tab pressed. Each is a route from paths and up to 3 things to do, in order. Buttons and tabs are found by what they say; fields by their label or placeholder.",
+            items: {
+              type: "object",
+              properties: {
+                path: { type: "string" },
+                do: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      click: { type: "string", description: "The text of a button, link or tab to press." },
+                      fill: { type: "string", description: "The label or placeholder of a field to type into." },
+                      with: { type: "string", description: "What to type, with fill." },
+                    },
+                  },
+                },
+              },
+              required: ["path", "do"],
+            },
           },
         },
         required: [],

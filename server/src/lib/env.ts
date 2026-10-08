@@ -68,11 +68,21 @@ const envSchema = z.object({
   KIMI_API_KEY: z.string().optional(),
   KIMI_BASE_URL: z.string().url().default("https://api.moonshot.ai/v1"),
   KIMI_EXTRACT_MODEL: z.string().default("kimi-k2.6"),
+  // Requests to Moonshot in flight at once, across every build and upload in
+  // this process. A small account is allowed one; raise it with the account.
+  KIMI_MAX_CONCURRENT: z.coerce.number().int().positive().default(1),
   // The model that looks at screenshots of a generated app for the design
   // review (worker/design/review.ts). Must accept images. A `kimi-` or
   // `moonshot-` model is called through the Kimi client and anything else
   // through the DeepSeek one. Defaults to the extraction model.
   DESIGN_REVIEW_MODEL: z.string().optional(),
+  // Let the review model reason before it answers. Off: it was tuned that way,
+  // and reasoning costs time and tokens. Tried on planted faults in phase 4 of
+  // doc/CONTEXT_AND_MEMORY_PLAN.md §11.
+  DESIGN_REVIEW_THINKING: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 
   ATTACHMENTS_ENABLED: z
     .string()

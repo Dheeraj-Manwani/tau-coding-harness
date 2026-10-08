@@ -127,6 +127,7 @@ export function resolveDesign(choice: DesignChoice, fonts?: FontSet): ResolvedDe
   let theme = buildTheme(base.palette, choice.accent, tokens?.radius ?? base.radius, {
     exact: choice.accentExact,
     mode: choice.mode,
+    neutral: choice.neutral,
   });
   if (tokens) theme = withImportedColors(theme, tokens.colors, choice.mode);
 
@@ -144,6 +145,7 @@ export function designFiles(
       mode: design.choice.mode,
       dials: design.choice.dials,
       fontsInstalled: opts.fontsInstalled,
+      switch: design.choice.switch === true,
     }),
     designMd: design.choice.imported
       ? renderImportedDesignMd(design.style, design.choice, design.theme)

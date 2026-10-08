@@ -49,6 +49,9 @@ export const SAMPLE_ACCENTS: Record<StyleKey, string> = {
   cybercore: "#f0331a",
   synthwave: "#ff2fb0",
   cyberpunk: "#fcee0a",
+  scrapbook: "#e0566f",
+  wabisabi: "#8a6f4e",
+  victorian: "#8c1c26",
 };
 
 /** Accents offered as one-click choices beside the colour picker. */

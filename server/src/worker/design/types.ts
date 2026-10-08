@@ -16,6 +16,14 @@ import type { LayoutKey } from "./layouts";
 
 export type Mode = "light" | "dark";
 
+/**
+ * Which way an app's greys lean. A style's own neutrals take their hue from
+ * the accent or from a fixed one; this overrides that, for someone who wants a
+ * warm page under a blue accent, or no tint at all.
+ */
+export type Neutral = "warm" | "cool" | "grey";
+export const NEUTRALS: readonly Neutral[] = ["warm", "cool", "grey"];
+
 export const STYLE_KEYS = [
   "editorial",
   "swiss",
@@ -38,6 +46,9 @@ export const STYLE_KEYS = [
   "cybercore",
   "synthwave",
   "cyberpunk",
+  "scrapbook",
+  "wabisabi",
+  "victorian",
 ] as const;
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
@@ -47,7 +58,7 @@ export function isStyleKey(value: unknown): value is StyleKey {
 }
 
 /**
- * The families the library is shown in, in the order they are shown. Twenty-one
+ * The families the library is shown in, in the order they are shown. Twenty-four
  * styles in one grid is too many to scan; five short rows are not.
  */
 export const STYLE_GROUPS = [
@@ -316,6 +327,13 @@ export interface DesignConfig {
   /** A font pairing of the style: `"default"` or a key from its `fontOptions`. */
   fonts?: string;
   dials?: Partial<Dials>;
+  /**
+   * The app has a light and dark switch of its own, which a visitor can use.
+   * `mode` is still how it opens. False on a restyle takes the switch out.
+   */
+  switch?: boolean;
+  /** The lean of the neutrals; `"style"` on a restyle goes back to the style's own. */
+  neutral?: Neutral | "style";
   /** A `DESIGN.md` the user brought with them, whole. */
   designMd?: string;
   /**
@@ -345,6 +363,10 @@ export interface DesignChoice {
   dials: Dials;
   /** Which of the style's font pairings. Omitted for the style's own. */
   fonts?: string;
+  /** The app has a light and dark switch. */
+  switch?: boolean;
+  /** Where the neutrals lean, when the user chose; otherwise the style's own. */
+  neutral?: Neutral;
   /** "Reading this as …" — one sentence on what is being built and how it should feel. */
   read: string;
   /**

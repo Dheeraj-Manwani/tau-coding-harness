@@ -353,6 +353,59 @@ export async function captureAppScreenshot(url: string): Promise<Buffer> {
   }
 }
 
+/**
+ * The script that does one action in the page. True when it found something to
+ * act on. A match is by what the thing says — its text, its label, its
+ * placeholder — exactly first, then as a part of what it says.
+ */
+export function performActionScript(action: PageAction): string {
+  return `(async () => {
+    const action = ${JSON.stringify(action)};
+    const visible = (el) => {
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none";
+    };
+    const norm = (s) => (s || "").replace(/\\s+/g, " ").trim().toLowerCase();
+    const pick = (els, words) => {
+      const want = norm(action.click ?? action.fill);
+      const named = els.filter(visible).map((el) => [el, words(el).map(norm).filter(Boolean)]);
+      return (
+        named.find(([, w]) => w.includes(want)) ||
+        named.find(([, w]) => w.some((x) => x.includes(want)))
+      )?.[0];
+    };
+    if ("click" in action) {
+      const el = pick(
+        [...document.querySelectorAll('button, a, [role=button], [role=tab], [role=menuitem], [role=switch], summary, label, input[type=submit], input[type=checkbox], input[type=radio]')],
+        (el) => [el.innerText || el.textContent, el.getAttribute("aria-label"), el.getAttribute("title"), el.value],
+      );
+      if (!el) return false;
+      el.scrollIntoView({ block: "center" });
+      el.click();
+      return true;
+    }
+    const field = pick(
+      [...document.querySelectorAll("input, textarea, select")],
+      (el) => [
+        el.getAttribute("aria-label"),
+        el.getAttribute("placeholder"),
+        el.getAttribute("name"),
+        el.id && document.querySelector('label[for="' + el.id + '"]')?.textContent,
+        el.closest("label")?.textContent,
+      ],
+    );
+    if (!field) return false;
+    field.scrollIntoView({ block: "center" });
+    field.focus();
+    const proto = field.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : field.tagName === "SELECT" ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value").set.call(field, action.with);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`;
+}
+
 // ── Whole-page views, for design review ──────────────────────────────────────
 
 /** How to look at a page: the window to lay it out in, and how much of it to keep. */
@@ -376,9 +429,29 @@ export interface PageSection {
   to: number;
 }
 
+/**
+ * One thing a person does on a page before it is looked at: press something,
+ * or type into a field. Found by what it says, not by selector, because the
+ * builder naming a button knows its label and not its markup.
+ */
+export type PageAction = { click: string } | { fill: string; with: string };
+
+/** An action in words, for a caption. */
+export function describeAction(action: PageAction): string {
+  return "click" in action ? `click "${action.click}"` : `type "${action.with}" into "${action.fill}"`;
+}
+
 export interface PageCapture {
   /** The page from the top down, a picture per section. A short page has one. */
   sections: PageSection[];
+  /**
+   * The whole page in one picture, shrunk to fit, when it is longer than the
+   * sections cover. For judging how it is arranged and whether anything lower
+   * down is missing or broken; the text in it cannot be read.
+   */
+  overview?: Buffer;
+  /** Actions that could not be done, as words: nothing on the page had that label. */
+  actionsFailed: string[];
   /** The page's full height in CSS pixels. */
   pageHeight: number;
   /** How much of that the pictures show. Less than `pageHeight` when the page outran them. */
@@ -397,6 +470,11 @@ export interface PageCapture {
 }
 
 const REVIEW_SETTLE_MS = 2_500;
+const ACTION_SETTLE_MS = 800;
+/** Chrome will not draw a picture much taller than this. */
+const OVERVIEW_MAX_PAGE_PX = 12_000;
+/** How tall the shrunken whole-page picture is, at most, in output pixels. */
+const OVERVIEW_MAX_OUTPUT_PX = 1_600;
 const REVIEW_CAPTURE_ATTEMPTS = 4;
 const REVIEW_JPEG_QUALITY = 70;
 
@@ -442,6 +520,7 @@ export async function capturePageView(
   url: string,
   view: PageView,
   maxSections = 1,
+  actions: readonly PageAction[] = [],
 ): Promise<PageCapture> {
   const { conn: browser, wsBase } = await getSession();
   const { targetId } = await browser.send<{ targetId: string }>(
@@ -479,6 +558,17 @@ export async function capturePageView(
       await page.send(attempt === 1 ? "Page.navigate" : "Page.reload", attempt === 1 ? { url } : {});
       await loaded;
       await new Promise((r) => setTimeout(r, REVIEW_SETTLE_MS));
+
+      const actionsFailed: string[] = [];
+      for (const action of actions) {
+        const done = await page.send<{ result: { value?: boolean } }>("Runtime.evaluate", {
+          expression: performActionScript(action),
+          awaitPromise: true,
+          returnByValue: true,
+        });
+        if (done.result.value !== true) actionsFailed.push(describeAction(action));
+        await new Promise((r) => setTimeout(r, ACTION_SETTLE_MS));
+      }
 
       // Walk down the page a screen at a time so anything waiting to be seen
       // is seen, then return to the top. Reports the page's full height.
@@ -542,8 +632,25 @@ export async function capturePageView(
         for (const bound of bounds.slice(1)) {
           sections.push({ jpeg: Buffer.from(await shoot(bound), "base64"), ...bound });
         }
+        const covered = bounds[bounds.length - 1]!.to;
+        let overview: Buffer | undefined;
+        if (pageHeight > covered) {
+          const height = Math.min(pageHeight, OVERVIEW_MAX_PAGE_PX);
+          const scale = Math.min(view.scale, OVERVIEW_MAX_OUTPUT_PX / height);
+          const data = (
+            await page.send<{ data: string }>("Page.captureScreenshot", {
+              format: "jpeg",
+              quality: REVIEW_JPEG_QUALITY,
+              captureBeyondViewport: true,
+              clip: { x: 0, y: 0, width: view.width, height, scale },
+            })
+          ).data;
+          overview = Buffer.from(data, "base64");
+        }
         return {
           sections,
+          ...(overview ? { overview } : {}),
+          actionsFailed,
           pageHeight,
           capturedHeight: bounds[bounds.length - 1]!.to,
           overflowX: Math.round(measured.overflowX ?? 0),

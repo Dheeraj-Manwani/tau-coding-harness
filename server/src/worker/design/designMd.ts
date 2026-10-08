@@ -27,7 +27,7 @@ import type { DesignChoice, Dials, StyleSpec } from "./types";
 export const DESIGN_PATH = ".tau/DESIGN.md";
 
 /** The prose is handed over whole on every request, so it has to stay small. */
-export const DESIGN_PROSE_MAX_CHARS = 6_000;
+export const DESIGN_PROSE_MAX_CHARS = 6_500;
 /** The app's own notes ride along with the prose, and have a limit of their own. */
 export const DESIGN_NOTES_MAX_CHARS = 1_500;
 
@@ -139,6 +139,8 @@ function metaComment(choice: DesignChoice): string {
   const extra = [
     choice.fonts ? ` fonts=${choice.fonts}` : "",
     choice.source === "user" || choice.source === "import" ? ` source=${choice.source}` : "",
+    choice.switch ? " switch=1" : "",
+    choice.neutral ? ` neutral=${choice.neutral}` : "",
   ].join("");
   return `<!-- tau: style=${choice.style} mode=${choice.mode} accent=${choice.accent} variance=${d.variance} motion=${d.motion} density=${d.density}${extra} -->`;
 }
@@ -243,6 +245,28 @@ function backdropRule(style: StyleSpec): string {
   return style.backdrop ? `\n${BACKDROP_RULE}` : "";
 }
 
+/**
+ * The structure an app opens with, out of the ones its style allows.
+ *
+ * Two apps in one style share a skin, a palette recipe and a list of
+ * structures, and left to choose, an agent opens both with the first on the
+ * list. So one is chosen for the app, by what the app is: the sentence that
+ * says what it is for. That sentence is kept in the file and survives a
+ * restyle, so the same app keeps the same lead for as long as the style does.
+ */
+export function leadLayout(style: StyleSpec, read: string): (typeof LAYOUTS)[keyof typeof LAYOUTS] {
+  const keys = style.layouts;
+  return LAYOUTS[keys[parseInt(lineMark(read), 16) % keys.length]!];
+}
+
+/** What the agent is told about a light and dark switch that is already in the app. */
+const SWITCH_RULE =
+  "- The app has its own light and dark switch: a small button fixed at the bottom left, put there by `index.html`, with the visitor's choice remembered. Do not build another, and keep both palettes working on every screen.";
+
+function switchRule(choice: DesignChoice): string {
+  return choice.switch ? `\n${SWITCH_RULE}` : "";
+}
+
 /** The whole file, ending in a newline. */
 export function renderDesignMd(
   style: StyleSpec,
@@ -289,7 +313,7 @@ ${prose.colors}
 
 ${accentLine(p.primary, p.background, p.foreground)}
 - The app opens in ${choice.mode} mode. A ${other} palette is defined too, so both must keep working.
-${TOKEN_RULE}${backdropRule(style)}
+${TOKEN_RULE}${backdropRule(style)}${switchRule(choice)}
 
 ## Typography
 ${typeLines.join("\n")}
@@ -301,6 +325,8 @@ ${prose.layout}
 
 Build each screen on one of these structures, chosen for what the screen holds:
 ${layouts}
+
+This app opens with **${leadLayout(style, choice.read).name}**: build its first screen that way, and open the screens after it a different way.
 
 ## Elevation & Depth
 ${prose.elevation}
@@ -361,7 +387,7 @@ tau built this design into the app. Its colours are the palette in \`src/index.c
 
 ${accentLine(p.primary, p.background, p.foreground)}
 - The app opens in ${choice.mode} mode. A ${other} palette is defined too, so both must keep working.
-${TOKEN_RULE}${backdropRule(style)}
+${TOKEN_RULE}${backdropRule(style)}${switchRule(choice)}
 - Typefaces: headings use **${fonts.display.name}** (\`font-heading\`), text is **${fonts.body.name}** (\`font-sans\`), and \`font-mono\` is ${fonts.mono.name}. Where the design below names a typeface that is not one of these, it could not be installed; use these.
 - Use the shadcn components as they are, and do not add radius, border, shadow, font or height classes to a Button, Card, Input, Badge, Tabs or Dialog — the skin decides those.
 ${describeDials(choice.dials).map((line) => `- ${line}`).join("\n")}

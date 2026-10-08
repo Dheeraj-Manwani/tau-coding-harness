@@ -42,6 +42,12 @@ const DIALS: { key: keyof Dials; label: string; low: string; high: string }[] = 
   { key: "density", label: "Density", low: "Airy", high: "Packed" },
 ];
 
+const NEUTRAL_CHOICES: { key: "warm" | "cool" | "grey"; label: string; swatch: string }[] = [
+  { key: "warm", label: "Warm", swatch: "#d8cdb9" },
+  { key: "cool", label: "Cool", swatch: "#c5cfdc" },
+  { key: "grey", label: "Plain grey", swatch: "#cfcfcf" },
+];
+
 const FEELS: { key: FeelPreset; label: string }[] = [
   { key: "calm", label: "Calm" },
   { key: "balanced", label: "Balanced" },
@@ -252,6 +258,9 @@ export function DesignPicker({
 
   // An accent is used exactly as chosen, so say so when it will be hard to see.
   const warning = accentWarning({ value, current, styles: catalog.styles, exactAccent });
+
+  // The switch is on if asked for here, or the app has one and this does not say otherwise.
+  const switchOn = value.switch ?? (restyling ? current.switch : false);
 
   const preset = presetOf(value.dials, catalog.feelPresets);
   // What the sliders show for a dial nobody has set: where it will land.
@@ -467,6 +476,13 @@ export function DesignPicker({
             <Chip selected={value.mode === "dark"} onClick={() => set({ mode: "dark" })}>
               <MoonIcon className="size-3" /> Dark
             </Chip>
+            <Chip
+              selected={switchOn}
+              onClick={() => set({ switch: switchOn ? (restyling && current.switch ? false : undefined) : true })}
+              title="Gives the app a button that visitors use to change between light and dark. It opens the way you chose above."
+            >
+              Both, with a switch
+            </Chip>
           </div>
         </Section>
 
@@ -527,6 +543,32 @@ export function DesignPicker({
           })}
         </div>
       )}
+
+      <Section
+        title="Greys"
+        hint={restyling && current.neutral ? `Currently ${current.neutral}` : "The tint of the page and panels"}
+      >
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            selected={!value.neutral}
+            onClick={() => set({ neutral: undefined })}
+            title={restyling ? "Keep the greys as they are" : "The greys follow the accent, the way the style does them"}
+          >
+            {unset}
+          </Chip>
+          {restyling && current.neutral && (
+            <Chip selected={value.neutral === "style"} onClick={() => set({ neutral: "style" })} title="Back to the style's own greys">
+              Style's own
+            </Chip>
+          )}
+          {NEUTRAL_CHOICES.map(({ key, label, swatch }) => (
+            <Chip key={key} selected={value.neutral === key} onClick={() => set({ neutral: key })}>
+              <span className="size-3 rounded-full border border-black/15" style={{ backgroundColor: swatch }} />
+              {label}
+            </Chip>
+          ))}
+        </div>
+      </Section>
 
       <Section
         title="Typefaces"

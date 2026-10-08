@@ -323,7 +323,36 @@ export interface DesignCssInput {
    * fall through to system fonts — plainer, but not broken.
    */
   fontsInstalled: boolean;
+  /** The app has a light and dark switch (`themeSwitchHtml` in `apply.ts`); this styles it. */
+  switch?: boolean;
 }
+
+/**
+ * The light and dark switch, in the style's own controls. It is a button that
+ * `index.html` puts on the page, outside the app's own markup, so no screen has
+ * to remember to include it and none can lose it.
+ */
+const SWITCH_CSS = `
+
+  [data-tau-theme-toggle] {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    width: var(--control-h);
+    height: var(--control-h);
+    padding: 0;
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--control-radius);
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+  [data-tau-theme-toggle]:hover { border-color: var(--foreground); }
+  [data-tau-theme-toggle] svg { width: var(--icon-size); height: var(--icon-size); stroke-width: 2; }`;
 
 /** The full `src/index.css`, ending in a newline. */
 export function buildDesignCss(input: DesignCssInput): string {
@@ -416,7 +445,7 @@ ${(style.baseCss + backdropBase(style.backdrop)).replace(/^\n/, "")}
    Button, Card, Input, Badge, Tabs or Dialog come from here — to change one,
    change it here, not with classes where it is used. */
 @layer skin {${sharedSkin(style.skin)}
-${style.skinCss.replace(/^\n/, "")}${backdropSkin(style.backdrop)}
+${style.skinCss.replace(/^\n/, "")}${backdropSkin(style.backdrop)}${input.switch ? SWITCH_CSS : ""}
 }
 
 /* People who ask their system for less motion get none. */

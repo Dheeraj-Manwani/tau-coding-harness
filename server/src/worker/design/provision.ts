@@ -52,7 +52,7 @@ export interface StartedDesign extends DirectorResult {
  * takes about as long; past that it would be holding the build up, and an app
  * without the picture's design is better than an app that is late.
  */
-const IMAGE_READ_DEADLINE_MS = 40_000;
+const IMAGE_READ_DEADLINE_MS = 60_000;
 
 /** The message that started the project: the user's own words, and its id. */
 async function firstUserMessage(projectId: string): Promise<{ id: string | null; text: string }> {

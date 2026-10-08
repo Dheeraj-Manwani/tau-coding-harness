@@ -46,7 +46,8 @@ export function imageReadingAvailable(): boolean {
   return kimi !== null || !isKimiModel(designReviewModel());
 }
 
-const READ_TIMEOUT_MS = 45_000;
+// Includes time spent waiting for a turn at Moonshot (lib/kimi.ts).
+const READ_TIMEOUT_MS = 90_000;
 const READ_MAX_TOKENS = 900;
 const MAX_MESSAGE_CHARS = 600;
 
@@ -435,8 +436,8 @@ export async function readDesignImage(input: {
       // Left on, the model can spend the whole limit thinking and answer nothing.
       ...({ thinking: { type: "disabled" } } as object),
     },
-    // Retries cover a rate limit: a small account allows one request at a time.
-    { timeout: READ_TIMEOUT_MS, maxRetries: 3 },
+    // A rate limit is waited out by the Kimi client itself, not retried here.
+    { timeout: READ_TIMEOUT_MS, maxRetries: 0 },
   );
 
   const usage = {

@@ -23,10 +23,13 @@ import { neon } from "./neon";
 import { neumorphic } from "./neumorphic";
 import { pixel } from "./pixel";
 import { playful } from "./playful";
+import { scrapbook } from "./scrapbook";
 import { soft } from "./soft";
 import { swiss } from "./swiss";
 import { synthwave } from "./synthwave";
 import { terminal } from "./terminal";
+import { victorian } from "./victorian";
+import { wabisabi } from "./wabisabi";
 import { workbench } from "./workbench";
 import { y2k } from "./y2k";
 
@@ -52,6 +55,9 @@ export const STYLES: Record<StyleKey, StyleSpec> = {
   cybercore,
   synthwave,
   cyberpunk,
+  scrapbook,
+  wabisabi,
+  victorian,
 };
 
 export const ALL_STYLES: readonly StyleSpec[] = STYLE_KEYS.map((k) => STYLES[k]);

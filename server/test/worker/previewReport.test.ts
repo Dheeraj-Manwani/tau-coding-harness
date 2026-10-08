@@ -170,6 +170,85 @@ describe("what the agent is shown", () => {
     expect(report.note).toContain("a few off");
   });
 
+  // A project restored onto a newer sandbox image crashed with an error in
+  // Vite's own client. The result said `… 1 frame in libraries` and "open the
+  // file the first exception names": it named no file, and the agent spent
+  // forty tool calls finding out which one it was
+  // (doc/INCIDENT_PREVIEW_CRASH_AFTER_IMAGE_REBUILD.md §5.1).
+  describe("an error with no frame in the app's own files", () => {
+    const inViteClient = {
+      message: "ReferenceError: __BUNDLED_DEV__ is not defined",
+      frames: [{ fn: "", url: `${ORIGIN}/@vite/client`, line: 861, col: 22 }],
+    };
+    const inAPackage = {
+      message: "Error: Objects are not valid as a React child",
+      frames: [
+        { fn: "throwOnInvalidObjectType", url: `${ORIGIN}/node_modules/.vite/deps/react-dom_client.js?v=9f2c`, line: 4100, col: 9 },
+        { fn: "reconcileChildFibers", url: `${ORIGIN}/node_modules/.vite/deps/react-dom_client.js?v=9f2c`, line: 4300, col: 5 },
+        { fn: "performWork", url: `${ORIGIN}/node_modules/.vite/deps/react-dom_client.js?v=9f2c`, line: 9000, col: 1 },
+      ],
+    };
+    const crashedWith = (ex: typeof inViteClient) => buildReport(raw({ dom: dom({ rootEmpty: true }), exceptions: [ex, ex, ex] }));
+
+    test("says where it was thrown, and that the dev server's own code is not the app", () => {
+      const report = crashedWith(inViteClient);
+      expect(report.status).toBe("crashed");
+      expect(report.exceptions).toEqual([
+        {
+          message: "ReferenceError: __BUNDLED_DEV__ is not defined",
+          thrownIn: "@vite/client:861:22",
+          devTooling: true,
+          stack: ["@vite/client:861:22"],
+          count: 3,
+        },
+      ]);
+      // It is not sent to open a file of the app's, because none is at fault.
+      expect(report.next).toContain("not by the app");
+      expect(report.next).toContain("do not edit the app's files");
+      expect(report.next).toContain("node_modules/vite/package.json");
+      expect(report.next).toContain("/home/user/.tau-vite.log");
+      // Installing the right version is not enough by itself: measured on a
+      // real sandbox, the crash stayed until the dev server reloaded.
+      expect(report.next).toContain("touch vite.config.ts");
+      expect(report.next).not.toContain("Open the file the first exception names");
+    });
+
+    test("an error inside a package the app uses is named too, and is the app's to fix", () => {
+      const report = crashedWith(inAPackage);
+      const [first] = report.exceptions!;
+      expect(first!.thrownIn).toBe("node_modules/.vite/deps/react-dom_client.js:4100:9");
+      expect(first).not.toHaveProperty("devTooling");
+      expect(first).not.toHaveProperty("at");
+      expect(first!.stack).toEqual([
+        "throwOnInvalidObjectType (node_modules/.vite/deps/react-dom_client.js:4100:9)",
+        "… 2 more frames in libraries",
+      ]);
+      expect(report.next).toContain("what the app passed to it");
+      expect(report.next).not.toContain("dev server's own code");
+    });
+
+    test("an error with a frame in the app is reported as it always was", () => {
+      const report = buildReport(raw({ dom: dom({ rootEmpty: true }), exceptions: [thrown("TypeError: nope")] }));
+      const [first] = report.exceptions!;
+      expect(first!.at).toBe("src/pages/Home.tsx:42:18");
+      expect(first).not.toHaveProperty("thrownIn");
+      expect(first).not.toHaveProperty("devTooling");
+      expect(report.next).toBe("Open the file the first exception names and fix the cause, then inspect again.");
+    });
+
+    test("a run sent back for it is told the app is not at fault", () => {
+      const text = describeFindings(crashedWith(inViteClient));
+      expect(text).toContain("- Error thrown in `@vite/client:861:22` (the dev server's own code, not the app's): ReferenceError: __BUNDLED_DEV__ is not defined");
+      expect(text).toContain("do not edit the app's files to fix it");
+      expect(describeFindings(crashedWith(inAPackage))).toContain("(a package, not the app's own code)");
+    });
+
+    test("a frame with no address is not offered as a place", () => {
+      const report = buildReport(raw({ dom: dom({ rootEmpty: true }), exceptions: [{ message: "Error: from eval", frames: [{ fn: "", url: "", line: 1, col: 1 }] }] }));
+      expect(report.exceptions![0]).toEqual({ message: "Error: from eval", count: 1 });
+    });
+  });
+
   test("the same fault seen many times is one entry with a count", () => {
     const report = buildReport(raw({ exceptions: Array.from({ length: 40 }, () => thrown("Error: again")) }));
     expect(report.exceptions).toHaveLength(1);

@@ -21,7 +21,13 @@ Fix one cause, then inspect again. Do not change several things between inspecti
 - **`unreachable`** — the page did not load at all. This is the dev server or the sandbox, not the app's code. Do not restart the dev server; check it answers with `curl`, and say so if it does not.
 - **`rendered`** — the app loaded cleanly. If the user still reports a fault, it happens after something they did: inspect again with `steps` that do it.
 
+## `crashed`, thrown by the dev server's own code
+
+When the first exception has `devTooling: true`, its `thrownIn` is a script the dev server puts in the page, such as `@vite/client`. The app did not cause it, and no edit to the app's files fixes it. The usual cause is that the Vite installed in the project is not the version the dev server is running: compare `node_modules/vite/package.json` with the `VITE v…` line in `/home/user/.tau-vite.log`. If they differ, install the running version with `bun add -d vite@<that version>`, then run `touch vite.config.ts` and wait a few seconds before inspecting again. Installing alone changes nothing: the dev server goes on serving the script it already read, and a change to its config file is what makes it reload itself. Do not kill or start it yourself.
+
 ## `crashed`, when the stack names no file of the app's
+
+`thrownIn` says which package the error surfaced in. The fault is usually in what the app passed to it.
 
 - **"Cannot read properties of undefined"** in the first render: data that has not arrived yet is being read as if it had. Give it a starting value, or render a loading state until it is there.
 - **"X is not a function" / "does not provide an export named X"**: the installed version of a package does not have what was imported. Read the package's own `package.json` and exports before changing the import.

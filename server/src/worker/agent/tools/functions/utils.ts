@@ -235,15 +235,73 @@ export async function persistBinaryFile(
   return { persisted: true };
 }
 
+/** Words that run something else and are not themselves the command. */
+const COMMAND_WRAPPERS = new Set(["nohup", "exec", "time", "command", "env"]);
+/** Ways of running a package's binary: `bunx vite`, `pnpm exec vite`, `bun x vite`. */
+const BINARY_RUNNERS: readonly (readonly string[])[] = [
+  ["bunx"],
+  ["npx"],
+  ["bun", "x"],
+  ["pnpm", "exec"],
+  ["pnpm", "dlx"],
+  ["yarn", "dlx"],
+  ["yarn"],
+];
+/** `vite` with one of these does a job and exits. */
+const VITE_ONE_SHOT = new Set(["build", "optimize", "--version", "-v", "--help", "-h"]);
+
+/** The words of one simple command, without what only sets it up. */
+function commandWords(segment: string): string[] {
+  const words = segment.trim().replace(/^[({\s]+/, "").split(/\s+/).filter(Boolean);
+  // `PORT=3000 NODE_ENV=x bunx vite`, `nohup bunx vite`.
+  while (words.length > 0 && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]!) || COMMAND_WRAPPERS.has(words[0]!))) {
+    words.shift();
+  }
+  return words;
+}
+
+/** Whether one simple command starts something that keeps running. */
+function startsServer(segment: string): boolean {
+  let words = commandWords(segment);
+  if (words.length === 0) return false;
+
+  // A script that is a dev server by convention: `bun run dev`, `npm start`.
+  if (/^(npm|pnpm|yarn|bun)$/.test(words[0]!)) {
+    const script = words[1] === "run" ? words[2] : words[1];
+    if (script && /^(dev|start|serve|preview)$/.test(script)) return true;
+  }
+
+  for (const runner of BINARY_RUNNERS) {
+    if (runner.every((word, i) => words[i] === word)) {
+      words = words.slice(runner.length).filter((w, i) => !(i === 0 && w === "--bun"));
+      break;
+    }
+  }
+  const binary = (words[0] ?? "").split("/").pop();
+  if (binary === "vite") return !VITE_ONE_SHOT.has(words[1] ?? "");
+  if (binary === "next") return words[1] === "dev" || words[1] === "start";
+  return false;
+}
+
+/**
+ * Whether a command should be started in the background, when the agent did
+ * not say.
+ *
+ * A dev server never exits, so a command that starts one has to be let go of
+ * or the tool call waits until it times out. This decides by what the command
+ * *runs*, one simple command at a time, not by the words in it.
+ *
+ * It used to ask whether the command contained the word `vite`. That is true
+ * of `bunx vite`, and equally of `cat node_modules/vite/package.json` and
+ * `grep -i vite` — reads that take a moment and whose whole point is their
+ * output. In one real run (doc/INCIDENT_PREVIEW_CRASH_AFTER_IMAGE_REBUILD.md)
+ * 21 of 24 commands were sent to the background that way, each came back
+ * empty with a log path, and each needed a second tool call to read: twice the
+ * steps, and every step re-reads the whole conversation.
+ */
 export function isLongRunning(command: string): boolean {
-  return (
-    /(^|\s)(npm|pnpm|yarn|bun)\s+(run\s+)?(dev|start|serve|preview)\b/.test(
-      command,
-    ) ||
-    /\bvite\b/.test(command) ||
-    /\bnext\s+(dev|start)\b/.test(command) ||
-    /--port\b/.test(command)
-  );
+  if (/--port\b/.test(command)) return true;
+  return command.split(/&&|\|\||[;|\n&]/).some(startsServer);
 }
 
 export async function persistFile(

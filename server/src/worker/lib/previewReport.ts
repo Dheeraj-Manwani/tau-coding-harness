@@ -101,6 +101,16 @@ export interface ReportException {
   message: string;
   /** Where in the app's own code, when a frame of the stack is there. */
   at?: string;
+  /**
+   * Where it was thrown, when no frame of the stack is in the app's own code:
+   * a package the app uses, or the dev server's own script in the page.
+   */
+  thrownIn?: string;
+  /**
+   * It was thrown by the dev tooling's own code in the page (`@vite/client`
+   * and the like), not by the app or anything the app imports.
+   */
+  devTooling?: boolean;
   stack?: string[];
   count: number;
 }
@@ -212,6 +222,22 @@ function isLibraryUrl(url: string, origin: string): boolean {
   );
 }
 
+/**
+ * Code the dev server puts in the page for its own purposes: its client, the
+ * refresh runtime, its virtual modules, Vite's own files. Not the app, and not
+ * a package the app imports (those are served from `node_modules/.vite/deps`).
+ * An error thrown here is about the tooling, and no edit to the app fixes it.
+ */
+function isDevToolingUrl(url: string, origin: string): boolean {
+  const short = shortUrl(url, origin);
+  return (
+    short.startsWith("@vite") ||
+    short.startsWith("@react-refresh") ||
+    short.startsWith("@id/") ||
+    short.startsWith("node_modules/vite/")
+  );
+}
+
 // ── Exceptions ───────────────────────────────────────────────────────────────
 
 function frameText(frame: RawFrame, origin: string): string {
@@ -222,8 +248,23 @@ function frameText(frame: RawFrame, origin: string): string {
 /**
  * A stack for reading: the frames in the app's own files, with each run of
  * library frames in between replaced by one line.
+ *
+ * Unless there are no frames in the app's files at all. Then the frame it was
+ * thrown in is the only thing the stack has to say, and it is kept: a stack
+ * reduced to "1 frame in libraries" tells the reader an error happened
+ * somewhere, which they knew. (It did exactly that for an error in
+ * `@vite/client`, and the agent spent forty tool calls finding the file.)
  */
 export function compactStack(frames: readonly RawFrame[], origin: string): string[] {
+  if (frames.length > 0 && frames.every((f) => isLibraryUrl(f.url, origin))) {
+    const top = frames.find((f) => f.url);
+    if (!top) return [];
+    const rest = frames.length - 1;
+    return [
+      frameText(top, origin),
+      ...(rest > 0 ? [`… ${rest} more frame${rest === 1 ? "" : "s"} in libraries`] : []),
+    ];
+  }
   const out: string[] = [];
   let library = 0;
   let app = 0;
@@ -257,7 +298,11 @@ function reportExceptions(
     const message = clip(shortenIn(ex.message, origin), MAX_MESSAGE_CHARS);
     const first = ex.frames.find((f) => !isLibraryUrl(f.url, origin));
     const at = first ? `${shortUrl(first.url, origin)}:${first.line}:${first.col}` : undefined;
-    const key = `${message}\n${at ?? ""}`;
+    // With no frame in the app, the frame it was thrown in is what there is.
+    const top = first ? undefined : ex.frames.find((f) => f.url);
+    const thrownIn = top ? `${shortUrl(top.url, origin)}:${top.line}:${top.col}` : undefined;
+    const devTooling = top ? isDevToolingUrl(top.url, origin) : false;
+    const key = `${message}\n${at ?? thrownIn ?? ""}`;
     const seen = merged.get(key);
     if (seen) {
       seen.count++;
@@ -267,6 +312,8 @@ function reportExceptions(
     merged.set(key, {
       message,
       ...(at ? { at } : {}),
+      ...(thrownIn ? { thrownIn } : {}),
+      ...(devTooling ? { devTooling } : {}),
       ...(stack.length > 0 ? { stack } : {}),
       count: 1,
     });
@@ -533,6 +580,25 @@ const NEXT: Partial<Record<PreviewStatus, string>> = {
     "Check the dev server is up: `curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/`. Do not restart it yourself.",
 };
 
+/**
+ * What to do about a crash, by where the first error was thrown. The advice
+ * used to be one sentence, "open the file the first exception names", which is
+ * no help for an error that names no file of the app's and is wrong for one
+ * the app did not cause.
+ */
+const NEXT_CRASHED_IN_TOOLING =
+  "This error was thrown by the dev server's own code in the page (see `thrownIn`), not by the app: do not edit the app's files to fix it. The usual cause is that the Vite installed in the project is not the version the dev server is running. Compare `node_modules/vite/package.json` with the `VITE v…` line in `/home/user/.tau-vite.log`; if they differ, install the running version (`bun add -d vite@<that version>`), then run `touch vite.config.ts` so the dev server reloads itself, wait a few seconds and inspect again. Installing alone is not enough: the server goes on serving the script it already read.";
+const NEXT_CRASHED_IN_LIBRARY =
+  "No file of the app's is in the stack: the error surfaced inside a package (see `thrownIn`), usually because of what the app passed to it. Read the message for what was wrong with the value, find where the app uses that package, and fix it there. Do not edit files in `node_modules`.";
+
+function nextFor(status: PreviewStatus, first: ReportException | undefined): string | undefined {
+  if (status === "crashed" && first && !first.at) {
+    if (first.devTooling) return NEXT_CRASHED_IN_TOOLING;
+    if (first.thrownIn) return NEXT_CRASHED_IN_LIBRARY;
+  }
+  return NEXT[status];
+}
+
 function unreachableSummary(raw: RawInspection): string {
   if (raw.navigationError) return `The page could not be loaded: ${clip(raw.navigationError, 160)}.`;
   if (raw.httpStatus !== undefined && raw.httpStatus >= 400) {
@@ -557,7 +623,7 @@ export function buildReport(raw: RawInspection, opts: { verbose?: boolean } = {}
 
   const title = raw.dom?.title?.trim();
   const showRendered = raw.dom && !raw.dom.rootEmpty;
-  const next = NEXT[status];
+  const next = nextFor(status, exceptions.list[0]);
   return fitReport({
     path: raw.path,
     status,
@@ -666,9 +732,18 @@ export function describeFindings(report: PreviewReport): string {
     if (report.buildError.frame) lines.push(`\`\`\`\n${report.buildError.frame}\n\`\`\``);
   }
   for (const ex of report.exceptions ?? []) {
-    lines.push(`- Error thrown${ex.at ? ` at \`${ex.at}\`` : ""}: ${ex.message}`);
+    const where = ex.at
+      ? ` at \`${ex.at}\``
+      : ex.thrownIn
+        ? ` in \`${ex.thrownIn}\`${ex.devTooling ? " (the dev server's own code, not the app's)" : " (a package, not the app's own code)"}`
+        : "";
+    lines.push(`- Error thrown${where}: ${ex.message}`);
     if (ex.stack && ex.stack.length > 1) lines.push(`  Stack: ${ex.stack.slice(0, 5).join(" ← ")}`);
   }
+  // A run sent back with "fix the app" over an error the app did not cause
+  // would go looking in the app. Say where to look instead.
+  const first = report.exceptions?.[0];
+  if (first && !first.at && first.devTooling) lines.push(`- ${NEXT_CRASHED_IN_TOOLING}`);
   for (const r of report.network?.failed ?? []) {
     lines.push(
       `- Request failed: ${r.method} ${r.url} → ${r.status ?? r.error ?? "no response"}${r.body ? ` — ${r.body}` : ""}`,

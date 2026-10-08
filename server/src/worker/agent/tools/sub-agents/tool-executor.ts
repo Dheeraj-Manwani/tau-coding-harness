@@ -11,6 +11,8 @@ import { editFile } from "../functions/edit";
 import { deleteFile } from "../functions/delete";
 import { webSearch } from "../functions/web-search";
 import { readDocTool } from "../functions/read-doc";
+import { searchHistory } from "../functions/search-history";
+import { markBeforeCommand, saveShellChanges } from "../functions/shell-changes";
 
 /** Restricted tool surface for sub-agents — no ask_user, plans, or nested dispatch. */
 export async function executeSubAgentTool(
@@ -29,8 +31,14 @@ export async function executeSubAgentTool(
       return listDir(input, sandbox);
     case "grep":
       return grepTool(input, sandbox);
-    case "run_command":
-      return runCommand(input, sandbox);
+    case "run_command": {
+      // What a command leaves behind is kept, as for the main agent.
+      const marked = await markBeforeCommand(sandbox);
+      const result = await runCommand(input, sandbox);
+      if (!marked || "background" in result) return result;
+      const kept = await saveShellChanges(sandbox, jobId, projectId, userId, indexer);
+      return kept.saved.length > 0 ? { ...result, savedFiles: kept.saved.slice(0, 12) } : result;
+    }
     case "tail_command_output":
       return tailCommandOutput(input, sandbox);
     case "wait_for_port":
@@ -41,6 +49,8 @@ export async function executeSubAgentTool(
       return webSearch(input);
     case "read_doc":
       return readDocTool(input);
+    case "search_history":
+      return searchHistory(input, projectId);
     case "create_file":
       return createFile(input, sandbox, jobId, projectId, userId, indexer);
     case "edit_file":

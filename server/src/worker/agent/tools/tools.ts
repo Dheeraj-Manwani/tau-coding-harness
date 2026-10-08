@@ -100,6 +100,36 @@ export const BASE_APP_TOOLS = [
   {
     type: "function",
     function: {
+      name: "generate_image",
+      description:
+        "Make a picture and save it into the project. For what `search_images` cannot find: artwork for an app whose look is made of it (a surreal, painted or collage style), or a hero picture for a subject that has no good photographs. It costs money and a run has a handful: use `search_images` for anything that exists, and generate only what does not. Not for logos, text, charts, screenshots or icons. The app's art direction and main colour are added for you; describe the subject, setting, light and mood. Returns the path to use in the app.",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description:
+              "What the picture shows, in one or two sentences: the subject, where it is, the light, the mood. No text in the picture.",
+          },
+          path: {
+            type: "string",
+            description:
+              "Where to save it under 'public/', named for what it shows, e.g. 'public/hero-lake.jpg'. The extension is corrected to match the picture.",
+          },
+          aspect_ratio: {
+            type: "string",
+            enum: ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9"],
+            description: "Shape of the picture. Defaults to 16:9, which suits a hero.",
+          },
+        },
+        required: ["prompt", "path"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "dispatch_design_reviewer",
       description:
         "Have the app looked at. You write markup and never see it rendered; this renders the screens you name at desktop and phone width, shows the screenshots to a reviewer that can see, and returns what it finds wrong: broken or overflowing layout, a phone layout that does not work, departures from the app's design, generic defaults, placeholder content, unreadable text. Each finding is marked [broken] (fix it) or [polish] (optional). Call it after you build or reshape a screen and fix what is broken; you may then call it once more for the same screens to confirm. A screen gets those two looks in a run and no more. It reviews what is on screen when it loads, and with steps, a screen after a button is pressed or a field filled; a page behind a login is not seen, and an embedded map or video may not render for it. It does not edit files.",
@@ -233,7 +263,7 @@ export const TOOL_DEFINITIONS = [
           query: {
             type: "string",
             description:
-              "Words to look for, e.g. 'pricing page' or 'stripe webhook'. A message must contain all of them. Put the query in double quotes to match an exact phrase.",
+              "Words to look for, e.g. 'pricing page' or 'stripe webhook'. Messages with the most of the words come first, and a message need not have all of them. A word also finds its other forms (measures finds measurements). Put the query in double quotes to match an exact phrase.",
           },
           around: {
             type: "number",
@@ -896,30 +926,30 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "dispatch_implementer",
-  //     description:
-  //       "Dispatch a sub-agent in an isolated context to implement a self-contained goal. Unlike the other sub-agents, it edits files: it has read tools to find existing conventions in the codebase itself (route paths, response shapes, naming) as well as write tools, so you don't have to pre-resolve every field and type before dispatching it. Use it to offload a well-scoped chunk of implementation instead of writing every line yourself; don't use it for anything touching shared files (App.tsx, src/main.tsx, .tau/CONTEXT.md) or spanning the whole app.",
-  //     parameters: {
-  //       type: "object",
-  //       properties: {
-  //         goal: {
-  //           type: "string",
-  //           description:
-  //             "What to build, in plain terms, e.g. 'Add a POST /api/orders route that creates an order and returns its id' or 'Build a settings page with a dark mode toggle that persists to localStorage.'",
-  //         },
-  //         relevant_files: {
-  //           type: "array",
-  //           items: { type: "string" },
-  //           description:
-  //             "Optional: file paths already known to be relevant (e.g. a schema file, a similar existing route). Not required — the sub-agent can find what it needs itself.",
-  //         },
-  //       },
-  //       required: ["goal"],
-  //       additionalProperties: false,
-  //     },
-  //   },
-  // },
+  {
+    type: "function",
+    function: {
+      name: "dispatch_implementer",
+      description:
+        "Dispatch a sub-agent in an isolated context to implement a self-contained goal. Unlike the other sub-agents, it edits files: it has read tools to find existing conventions in the codebase itself (route paths, response shapes, naming) as well as write tools, so you don't have to pre-resolve every field and type before dispatching it. Use it to offload a well-scoped chunk of implementation instead of writing every line yourself; don't use it for anything touching shared files (App.tsx, src/main.tsx, .tau/CONTEXT.md) or spanning the whole app.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description:
+              "What to build, in plain terms, e.g. 'Add a POST /api/orders route that creates an order and returns its id' or 'Build a settings page with a dark mode toggle that persists to localStorage.'",
+          },
+          relevant_files: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Optional: file paths already known to be relevant (e.g. a schema file, a similar existing route). Not required — the sub-agent can find what it needs itself.",
+          },
+        },
+        required: ["goal"],
+        additionalProperties: false,
+      },
+    },
+  },
 ] as const satisfies readonly ChatCompletionToolDef[];

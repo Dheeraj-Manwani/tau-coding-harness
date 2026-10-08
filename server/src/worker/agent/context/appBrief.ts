@@ -184,11 +184,45 @@ function resolveImport(spec: string, paths: ReadonlySet<string>): string | null 
   return null;
 }
 
+/**
+ * Routes written as data — `createBrowserRouter([{ path: "/about", element:
+ * <About /> }])` — rather than as `<Route>` elements. Each is rewritten as the
+ * attributes of a `<Route>`, so one reader serves both.
+ */
+function objectRouteTags(src: string): string[] {
+  const tags: string[] = [];
+  const object =
+    /\{\s*(?:index:\s*true\s*,\s*|path:\s*(?:"[^"]*"|'[^']*'|`[^`]*`)\s*,\s*)(?:[^{}]|\{[^{}]*\})*?(?:element:\s*<\s*[A-Za-z_][\w.]*|Component:\s*[A-Za-z_]\w*)/g;
+  for (const m of src.matchAll(object)) {
+    const attrs = m[0]
+      .replace(/^\{\s*/, "")
+      .replace(/index:\s*true\s*,?/, " index ")
+      .replace(/path:\s*("[^"]*"|'[^']*'|`[^`]*`)\s*,?/, "path=$1 ")
+      .replace(/element:\s*(<\s*[A-Za-z_][\w.]*)/, "element={$1")
+      .replace(/Component:\s*([A-Za-z_]\w*)/, "Component={$1");
+    tags.push(`<Route ${attrs}${/element=\{</.test(attrs) ? " />}" : "}"} />`);
+  }
+  return tags;
+}
+
+/**
+ * When no routes could be read from `src/App.tsx`: the files that look like
+ * screens, so the agent is not shown an empty list as if the app had none. An
+ * app can route by state (`useState("home")`), by files, or by a library the
+ * readers above do not know.
+ */
+export function pageFiles(paths: ReadonlySet<string>): string[] {
+  return [...paths]
+    .filter((p) => /^src\/(pages|routes|views|screens)\/[^/]+\.(tsx|jsx)$/.test(p))
+    .sort()
+    .slice(0, MAX_ROUTES);
+}
+
 /** The pages routed in `src/App.tsx`, as `path → Component (file)`. */
 export function pageRoutes(appTsx: string, paths: ReadonlySet<string>): string[] {
   const imports = importsOf(appTsx);
   const lines: string[] = [];
-  for (const tag of routeTags(appTsx)) {
+  for (const tag of [...routeTags(appTsx), ...objectRouteTags(appTsx)]) {
     const path = tag.match(
       /\bpath=(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/,
     );
@@ -298,6 +332,14 @@ export function renderAppBrief(parts: AppBriefParts, audience: BriefAudience): s
   const pages = parts.appTsx ? pageRoutes(parts.appTsx, paths) : [];
   if (pages.length > 0) {
     sections.push(`<pages from="src/App.tsx">\n${pages.join("\n")}\n</pages>`);
+  } else {
+    // Nothing read as a route: say what is there, rather than nothing.
+    const files = pageFiles(paths);
+    if (files.length > 0) {
+      sections.push(
+        `<pages note="no routes could be read from src/App.tsx; these files look like screens">\n${files.join("\n")}\n</pages>`,
+      );
+    }
   }
 
   const api = apiRoutes(parts.serverSources ?? []);

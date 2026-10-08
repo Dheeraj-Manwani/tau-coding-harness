@@ -50,6 +50,8 @@ export interface StoredRow {
   type: string;
   content: unknown;
   createdAt: Date;
+  /** How many of the searched words the message contains, when the database counted. */
+  hits?: number;
 }
 
 interface StoredToolCall {
@@ -149,8 +151,15 @@ export function rowText(
  * person said; for the agent, true when the words are in what it said or in
  * the short arguments of a call (a path, a command, a plan).
  */
-function isDirectMatch(row: Pick<StoredRow, "role" | "type" | "content">, terms: readonly string[]): boolean {
+function isDirectMatch(
+  row: Pick<StoredRow, "role" | "type" | "content">,
+  terms: readonly string[],
+  hasAll = true,
+): boolean {
+  // Whatever a person said counts, with only some of the words or all; for the
+  // agent's own messages there is no telling without every word to look for.
   if (row.role !== "ASSISTANT") return true;
+  if (!hasAll) return false;
   const { said, calls } = assistantParts(row.content);
   const short: string[] = [said];
   for (const call of calls) {
@@ -177,6 +186,24 @@ export function queryTerms(query: unknown): string[] {
     ? [quoted[1]!.trim()]
     : query.split(/\s+/).map((t) => t.replace(/^["'`]+|["'`,.;:]+$/g, ""));
   return [...new Set(terms.map((t) => t.toLowerCase()).filter((t) => t.length >= 2))].slice(0, MAX_QUERY_TERMS);
+}
+
+/**
+ * A word cut back to what its forms share, so that "measures" finds
+ * "measurements" and "pricing" finds "priced". Crude on purpose: it strips the
+ * commonest endings and keeps at least four letters, and since the search is
+ * for a stretch of letters inside words, a stem that is a little too short only
+ * finds a little more. A phrase, or a short word, is left as it is.
+ */
+export function stemOf(term: string): string {
+  if (/\s/.test(term) || term.length < 6) return term;
+  const stem = term.replace(/(ments?|ings?|ers?|ed|es|s|ly)$/i, "");
+  return stem.length >= 4 ? stem : term;
+}
+
+/** The terms of a search, as the stretches of letters looked for. */
+export function searchStems(terms: readonly string[]): string[] {
+  return [...new Set(terms.map(stemOf))];
 }
 
 /** A term as a SQL `ILIKE` pattern, with its own `%`, `_` and `\` made literal. */
@@ -230,21 +257,25 @@ export interface HistoryMatch {
  * otherwise find itself.
  */
 export function toMatches(rows: readonly StoredRow[], terms: readonly string[]): HistoryMatch[] {
-  const direct: HistoryMatch[] = [];
-  const inFiles: HistoryMatch[] = [];
+  // Four kinds, in this order: said, with every word; in a file, with every
+  // word; and then the same two for a message with only some of the words. The
+  // rows come in the order the database ranked them, which each kind keeps.
+  const tiers: HistoryMatch[][] = [[], [], [], []];
   for (const row of rows) {
     const from = speakerOf(row);
     if (from !== "user" && from !== "assistant") continue;
     const text = rowText(row, 300, terms);
     if (!text) continue;
-    (isDirectMatch(row, terms) ? direct : inFiles).push({
+    const all = (row.hits ?? terms.length) >= terms.length;
+    const said = isDirectMatch(row, terms, all);
+    tiers[(all ? 0 : 2) + (said ? 0 : 1)]!.push({
       n: row.sequence,
       from,
       on: row.createdAt.toISOString().slice(0, 10),
       excerpt: excerptAround(text, terms),
     });
   }
-  return [...direct, ...inFiles].slice(0, MAX_HISTORY_MATCHES);
+  return tiers.flat().slice(0, MAX_HISTORY_MATCHES);
 }
 
 export interface HistoryMessage {

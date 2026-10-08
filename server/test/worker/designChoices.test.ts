@@ -96,15 +96,15 @@ const offer = (over: Partial<DirectorOptions> = {}): DirectorOptions => ({
 });
 
 describe("the style library", () => {
-  test("has twenty-four styles, each a different silhouette", () => {
-    expect(STYLE_KEYS).toHaveLength(24);
+  test("has twenty-eight styles, each a different silhouette", () => {
+    expect(STYLE_KEYS).toHaveLength(28);
     expect(ALL_STYLES.map((s) => s.key)).toEqual([...STYLE_KEYS]);
     const silhouettes = new Set(
       ALL_STYLES.map((s) =>
         [s.skin.controlRadius, s.skin.cardRadius, s.skin.buttonCase, s.skin.field, s.skin.tabs, s.skin.borderWidth, s.fonts.display.name].join("|"),
       ),
     );
-    expect(silhouettes.size).toBe(24);
+    expect(silhouettes.size).toBe(28);
   });
 
   test("every style offers two other font pairings, each different from its own", () => {

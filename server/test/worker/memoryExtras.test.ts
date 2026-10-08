@@ -166,9 +166,12 @@ describe("the history lookup tool", () => {
     expect(CLEARABLE_TOOLS.has("search_history")).toBe(true);
   });
 
-  test("a sub-agent does not get it: it has no conversation of its own to look back on", () => {
+  test("a sub-agent on the base app gets it too: the project's conversation is stored whoever is working", () => {
+    // Phase 7 of the plan (S2). A sub-agent has no conversation of its own, but
+    // the user's earlier requests are the project's, and its task cannot repeat all of them.
     for (const kind of ["explorer", "debugger", "verifier", "implementer"] as const) {
-      expect(toolsFor(kind, 2).map((t) => (t.type === "function" ? t.function.name : ""))).not.toContain("search_history");
+      expect(toolsFor(kind, 2).map((t) => (t.type === "function" ? t.function.name : ""))).toContain("search_history");
+      expect(toolsFor(kind, 1).map((t) => (t.type === "function" ? t.function.name : ""))).not.toContain("search_history");
     }
   });
 

@@ -52,6 +52,10 @@ export const SAMPLE_ACCENTS: Record<StyleKey, string> = {
   scrapbook: "#e0566f",
   wabisabi: "#8a6f4e",
   victorian: "#8c1c26",
+  surrealism: "#e07a5f",
+  maximalism: "#ff3d81",
+  ethereal: "#9b8cf0",
+  sketch: "#e4572e",
 };
 
 /** Accents offered as one-click choices beside the colour picker. */

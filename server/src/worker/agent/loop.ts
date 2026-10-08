@@ -1,5 +1,6 @@
 import type OpenAI from "openai";
 import { clientForModel } from "@/lib/kimi";
+import { imageGenerationAvailable } from "@/lib/openrouter";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { getNextSequence } from "@/lib/sequence";
@@ -46,7 +47,7 @@ import { requestText, restoredEntry } from "./context/restore";
 import { loadStandingNote } from "./context/standing";
 import { loadPlan, unfinishedPlanNote } from "./plan";
 import { createClearingState } from "./context/clearing";
-import { jobIdsIn, shapeHistory } from "./context/history";
+import { jobIdsIn, reasoningOf, shapeHistory } from "./context/history";
 import { deliverDocs, docStateFrom } from "./docs/delivery";
 import {
   isMemoryPath,
@@ -87,6 +88,13 @@ type ToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
 type FunctionToolCall =
   OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall;
 
+/**
+ * What the agent is told when it has used all its turns. It has no tools on
+ * this turn, so it cannot start anything it would then leave half done.
+ */
+export const TURN_CAP_NUDGE =
+  "You have used all the turns this request allows, and can make no more tool calls. Write your closing message to the user now, in plain language: what is built and working, what you did not get to, and what to ask for next to finish. Do not apologise at length, and do not describe files or tools.";
+
 function isFunctionToolCall(tc: ToolCall): tc is FunctionToolCall {
   return tc.type === "function";
 }
@@ -113,7 +121,7 @@ const SUBAGENT_TOOLS = new Set<string>([
   "dispatch_debugger",
   "dispatch_verifier",
   "dispatch_design_reviewer",
-  // "dispatch_implementer",
+  "dispatch_implementer",
 ]);
 
 // Planning/todo-tracking tools are dropped for LOW: the calls themselves cost
@@ -132,10 +140,19 @@ function toolsForRun(
   effort: Effort,
   generation: TemplateGeneration,
 ): OpenAI.Chat.Completions.ChatCompletionTool[] {
-  const byEffort =
+  // A sub-agent that writes code is on trial (ENABLE_IMPLEMENTER, off by default).
+  const implementerOnTrial = (t: { function: { name: string } }) =>
+    t.function.name !== "dispatch_implementer" || env.ENABLE_IMPLEMENTER;
+  const byEffort = (
     effort === "LOW"
       ? TOOL_DEFINITIONS.filter((t) => !LOW_EXCLUDED_TOOLS.has(t.function.name))
-      : TOOL_DEFINITIONS;
+      : [...TOOL_DEFINITIONS]
+  ).filter(implementerOnTrial);
+
+  // Without a key for it there is no tool for making pictures, rather than a
+  // tool that always says no. And never on a quick build: it costs real money.
+  const withoutPictures = (t: { function: { name: string } }) =>
+    t.function.name !== "generate_image" || (effort !== "LOW" && imageGenerationAvailable());
   // Generation 2 has no stack to choose, so its `provision_sandbox` takes no
   // `template` argument (replaced in place to keep the tool order stable), and
   // it grows a backend or database through two tools generation 1 never sees.
@@ -149,7 +166,7 @@ function toolsForRun(
               ? PROVISION_SANDBOX_BASE_TOOL
               : t,
           ),
-          ...BASE_APP_TOOLS,
+          ...BASE_APP_TOOLS.filter(withoutPictures),
         ]
       : byEffort;
   return defs as unknown as OpenAI.Chat.Completions.ChatCompletionTool[];
@@ -157,6 +174,7 @@ function toolsForRun(
 
 const FILE_MUTATING_TOOLS = new Set<string>([
   "create_file",
+  "generate_image",
   "edit_file",
   "delete_file",
   "dispatch_implementer",
@@ -473,7 +491,8 @@ export async function runAgentLoop(
     // raised already (finishGate.ts).
     const work = createWorkLog();
     const gate: GateState = new Set();
-    const calibration = createCalibration();
+    // The tool schema is a fixed part of every request, counted apart from the messages.
+    const calibration = createCalibration(TOOL_SCHEMA_TOKENS);
     // What has been cleared from the model-facing context so far this run.
     // Carried across turns so a decision, once made, is never undone.
     const clearing = createClearingState();
@@ -488,6 +507,9 @@ export async function runAgentLoop(
 
     type StopReason = Exclude<CleanFinishReason, "DONE">;
     let stopReason: StopReason | null = null;
+    // The run has used its turns and is being given one more, without tools, to
+    // say where it got to (`TURN_CAP_NUDGE`).
+    let wrappingUp = false;
 
     const finishRun = async (reason: StopReason): Promise<void> => {
       const notice =
@@ -523,10 +545,11 @@ export async function runAgentLoop(
       if (stopReason) break;
 
       if (turn++ >= budget.maxAgentTurns) {
-        throw new AgentStopError(
-          FinishReason.TURN_CAP,
-          `Agent exceeded ${budget.maxAgentTurns} turns without finishing`,
-        );
+        // Stopping here with nothing said leaves the user with a half-built app
+        // and no idea how far it got. One more turn, with no tools to call, in
+        // which it reports. The run still ends as a turn-cap stop afterwards.
+        wrappingUp = true;
+        entries.push({ param: { role: "user", content: TURN_CAP_NUDGE }, seq: null });
       }
 
       // Wall-clock backstop. `maxAgentTurns` bounds a *progressing* loop; it
@@ -666,7 +689,7 @@ export async function runAgentLoop(
       }
 
       const contextTokens =
-        estimateTokensCalibrated(mgmt.ctx, calibration) + TOOL_SCHEMA_TOKENS;
+        estimateTokensCalibrated(mgmt.ctx, calibration);
       const contextBudget = contextBudgetForModel(model);
       log.info("job.turn", {
         jobId,
@@ -700,7 +723,7 @@ export async function runAgentLoop(
       const stream = clientForModel(model).chat.completions.stream({
         model,
         max_tokens: MAX_TOKENS,
-        tools,
+        ...(wrappingUp ? {} : { tools }),
         messages: mgmt.ctx,
       });
 
@@ -751,11 +774,7 @@ export async function runAgentLoop(
       // Ground-truth correction: compare what we guessed for this exact payload
       // (messages + tool schema) against what the model actually reports.
       if (inputTokens > 0) {
-        recalibrate(
-          calibration,
-          estimateTokens(mgmt.ctx) + TOOL_SCHEMA_TOKENS,
-          inputTokens,
-        );
+        recalibrate(calibration, estimateTokens(mgmt.ctx), inputTokens);
       }
 
       const { assistantMessageId, sequence } = await prisma.$transaction(
@@ -777,6 +796,10 @@ export async function runAgentLoop(
                 // Never persist a truncated/partial tool call either: on a
                 // recovery reload it is an assistant tool_call with no result.
                 tool_calls: isToolTurn ? toolCalls : null,
+                // The model's own reasoning, which DeepSeek wants back with every
+                // tool-call turn it is shown again. Without it a later request
+                // (a resumed run, any follow-up) is refused with a 400.
+                ...reasoningOf(assistant),
               } as unknown as Prisma.InputJsonValue,
               sequence: seq,
               inputTokens,
@@ -837,6 +860,14 @@ export async function runAgentLoop(
         ) {
           holdExhausted = true;
         }
+      }
+
+      // The report is written and charged for; now the run ends as it always did.
+      if (wrappingUp) {
+        throw new AgentStopError(
+          FinishReason.TURN_CAP,
+          `Agent exceeded ${budget.maxAgentTurns} turns without finishing`,
+        );
       }
 
       if (env.CREDITS_ENFORCE && isToolTurn && !stopReason) {

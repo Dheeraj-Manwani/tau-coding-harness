@@ -267,7 +267,7 @@ describe("tools for generation 2", () => {
 
   test("the setup and guide tools exist only outside the generation-1 list", () => {
     const names = BASE_APP_TOOLS.map((t) => t.function.name);
-    expect(names).toEqual(["add_backend", "add_database", "dispatch_design_reviewer", "read_doc"]);
+    expect(names).toEqual(["add_backend", "add_database", "generate_image", "dispatch_design_reviewer", "read_doc"]);
     const legacyNames = TOOL_DEFINITIONS.map((t) => t.function.name) as string[];
     for (const name of names) expect(legacyNames).not.toContain(name);
   });

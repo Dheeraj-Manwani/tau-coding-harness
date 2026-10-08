@@ -49,6 +49,10 @@ export const STYLE_KEYS = [
   "scrapbook",
   "wabisabi",
   "victorian",
+  "surrealism",
+  "maximalism",
+  "ethereal",
+  "sketch",
 ] as const;
 
 export type StyleKey = (typeof STYLE_KEYS)[number];
@@ -58,7 +62,7 @@ export function isStyleKey(value: unknown): value is StyleKey {
 }
 
 /**
- * The families the library is shown in, in the order they are shown. Twenty-four
+ * The families the library is shown in, in the order they are shown. Twenty-eight
  * styles in one grid is too many to scan; five short rows are not.
  */
 export const STYLE_GROUPS = [
@@ -236,6 +240,12 @@ export interface StyleSpec {
   name: string;
   /** One line on the look, for whoever is choosing a style. */
   look: string;
+  /**
+   * For a style whose look is made of artwork: the direction added to every
+   * picture the app generates (`generate_image`), so pictures made one at a
+   * time are one set. Omitted for a style that does without generated art.
+   */
+  art?: string;
   /** What it suits, for whoever is choosing a style. */
   suits: string;
   /** What it is wrong for — "Not for …" — which narrows a choice more than praise does. */

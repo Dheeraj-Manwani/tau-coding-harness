@@ -46,6 +46,17 @@ export const PRICING: Record<
     inputPerM: 1_000_000_000n,
     outputPerM: 4_000_000_000n,
   },
+  // A picture is a fixed 14,400 output tokens, billed by OpenRouter at $0.018:
+  // about $1.25 per million, so 1,275 credits per million at the same margin
+  // as the text models. One picture is about 18 credits.
+  "bytedance-seed/seedream-5-0-flash": {
+    inputPerM: 450_000_000n,
+    outputPerM: 1_275_000_000n,
+  },
+  "bytedance-seed/seedream-5-0-lite": {
+    inputPerM: 450_000_000n,
+    outputPerM: 2_500_000_000n,
+  },
 };
 
 const DEFAULT_PRICE = {

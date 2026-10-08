@@ -15,16 +15,20 @@ import { craft } from "./craft";
 import { cybercore } from "./cybercore";
 import { cyberpunk } from "./cyberpunk";
 import { editorial } from "./editorial";
+import { ethereal } from "./ethereal";
 import { formal } from "./formal";
 import { glass } from "./glass";
 import { luxe } from "./luxe";
+import { maximalism } from "./maximalism";
 import { minimal } from "./minimal";
 import { neon } from "./neon";
 import { neumorphic } from "./neumorphic";
 import { pixel } from "./pixel";
 import { playful } from "./playful";
 import { scrapbook } from "./scrapbook";
+import { sketch } from "./sketch";
 import { soft } from "./soft";
+import { surrealism } from "./surrealism";
 import { swiss } from "./swiss";
 import { synthwave } from "./synthwave";
 import { terminal } from "./terminal";
@@ -58,6 +62,10 @@ export const STYLES: Record<StyleKey, StyleSpec> = {
   scrapbook,
   wabisabi,
   victorian,
+  surrealism,
+  maximalism,
+  ethereal,
+  sketch,
 };
 
 export const ALL_STYLES: readonly StyleSpec[] = STYLE_KEYS.map((k) => STYLES[k]);

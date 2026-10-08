@@ -84,6 +84,27 @@ const envSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // Gives the agent `dispatch_implementer`, a sub-agent that writes code in its
+  // own context. Off while it is being tried (doc/CONTEXT_AND_MEMORY_PLAN.md §11,
+  // phase 7, S1): it was written and never run.
+  ENABLE_IMPLEMENTER: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+
+  // ── Picture generation (OpenRouter) ─────────────────────────────────────────
+  // Without the key there is no `generate_image` tool: nothing else changes.
+  OPEN_ROUTER_API_KEY: z.string().optional(),
+  OPEN_ROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
+  // Seedream 5.0 Flash: the cheapest of ByteDance's image models that was also
+  // the best at following a prompt (lib/openrouter.ts). Any OpenRouter model
+  // that outputs images works here.
+  IMAGE_MODEL: z.string().default("bytedance-seed/seedream-5-0-flash"),
+  // Most pictures one build may make. Each costs about 18 credits.
+  IMAGE_MAX_PER_RUN: z.coerce.number().int().nonnegative().default(4),
+  // Pictures being made at once, across every build in this process.
+  IMAGE_MAX_CONCURRENT: z.coerce.number().int().positive().default(3),
+
   ATTACHMENTS_ENABLED: z
     .string()
     .default("true")

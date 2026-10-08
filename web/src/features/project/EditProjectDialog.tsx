@@ -13,6 +13,8 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { conflictSummary, useCheckInstructions } from "@/src/features/settings/instructionCheck";
+import { useSettings } from "@/src/hooks/useSettings";
 import {
   useUpdateProject,
   type UpdateProjectResponse,
@@ -61,6 +63,8 @@ function EditProjectForm({
   const [instructions, setInstructions] = useState(project.instructions ?? "");
   const [tagDraft, setTagDraft] = useState("");
   const update = useUpdateProject(project.id);
+  const check = useCheckInstructions();
+  const { instructions: accountInstructions } = useSettings();
 
   const addTag = (raw: string) => {
     const value = raw.trim().slice(0, MAX_TAG_LENGTH);
@@ -94,6 +98,18 @@ function EditProjectForm({
       {
         onSuccess: (updated) => {
           toast.success("Project updated");
+          // Advice, a moment later: the project is saved whatever it says.
+          if (instructions.trim()) {
+            check.mutate(
+              { account: accountInstructions || undefined, project: instructions.trim() },
+              {
+                onSuccess: (conflicts) => {
+                  const said = conflictSummary(conflicts);
+                  if (said) toast(said, { duration: 9_000 });
+                },
+              },
+            );
+          }
           onOpenChange(false);
           onSaved?.(updated);
         },

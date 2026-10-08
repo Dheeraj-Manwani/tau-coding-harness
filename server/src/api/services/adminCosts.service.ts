@@ -22,6 +22,7 @@ const PROVIDER_RATES = [
   { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", cacheHitUsd: 0.014, inputUsd: 0.44, outputUsd: 1.32, note: "Peak rate" },
   { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", cacheHitUsd: 0.044, inputUsd: 1.32, outputUsd: 3.96, note: "Peak rate" },
   { id: "kimi-k2.7-code", label: "Kimi K2.7 Code", cacheHitUsd: 0.19, inputUsd: 0.95, outputUsd: 4, note: "Published rate" },
+  { id: "bytedance-seed/seedream-5-0-flash", label: "Seedream 5.0 Flash (pictures)", cacheHitUsd: 0, inputUsd: 0.44, outputUsd: 1.25, note: "Billed at $0.018 a picture" },
 ] as const;
 
 export interface CostSeed {

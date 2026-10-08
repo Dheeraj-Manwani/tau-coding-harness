@@ -90,8 +90,7 @@ export async function manageContext(
   if (before > CONTEXT_COMPACT_RATIO * budget) {
     // The planner keeps a running total as it clears; this converts the
     // characters it frees into the calibrated tokens the thresholds are in.
-    const uncalibrated = estimateTokens(ctx);
-    const calibrationFactor = uncalibrated > 0 ? before / uncalibrated : 1;
+    const calibrationFactor = opts.calibration.factor;
     const added = planClearing(raw, opts.clearing, {
       tokensNow: before,
       targetTokens: CONTEXT_CLEAR_TARGET_RATIO * budget,

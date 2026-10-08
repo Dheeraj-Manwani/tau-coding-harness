@@ -18,3 +18,10 @@ When the app needs real imagery — product photos, hero and background images, 
 
 ## When nothing suitable turns up
 Do not use a mismatched or low-resolution image, and do not leave a broken one. Build that spot from the theme instead — a block of color, a gradient made from the theme tokens, a pattern — and tell the user which image they may want to supply.
+
+## Making a picture instead
+`generate_image(prompt, "public/<name>.jpg", aspect_ratio)` makes one and saves it into the project. It costs money and a run has only a few, so it is for what search cannot give you:
+- **Artwork for an app whose look is made of it.** If `.tau/DESIGN.md` says to generate the artwork (Surrealism, Maximalism, Ethereal, Conceptual sketch), make the hero picture and one or two more with it rather than searching. The style's art direction and the app's main colour are added for you, so the pictures match.
+- **A hero for a subject with no good photographs**, after a search turned up nothing usable.
+
+Not for logos, text, charts, screenshots, icons, or a photograph of a real product, place or person: search for those. Describe the subject, the setting, the light and the mood in a sentence or two; never ask for words in the picture. Use the `path` it returns, give the `<img>` an `alt`, and set `aspect-ratio` and `object-cover` as for any image. If it says the run has made its pictures, or is not available, carry on with search and the theme.

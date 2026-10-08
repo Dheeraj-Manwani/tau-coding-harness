@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_USER_INSTRUCTIONS_CHARS } from "@/worker/agent/context/standing";
+import { MAX_PROJECT_INSTRUCTIONS_CHARS, MAX_USER_INSTRUCTIONS_CHARS } from "@/worker/agent/context/standing";
 import { normalizeDesignConfig } from "@/worker/design/config";
 import { STYLE_KEYS, type DesignConfig } from "@/worker/design/types";
 
@@ -41,6 +41,12 @@ export type TourRecord = z.infer<typeof tourRecordSchema>;
  * a file belongs to the project it was written for.
  */
 export type DefaultDesign = Omit<DesignConfig, "designMd" | "reference">;
+
+/** The two lists of standing instructions, to be read against each other. */
+export const checkInstructionsSchema = z.object({
+  account: z.string().max(MAX_USER_INSTRUCTIONS_CHARS).optional(),
+  project: z.string().max(MAX_PROJECT_INSTRUCTIONS_CHARS).optional(),
+});
 
 const dial = z.number().int().min(1).max(10);
 

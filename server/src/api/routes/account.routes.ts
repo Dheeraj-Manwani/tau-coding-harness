@@ -11,6 +11,7 @@ import {
   revokeApiKeys,
   rotateApiKey,
   setDailyCap,
+  checkInstructions,
   updatePreferences,
   updateProfile,
   uploadAvatar,
@@ -20,6 +21,7 @@ import {
   avatarRateLimiter,
   reauthRateLimiter,
   revealRateLimiter,
+  visualEditRateLimiter,
 } from "../middleware/rateLimit.middleware";
 
 const router = Router();
@@ -47,6 +49,9 @@ router.put("/api-key/cap", setDailyCap);
 // Account-level UI preferences (tours, motion, last effort). Reads ride along on
 // GET /auth/me; this is the only write path.
 router.patch("/preferences", updatePreferences);
+// One model call that reads standing instructions against each other. Throttled
+// like the other things that cost something.
+router.post("/instructions/check", visualEditRateLimiter, checkInstructions);
 
 // Profile: a name and a picture, nothing more. The picture is read through the
 // public `/avatars/:userId` redirect, mounted in index.ts.

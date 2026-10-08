@@ -52,6 +52,13 @@ export interface HistoryRow {
 interface StoredAssistant {
   content: string | null;
   tool_calls: ToolCall[] | null;
+  reasoning_content?: string;
+}
+
+/** The reasoning the model gave a turn, as the part of its message to store. */
+export function reasoningOf(message: object): { reasoning_content?: string } {
+  const text = (message as { reasoning_content?: unknown }).reasoning_content;
+  return typeof text === "string" && text ? { reasoning_content: text } : {};
 }
 
 interface StoredToolResult {
@@ -224,7 +231,13 @@ export function shapeHistory(
         param: {
           role: "assistant",
           content: stored.content,
-          ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
+          ...(toolCalls?.length
+            ? {
+                tool_calls: toolCalls,
+                // Turns stored before reasoning was kept have none to give back.
+                reasoning_content: stored.reasoning_content ?? "",
+              }
+            : {}),
         },
         seq: row.sequence,
       });

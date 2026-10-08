@@ -56,39 +56,50 @@ const CALIBRATION_MAX = 2;
 const CALIBRATION_SMOOTHING = 0.3;
 
 export interface TokenCalibration {
+  /** What the messages are multiplied by: how far chars/4 is from the tokenizer, for this job. */
   factor: number;
+  /**
+   * Tokens every request carries whatever the messages say: the tool schema.
+   * Added after the messages are scaled, not folded into the scale. Folded in,
+   * the factor was the ratio of a total that is part fixed to an estimate that
+   * is all variable, so it ran high just after a summary, when the messages had
+   * shrunk and the fixed part was most of the total.
+   */
+  fixed: number;
 }
 
 /** Fresh, neutral calibration — scoped per job. Drift comes from this job's
- *  own content mix, so it isn't worth carrying across jobs or projects. */
-export function createCalibration(): TokenCalibration {
-  return { factor: 1 };
+ *  own content mix, so it isn't worth carrying across jobs or projects.
+ *  @param fixed  tokens a request carries beyond its messages */
+export function createCalibration(fixed = 0): TokenCalibration {
+  return { factor: 1, fixed };
 }
 
 /**
  * Fold one real `usage.prompt_tokens` reading back into the calibration
- * factor. `rawEstimate` must be `estimateTokens()` (uncalibrated) for the
- * exact same payload that produced `actualTokens`.
+ * factor. `rawEstimate` must be `estimateTokens()` (uncalibrated, of the
+ * messages alone) for the exact same payload that produced `actualTokens`; the
+ * fixed cost is taken off what the provider counted before the two are compared.
  */
 export function recalibrate(
   cal: TokenCalibration,
   rawEstimate: number,
   actualTokens: number,
 ): void {
-  if (rawEstimate <= 0 || actualTokens <= 0) return;
+  if (rawEstimate <= 0 || actualTokens <= cal.fixed) return;
   const sample = Math.min(
     CALIBRATION_MAX,
-    Math.max(CALIBRATION_MIN, actualTokens / rawEstimate),
+    Math.max(CALIBRATION_MIN, (actualTokens - cal.fixed) / rawEstimate),
   );
   cal.factor += CALIBRATION_SMOOTHING * (sample - cal.factor);
 }
 
-/** `estimateTokens`, corrected by the running calibration factor. */
+/** `estimateTokens`, corrected by the running calibration factor, plus the fixed cost of a request. */
 export function estimateTokensCalibrated(
   messages: MessageParam[],
   cal: TokenCalibration,
 ): number {
-  return Math.ceil(estimateTokens(messages) * cal.factor);
+  return Math.ceil(estimateTokens(messages) * cal.factor + cal.fixed);
 }
 
 /**

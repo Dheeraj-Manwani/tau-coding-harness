@@ -44,6 +44,8 @@ import { dispatchDebugger } from "./sub-agents/dispatch-debugger";
 import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
 import { dispatchImplementer } from "./sub-agents/dispatch-implementer";
 import { dispatchDesignReviewer } from "./sub-agents/dispatch-design-reviewer";
+import { generateImageTool } from "./functions/generate-image";
+import { markBeforeCommand, saveShellChanges } from "./functions/shell-changes";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { finishDesign, startDesign } from "@/worker/design/provision";
@@ -286,6 +288,8 @@ async function executeToolInner(
         return await grepTool(input, sandbox);
       case "delete_file":
         return await deleteFile(input, sandbox, jobId, projectId, indexer);
+      case "generate_image":
+        return await generateImageTool(input, sandbox, jobId, projectId, userId, indexer);
       case "download_asset":
         return await downloadAsset(
           input,
@@ -324,6 +328,9 @@ async function executeToolInner(
           indexer,
         );
       case "run_command": {
+        // Mark the moment before, so that what the command leaves behind can
+        // be found and saved afterwards (functions/shell-changes.ts).
+        const marked = await markBeforeCommand(sandbox);
         const result = await runCommand(input, sandbox);
         // `bun add` rewrites package.json and the lockfile in the sandbox
         // without any file tool seeing it. Unsaved, the next sandbox is
@@ -342,6 +349,27 @@ async function executeToolInner(
                 error: String(err),
               }),
           );
+        }
+        // Files the command made or changed: `shadcn add`, a generator, a
+        // download. Without this they vanish with the sandbox.
+        if (marked && !("background" in result)) {
+          const kept = await saveShellChanges(sandbox, jobId, projectId, userId, indexer);
+          if (kept.saved.length > 0 || kept.skipped.length > 0) {
+            return {
+              ...result,
+              ...(kept.saved.length > 0
+                ? {
+                    savedFiles: kept.saved.slice(0, 12),
+                    ...(kept.saved.length > 12 ? { savedMore: kept.saved.length - 12 } : {}),
+                  }
+                : {}),
+              ...(kept.skipped.length > 0
+                ? {
+                    notSaved: kept.skipped.slice(0, 6).map((s) => `${s.path} (${s.why})`),
+                  }
+                : {}),
+            };
+          }
         }
         return result;
       }
@@ -393,15 +421,17 @@ async function executeToolInner(
           userId,
           indexer,
         );
-      // case "dispatch_implementer":
-      //   return await dispatchImplementer(
-      //     input,
-      //     sandbox,
-      //     jobId,
-      //     projectId,
-      //     userId,
-      //     indexer,
-      //   );
+      case "dispatch_implementer":
+        return await dispatchImplementer(
+          input,
+          sandbox,
+          jobId,
+          projectId,
+          userId,
+          indexer,
+          model,
+          effort,
+        );
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

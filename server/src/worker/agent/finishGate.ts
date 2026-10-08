@@ -103,6 +103,15 @@ export function noteWork(
     if (!path) return;
     if (path === MEMORY_PATH) work.memoryTouched = true;
     else (tool === "create_file" ? work.created : work.edited).add(path);
+  } else if (tool === "run_command") {
+    // Files a command made are files the run created, as far as the memory
+    // gate is concerned (tools/functions/shell-changes.ts).
+    const saved = output.savedFiles;
+    if (Array.isArray(saved)) {
+      for (const file of saved) {
+        if (typeof file === "string" && file !== MEMORY_PATH) work.created.add(appRelativePath(file));
+      }
+    }
   } else if (tool === "delete_file") {
     work.deleted++;
   } else if (tool === "add_backend" || tool === "add_database") {

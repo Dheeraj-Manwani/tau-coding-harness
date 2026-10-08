@@ -4,7 +4,8 @@ import * as accountService from "../services/account.service";
 import * as reauthService from "../services/reauth.service";
 import * as preferencesService from "../services/preferences.service";
 import * as profileService from "../services/profile.service";
-import { patchPreferencesSchema } from "../schemas/preferences.schema";
+import { checkInstructionsSchema, patchPreferencesSchema } from "../schemas/preferences.schema";
+import { findConflicts } from "../lib/instructionConflicts";
 import { patchProfileSchema } from "../schemas/profile.schema";
 import { parse } from "../lib/utils";
 import { z } from "zod";
@@ -166,6 +167,25 @@ export async function updatePreferences(
         patch,
       ),
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /account/instructions/check — whether standing instructions contradict
+ * each other. Advice for the settings screen after a save; it saves nothing and
+ * is wrong sometimes, so nothing waits on it.
+ */
+export async function checkInstructions(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    requireUserId(req);
+    const { account, project } = parse(checkInstructionsSchema, req.body ?? {});
+    res.json({ conflicts: await findConflicts({ account, project }) });
   } catch (err) {
     next(err);
   }

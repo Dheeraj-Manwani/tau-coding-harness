@@ -20,6 +20,8 @@ import {
 } from "@/src/features/design/api";
 import { DesignPicker } from "@/src/features/design/DesignPicker";
 import { useSettings } from "@/src/hooks/useSettings";
+import { InstructionConflicts } from "@/src/features/settings/instructionConflicts";
+import { useCheckInstructions } from "@/src/features/settings/instructionCheck";
 
 /** Mirrors `MAX_USER_INSTRUCTIONS_CHARS` on the server. */
 const MAX_INSTRUCTIONS = 2_000;
@@ -38,6 +40,9 @@ export function StandingInstructionsCard() {
   const { instructions, setInstructions } = useSettings();
   const [draft, setDraft] = useState(instructions);
   const changed = draft.trim() !== instructions;
+  // What the check said about the text as last saved; gone as soon as it is edited.
+  const check = useCheckInstructions();
+  const conflicts = changed ? undefined : check.data;
 
   return (
     <div className={`${CARD} space-y-2.5`}>
@@ -90,6 +95,8 @@ export function StandingInstructionsCard() {
             onClick={() => {
               setInstructions(draft);
               setDraft(draft.trim());
+              if (draft.trim()) check.mutate({ account: draft.trim() });
+              else check.reset();
               toast.success(
                 draft.trim() ? "Instructions saved" : "Instructions cleared",
               );
@@ -99,6 +106,7 @@ export function StandingInstructionsCard() {
           </button>
         </span>
       </div>
+      <InstructionConflicts conflicts={conflicts} />
     </div>
   );
 }

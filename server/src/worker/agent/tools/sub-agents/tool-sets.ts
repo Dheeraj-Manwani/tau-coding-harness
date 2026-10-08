@@ -44,9 +44,11 @@ export const IMPLEMENTER_TOOLS = pick(
  * tau's guides, for a sub-agent on the base app. Its persona lists them
  * (`config.ts`): without the list it would not know to ask, and without the
  * tool it could not — which is how a debugger came to spend its turns reading
- * `node_modules` to learn what the `components` guide says in a paragraph.
+ * `node_modules` to learn what the `components` guide says in a paragraph. It
+ * can also look back through the project's conversation, for what the user said
+ * that its task does not repeat.
  */
-const GUIDE_TOOLS = pick("read_doc");
+const GUIDE_TOOLS = pick("read_doc", "search_history");
 
 /** The tools a sub-agent of this kind gets on an app of this generation. */
 export function toolsFor(

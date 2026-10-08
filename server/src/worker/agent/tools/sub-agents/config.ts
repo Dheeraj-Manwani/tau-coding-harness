@@ -77,6 +77,7 @@ export function appFacts(app: AppKind): string {
   if (app.generation === 2) {
     lines.push(
       "- What tau knows about the app — its memory, its design and a map of its files — is given to you with your task. Use it to find your way; you do not need to read `.tau/CONTEXT.md` or list the project first.",
+      "- If your task leans on something the user said earlier that it does not repeat — an exact wording, a decision, a reason — `search_history` finds it in the project's conversation.",
       "- The shadcn components here are built on Base UI, not Radix: there is no `asChild`. When something about a component surprises you, read the `components` guide before reading `node_modules`.",
       `- tau has short guides on how parts of this stack are used in this app. Read one with \`read_doc\` when your task touches what it covers:\n${docIndex()
         .split("\n")

@@ -6,6 +6,7 @@ import {
   NEIGHBOURS_EACH_SIDE,
   likePattern,
   queryTerms,
+  searchStems,
   toConversation,
   toMatches,
   type StoredRow,
@@ -79,31 +80,45 @@ export async function searchHistory(input: unknown, projectId: string) {
       : from === "assistant"
         ? Prisma.sql`AND "role"::text = 'ASSISTANT'`
         : Prisma.empty;
-  const containsAll = Prisma.join(
-    terms.map((term) => Prisma.sql`"content"::text ILIKE ${likePattern(term)}`),
-    " AND ",
-  );
+  // Matched on the text of each message rather than its stored JSON
+  // (`tau_message_text`, with a trigram index: see the migration), so a quote or
+  // a line break in a phrase is a quote or a line break. A message with any of
+  // the words is a candidate, and the ones with the most come first.
+  const stems = searchStems(terms);
+  // A phrase is looked for with each run of spaces standing for any one
+  // character, so that a phrase typed on one line is found across a line break.
+  const has = (stem: string) =>
+    Prisma.sql`tau_message_text("content") ILIKE ${likePattern(stem).replace(/\s+/g, "_")}`;
+  const hitCount = Prisma.join(stems.map((stem) => Prisma.sql`(${has(stem)})::int`), " + ");
+  const hasAny = Prisma.join(stems.map(has), " OR ");
   const rows = await prisma.$queryRaw<StoredRow[]>`
-    SELECT "sequence", "role"::text AS "role", "type"::text AS "type", "content", "createdAt"
+    SELECT "sequence", "role"::text AS "role", "type"::text AS "type", "content", "createdAt",
+           (${hitCount})::int AS "hits"
     FROM "Message"
     WHERE "projectId" = ${projectId}
       AND "sequence" > ${floor}
-      AND "type"::text <> 'TOOL_RES'
+      AND "type" <> 'TOOL_RES'::"MessageType"
       ${speaker}
-      AND ${containsAll}
-    ORDER BY "sequence" DESC
+      AND (${hasAny})
+    ORDER BY "hits" DESC, "sequence" DESC
     LIMIT ${SEARCH_FETCH_LIMIT}
   `;
 
-  const matches = toMatches(rows, terms);
+  const matches = toMatches(rows, stems);
   if (matches.length === 0) {
     return {
       matches: [],
-      note: `Nothing in this project's history contains ${terms.map((t) => `"${t}"`).join(" and ")}. Try fewer or different words — a message has to contain all of them.`,
+      note: `Nothing in this project's history contains ${terms.map((t) => `"${t}"`).join(" or ")}. Try different words.`,
     };
   }
+  // Said when no message has every word, so that "found something" is not
+  // taken for "found it".
+  const partial = rows.every((r) => (r.hits ?? 0) < stems.length);
   return {
     matches,
+    ...(partial && stems.length > 1
+      ? { note: `No message has all of ${terms.map((t) => `"${t}"`).join(", ")}. These have some of them, the ones with the most first.` }
+      : {}),
     ...(matches.length >= MAX_HISTORY_MATCHES && rows.length > matches.length
       ? { note: `Showing ${MAX_HISTORY_MATCHES} of at least ${rows.length} matches: messages where the words were said first, then files they appear in. Add a word to narrow it.` }
       : {}),

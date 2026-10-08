@@ -6,8 +6,9 @@ The page answers `200` to `curl` whether or not the app in it works: it is an em
 
 1. **`inspect_preview` on the route that is wrong.** Read `status` first, then the lists.
 2. **Type-check** (`bunx tsc -b`) when the status is `build_error` and the message does not name the cause.
-3. **The server's log**, `.tau/logs/server.log`, when a request to `/api/...` failed and its `body` does not say why.
-4. **The code**, last, and only the files the steps above named.
+3. **The dev server's log** when the page will not compile or will not load and nothing above says why: a package that is not installed, a config that failed to load, a proxy with nothing behind it. A result with status `build_error` or `unreachable` carries its last lines as `devServerLog`. For more, `tail_command_output` with `logPath` `/home/user/.tau-vite.log`. It is kept short and starts again when it fills, so it holds only what is recent; an app from before this was kept has no such file.
+4. **The API server's log**, `.tau/logs/server.log`, when a request to `/api/...` failed and its `body` does not say why.
+5. **The code**, last, and only the files the steps above named.
 
 Fix one cause, then inspect again. Do not change several things between inspections: you will not know which one mattered.
 

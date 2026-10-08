@@ -9,7 +9,12 @@ import {
 } from "@/worker/lib/previewInspect";
 import type { PreviewReport } from "@/worker/lib/previewReport";
 import type { PageAction } from "@/worker/lib/screenshot";
+import { readDevServerLog } from "@/worker/lib/devServerLog";
+import { withDeadline } from "@/worker/lib/sandbox";
 import { PREVIEW_PORT } from "../../config";
+
+/** How long reading the dev server's log may take before the result goes without it. */
+const LOG_READ_MS = 6_000;
 
 /** The most things one inspection will do to a page before reading it. */
 export const MAX_INSPECT_STEPS = 4;
@@ -64,12 +69,15 @@ export function parseSteps(steps: unknown): PageAction[] {
 interface Deps {
   available: () => boolean;
   inspect: (origin: string, options: InspectOptions) => Promise<PreviewReport>;
+  /** The end of the dev server's own output, when the sandbox keeps it. */
+  readLog: (sandbox: Sandbox) => Promise<string | null>;
   maxPerRun: number;
 }
 
 const REAL: Deps = {
   available: previewInspectAvailable,
   inspect: inspectPreview,
+  readLog: readDevServerLog,
   maxPerRun: env.PREVIEW_INSPECT_MAX_PER_RUN,
 };
 
@@ -126,6 +134,18 @@ export async function inspectPreviewTool(
     count,
   });
 
+  // When the page would not compile or would not load, what the dev server
+  // printed is often the only place the reason is. Not otherwise: on an app
+  // that rendered it is a list of the files that were reloaded.
+  const devServerLog =
+    report.status === "build_error" || report.status === "unreachable"
+      ? await withDeadline(deps.readLog(sandbox), LOG_READ_MS, "reading the dev server's log").catch(() => null)
+      : null;
+
   const left = deps.maxPerRun - count;
-  return { ...report, ...(left <= 3 ? { inspectionsLeft: left } : {}) };
+  return {
+    ...report,
+    ...(devServerLog ? { devServerLog } : {}),
+    ...(left <= 3 ? { inspectionsLeft: left } : {}),
+  };
 }

@@ -15,6 +15,7 @@
  *   - `.tau/CONTEXT.md` is app memory only, with no template manifest;
  *   - `/api` proxy present, backend/database packages pre-downloaded;
  *   - an icon (`public/favicon.svg`), where generation 1 has none;
+ *   - the dev server's output is kept in a file the agent can read;
  *   - ripgrep installed.
  *
  * Composed from the shared scaffold steps. The generation-1 templates and the
@@ -34,6 +35,8 @@ import {
   writeAppShell,
   writeAppMemory,
   writeAppIcon,
+  DEV_SERVER_START_CMD,
+  writeDevServerLogCap,
   writeVisualEdit,
   warmBackendPackages,
   installSearchTools,
@@ -52,7 +55,9 @@ t = writeAppShell(t);
 t = writeAppMemory(t);
 t = warmBackendPackages(t);
 t = installSearchTools(t);
+t = writeDevServerLogCap(t); // what the start command below writes its log through
 
-// Vite only. A server, when an app has one, is started by the harness — the
-// image cannot know which apps will grow one.
-export const template = t.setStartCmd("bunx vite --host", waitForPort(5173));
+// Vite only, with its output kept in a file of bounded size beside the app. A server, when an
+// app has one, is started by the harness — the image cannot know which apps
+// will grow one.
+export const template = t.setStartCmd(DEV_SERVER_START_CMD, waitForPort(5173));

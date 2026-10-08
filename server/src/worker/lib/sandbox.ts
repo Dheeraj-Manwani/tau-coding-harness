@@ -77,15 +77,27 @@ async function verifySandboxAlive(sandbox: Sandbox): Promise<void> {
   await sandbox.commands.run("true", { timeoutMs: PROVISION_GRACE_WINDOW_MS });
 }
 
+/**
+ * Lists the files a new project starts with: everything the image has in the
+ * app directory, except what is not the project's.
+ *
+ * `.tau/logs/` is in that second group and is named here. It is where the
+ * output of commands goes, and anything in it when a sandbox is first seeded
+ * would otherwise be copied into the manifest and become a project file: shown
+ * in the tree, restored on every rebuild, and pushed to the user's GitHub.
+ * `shell-changes.ts` leaves the same directory out of what a command is taken
+ * to have created. (The image's own dev server log is kept outside the app
+ * altogether: `DEV_SERVER_LOG_PATH`.)
+ */
+export const SEED_FIND_COMMAND = `find ${WORK_DIR} -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/.tau/logs/*'`;
+
 async function seedTemplateFiles(
   sandbox: Sandbox,
   projectId: string,
   userId: string,
   jobId: string,
 ): Promise<void> {
-  const { stdout } = await sandbox.commands.run(
-    `find ${WORK_DIR} -type f -not -path '*/node_modules/*' -not -path '*/.git/*'`,
-  );
+  const { stdout } = await sandbox.commands.run(SEED_FIND_COMMAND);
 
   // This path writes ProjectFile rows directly rather than going through
   // `persistFile`, so it has to apply the secret deny-list itself. Nothing in

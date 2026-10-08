@@ -47,6 +47,8 @@ export interface RawRequest {
   errorText?: string;
   /** The start of the response, when it failed and was worth reading. */
   body?: string;
+  /** The lines of source around a compile error, when the dev server gave them. */
+  frame?: string;
 }
 
 /** Vite's error overlay, as the three parts tau's runtime also reads. */
@@ -414,6 +416,50 @@ function plainBuildText(message: string): string {
 }
 
 /**
+ * The error inside the page Vite answers with when a file will not compile.
+ *
+ * Asked for a module it cannot build, the dev server sends back not the error
+ * but a small HTML page that shows it: the error itself is a JSON object in a
+ * script on that page (`const error = {…}`). Quoted as it comes, the agent
+ * would be handed markup and have to find the sentence in it. Null for
+ * anything that is not such a page.
+ */
+export function viteErrorPage(html: string): { message: string; frame?: string } | null {
+  const at = html.indexOf("const error = ");
+  if (at === -1) return null;
+  const start = html.indexOf("{", at);
+  if (start === -1) return null;
+  // The object ends where its braces balance, not at the first `}`: the
+  // message and the frame are source code and full of them.
+  let depth = 0;
+  let inString = false;
+  let end = -1;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (inString) {
+      if (ch === "\\") i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1) return null;
+  try {
+    const parsed = JSON.parse(html.slice(start, end + 1)) as { message?: unknown; frame?: unknown };
+    if (typeof parsed.message !== "string" || !parsed.message.trim()) return null;
+    return {
+      message: parsed.message,
+      ...(typeof parsed.frame === "string" && parsed.frame.trim() ? { frame: parsed.frame } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Vite's own error, from wherever it showed up: the overlay in the page, or
  * the body of a script or document it answered 500 for.
  */
@@ -436,9 +482,10 @@ export function buildErrorOf(raw: RawInspection): RawOverlay | null {
     const file = shortUrl(failedModule.url, raw.origin);
     return {
       message: failedModule.body
-        ? clip(shortenIn(failedModule.body, raw.origin), MAX_BUILD_ERROR_CHARS)
+        ? clip(plainBuildText(shortenIn(failedModule.body, raw.origin)), MAX_BUILD_ERROR_CHARS)
         : `The dev server could not compile ${file} (it answered 500).`,
       file,
+      ...(failedModule.frame ? { frame: failedModule.frame.slice(0, MAX_BUILD_ERROR_CHARS) } : {}),
     };
   }
   if (raw.httpStatus === 500) {

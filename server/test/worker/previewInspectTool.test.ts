@@ -36,13 +36,19 @@ const rendered: PreviewReport = {
   document: { httpStatus: 200 },
 };
 
-function recording(report: PreviewReport = rendered) {
+function recording(report: PreviewReport = rendered, log: string | null = null) {
   const calls: { origin: string; options: InspectOptions }[] = [];
+  let logReads = 0;
   return {
     calls,
+    logReads: () => logReads,
     deps: (maxPerRun = 15, available = true) => ({
       available: () => available,
       maxPerRun,
+      readLog: async () => {
+        logReads++;
+        return log;
+      },
       inspect: async (origin: string, options: InspectOptions) => {
         calls.push({ origin, options });
         return report;
@@ -97,6 +103,33 @@ describe("inspect_preview", () => {
     const deps = rec.deps(5);
     expect(await inspectPreviewTool({}, sandbox, "job-1", deps)).not.toHaveProperty("inspectionsLeft");
     expect(await inspectPreviewTool({}, sandbox, "job-1", deps)).toMatchObject({ inspectionsLeft: 3 });
+  });
+
+  test("what the dev server printed comes with a page that would not compile or load, and no other", async () => {
+    const LOG = '[vite] Internal server error: Failed to resolve import "./missing"';
+    for (const status of ["build_error", "unreachable"] as const) {
+      const rec = recording({ ...rendered, status }, LOG);
+      expect(await inspectPreviewTool({}, sandbox, `job-${status}`, rec.deps())).toMatchObject({ status, devServerLog: LOG });
+    }
+    for (const status of ["rendered", "rendered_with_errors", "crashed", "blank"] as const) {
+      const rec = recording({ ...rendered, status }, LOG);
+      expect(await inspectPreviewTool({}, sandbox, `job-${status}`, rec.deps())).not.toHaveProperty("devServerLog");
+      // Not read at all: it is a file in the sandbox, and reading it takes time.
+      expect(rec.logReads()).toBe(0);
+    }
+  });
+
+  test("a sandbox that keeps no log, or will not give it up, costs the result nothing else", async () => {
+    const none = recording({ ...rendered, status: "build_error" }, null);
+    expect(await inspectPreviewTool({}, sandbox, "job-a", none.deps())).not.toHaveProperty("devServerLog");
+
+    const failing = {
+      ...recording({ ...rendered, status: "build_error" }).deps(),
+      readLog: async (): Promise<string | null> => {
+        throw new Error("sandbox gone");
+      },
+    };
+    expect(await inspectPreviewTool({}, sandbox, "job-b", failing)).toMatchObject({ status: "build_error" });
   });
 
   test("steps are found by what they say, capped, and anything malformed is dropped", () => {
@@ -366,6 +399,41 @@ describe("a run may not finish on an app that does not work", () => {
       });
       expect(fault?.findings).toContain("tau_sk_***");
       expect(fault?.findings).not.toContain("abcdefgh12345678");
+    });
+
+    test("an app that does not compile is sent back with the end of the dev server log", async () => {
+      const broken = report("build_error", { buildError: { message: "Failed to resolve import", file: "src/App.tsx" } });
+      const l = looks(broken, broken);
+      const fault = await checkRender(URL, "p", { ...l.parts, devLog: async () => "[vite] Pre-transform error: no such file" });
+      expect(fault?.findings).toContain("- Build error in `src/App.tsx`: Failed to resolve import");
+      expect(fault?.findings).toContain("log ends:\n```\n[vite] Pre-transform error: no such file\n```");
+
+      // A crash is in the browser, not the dev server: its log is not read.
+      let read = 0;
+      const crashed = report("crashed", { exceptions: [{ message: "TypeError: boom", count: 1 }] });
+      const c = looks(crashed, crashed);
+      const crash = await checkRender(URL, "p", {
+        ...c.parts,
+        devLog: async () => {
+          read++;
+          return "noise";
+        },
+      });
+      expect(crash?.findings).not.toContain("dev server");
+      expect(read).toBe(0);
+    });
+
+    test("a log that cannot be read does not stop the fault being reported", async () => {
+      const broken = report("build_error", { buildError: { message: "Unexpected token" } });
+      const l = looks(broken, broken);
+      const fault = await checkRender(URL, "p", {
+        ...l.parts,
+        devLog: async (): Promise<string | null> => {
+          throw new Error("gone");
+        },
+      });
+      expect(fault?.status).toBe("build_error");
+      expect(fault?.findings).not.toContain("dev server");
     });
 
     test("where there is no browser, the dev server still says whether the app compiles", async () => {

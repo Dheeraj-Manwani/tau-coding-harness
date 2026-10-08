@@ -12,6 +12,7 @@ import {
   describeFindings,
   isBroken,
   shortUrl,
+  viteErrorPage,
   type RawDom,
   type RawInspection,
 } from "@/worker/lib/previewReport";
@@ -231,6 +232,47 @@ describe("what the agent is shown", () => {
     // The true position, which is in the message, survives.
     expect(report.buildError?.message).toContain("[ src/App.tsx:23:14 ]");
     expect(report.buildError?.message).toContain("`,` or `>` expected");
+  });
+
+  test("the error is taken out of the page the dev server answers with", () => {
+    // Asked for a module it cannot build, Vite sends a page that shows the
+    // error, with the error itself as an object in a script.
+    const error = {
+      message: 'Failed to resolve import "./pages/Missing" from "src/App.tsx". Does the file exist?',
+      stack: "    at TransformPluginContext._formatLog (file:///home/user/app/node_modules/vite/dist/x.js:1:1)",
+      id: "/home/user/app/src/App.tsx",
+      frame: '1  |  import { Missing } from "./pages/Missing";\n   |                           ^\n2  |  function App() { return <div>{"}"}</div> }',
+      plugin: "vite:import-analysis",
+      loc: { file: "/home/user/app/src/App.tsx", line: 1, column: 24 },
+    };
+    const page = `<!DOCTYPE html>\n<html lang="en">\n<head><title>Error</title>\n<script type="module">\nconst error = ${JSON.stringify(error)}\ntry {\n  const { ErrorOverlay } = await import("/@vite/client")\n  document.body.appendChild(new ErrorOverlay(error))\n} catch { }\n</script></head><body></body></html>`;
+    expect(viteErrorPage(page)).toEqual({ message: error.message, frame: error.frame });
+    // Not such a page, or one cut off before the object ends.
+    expect(viteErrorPage("Failed to resolve import")).toBeNull();
+    expect(viteErrorPage(page.slice(0, 260))).toBeNull();
+    expect(viteErrorPage("const error = {not json}")).toBeNull();
+  });
+
+  test("a refused module's error and the lines around it are both reported", () => {
+    const report = buildReport(
+      raw({
+        dom: dom({ rootEmpty: true }),
+        requests: [
+          { method: "GET", url: `${ORIGIN}/`, type: "Document", status: 200 },
+          {
+            method: "GET",
+            url: `${ORIGIN}/src/App.tsx`,
+            type: "Script",
+            status: 500,
+            body: 'Failed to resolve import "./pages/Missing" from "src/App.tsx". Does the file exist?',
+            frame: '1  |  import { Missing } from "./pages/Missing";\n   |                           ^',
+          },
+        ],
+      }),
+    );
+    expect(report.buildError?.message).toStartWith("Failed to resolve import");
+    expect(report.buildError?.frame).toContain('import { Missing } from "./pages/Missing";');
+    expect(describeFindings(report)).toContain("- Build error in `src/App.tsx`: Failed to resolve import");
   });
 
   test("a failed API call carries the start of the server's answer", () => {

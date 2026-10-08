@@ -992,6 +992,67 @@ export function writeAppIcon(t: TemplateBuilder): TemplateBuilder {
     );
 }
 
+/**
+ * Where the dev server's own output is kept: beside the app, not in it, with
+ * tau's other files for a preview (`PREVIEW_BADGE_SANDBOX_PATH`). Outside the
+ * app it is not something Vite watches, and can never be seeded into a project.
+ */
+export const DEV_SERVER_LOG_PATH = "/home/user/.tau-vite.log";
+
+/** The program that writes it, baked into the image. */
+export const DEV_SERVER_LOG_CAP_PATH = "/home/user/.tau-logcap.awk";
+
+/**
+ * The most the log is let grow to before it is started again. The newest part
+ * is what anyone reads, and it is read whole on the way to a prompt.
+ */
+export const DEV_SERVER_LOG_MAX_BYTES = 256 * 1024;
+
+/**
+ * Writes what it is given to the file `f`, and starts the file again whenever
+ * it has grown past `max` bytes.
+ *
+ * The cap is not a nicety. While a browser has a broken app open, the dev
+ * server (Vite 8.3) tries the failing file again without pause and prints the
+ * same error each time: measured on a real sandbox, about 270 KB a second, for
+ * as long as the app stays broken. Kept whole, that is a gigabyte an hour on a
+ * small disk. This was always happening; until the output was kept, it went
+ * nowhere and nobody saw it.
+ *
+ * awk because it is in the image already, flushes line by line, and is one
+ * process with nothing to install. A line is never cut in two.
+ */
+export const DEV_SERVER_LOG_CAP_AWK = `BEGIN { printf "" > f; close(f); n = 0 }
+{
+  if (n > max) { close(f); printf "" > f; close(f); n = 0 }
+  print >> f
+  fflush(f)
+  n += length($0) + 1
+}
+`;
+
+/**
+ * What the image runs when a sandbox boots: Vite, with everything it prints
+ * kept in a file of bounded size.
+ *
+ * The older images start Vite with its output going nowhere, so when the dev
+ * server could not compile a file, prepare a dependency or reach the API it
+ * proxies to, nothing tau or its agent could read said why
+ * (doc/AGENT_TOOLING_FEEDBACK.md, phase 7).
+ *
+ * `-W interactive` is load-bearing. The image's awk is mawk, which reads a
+ * pipe a block at a time: without the flag a line Vite printed sits unread
+ * until four kilobytes have followed it, and the log of a server that printed
+ * one error and stopped is empty. (Found by the template check: the file was
+ * there and had nothing in it.)
+ */
+export const DEV_SERVER_START_CMD = `bunx vite --host 2>&1 | awk -W interactive -v f=${DEV_SERVER_LOG_PATH} -v max=${DEV_SERVER_LOG_MAX_BYTES} -f ${DEV_SERVER_LOG_CAP_PATH}`;
+
+/** Put the log-writing program in the image. Before the start command, which runs it. */
+export function writeDevServerLogCap(t: TemplateBuilder): TemplateBuilder {
+  return t.runCmd(`cat > ${DEV_SERVER_LOG_CAP_PATH} <<'EOF'\n${DEV_SERVER_LOG_CAP_AWK}EOF`);
+}
+
 /** What adding a backend installs. Same range `migrateTemplate` writes. */
 export const BACKEND_PACKAGES = "hono@^4";
 

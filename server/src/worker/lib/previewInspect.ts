@@ -7,6 +7,7 @@ import {
   MAX_BODY_CHARS,
   buildReport,
   formatConsoleArgs,
+  viteErrorPage,
   type PreviewReport,
   type RawConsole,
   type RawDom,
@@ -561,7 +562,12 @@ async function collect(raw: RawInspection, options: InspectOptions, hooks: PageH
         .map(async (r) => {
           try {
             const res = await fetch(r.url, { signal: AbortSignal.timeout(3_000), cache: "no-store" });
-            if (res.status === 500) r.body = (await res.text()).slice(0, MAX_BODY_CHARS * 4);
+            if (res.status !== 500) return;
+            const text = await res.text();
+            // Usually a page that shows the error, not the error: take it out.
+            const shown = viteErrorPage(text);
+            r.body = (shown?.message ?? text).slice(0, MAX_BODY_CHARS * 4);
+            if (shown?.frame) r.frame = shown.frame;
           } catch {
             // The status alone still says which file.
           }

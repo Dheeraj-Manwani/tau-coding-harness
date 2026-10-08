@@ -75,6 +75,7 @@ import {
 } from "../lib/previewReport";
 import { probePreviewHttp, type PreviewHttpState } from "../lib/previewReadiness";
 import { redactToolResult } from "../lib/redact";
+import { readDevServerLog } from "../lib/devServerLog";
 
 // ── What a run has done ──────────────────────────────────────────────────────
 
@@ -295,6 +296,8 @@ export const RENDER_CHECK_MS = 25_000;
 export const RENDER_GATE_TIMEOUT_MS = 28_000;
 /** How long the app has to draw something before it is called blank. */
 const RENDER_WAIT_MS = 6_000;
+/** How long reading the dev server's log may take. Inside what `RENDER_GATE_TIMEOUT_MS` leaves over. */
+const DEV_LOG_READ_MS = 2_500;
 /** The least time worth starting a second look in. */
 const SECOND_LOOK_MIN_MS = 5_000;
 
@@ -304,6 +307,8 @@ export interface RenderCheckParts {
   inspect: (previewUrl: string, options: InspectOptions) => Promise<PreviewReport>;
   probe: (previewUrl: string) => Promise<PreviewHttpState>;
   redact: (projectId: string, text: string) => Promise<string>;
+  /** The end of the dev server's own output, when there is a sandbox to read it from. */
+  devLog: () => Promise<string | null>;
   budgetMs: number;
   secondLookMinMs: number;
 }
@@ -313,6 +318,7 @@ const REAL_PARTS: RenderCheckParts = {
   inspect: inspectPreview,
   probe: probePreviewHttp,
   redact: redactToolResult,
+  devLog: async () => null,
   budgetMs: RENDER_CHECK_MS,
   secondLookMinMs: SECOND_LOOK_MIN_MS,
 };
@@ -334,7 +340,7 @@ export async function checkRender(
   projectId: string,
   parts: Partial<RenderCheckParts> = {},
 ): Promise<RenderFault | null> {
-  const { available, inspect, probe, redact, budgetMs, secondLookMinMs } = { ...REAL_PARTS, ...parts };
+  const { available, inspect, probe, redact, devLog, budgetMs, secondLookMinMs } = { ...REAL_PARTS, ...parts };
   if (!available()) {
     // No browser, but the dev server still says whether the app compiles.
     const state = await probe(previewUrl).catch(() => "starting" as const);
@@ -371,13 +377,30 @@ export async function checkRender(
     ms: Date.now() - started,
   });
   if (!isBroken(report.status)) return null;
+  // What the dev server printed, when the app does not compile: sometimes the
+  // page shows the reason and sometimes only the server knew it.
+  const serverLog =
+    report.status === "build_error"
+      ? await withDeadline(devLog(), DEV_LOG_READ_MS, "reading the dev server's log").catch(() => null)
+      : null;
+  const fence = "```";
+  const findings = serverLog
+    ? `${describeFindings(report)}\n- The dev server's log ends:\n${fence}\n${serverLog}\n${fence}`
+    : describeFindings(report);
   return {
     status: report.status,
     summary: report.summary,
-    // A stack or a response body can carry a key, and this goes to the model.
-    findings: await redact(projectId, describeFindings(report)),
+    // A stack, a response body or a log can carry a key, and this goes to the model.
+    findings: await redact(projectId, findings),
     canInspect: true,
   };
+}
+
+/** `checkRender`, able to read the dev server's log from this run's sandbox. */
+function defaultRenderCheck(input: GateInput) {
+  const source = input.sandbox;
+  return (previewUrl: string, projectId: string) =>
+    checkRender(previewUrl, projectId, source ? { devLog: () => readDevServerLog(source) } : {});
 }
 
 function renderItemFor(fault: RenderFault): GateItem {
@@ -478,7 +501,7 @@ export async function finishItems(
   const rendering: Promise<RenderFault | null> =
     input.generation === 2 && input.filesChanged && input.previewUrl && !state.has("render")
       ? withDeadline(
-          (input.renderCheck ?? checkRender)(input.previewUrl, input.projectId),
+          (input.renderCheck ?? defaultRenderCheck(input))(input.previewUrl, input.projectId),
           renderTimeoutMs,
           "opening the app",
         ).catch((err) => {

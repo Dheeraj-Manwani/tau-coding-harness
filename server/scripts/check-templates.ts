@@ -204,6 +204,21 @@ async function checksFor(
       cmd: `test -s public/favicon.svg && test "$(grep -c 'rel="icon"' index.html)" = 1 && grep -q 'href="/favicon.svg"' index.html`,
       timeoutMs: 30_000,
     });
+    // ...and keeps what its dev server prints. Not empty: Vite has started by now.
+    checks.push({
+      name: "dev server log",
+      // Beside the app, never in it: Vite watches the app directory, and a log
+      // it writes there is a change it then reacts to.
+      cmd: "test -s /home/user/.tau-vite.log && grep -qi vite /home/user/.tau-vite.log && test ! -e .tau/logs/vite.log",
+      timeoutMs: 30_000,
+    });
+    // ...through something that stops it growing without limit: a megabyte in,
+    // a few kilobytes kept, and the last line is the last one written.
+    checks.push({
+      name: "dev server log cap",
+      cmd: "seq 1 100000 | sed s/^/line-/ | awk -v f=/tmp/cap.log -v max=4096 -f /home/user/.tau-logcap.awk && test \"$(wc -c < /tmp/cap.log)\" -le 8192 && test \"$(tail -n 1 /tmp/cap.log)\" = line-100000",
+      timeoutMs: 30_000,
+    });
   }
 
   return checks;

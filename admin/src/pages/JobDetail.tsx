@@ -144,6 +144,8 @@ function Body({ d }: { d: JobDetailData }) {
         </div>
       )}
 
+      <Insights insights={job.insights} />
+
       <Section title="Timeline" description={`${d.timeline.length} messages`}>
         <Table head={["#", "Message", "Tool calls", "Tokens", "At"]} empty="No messages recorded.">
           {d.timeline.map((m) => (
@@ -248,6 +250,54 @@ function EventReplay({ jobId }: { jobId: string }) {
           </div>
           <JsonBlock value={events} summary={`${events.length} events`} />
         </Card>
+      )}
+    </Section>
+  );
+}
+
+/** What the run did beyond its columns: cache, summaries, the look, the reviews. */
+function Insights({ insights }: { insights: JobDetailData["job"]["insights"] }) {
+  if (!insights) {
+    return (
+      <Section title="Run insights" description="Not kept for runs from before this was added.">
+        <Muted>Nothing recorded.</Muted>
+      </Section>
+    );
+  }
+  const { cache, summaries, design, reviews } = insights;
+  return (
+    <Section title="Run insights" description="Recorded by the worker; no model call.">
+      <StatGrid>
+        <Stat
+          label="Cache hits"
+          value={cache ? `${cache.cachedPct}%` : "—"}
+          sub={cache ? `${num(cache.cachedTokens)} of ${num(cache.inputTokens)} input tokens, ${cache.turns} turns` : "no turns finished"}
+        />
+        <Stat label="Summaries" value={summaries ?? 0} sub="context summarised this run" />
+        <Stat
+          label="Look"
+          value={design ? label(design.style) : "—"}
+          sub={design ? `${design.accent}, ${design.mode}, by ${design.source}` : "none chosen this run"}
+        />
+        <Stat label="Design reviews" value={reviews?.length ?? 0} sub={reviews?.map((r) => r.verdict).join(", ") || "none"} />
+      </StatGrid>
+      {design?.read && <p className="mt-3 text-sm text-fg-2">Read as: {design.read}</p>}
+      {reviews && reviews.length > 0 && (
+        <div className="mt-3">
+          <Table head={["Verdict", "Screens", "Steps", "Reference", "Capture", "Model", "Routes"]} empty="">
+            {reviews.map((r, i) => (
+              <tr key={i}>
+                <Td>{label(r.verdict)}</Td>
+                <Td num>{r.screens}</Td>
+                <Td num>{r.steps}</Td>
+                <Td>{r.reference ? "yes" : "no"}</Td>
+                <Td num>{ms(r.captureMs)}</Td>
+                <Td num>{ms(r.modelMs)}</Td>
+                <Td mono>{r.routes.join(" ")}</Td>
+              </tr>
+            ))}
+          </Table>
+        </div>
       )}
     </Section>
   );

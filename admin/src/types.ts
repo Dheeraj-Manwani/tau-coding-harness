@@ -202,6 +202,21 @@ export interface JobListItem {
   stuck: boolean;
 }
 
+export interface JobInsights {
+  cache?: { turns: number; inputTokens: number; cachedTokens: number; cachedPct: number };
+  summaries?: number;
+  design?: { style: string; accent: string; mode: string; source: string; read: string };
+  reviews?: Array<{
+    verdict: string;
+    routes: string[];
+    screens: number;
+    steps: number;
+    reference: boolean;
+    captureMs: number;
+    modelMs: number;
+  }>;
+}
+
 export interface JobDetail {
   job: {
     id: string;
@@ -225,6 +240,8 @@ export interface JobDetail {
     outputTokens: number;
     costMicro: string;
     credits: number;
+    /** Cache hits, summaries, the look chosen, design reviews. Null on runs from before these were kept. */
+    insights: JobInsights | null;
     project: { id: string; name: string; userId: string };
   };
   live?: JobRegistryEntry | null;

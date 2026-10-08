@@ -386,6 +386,10 @@ model Job {
   // window — denormalising keeps those queries a single scan instead of a join
   // over every turn of every job.
   model        String?
+  /// What the run did that the columns above do not say: prompt-cache hits,
+  /// summaries, the look chosen, each design review. Written by the worker
+  /// (`worker/lib/jobInsights.ts`), read by the admin job page. Null on older runs.
+  insights     Json?
   sandboxId    String?
   inputTokens  Int     @default(0)
   outputTokens Int     @default(0)

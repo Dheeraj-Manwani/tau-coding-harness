@@ -19,6 +19,7 @@ import {
   type PastReview,
 } from "@/worker/design/review";
 import { PREVIEW_PORT } from "../../config";
+import { noteReview } from "../../../lib/jobInsights";
 
 const TOOL_NAME = "dispatch_design_reviewer";
 
@@ -158,6 +159,15 @@ export async function dispatchDesignReviewer(
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
     ...(result.skipped.length > 0 ? { skipped: result.skipped } : {}),
+  });
+  await noteReview(jobId, {
+    verdict: result.verdict,
+    routes,
+    screens: result.screens.length,
+    steps: result.screens.filter((s) => s.state).length,
+    reference: Boolean(reference),
+    captureMs: result.captureMs,
+    modelMs: result.modelMs,
   });
 
   // Only what was actually seen counts as a look at it.

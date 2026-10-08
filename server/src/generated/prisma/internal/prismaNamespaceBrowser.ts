@@ -274,6 +274,7 @@ export const JobScalarFieldEnum = {
   currentTurn: 'currentTurn',
   finishReason: 'finishReason',
   model: 'model',
+  insights: 'insights',
   sandboxId: 'sandboxId',
   inputTokens: 'inputTokens',
   outputTokens: 'outputTokens',

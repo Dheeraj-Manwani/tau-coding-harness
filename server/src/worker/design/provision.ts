@@ -37,6 +37,7 @@ import { directDesign, type DirectorResult } from "./director";
 import { imageReadingAvailable, readDesignImage } from "./fromImage";
 import { parseImportedDesign } from "./importDesign";
 import type { DesignChoice, DesignConfig } from "./types";
+import { noteInsights } from "../lib/jobInsights";
 
 /** What a model call cost, for metering. */
 type Usage = NonNullable<DirectorResult["usage"]>;
@@ -202,6 +203,9 @@ export async function finishDesign(
     if (readingUsage) await meterModelCall(ctx, readingUsage, "design from image");
     if (usage) await meterModelCall(ctx, usage, "design director");
     const result = await applyDesign(ctx, choice);
+    await noteInsights(ctx.jobId, {
+      design: { style: choice.style, accent: choice.accent, mode: choice.mode, source: choice.source, read: choice.read },
+    });
     return { choice, result };
   } catch (err) {
     log.warn("design.failed", {

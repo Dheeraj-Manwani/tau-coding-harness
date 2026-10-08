@@ -47,6 +47,7 @@ import { requestText, restoredEntry } from "./context/restore";
 import { loadStandingNote } from "./context/standing";
 import { loadPlan, unfinishedPlanNote } from "./plan";
 import { createClearingState } from "./context/clearing";
+import { noteInsights } from "../lib/jobInsights";
 import { jobIdsIn, reasoningOf, shapeHistory } from "./context/history";
 import { deliverDocs, docStateFrom } from "./docs/delivery";
 import {
@@ -1240,6 +1241,18 @@ export async function runAgentLoop(
         totalInputTokens > 0
           ? Number(((totalCachedTokens / totalInputTokens) * 100).toFixed(1))
           : 0,
+    });
+    await noteInsights(jobId, {
+      cache: {
+        turns: turn,
+        inputTokens: totalInputTokens,
+        cachedTokens: totalCachedTokens,
+        cachedPct:
+          totalInputTokens > 0
+            ? Number(((totalCachedTokens / totalInputTokens) * 100).toFixed(1))
+            : 0,
+      },
+      summaries: summarizations,
     });
 
     if (stopReason) {

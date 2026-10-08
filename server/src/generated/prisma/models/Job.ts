@@ -110,6 +110,7 @@ export type JobCountAggregateOutputType = {
   currentTurn: number
   finishReason: number
   model: number
+  insights: number
   sandboxId: number
   inputTokens: number
   outputTokens: number
@@ -202,6 +203,7 @@ export type JobCountAggregateInputType = {
   currentTurn?: true
   finishReason?: true
   model?: true
+  insights?: true
   sandboxId?: true
   inputTokens?: true
   outputTokens?: true
@@ -313,6 +315,7 @@ export type JobGroupByOutputType = {
   currentTurn: number
   finishReason: $Enums.FinishReason | null
   model: string | null
+  insights: runtime.JsonValue | null
   sandboxId: string | null
   inputTokens: number
   outputTokens: number
@@ -360,6 +363,7 @@ export type JobWhereInput = {
   currentTurn?: Prisma.IntFilter<"Job"> | number
   finishReason?: Prisma.EnumFinishReasonNullableFilter<"Job"> | $Enums.FinishReason | null
   model?: Prisma.StringNullableFilter<"Job"> | string | null
+  insights?: Prisma.JsonNullableFilter<"Job">
   sandboxId?: Prisma.StringNullableFilter<"Job"> | string | null
   inputTokens?: Prisma.IntFilter<"Job"> | number
   outputTokens?: Prisma.IntFilter<"Job"> | number
@@ -388,6 +392,7 @@ export type JobOrderByWithRelationInput = {
   currentTurn?: Prisma.SortOrder
   finishReason?: Prisma.SortOrderInput | Prisma.SortOrder
   model?: Prisma.SortOrderInput | Prisma.SortOrder
+  insights?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxId?: Prisma.SortOrderInput | Prisma.SortOrder
   inputTokens?: Prisma.SortOrder
   outputTokens?: Prisma.SortOrder
@@ -419,6 +424,7 @@ export type JobWhereUniqueInput = Prisma.AtLeast<{
   currentTurn?: Prisma.IntFilter<"Job"> | number
   finishReason?: Prisma.EnumFinishReasonNullableFilter<"Job"> | $Enums.FinishReason | null
   model?: Prisma.StringNullableFilter<"Job"> | string | null
+  insights?: Prisma.JsonNullableFilter<"Job">
   sandboxId?: Prisma.StringNullableFilter<"Job"> | string | null
   inputTokens?: Prisma.IntFilter<"Job"> | number
   outputTokens?: Prisma.IntFilter<"Job"> | number
@@ -447,6 +453,7 @@ export type JobOrderByWithAggregationInput = {
   currentTurn?: Prisma.SortOrder
   finishReason?: Prisma.SortOrderInput | Prisma.SortOrder
   model?: Prisma.SortOrderInput | Prisma.SortOrder
+  insights?: Prisma.SortOrderInput | Prisma.SortOrder
   sandboxId?: Prisma.SortOrderInput | Prisma.SortOrder
   inputTokens?: Prisma.SortOrder
   outputTokens?: Prisma.SortOrder
@@ -479,6 +486,7 @@ export type JobScalarWhereWithAggregatesInput = {
   currentTurn?: Prisma.IntWithAggregatesFilter<"Job"> | number
   finishReason?: Prisma.EnumFinishReasonNullableWithAggregatesFilter<"Job"> | $Enums.FinishReason | null
   model?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
+  insights?: Prisma.JsonNullableWithAggregatesFilter<"Job">
   sandboxId?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
   inputTokens?: Prisma.IntWithAggregatesFilter<"Job"> | number
   outputTokens?: Prisma.IntWithAggregatesFilter<"Job"> | number
@@ -502,6 +510,7 @@ export type JobCreateInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -530,6 +539,7 @@ export type JobUncheckedCreateInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -556,6 +566,7 @@ export type JobUpdateInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -584,6 +595,7 @@ export type JobUncheckedUpdateInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -611,6 +623,7 @@ export type JobCreateManyInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -634,6 +647,7 @@ export type JobUpdateManyMutationInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -658,6 +672,7 @@ export type JobUncheckedUpdateManyInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -697,6 +712,7 @@ export type JobCountOrderByAggregateInput = {
   currentTurn?: Prisma.SortOrder
   finishReason?: Prisma.SortOrder
   model?: Prisma.SortOrder
+  insights?: Prisma.SortOrder
   sandboxId?: Prisma.SortOrder
   inputTokens?: Prisma.SortOrder
   outputTokens?: Prisma.SortOrder
@@ -903,6 +919,7 @@ export type JobCreateWithoutProjectInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -929,6 +946,7 @@ export type JobUncheckedCreateWithoutProjectInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -985,6 +1003,7 @@ export type JobScalarWhereInput = {
   currentTurn?: Prisma.IntFilter<"Job"> | number
   finishReason?: Prisma.EnumFinishReasonNullableFilter<"Job"> | $Enums.FinishReason | null
   model?: Prisma.StringNullableFilter<"Job"> | string | null
+  insights?: Prisma.JsonNullableFilter<"Job">
   sandboxId?: Prisma.StringNullableFilter<"Job"> | string | null
   inputTokens?: Prisma.IntFilter<"Job"> | number
   outputTokens?: Prisma.IntFilter<"Job"> | number
@@ -1008,6 +1027,7 @@ export type JobCreateWithoutMessagesInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1035,6 +1055,7 @@ export type JobUncheckedCreateWithoutMessagesInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1076,6 +1097,7 @@ export type JobUpdateWithoutMessagesInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1103,6 +1125,7 @@ export type JobUncheckedUpdateWithoutMessagesInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1128,6 +1151,7 @@ export type JobCreateWithoutFragmentsInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1155,6 +1179,7 @@ export type JobUncheckedCreateWithoutFragmentsInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1196,6 +1221,7 @@ export type JobUpdateWithoutFragmentsInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1223,6 +1249,7 @@ export type JobUncheckedUpdateWithoutFragmentsInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1248,6 +1275,7 @@ export type JobCreateWithoutTokenUsageInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1275,6 +1303,7 @@ export type JobUncheckedCreateWithoutTokenUsageInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1316,6 +1345,7 @@ export type JobUpdateWithoutTokenUsageInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1343,6 +1373,7 @@ export type JobUncheckedUpdateWithoutTokenUsageInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1368,6 +1399,7 @@ export type JobCreateManyProjectInput = {
   currentTurn?: number
   finishReason?: $Enums.FinishReason | null
   model?: string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: string | null
   inputTokens?: number
   outputTokens?: number
@@ -1391,6 +1423,7 @@ export type JobUpdateWithoutProjectInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1417,6 +1450,7 @@ export type JobUncheckedUpdateWithoutProjectInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1443,6 +1477,7 @@ export type JobUncheckedUpdateManyWithoutProjectInput = {
   currentTurn?: Prisma.IntFieldUpdateOperationsInput | number
   finishReason?: Prisma.NullableEnumFinishReasonFieldUpdateOperationsInput | $Enums.FinishReason | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insights?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputTokens?: Prisma.IntFieldUpdateOperationsInput | number
   outputTokens?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1516,6 +1551,7 @@ export type JobSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   currentTurn?: boolean
   finishReason?: boolean
   model?: boolean
+  insights?: boolean
   sandboxId?: boolean
   inputTokens?: boolean
   outputTokens?: boolean
@@ -1545,6 +1581,7 @@ export type JobSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   currentTurn?: boolean
   finishReason?: boolean
   model?: boolean
+  insights?: boolean
   sandboxId?: boolean
   inputTokens?: boolean
   outputTokens?: boolean
@@ -1570,6 +1607,7 @@ export type JobSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   currentTurn?: boolean
   finishReason?: boolean
   model?: boolean
+  insights?: boolean
   sandboxId?: boolean
   inputTokens?: boolean
   outputTokens?: boolean
@@ -1595,13 +1633,14 @@ export type JobSelectScalar = {
   currentTurn?: boolean
   finishReason?: boolean
   model?: boolean
+  insights?: boolean
   sandboxId?: boolean
   inputTokens?: boolean
   outputTokens?: boolean
   costMicro?: boolean
 }
 
-export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "status" | "type" | "prompt" | "effort" | "queueJobId" | "queuedAt" | "startedAt" | "completedAt" | "error" | "attemptNumber" | "maxAttempts" | "lastHeartbeatAt" | "currentTurn" | "finishReason" | "model" | "sandboxId" | "inputTokens" | "outputTokens" | "costMicro", ExtArgs["result"]["job"]>
+export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "status" | "type" | "prompt" | "effort" | "queueJobId" | "queuedAt" | "startedAt" | "completedAt" | "error" | "attemptNumber" | "maxAttempts" | "lastHeartbeatAt" | "currentTurn" | "finishReason" | "model" | "insights" | "sandboxId" | "inputTokens" | "outputTokens" | "costMicro", ExtArgs["result"]["job"]>
 export type JobInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Job$messagesArgs<ExtArgs>
@@ -1642,6 +1681,12 @@ export type $JobPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     currentTurn: number
     finishReason: $Enums.FinishReason | null
     model: string | null
+    /**
+     * What the run did that the columns above do not say: prompt-cache hits,
+     * summaries, the look chosen, each design review. Written by the worker
+     * (`worker/lib/jobInsights.ts`), read by the admin job page. Null on older runs.
+     */
+    insights: runtime.JsonValue | null
     sandboxId: string | null
     inputTokens: number
     outputTokens: number
@@ -2090,6 +2135,7 @@ export interface JobFieldRefs {
   readonly currentTurn: Prisma.FieldRef<"Job", 'Int'>
   readonly finishReason: Prisma.FieldRef<"Job", 'FinishReason'>
   readonly model: Prisma.FieldRef<"Job", 'String'>
+  readonly insights: Prisma.FieldRef<"Job", 'Json'>
   readonly sandboxId: Prisma.FieldRef<"Job", 'String'>
   readonly inputTokens: Prisma.FieldRef<"Job", 'Int'>
   readonly outputTokens: Prisma.FieldRef<"Job", 'Int'>

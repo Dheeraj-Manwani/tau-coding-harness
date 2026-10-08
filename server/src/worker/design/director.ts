@@ -185,7 +185,11 @@ export function fallbackChoice(
     accent: given ?? FALLBACK_ACCENTS[(h >>> 8) % FALLBACK_ACCENTS.length]!,
     accentExact: given !== undefined,
     mode: config.mode ?? (imported ? importedMode(imported.tokens) : null) ?? style.defaultMode,
-    dials: { ...style.dials, ...config.dials },
+    dials: {
+      ...style.dials,
+      ...(imported?.tokens.density ? { density: imported.tokens.density } : {}),
+      ...config.dials,
+    },
     ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
     read: defaultRead(style.name),
     source: sourceOf(config, imported, "fallback"),
@@ -385,7 +389,11 @@ export function chooseFrom(
   const dials: Dials = {
     variance: config.dials?.variance ?? blend(options.dials.variance, style.dials.variance),
     motion: config.dials?.motion ?? blend(options.dials.motion, style.dials.motion),
-    density: config.dials?.density ?? blend(options.dials.density, style.dials.density),
+    // A design that says how packed it is has said so; that is not averaged away.
+    density:
+      config.dials?.density ??
+      imported?.tokens.density ??
+      blend(options.dials.density, style.dials.density),
   };
 
   return {

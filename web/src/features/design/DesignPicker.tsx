@@ -1,8 +1,10 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
   FileUpIcon,
+  ImageUpIcon,
+  LoaderCircleIcon,
   MoonIcon,
   SearchIcon,
   SparklesIcon,
@@ -13,16 +15,21 @@ import {
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
+import { ApiError } from "@/src/lib/api-client";
 import {
+  MAX_REFERENCE_IMAGE_BYTES,
+  REFERENCE_IMAGE_TYPES,
   groupStyles,
   searchStyles,
   stylePreviewUrl,
+  useReadDesignImage,
   type CatalogStyle,
   type DesignCatalog,
   type DesignConfig,
   type DesignSummary,
   type Dials,
   type FeelPreset,
+  type ImageDesignResponse,
 } from "@/src/features/design/api";
 import { accentWarning } from "@/src/features/design/contrast";
 
@@ -211,6 +218,13 @@ export function DesignPicker({
   exactAccent,
 }: DesignPickerProps) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const readImage = useReadDesignImage();
+  /** The screenshot just read, to show beside what was read from it. Gone when the picker closes. */
+  const [shot, setShot] = useState<{ url: string; read: ImageDesignResponse["read"]; notice: string } | null>(null);
+  useEffect(() => () => {
+    if (shot) URL.revokeObjectURL(shot.url);
+  }, [shot]);
   const [fineTune, setFineTune] = useState(false);
   const [importOpen, setImportOpen] = useState(Boolean(value.designMd));
   /** The family the gallery is narrowed to, or null for all of them. */
@@ -256,9 +270,36 @@ export function DesignPicker({
       toast.error("That design file is too long to import.");
       return;
     }
-    set({ designMd: text });
+    // A file brought by hand replaces one read from a screenshot, picture and all.
+    set({ designMd: text, reference: undefined });
+    setShot(null);
     setImportOpen(true);
   };
+
+  /** Read a design from a screenshot: tau writes the design file from it. */
+  const readScreenshot = (file: File | undefined) => {
+    if (!file || readImage.isPending) return;
+    if (!REFERENCE_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Use a PNG, JPEG, WebP or GIF image.");
+      return;
+    }
+    if (file.size > MAX_REFERENCE_IMAGE_BYTES) {
+      toast.error("That image is too large. Use one under 5 MB.");
+      return;
+    }
+    readImage.mutate(file, {
+      onSuccess: (result) => {
+        set({ designMd: result.designMd, reference: result.reference });
+        setShot({ url: URL.createObjectURL(file), read: result.read, notice: result.notice });
+        setImportOpen(true);
+      },
+      onError: (err) => {
+        toast.error(err instanceof ApiError ? err.message : "Couldn't read that image.");
+      },
+    });
+  };
+
+  const fromScreenshot = Boolean(value.designMd && value.reference);
 
   return (
     <div className="space-y-5">
@@ -530,10 +571,12 @@ export function DesignPicker({
           className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
         >
           <span className="text-xs font-semibold text-silver-900">
-            Bring your own DESIGN.md
+            Use a screenshot or your own DESIGN.md
             {value.designMd && (
               <span className="ml-2 font-normal text-blue-300">
-                {value.designMd.length.toLocaleString()} characters
+                {fromScreenshot
+                  ? "From a screenshot"
+                  : `${value.designMd.length.toLocaleString()} characters`}
               </span>
             )}
           </span>
@@ -544,32 +587,107 @@ export function DesignPicker({
         {importOpen && (
           <div className="space-y-2 border-t border-silver-400/20 p-3">
             <p className="text-[11px] leading-relaxed text-silver-600">
-              Paste or upload a design file. tau uses its colours, typefaces and
-              corner radius where it gives them, and follows what it says
-              everywhere else. Anything you choose above still wins.
+              Give tau a screenshot of something you want this to look like, and
+              it reads the colours, shapes, type and layout from it. Or paste
+              or upload a design file of your own. Anything you choose above
+              still wins.
             </p>
+            {readImage.isPending && (
+              <p role="status" className="flex items-center gap-2 text-xs text-silver-900">
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+                Reading the design from your screenshot…
+              </p>
+            )}
+            {fromScreenshot && !readImage.isPending && (
+              <div className="flex gap-3 rounded-md border border-silver-400/20 bg-space-overlay/40 p-2.5">
+                {shot && (
+                  <img
+                    src={shot.url}
+                    alt="The screenshot the design was read from"
+                    className="h-20 w-28 shrink-0 rounded border border-silver-400/20 object-cover object-top"
+                  />
+                )}
+                <div className="min-w-0 space-y-1.5 text-[11px] leading-relaxed">
+                  {shot ? (
+                    <>
+                      <p className="flex items-center gap-1.5 font-semibold text-silver-900">
+                        {[shot.read.colors.background, shot.read.colors.primary, shot.read.colors.text].map(
+                          (hex, i) => (
+                            <span
+                              key={i}
+                              title={hex}
+                              className="size-3 rounded-full border border-silver-400/40"
+                              style={{ backgroundColor: hex }}
+                            />
+                          ),
+                        )}
+                        Read as a {shot.read.mode} design
+                      </p>
+                      {shot.read.summary && <p className="text-silver-900">{shot.read.summary}</p>}
+                      {!shot.read.isInterface && (
+                        <p className="text-amber-200">
+                          This does not look like a screenshot of an app or a page, so only its
+                          colours were taken.
+                        </p>
+                      )}
+                      <p className="text-silver-600">{shot.notice}</p>
+                    </>
+                  ) : (
+                    <p className="text-silver-600">
+                      This design was read from a screenshot. Its photos, illustrations, logos and
+                      brand names are not copied.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             <textarea
               value={value.designMd ?? ""}
-              onChange={(e) =>
-                set({ designMd: e.target.value.slice(0, MAX_DESIGN_FILE_CHARS) || undefined })
-              }
+              onChange={(e) => {
+                const designMd = e.target.value.slice(0, MAX_DESIGN_FILE_CHARS) || undefined;
+                // Emptied out, the picture it was read from goes with it.
+                set(designMd ? { designMd } : { designMd, reference: undefined });
+                if (!designMd) setShot(null);
+              }}
               rows={5}
               spellCheck={false}
               placeholder={"---\ncolors:\n  primary: \"#0b5fff\"\n---\n# My design\n…"}
               className="scrollbar-thin w-full resize-y rounded-md border border-silver-400/30 bg-space-surface p-2 font-mono text-[11px] text-silver-900 outline-none placeholder:text-silver-600/60 focus-visible:border-blue-500/60"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={readImage.isPending}
+                onClick={() => imageInput.current?.click()}
+                className="flex items-center gap-1.5 rounded-[7px] border border-blue-500/40 bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/25 disabled:cursor-default disabled:opacity-50"
+              >
+                <ImageUpIcon className="size-3" />
+                {fromScreenshot ? "Use another screenshot" : "Use a screenshot"}
+              </button>
+              <input
+                ref={imageInput}
+                type="file"
+                hidden
+                accept={REFERENCE_IMAGE_TYPES.join(",")}
+                onChange={(e) => {
+                  readScreenshot(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
               <button
                 type="button"
                 onClick={() => fileInput.current?.click()}
                 className="flex items-center gap-1.5 rounded-[7px] border border-silver-400/30 px-2.5 py-1 text-xs font-medium text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
               >
-                <FileUpIcon className="size-3" /> Upload a file
+                <FileUpIcon className="size-3" /> Upload a DESIGN.md
               </button>
               {value.designMd && (
                 <button
                   type="button"
-                  onClick={() => set({ designMd: undefined })}
+                  onClick={() => {
+                    set({ designMd: undefined, reference: undefined });
+                    setShot(null);
+                  }}
                   className="flex items-center gap-1 rounded-[7px] px-2 py-1 text-xs font-medium text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
                 >
                   <XIcon className="size-3" /> Remove

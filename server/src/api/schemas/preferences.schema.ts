@@ -40,7 +40,7 @@ export type TourRecord = z.infer<typeof tourRecordSchema>;
  * light or dark, a font pairing and the feel. Never an imported `DESIGN.md` —
  * a file belongs to the project it was written for.
  */
-export type DefaultDesign = Omit<DesignConfig, "designMd">;
+export type DefaultDesign = Omit<DesignConfig, "designMd" | "reference">;
 
 const dial = z.number().int().min(1).max(10);
 
@@ -59,7 +59,7 @@ const defaultDesignSchema = z
 function readDefaultDesign(raw: unknown): DefaultDesign | undefined {
   const config = normalizeDesignConfig(raw);
   if (!config) return undefined;
-  const { designMd: _file, ...rest } = config;
+  const { designMd: _file, reference: _picture, ...rest } = config;
   return Object.keys(rest).length > 0 ? rest : undefined;
 }
 

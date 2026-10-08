@@ -23,6 +23,7 @@ import { DEFAULT_FONTS, STYLES, fontLabel, fontsFor, isFontPairing } from "./sty
 import {
   isStyleKey,
   type DesignConfig,
+  type DesignReference,
   type Dials,
   type Mode,
   type StyleKey,
@@ -51,6 +52,21 @@ function dial(value: unknown): number | undefined {
   if (value === "") return undefined;
   const n = Number(value);
   return Number.isFinite(n) ? Math.min(10, Math.max(1, Math.round(n))) : undefined;
+}
+
+const REFERENCE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+/**
+ * A reference image as stored, or null. Only a hash and a type: where the
+ * bytes are kept is worked out from the hash and whose project it is, so a
+ * stored choice can never point at somebody else's file.
+ */
+export function normalizeReference(raw: unknown): DesignReference | null {
+  if (!isRecord(raw)) return null;
+  const hash = typeof raw.hash === "string" ? raw.hash.toLowerCase() : "";
+  const mimeType = typeof raw.mimeType === "string" ? raw.mimeType.toLowerCase() : "";
+  if (!/^[0-9a-f]{64}$/.test(hash) || !REFERENCE_TYPES.includes(mimeType)) return null;
+  return { hash, mimeType };
 }
 
 /**
@@ -86,6 +102,9 @@ export function normalizeDesignConfig(raw: unknown): DesignConfig | null {
 
   if (typeof raw.designMd === "string" && raw.designMd.trim().length > 0) {
     config.designMd = raw.designMd.trim().slice(0, MAX_IMPORTED_DESIGN_CHARS);
+    // The picture a design was read from means nothing without the design.
+    const reference = normalizeReference(raw.reference);
+    if (reference) config.reference = reference;
   }
 
   return Object.keys(config).length > 0 ? config : null;

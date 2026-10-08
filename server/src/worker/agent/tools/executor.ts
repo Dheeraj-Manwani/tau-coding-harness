@@ -48,6 +48,10 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { finishDesign, startDesign } from "@/worker/design/provision";
 
+/** What the agent is told, once, about a design that was read from a screenshot. */
+const FROM_IMAGE_NOTE =
+  "This app's design was read from the screenshot the user attached: its colours, shapes, typefaces and layout. Its photographs, illustrations, logos, brand names and wording were not copied, and must not be: use this app's own. When you finish, tell the user in one sentence what was taken from the screenshot and what was not.";
+
 class SandboxDeadError extends Error {
   readonly code = "SANDBOX_DEAD" as const;
 
@@ -159,6 +163,7 @@ async function executeToolInner(
         indexer,
       );
     case "provision_sandbox": {
+      let designNote: string | null = null;
       if (!sandboxRef.current) {
         const { template, brief } = (input ?? {}) as {
           template?: unknown;
@@ -186,13 +191,17 @@ async function executeToolInner(
         );
 
         if (designing) {
-          await finishDesign(
+          const designed = await finishDesign(
             { sandbox: sandboxRef.current, projectId, userId, jobId, indexer },
             designing,
           );
+          // Said once, here, rather than in the design file, which is read
+          // with every request: the user should hear it when the app is
+          // built, not every time they ask for a change.
+          if (designed?.choice.imported?.fromImage) designNote = FROM_IMAGE_NOTE;
         }
       }
-      return { success: true };
+      return { success: true, ...(designNote ? { designNote } : {}) };
     }
     case "create_plan":
       return createPlan(input, jobId);

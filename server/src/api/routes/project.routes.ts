@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, raw } from "express";
+import { env } from "@/lib/env";
 import {
   initializeProject,
   listProjects,
@@ -33,6 +34,7 @@ import * as design from "../controllers/design.controller";
 import {
   visualEditRateLimiter,
   assetImportRateLimiter,
+  attachmentRateLimiter,
 } from "../middleware/rateLimit.middleware";
 
 const router = Router();
@@ -43,6 +45,14 @@ router.get("/showcase", getProjectShowcase);
 // The styles a new project can be given. Not project-scoped, so it is declared
 // before the `/:projectId` routes, like "showcase" above.
 router.get("/design/styles", design.getCatalog);
+// A picture to take a design from, sent as the request body. Only image types
+// are read as a body here, so anything else arrives empty and is refused.
+router.post(
+  "/design/from-image",
+  attachmentRateLimiter,
+  raw({ type: "image/*", limit: env.ATTACHMENT_MAX_IMAGE_BYTES, inflate: false }),
+  design.fromImage,
+);
 // User-scoped, not project-scoped — declared before the `/:projectId` routes so
 // "jobs" is never captured as a projectId.
 router.post("/jobs/cancel-all", cancelAllJobs);

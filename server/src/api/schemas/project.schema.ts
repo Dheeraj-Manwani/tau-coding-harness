@@ -76,6 +76,13 @@ export const designConfigSchema = z.object({
     .max(MAX_IMPORTED_DESIGN_CHARS, "That design file is too long")
     .refine((c) => !c.includes("\0"), "That is not a text file")
     .optional(),
+  /** The picture `designMd` was read from, as `POST /project/design/from-image` returned it. */
+  reference: z
+    .object({
+      hash: z.string().regex(/^[0-9a-fA-F]{64}$/),
+      mimeType: z.string().min(1).max(40),
+    })
+    .optional(),
 });
 
 export const messageSchema = z

@@ -44,7 +44,7 @@ export interface Preferences {
 
 /** A default look is a choice of style, colour and feel; never an imported
  *  `DESIGN.md`, which belongs to the project it was written for. */
-export type DefaultDesign = Omit<DesignConfig, "designMd">;
+export type DefaultDesign = Omit<DesignConfig, "designMd" | "reference">;
 
 export interface PreferencesPatch {
   reduceMotion?: boolean;

@@ -100,7 +100,11 @@ export function restyledChoice(
     accent: given ?? current?.accent ?? "#4d7c0f",
     accentExact: given !== undefined,
     mode: config.mode ?? (sameStyle ? current.mode : style.defaultMode),
-    dials: { ...(sameStyle ? current.dials : style.dials), ...config.dials },
+    dials: {
+      ...(sameStyle ? current.dials : style.dials),
+      ...(imported?.tokens.density ? { density: imported.tokens.density } : {}),
+      ...config.dials,
+    },
     ...(fonts ? { fonts } : {}),
     read: read ?? `Reading this as: an app for the people who use it, which should feel ${style.name.toLowerCase()}.`,
     source: imported ? "import" : "user",
@@ -123,6 +127,9 @@ const TAU_SECTIONS = new Set([
   "components",
   "do's and don'ts",
   "in this app",
+  // What a design read from a screenshot ends with (`fromImage.ts`). It is
+  // about that design, and goes when the design does.
+  "not copied",
 ]);
 
 /** What a restyle used to put its kept notes under, before the file had a notes section. */

@@ -18,7 +18,7 @@ import type { CheckContext } from "./checks";
 import { isStyleKey } from "./types";
 import { buildTheme } from "./palette";
 import { STYLES, fontsFor } from "./styles";
-import type { DesignChoice, FontSet, Mode, StyleSpec } from "./types";
+import type { DesignChoice, FontSet, ImportedShapes, Mode, SkinVars, StyleSpec } from "./types";
 
 export interface ResolvedDesign {
   /** The style as this app has it: its typefaces are the chosen pairing's. */
@@ -59,14 +59,70 @@ function withImportedColors(
   return { ...theme, [mode]: palette };
 }
 
+/** A card edge and a card shadow that do not depend on any style's own shadow scale. */
+const CARD_BORDER = { none: "0", hairline: "1px solid var(--border)", thick: "2px solid var(--foreground)" };
+const CARD_SHADOW = {
+  none: "none",
+  soft: "0 1px 2px rgb(0 0 0 / 0.06), 0 10px 28px -14px rgb(0 0 0 / 0.28)",
+  hard: "4px 4px 0 0 var(--foreground)",
+};
+
+/**
+ * A style's skin with an imported design's shapes laid over it.
+ *
+ * An import is fitted to the closest of tau's styles, and "closest" is never
+ * "the same": a design with pill buttons may be nearest to a style whose
+ * buttons are merely rounded. Where the design says how a thing is shaped,
+ * that wins; everything it does not say stays the style's.
+ *
+ * Each shape moves every variable that has to agree with it. A square control
+ * with a round checkbox, or a pill button over a square badge, is neither look.
+ */
+export function withImportedShapes(skin: SkinVars, shapes: ImportedShapes | undefined): SkinVars {
+  if (!shapes) return skin;
+  const next: SkinVars = { ...skin };
+  if (shapes.control !== undefined) {
+    const square = shapes.control === "0";
+    const pill = shapes.control === "9999px";
+    next.controlRadius = shapes.control;
+    // A pill-shaped text field cuts into what is typed in it at any size but one line.
+    next.fieldRadius = pill ? "0.75rem" : shapes.control;
+    next.badgeRadius = square ? "0" : pill ? "9999px" : shapes.control;
+    next.tabsRadius = shapes.control;
+    next.checkRadius = square ? "0" : pill ? "0.375rem" : `min(${shapes.control}, 0.375rem)`;
+  }
+  if (shapes.card !== undefined) {
+    next.cardRadius = shapes.card;
+    next.overlayRadius = shapes.card;
+  }
+  if (shapes.borders) {
+    next.cardBorder = CARD_BORDER[shapes.borders];
+    next.overlayBorder = CARD_BORDER[shapes.borders === "none" ? "hairline" : shapes.borders];
+    if (shapes.borders === "thick") next.borderWidth = "2px";
+    else if (skin.borderWidth !== "1px") next.borderWidth = "1px";
+  }
+  if (shapes.shadows) next.cardShadow = CARD_SHADOW[shapes.shadows];
+  if (shapes.fields) next.field = shapes.fields;
+  if (shapes.labels) {
+    next.buttonCase = shapes.labels;
+    next.labelCase = shapes.labels;
+    next.badgeCase = shapes.labels;
+  }
+  return next;
+}
+
 /**
  * @param fonts  typefaces to use instead of the choice's pairing — for an
  *               imported design, whichever of its fonts could be installed
  */
 export function resolveDesign(choice: DesignChoice, fonts?: FontSet): ResolvedDesign {
   const base = STYLES[choice.style];
-  const style: StyleSpec = { ...base, fonts: fonts ?? fontsFor(base, choice.fonts) };
   const tokens = choice.imported?.tokens;
+  const style: StyleSpec = {
+    ...base,
+    fonts: fonts ?? fontsFor(base, choice.fonts),
+    skin: withImportedShapes(base.skin, tokens?.shapes),
+  };
 
   let theme = buildTheme(base.palette, choice.accent, tokens?.radius ?? base.radius, {
     exact: choice.accentExact,

@@ -17,7 +17,7 @@
  * Pure. See doc/CONTEXT_AND_MEMORY_PLAN.md §5, layer 2.
  */
 import { hexToOklch, normalizeHex } from "./color";
-import type { ImportedDesign, ImportedTokens, Mode } from "./types";
+import type { ImportedDesign, ImportedShapes, ImportedTokens, Mode } from "./types";
 
 type Yaml = { [key: string]: Yaml | string };
 
@@ -116,6 +116,47 @@ function familyName(value: string): string | null {
 
 const LENGTH = /^(?:0|\d+(?:\.\d+)?(?:px|rem|em))$/;
 
+function word<T extends string>(value: Yaml | string | undefined, allowed: readonly T[]): T | undefined {
+  const v = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return (allowed as readonly string[]).includes(v) ? (v as T) : undefined;
+}
+
+/**
+ * How the file says its components are shaped: the corner of a control and of
+ * a card, from its radius scale, and the rest from a `shapes` map. That map is
+ * tau's own addition to the format — a file from another tool will not have
+ * one, and loses nothing by it.
+ */
+function importedShapes(yaml: Yaml, rounded: Yaml | null): ImportedShapes | undefined {
+  const shapes: ImportedShapes = {};
+  if (rounded) {
+    // "0px" is square and "999px" is a pill, however each file spells them.
+    const plain = (value: string) =>
+      /^0(?:px|rem|em)?$/.test(value) ? "0" : /^\d{3,}px$/.test(value) ? "9999px" : value;
+    const radii = new Map(
+      leaves(rounded)
+        .filter(([, value]) => LENGTH.test(value))
+        .map(([name, value]) => [name, plain(value)] as const),
+    );
+    const control = radii.get("control") ?? radii.get("button") ?? radii.get("buttons");
+    const card = radii.get("card") ?? radii.get("cards") ?? radii.get("panel");
+    if (control) shapes.control = control;
+    if (card) shapes.card = card;
+  }
+  const said = mapOf(yaml.shapes);
+  if (said) {
+    const borders = word(said.borders, ["none", "hairline", "thick"] as const);
+    const shadows = word(said.shadows, ["none", "soft", "hard"] as const);
+    const fields = word(said.fields, ["outlined", "underline", "filled"] as const);
+    const labels = word(said.labels, ["none", "uppercase"] as const);
+    if (borders) shapes.borders = borders;
+    if (shadows) shapes.shadows = shadows;
+    if (fields) shapes.fields = fields;
+    if (labels) shapes.labels = labels;
+  }
+  return Object.keys(shapes).length > 0 ? shapes : undefined;
+}
+
 /** The tokens tau can use from a file's front matter. Empty when it has none. */
 export function importedTokens(front: string | null): ImportedTokens {
   const tokens: ImportedTokens = { colors: {}, fonts: {} };
@@ -158,13 +199,28 @@ export function importedTokens(front: string | null): ImportedTokens {
     tokens.radius = yaml.radius;
   }
 
+  const shapes = importedShapes(yaml, rounded);
+  if (shapes) tokens.shapes = shapes;
+
+  const density = typeof yaml.density === "string" ? Number(yaml.density) : NaN;
+  if (Number.isInteger(density) && density >= 1 && density <= 10) tokens.density = density;
+
   return tokens;
+}
+
+/** Whether a file's front matter says tau wrote it from a screenshot (`fromImage.ts`). */
+function readFromImage(front: string | null): boolean {
+  return front !== null && /^source:\s*["']?screenshot["']?\s*$/m.test(front);
 }
 
 /** Read a file the user brought. Never throws: a file with nothing usable has empty tokens. */
 export function parseImportedDesign(text: string): ImportedDesign {
   const { front } = splitFrontMatter(text);
-  return { text: text.replace(/\r\n/g, "\n").trim(), tokens: importedTokens(front) };
+  return {
+    text: text.replace(/\r\n/g, "\n").trim(),
+    tokens: importedTokens(front),
+    ...(readFromImage(front) ? { fromImage: true } : {}),
+  };
 }
 
 /** Whether the imported page colour is a dark one; null when the file gives none. */

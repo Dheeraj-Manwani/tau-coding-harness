@@ -26,10 +26,11 @@
  *
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5, layers 2 and 3.
  */
+import { createHash } from "node:crypto";
 import { Sandbox } from "e2b";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { getBlobText } from "@/lib/s3";
+import { designReferenceKey, getBlobText, putAttachmentBytes } from "@/lib/s3";
 import { SandboxStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import { log } from "@/worker/lib/log";
@@ -39,10 +40,16 @@ import { designCatalog } from "@/worker/design/catalog";
 import { describeDesign, normalizeDesignConfig } from "@/worker/design/config";
 import { DESIGN_PATH, syncDesignMd } from "@/worker/design/designMd";
 import { directDesign } from "@/worker/design/director";
+import {
+  NOT_COPIED_NOTICE,
+  imageReadingAvailable,
+  readDesignImage,
+} from "@/worker/design/fromImage";
 import { parseImportedDesign } from "@/worker/design/importDesign";
 import { readOf, restyledChoice } from "@/worker/design/restyle";
 import { STYLES, isFontPairing } from "@/worker/design/styles";
-import type { DesignConfig } from "@/worker/design/types";
+import type { DesignConfig, DesignReference } from "@/worker/design/types";
+import { isImageMime } from "../lib/attachments";
 import { AppError, Errors } from "../lib/errors";
 import { toWorkdirPath, writeProjectFile } from "../lib/projectFiles";
 import * as projectRepo from "../repositories/project.repository";
@@ -190,11 +197,82 @@ export async function npmPackageExists(
   }
 }
 
+/**
+ * Keep the picture a design was read from, under the hash of its bytes, and
+ * return what a project stores to find it again.
+ */
+export async function storeDesignReference(
+  userId: string,
+  bytes: Uint8Array,
+  mimeType: string,
+): Promise<DesignReference> {
+  const body = Buffer.from(bytes);
+  const hash = createHash("sha256").update(body).digest("hex");
+  await putAttachmentBytes(designReferenceKey(userId, hash), body, mimeType);
+  return { hash, mimeType: mimeType.toLowerCase() };
+}
+
+/**
+ * Read a design from a picture: a screenshot the user wants their app to look
+ * like. Returns it as a `DESIGN.md`, which the caller sends back as the
+ * `designMd` of a new project or a restyle, together with `reference` — so
+ * from there on it is an imported design like any other.
+ *
+ * Nothing about a project changes here. The one thing kept is the picture
+ * itself, so the design's source is not lost once the reading has been made.
+ */
+export async function designFromImage(userId: string, bytes: Buffer, mimeType: string) {
+  if (!imageReadingAvailable()) {
+    throw new AppError("Reading a design from an image is not available on this tau instance.", 503);
+  }
+  if (!isImageMime(mimeType)) {
+    throw Errors.badRequest("That is not an image tau can read. Use a PNG, JPEG, WebP or GIF.");
+  }
+
+  let result: Awaited<ReturnType<typeof readDesignImage>>;
+  try {
+    result = await readDesignImage({ bytes, mimeType });
+  } catch (err) {
+    log.warn("design.image_read_failed", { userId, error: String(err).slice(0, 300) });
+    throw new AppError("tau could not read that image just now. Try again in a moment.", 502);
+  }
+  if (!result.design) {
+    throw Errors.badRequest("tau could not make out a design in that image. Try a clearer screenshot.");
+  }
+
+  const { reading, designMd } = result.design;
+  const reference = await storeDesignReference(userId, bytes, mimeType);
+  log.info("design.image_read", {
+    userId,
+    isInterface: reading.isInterface,
+    mode: reading.mode,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+  });
+
+  return {
+    designMd,
+    reference,
+    /** What was read, in brief, for whoever is looking at the picker. */
+    read: {
+      isInterface: reading.isInterface,
+      mode: reading.mode,
+      summary: reading.summary,
+      colors: {
+        background: reading.colors.background,
+        primary: reading.colors.primary,
+        text: reading.colors.text,
+      },
+    },
+    notice: NOT_COPIED_NOTICE,
+  };
+}
+
 /** What the user chose, without the text of a file they imported. */
 function publicConfig(raw: unknown) {
   const config = normalizeDesignConfig(raw) ?? {};
-  const { designMd, ...rest } = config;
-  return { ...rest, imported: designMd !== undefined };
+  const { designMd, reference, ...rest } = config;
+  return { ...rest, imported: designMd !== undefined, fromImage: reference !== undefined };
 }
 
 /**
@@ -243,6 +321,9 @@ export function mergedConfig(
   }
   // An imported file was replaced by a style of tau's unless this request brought one.
   if (!request.designMd && request.style) delete merged.designMd;
+  // The picture belongs to the file that was read from it: gone with the
+  // file, and gone when a file brought by hand takes its place.
+  if (!merged.designMd || (request.designMd && !request.reference)) delete merged.reference;
   return merged;
 }
 

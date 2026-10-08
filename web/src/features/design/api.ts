@@ -39,7 +39,34 @@ export interface DesignConfig {
   dials?: Partial<Dials>;
   /** A DESIGN.md the user brought, whole. */
   designMd?: string;
+  /** The picture `designMd` was read from, when it was read from one. */
+  reference?: DesignReference;
 }
+
+/** A stored reference image, as `POST /project/design/from-image` returns it. */
+export interface DesignReference {
+  hash: string;
+  mimeType: string;
+}
+
+/** What tau read from a picture: a design file, and a few words on what it saw. */
+export interface ImageDesignResponse {
+  designMd: string;
+  reference: DesignReference;
+  read: {
+    /** False for a photo or a logo: only its colours were taken. */
+    isInterface: boolean;
+    mode: DesignMode;
+    summary: string;
+    colors: { background: string; primary: string; text: string };
+  };
+  /** What is not copied from a picture, to show beside it. */
+  notice: string;
+}
+
+/** Mirrors `ATTACHMENT_MAX_IMAGE_BYTES` on the server, which refuses anything larger. */
+export const MAX_REFERENCE_IMAGE_BYTES = 5 * 1024 * 1024;
+export const REFERENCE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export interface CatalogStyle {
   key: string;
@@ -106,7 +133,11 @@ export interface ProjectDesignResponse {
   /** Null for an app tau did not design; such an app cannot be restyled here. */
   design: DesignSummary | null;
   /** The parts of the design the user chose themselves. */
-  chosen: Omit<DesignConfig, "designMd"> & { imported: boolean };
+  chosen: Omit<DesignConfig, "designMd" | "reference"> & {
+    imported: boolean;
+    /** The imported design was read from a screenshot. */
+    fromImage?: boolean;
+  };
   restylable: boolean;
 }
 
@@ -215,6 +246,26 @@ export function useRestyle(projectId: string | undefined) {
   });
 }
 
+/**
+ * `POST /project/design/from-image`: read a design from a screenshot.
+ *
+ * The picture is the request body. What comes back is a design file to send as
+ * `designMd`, with `reference`, when the project is created or restyled —
+ * nothing about any project changes here.
+ */
+export function useReadDesignImage() {
+  return useMutation({
+    mutationFn: (file: File) =>
+      api
+        .post<ImageDesignResponse>("/project/design/from-image", file, {
+          headers: { "Content-Type": file.type },
+          // Reading a picture is a model call, and can take a while.
+          timeout: 90_000,
+        })
+        .then((r) => r.data),
+  });
+}
+
 /** How many parts of a design the user has chosen, for a badge on the button that opens the picker. */
 export function countChoices(config: DesignConfig): number {
   return [
@@ -233,8 +284,8 @@ export function countChoices(config: DesignConfig): number {
  */
 export function withoutImport(
   config: DesignConfig,
-): Omit<DesignConfig, "designMd"> | null {
-  return compactConfig({ ...config, designMd: undefined });
+): Omit<DesignConfig, "designMd" | "reference"> | null {
+  return compactConfig({ ...config, designMd: undefined, reference: undefined });
 }
 
 /** Whether two choices are the same look, however their keys are ordered. */
@@ -250,6 +301,7 @@ export function sameDesign(a: DesignConfig | null, b: DesignConfig | null): bool
       c.dials?.motion,
       c.dials?.density,
       c.designMd,
+      c.reference?.hash,
     ]);
   };
   return key(a) === key(b);
@@ -287,6 +339,10 @@ export function compactConfig(config: DesignConfig): DesignConfig | null {
   if (config.mode) out.mode = config.mode;
   if (config.fonts && config.style) out.fonts = config.fonts;
   if (config.dials && Object.keys(config.dials).length > 0) out.dials = config.dials;
-  if (config.designMd?.trim()) out.designMd = config.designMd.trim();
+  if (config.designMd?.trim()) {
+    out.designMd = config.designMd.trim();
+    // The picture belongs to the file that was read from it.
+    if (config.reference) out.reference = config.reference;
+  }
   return Object.keys(out).length > 0 ? out : null;
 }

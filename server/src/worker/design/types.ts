@@ -318,6 +318,20 @@ export interface DesignConfig {
   dials?: Partial<Dials>;
   /** A `DESIGN.md` the user brought with them, whole. */
   designMd?: string;
+  /**
+   * The picture `designMd` was read from, when it was read from one: a
+   * screenshot the user gave as "make it look like this". Kept with the
+   * project so that what the design came from is not lost once the reading
+   * has been made (`fromImage.ts`).
+   */
+  reference?: DesignReference;
+}
+
+/** A stored reference image, by the hash of its bytes. The key is derived, never taken on trust. */
+export interface DesignReference {
+  /** sha256 of the image, lower-case hex. */
+  hash: string;
+  mimeType: string;
 }
 
 /** What was decided for one app: a style, and how it is tuned. */
@@ -343,6 +357,25 @@ export interface DesignChoice {
   imported?: ImportedDesign;
 }
 
+/**
+ * How the components of an imported design are shaped, where its file says.
+ * Laid over the skin of the style the design was fitted to, so a design with
+ * pill buttons gets pill buttons whichever style was the closest match.
+ */
+export interface ImportedShapes {
+  /** Corner radius of buttons and fields, as a CSS length. */
+  control?: string;
+  /** Corner radius of cards and panels, as a CSS length. */
+  card?: string;
+  /** The edge of a card: none, a thin line, or a heavy one. */
+  borders?: "none" | "hairline" | "thick";
+  /** How a card lifts off the page: not at all, softly, or as a hard offset block. */
+  shadows?: "none" | "soft" | "hard";
+  fields?: "outlined" | "underline" | "filled";
+  /** Whether buttons and small labels are set in capitals. */
+  labels?: "none" | "uppercase";
+}
+
 /** The parts of an imported `DESIGN.md` that tau can turn into a stylesheet. */
 export interface ImportedTokens {
   /** Theme token name (`primary`, `background`, `card`, …) to hex. */
@@ -351,10 +384,19 @@ export interface ImportedTokens {
   fonts: { display?: string; body?: string; mono?: string };
   /** A CSS length for `--radius`. */
   radius?: string;
+  shapes?: ImportedShapes;
+  /** How much is on a screen, 1 (airy) to 10 (packed), where the file says. */
+  density?: number;
 }
 
 export interface ImportedDesign {
   /** The file as the user gave it. */
   text: string;
   tokens: ImportedTokens;
+  /**
+   * The file was written by tau from a screenshot rather than brought as a
+   * file. It describes how something looks, not what it shows: the pictures,
+   * logos and names in the screenshot are not part of the design.
+   */
+  fromImage?: boolean;
 }

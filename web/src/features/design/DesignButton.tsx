@@ -59,7 +59,9 @@ export function DesignButton({
   const isDefault = savedDefault != null && sameDesign(value, savedDefault);
   const style = catalog.data.styles.find((s) => s.key === value.style);
   const label = value.designMd
-    ? "Your design"
+    ? value.reference
+      ? "Screenshot"
+      : "Your design"
     : (style?.name ?? (chosen > 0 ? "Custom" : "Auto"));
 
   return (

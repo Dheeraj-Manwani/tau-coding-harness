@@ -54,6 +54,18 @@ export function attachmentKey(userId: string, hash: string): string {
   return `${ATTACHMENT_PREFIX}/${userId}/${hash}`;
 }
 
+export const DESIGN_REFERENCE_PREFIX = "tau/design-references";
+
+/**
+ * A picture an app's design was read from. Scoped to the user, like an
+ * attachment, because it is given before the project exists — but kept apart
+ * from attachments, which are deleted with the message they were sent in or
+ * swept when never sent. A design outlives both.
+ */
+export function designReferenceKey(userId: string, hash: string): string {
+  return `${DESIGN_REFERENCE_PREFIX}/${userId}/${hash}`;
+}
+
 export const AVATAR_PREFIX = "tau/avatars";
 
 /** Content-addressed, so a new picture is a new key and no cache can serve the

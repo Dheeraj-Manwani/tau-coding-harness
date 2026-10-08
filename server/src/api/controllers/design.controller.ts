@@ -14,6 +14,25 @@ export const getCatalog = (_req: Request, res: Response, next: NextFunction) => 
   }
 };
 
+/** `POST /project/design/from-image`: the body is the picture itself. */
+export const fromImage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const mimeType = String(req.headers["content-type"] ?? "").split(";")[0]!.trim();
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      throw Errors.badRequest("Send the image as the request body, with its type as Content-Type.");
+    }
+    const result = await designService.designFromImage(userId, req.body, mimeType);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getDesign = async (
   req: Request,
   res: Response,

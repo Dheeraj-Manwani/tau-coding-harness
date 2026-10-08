@@ -26,6 +26,7 @@ import type {
   Effort,
   MessageAttachment,
   PreviewBuildError,
+  PreviewRuntimeError,
   VisualMessageContext,
 } from "@/src/features/project/types";
 
@@ -42,6 +43,9 @@ export interface SendMessageOptions {
   /** Vite's build failure, for "Fix with tau". Same arrangement: the model
    *  gets the whole thing, the bubble stays one line. */
   buildError?: PreviewBuildError;
+  /** What the browser saw when the app crashed while starting, for "Ask tau
+   *  to fix". Same arrangement again. */
+  runtimeError?: PreviewRuntimeError;
   /** Ran after the optimistic bubble has been removed, so the caller can
    *  restore whatever it cleared before calling. */
   onFailed?: () => void;
@@ -88,6 +92,7 @@ export function useSendMessage(projectId: string | undefined) {
           ? { visualContext: options.visualContext }
           : {}),
         ...(options.buildError ? { buildError: options.buildError } : {}),
+        ...(options.runtimeError ? { runtimeError: options.runtimeError } : {}),
       })
       .then(({ jobId }) => startJob(jobId, content))
       .catch((err: unknown) => {

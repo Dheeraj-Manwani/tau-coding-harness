@@ -49,6 +49,31 @@ export const buildErrorSchema = z.object({
   frame: z.string().max(4000).optional(),
 });
 
+/**
+ * What the user's own browser saw when the app crashed while starting, for
+ * "Ask tau to fix": the first few errors the preview's bootstrap monitor
+ * recorded (`lib/previewBanner/health.js`). Unlike a build error there is no
+ * compiler message to quote, so this is the only account of the fault there is.
+ * `runtimeErrorBlock` clamps each part again on the way into the prompt.
+ */
+export const runtimeErrorSchema = z.object({
+  /** The route of the preview that crashed, e.g. `/pricing`. */
+  path: z.string().max(500).optional(),
+  errors: z
+    .array(
+      z.object({
+        kind: z.enum(["error", "rejection", "script"]),
+        message: z.string().min(1).max(1000),
+        stack: z.string().max(4000).optional(),
+        /** `file:line:col` of where it was thrown, when the browser said. */
+        at: z.string().max(500).optional(),
+        count: z.number().int().min(1).max(1_000_000).optional(),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+
 const dial = z.number().int().min(1).max(10);
 
 /**
@@ -96,6 +121,7 @@ export const messageSchema = z
     attachmentIds: z.array(z.uuid()).max(10).default([]),
     visualContext: visualContextSchema.optional(),
     buildError: buildErrorSchema.optional(),
+    runtimeError: runtimeErrorSchema.optional(),
     /** For a new project only: the look the user chose in the composer. */
     design: designConfigSchema.optional(),
   })

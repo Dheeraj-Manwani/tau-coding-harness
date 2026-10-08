@@ -14,7 +14,10 @@ const outputDir = mkdtempSync(join(tmpdir(), "tau-preview-recovery-"));
 const bundlePath = join(outputDir, "harness.js");
 execFileSync("bun", ["build", "test/fixtures/previewRecoveryHarness.tsx", "--outfile", bundlePath], { cwd: resolve(workspace, "web"), stdio: "pipe" });
 const bundle = readFileSync(bundlePath);
-const health = previewHealthScript();
+// Filled in once the port is known: the monitor only hands its errors to the
+// origin it is told is tau.
+let health = previewHealthScript();
+let foreignHealth = health;
 const requests = new Map<string, number>();
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
@@ -27,7 +30,7 @@ const server = createServer((req, res) => {
     if ((scenario === "transient" && requests.get(scenario) === 1) || scenario === "build-error") {
       res.statusCode = 503; res.end("// Vite restarting"); return;
     }
-    if (scenario === "exception") { res.end('throw new Error("App bootstrap failed")'); return; }
+    if (scenario === "exception" || scenario === "exception-foreign") { res.end('function start() { throw new Error("App bootstrap failed") }\nstart()'); return; }
     const delay = scenario === "delayed" ? 500 : 0;
     res.end(`setTimeout(()=>{document.getElementById('root').innerHTML='<h1>Running app</h1>'},${delay});`);
     return;
@@ -45,7 +48,7 @@ const server = createServer((req, res) => {
       return;
     }
     const overlay = scenario === "build-error" ? '<script>setTimeout(()=>document.body.appendChild(document.createElement("vite-error-overlay")),100)</script>' : "";
-    res.end(`<html><head><script>${health}</script><script type="module" src="/entry.js?scenario=${scenario}"></script></head><body><div id="root"></div>${overlay}</body></html>`);
+    res.end(`<html><head><script>${scenario === "exception-foreign" ? foreignHealth : health}</script><script type="module" src="/entry.js?scenario=${scenario}"></script></head><body><div id="root"></div>${overlay}</body></html>`);
     return;
   }
   res.end('<html><body><div id="root"></div><script type="module" src="/harness.js"></script></body></html>');
@@ -54,6 +57,8 @@ await new Promise<void>((resolve) => server.listen(0, "0.0.0.0", resolve));
 const address = server.address();
 assert.ok(address && typeof address !== "string");
 const parent = `http://localhost:${address.port}`;
+health = previewHealthScript(parent);
+foreignHealth = previewHealthScript("https://not-tau.example");
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
@@ -111,12 +116,30 @@ try {
   state = JSON.parse(await page.locator("output").innerText());
   assert.deepEqual(state, { phase: "failed", attempt: 0, appError: true });
   assert.equal(requests.get("exception"), 1, "Real exceptions do not create reload loops");
+  // What went wrong reaches tau, for "Ask tau to fix": the message, where it
+  // was thrown, and the stack, as paths rather than preview URLs.
+  await page.waitForFunction(() => document.querySelector('[data-testid="errors"]')!.textContent !== "null");
+  const reported = JSON.parse(await page.locator('[data-testid="errors"]').innerText());
+  assert.equal(reported.path, "/preview?scenario=exception");
+  assert.equal(reported.errors.length, 1);
+  assert.equal(reported.errors[0].kind, "error");
+  assert.match(reported.errors[0].message, /App bootstrap failed/);
+  assert.match(reported.errors[0].at, /^\/entry\.js\?scenario=exception:1:\d+$/);
+  assert.match(reported.errors[0].stack, /at start \(\/entry\.js/);
+  assert.ok(!JSON.stringify(reported).includes("127.0.0.1"), "The preview origin is cut out of what is sent");
+  // The same crash in a preview whose monitor was told tau lives elsewhere:
+  // the state still arrives, the errors do not. A page that merely embeds a
+  // preview learns that it failed and nothing about why.
+  await page.goto(`${parent}/?scenario=exception-foreign`);
+  await page.waitForFunction(() => JSON.parse(document.querySelector("output")!.textContent!).phase === "failed");
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(await page.locator('[data-testid="errors"]').innerText(), "null", "Errors are posted to tau's origin only");
   await page.goto(`${parent}/?scenario=build-error`);
   await page.waitForFunction(() => JSON.parse(document.querySelector("output")!.textContent!).phase === "failed");
   state = JSON.parse(await page.locator("output").innerText());
   assert.deepEqual(state, { phase: "failed", attempt: 0, appError: true });
   assert.equal(requests.get("build-error"), 1, "A Vite error cancels a pending network retry");
-  console.log("Preview recovery browser checks passed: dead URL blocked, replacement during chat, failure/cancel states, hidden 502, healthy legacy preview, failed entry, delayed rendering, forged message, runtime/Vite errors.");
+  console.log("Preview recovery browser checks passed: dead URL blocked, replacement during chat, failure/cancel states, hidden 502, healthy legacy preview, failed entry, delayed rendering, forged message, runtime/Vite errors, crash details to tau only.");
 } finally {
   await browser.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));

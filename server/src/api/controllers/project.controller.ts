@@ -130,7 +130,7 @@ export const addMessage = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { message, effort, attachmentIds, visualContext, buildError } = parse(
+    const { message, effort, attachmentIds, visualContext, buildError, runtimeError } = parse(
       messageSchema,
       req.body,
     );
@@ -140,7 +140,7 @@ export const addMessage = async (
       message,
       effort,
       attachmentIds,
-      { visual: visualContext, buildError },
+      { visual: visualContext, buildError, runtimeError },
     );
     res.status(201).json(result);
   } catch (err) {

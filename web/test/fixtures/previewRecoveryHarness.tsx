@@ -16,6 +16,7 @@ function Harness() {
   const recovery = usePreviewRecovery(frame, surface === "frame" ? src : null, surface === "frame" ? src : null, scenario !== "provider-error" && scenario !== "legacy-live");
   return <>
     <output data-testid="state">{JSON.stringify({ phase: recovery.phase, attempt: recovery.attempt, appError: recovery.appError })}</output>
+    <pre data-testid="errors">{JSON.stringify(recovery.runtimeError)}</pre>
     <span data-testid="surface">{surface}</span>
     <button onClick={() => setReplacementReady(true)}>Replacement ready</button>
     <button onClick={() => { setStreaming(false); setFailed(true); }}>Fail restoration</button>

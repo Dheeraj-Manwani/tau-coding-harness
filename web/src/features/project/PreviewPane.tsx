@@ -60,7 +60,10 @@ import {
 import { previewSrc } from "@/src/features/project/previewUrl";
 import { usePreviewRecovery } from "@/src/features/project/usePreviewRecovery";
 import { resolvePreviewSurface, type PreviewSurface } from "@/src/features/project/previewAvailability";
-import type { PreviewBuildError } from "@/src/features/project/types";
+import type {
+  PreviewBuildError,
+  PreviewRuntimeError,
+} from "@/src/features/project/types";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_BILLING } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
@@ -648,10 +651,15 @@ function errorLocation(error: PreviewBuildError): string | null {
  * build error in src/components/Hero.tsx" while the model gets the caret line.
  *
  * `error` is null when the app crashed while starting and Vite had nothing to
- * say about it (`PreviewFailedCard`). The preview only reports that it failed,
- * not why, so tau is asked to find the error itself.
+ * say about it (`PreviewFailedCard`). Then what goes instead is `crash`: the
+ * errors the monitor inside the preview recorded in this browser, on the same
+ * terms: a block the model reads, behind one plain sentence in the chat. With
+ * neither, tau is asked to find the error itself.
  */
-function useFixWithTau(error: PreviewBuildError | null) {
+function useFixWithTau(
+  error: PreviewBuildError | null,
+  crash: PreviewRuntimeError | null = null,
+) {
   const projectId = useProjectStore((s) => s.projectId);
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const dismiss = useProjectStore((s) => s.setPreviewErrorDismissed);
@@ -676,6 +684,7 @@ function useFixWithTau(error: PreviewBuildError | null) {
         )
       : send(
           "The app crashes while it starts, so the preview shows nothing. Find the error and fix it.",
+          crash ? { runtimeError: crash } : {},
         );
     if (!sent) return;
     setChatOpen(true);
@@ -1395,9 +1404,6 @@ export function PreviewPane({
   );
   useVisualUndo(reselect);
   useVisualEditEscape();
-  // A frame that never came up. When Vite reported why, tau is sent that;
-  // otherwise it is asked to find the error.
-  const startupFix = useFixWithTau(previewError);
 
   const isStreaming = status === "streaming";
   const restart = useRestartPreview(projectId ?? "");
@@ -1419,6 +1425,10 @@ export function PreviewPane({
   const src = previewSrc(previewUrl, previewPath);
   const frameKey = src ? `${src}-${previewNonce}` : null;
   const recovery = usePreviewRecovery(iframeRef, surface === "frame" ? src : null, surface === "frame" ? frameKey : null, previewHealthExpected);
+  // A frame that never came up. When Vite reported why, tau is sent that; when
+  // the app compiled and then crashed, what this browser saw of the crash;
+  // with neither, it is asked to find the error.
+  const startupFix = useFixWithTau(previewError, recovery.runtimeError);
   const previewLoaded = frameKey !== null && recovery.phase === "loaded";
   const emptyState = getEmptyPreviewState({
     status,

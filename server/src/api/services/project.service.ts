@@ -57,8 +57,10 @@ import {
 } from "../lib/attachments";
 import {
   buildErrorBlock,
+  runtimeErrorBlock,
   visualContextBlock,
   type BuildErrorContext,
+  type RuntimeErrorContext,
   type VisualContext,
 } from "../lib/visualContext";
 import {
@@ -171,6 +173,17 @@ async function generateProjectName(message: string): Promise<string> {
 }
 
 /**
+ * What a message was sent about, beyond its words: the element that was
+ * selected, the build error on screen, or the crash the user's browser saw.
+ * Each becomes a block the model reads and the transcript does not show.
+ */
+export interface MessageContext {
+  visual?: VisualContext;
+  buildError?: BuildErrorContext;
+  runtimeError?: RuntimeErrorContext;
+}
+
+/**
  * Build the content-block array for a USER message. Attachment text is
  * materialized in here rather than resolved later, which is what lets the
  * worker's `loadHistory()` stay untouched — it hands `Message.content` straight
@@ -183,7 +196,7 @@ async function buildUserMessage(
   userId: string,
   text: string,
   attachmentIds: string[],
-  context?: { visual?: VisualContext; buildError?: BuildErrorContext },
+  context?: MessageContext,
 ): Promise<{
   content: Prisma.InputJsonValue;
   resolved: ResolvedAttachment[];
@@ -201,6 +214,10 @@ async function buildUserMessage(
   }
   if (context?.buildError) {
     const block = buildErrorBlock(context.buildError);
+    if (block) blocks.push({ type: "text", text: block });
+  }
+  if (context?.runtimeError) {
+    const block = runtimeErrorBlock(context.runtimeError);
     if (block) blocks.push({ type: "text", text: block });
   }
 
@@ -393,7 +410,7 @@ export async function addMessage(
   text: string,
   effort: Effort,
   attachmentIds: string[] = [],
-  context?: { visual?: VisualContext; buildError?: BuildErrorContext },
+  context?: MessageContext,
 ): Promise<AddMessageResult> {
   const project = await projectRepo.findProjectById(projectId);
   if (!project) throw Errors.notFound("Project not found");

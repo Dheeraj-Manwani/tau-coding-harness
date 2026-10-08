@@ -164,7 +164,7 @@ const SANDBOX_APP_DIR = "/home/user/app/";
  */
 function fenced(s: string, max: number): string {
   const clamped = s.length > max ? `${s.slice(0, max)}…` : s;
-  return clamped.replace(/<\/(build-error)/gi, "<\\/$1");
+  return clamped.replace(/<\/(build-error|runtime-error)/gi, "<\\/$1");
 }
 
 /**
@@ -197,5 +197,110 @@ export function buildErrorBlock(err: BuildErrorContext): string | null {
     " fix it. This is Vite's own output, verbatim:\n\n" +
     parts.join("\n\n") +
     "\n</build-error>"
+  );
+}
+
+/** One error the preview's bootstrap monitor recorded in the user's browser. */
+export interface RuntimeErrorEntry {
+  /** An uncaught exception, an unhandled promise rejection, or a script that would not load. */
+  kind: "error" | "rejection" | "script";
+  message: string;
+  stack?: string;
+  /** `file:line:col`, when the browser gave one. */
+  at?: string;
+  /** How many times it was seen. */
+  count?: number;
+}
+
+/** What the user's browser saw when the app crashed while starting. */
+export interface RuntimeErrorContext {
+  /** The route that was open. */
+  path?: string;
+  errors: RuntimeErrorEntry[];
+}
+
+const RUNTIME_KIND: Record<RuntimeErrorEntry["kind"], string> = {
+  error: "Uncaught error",
+  rejection: "Unhandled promise rejection",
+  script: "Script failed to load",
+};
+
+/** The most errors quoted. The first is nearly always the cause; later ones are its echoes. */
+const MAX_RUNTIME_ERRORS = 3;
+
+/**
+ * A stack without the half nobody can act on. The frames inside
+ * `node_modules` are React's and the bundler's; the frame that matters is the
+ * one in the app's own files, and it is easier to find when it is not buried.
+ * Each run of library frames becomes one line saying how many there were.
+ */
+function appFrames(stack: string): string {
+  const out: string[] = [];
+  let library = 0;
+  const flush = () => {
+    if (library > 0) out.push(`    … ${library} frame${library === 1 ? "" : "s"} in libraries`);
+    library = 0;
+  };
+  for (const line of stack.split("\n")) {
+    if (/^\s*at\s/.test(line) && /node_modules|@vite|@react-refresh/.test(line)) {
+      library++;
+      continue;
+    }
+    flush();
+    out.push(line);
+  }
+  flush();
+  return out.join("\n");
+}
+
+/**
+ * The block behind "Ask tau to fix", for an app that compiled and then crashed.
+ *
+ * `buildErrorBlock` tells the model it is reading Vite's own output; that
+ * would be false here, so this is a block of its own. What it carries is the
+ * only account of the fault there is: nothing on tau's side saw the user's
+ * browser. It ends by sending the agent to reproduce the crash first, because
+ * a stack from a compiled file says which file and not always which line.
+ *
+ * Fenced like a build error and for the same reason: an error message is
+ * usually *about* angle brackets and quotes, and escaping them would mangle the
+ * one line the agent has to read. Only the closing tag is neutralised.
+ */
+export function runtimeErrorBlock(ctx: RuntimeErrorContext): string | null {
+  const errors = ctx.errors.filter((e) => e.message.trim()).slice(0, MAX_RUNTIME_ERRORS);
+  if (errors.length === 0) return null;
+
+  const listed = errors.map((e, i) => {
+    const seen = (e.count ?? 1) > 1 ? ` (seen ${e.count} times)` : "";
+    const lines = [`${i + 1}. ${RUNTIME_KIND[e.kind]}${seen}: ${fenced(e.message, 600)}`];
+    if (e.at) lines.push(`   at ${fenced(e.at, 300)}`);
+    // A stack opens with the message again ("TypeError: …", which the browser
+    // reports as "Uncaught TypeError: …"). Said once is enough: keep the frames.
+    const stack = e.stack
+      ? appFrames(e.stack)
+          .split("\n")
+          .filter((line, n) => n > 0 || /^\s*at\s/.test(line))
+          .join("\n")
+      : "";
+    // An error thrown at the top of a file has one frame, which is `at` again.
+    const onlyRepeatsAt = e.at !== undefined && stack.trim() === `at ${e.at.trim()}`;
+    if (stack.trim() && !onlyRepeatsAt) lines.push(fenced(stack, 1500));
+    return lines.join("\n");
+  });
+  const more = ctx.errors.length - errors.length;
+  const route = ctx.path?.trim() ? `, on \`${body(ctx.path.trim(), 200)}\`` : "";
+
+  return (
+    "<runtime-error>\n" +
+    `The app crashed in the user's browser while it was starting${route}, so the` +
+    " preview shows them nothing. It compiles; this is what their browser" +
+    " reported, verbatim:\n\n" +
+    listed.join("\n\n") +
+    (more > 0 ? `\n\n(${more} more ${more === 1 ? "error was" : "errors were"} reported after these.)` : "") +
+    "\n\nReproduce it before changing anything: if you have `inspect_preview`," +
+    " open that route with it. Then fix the cause and confirm the app renders." +
+    " Positions are in the file as the dev server compiled it, so the file is" +
+    " right and the line can be a few off." +
+    "\n</runtime-error>"
   );
 }

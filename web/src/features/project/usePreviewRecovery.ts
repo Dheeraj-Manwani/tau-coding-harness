@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { createPreviewRecovery, type PreviewRecoveryState } from "./previewRecovery";
+import { parseRuntimeError } from "./previewRuntimeError";
+import type { PreviewRuntimeError } from "./types";
 
 export function usePreviewRecovery(
   iframeRef: RefObject<HTMLIFrameElement | null>,
@@ -9,6 +11,9 @@ export function usePreviewRecovery(
 ) {
   const controller = useRef<ReturnType<typeof createPreviewRecovery> | null>(null);
   const [result, setResult] = useState<(PreviewRecoveryState & { key: string }) | null>(null);
+  // What the monitor in the preview says went wrong, for "Ask tau to fix".
+  // Kept by frame like the state, so a reload starts with nothing reported.
+  const [reported, setReported] = useState<{ error: PreviewRuntimeError; key: string } | null>(null);
   const current = result?.key === frameKey ? result : null;
   const origin = src ? new URL(src).origin : null;
   useEffect(() => {
@@ -26,6 +31,11 @@ export function usePreviewRecovery(
         return;
       }
       if (!data || data.source !== "tau-preview-health") return;
+      if (data.type === "errors") {
+        const error = parseRuntimeError(data);
+        if (error) setReported({ error, key: frameKey! });
+        return;
+      }
       if (!["waiting", "loaded", "failed"].includes(data.state)) return;
       recovery.onHealth(data);
     }
@@ -41,5 +51,11 @@ export function usePreviewRecovery(
     controller.current?.onLoad();
     if (origin) iframeRef.current?.contentWindow?.postMessage({ type: "tau:preview-probe" }, origin);
   }, [iframeRef, origin]);
-  return { attempt: current?.attempt ?? 0, phase: current?.phase ?? "waiting", appError: current?.appError ?? false, onLoad };
+  return {
+    attempt: current?.attempt ?? 0,
+    phase: current?.phase ?? "waiting",
+    appError: current?.appError ?? false,
+    runtimeError: reported?.key === frameKey ? reported.error : null,
+    onLoad,
+  };
 }

@@ -7,7 +7,7 @@ import { log } from "./log";
 /** All plans get the notice. Keep its script outside the exported app source. */
 export async function syncPreviewBanner(sandbox: Sandbox, projectId: string, jobId: string): Promise<void> {
   try {
-    await sandbox.files.write(PREVIEW_HEALTH_SANDBOX_PATH, previewHealthScript());
+    await sandbox.files.write(PREVIEW_HEALTH_SANDBOX_PATH, previewHealthScript(env.APP_URL));
     await sandbox.files.write(PREVIEW_BANNER_SANDBOX_PATH, previewBannerScript(env.APP_URL, projectId));
     // Existing template images/live sandboxes may still have the old plugin.
     // Updating its bytes lets Vite reload the config and read the banner file.

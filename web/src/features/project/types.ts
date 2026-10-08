@@ -43,6 +43,27 @@ export interface PreviewBuildError {
   frame?: string;
 }
 
+/** One error the preview's bootstrap monitor recorded while the app started. */
+export interface PreviewRuntimeErrorEntry {
+  /** An uncaught exception, an unhandled promise rejection, or a script that would not load. */
+  kind: "error" | "rejection" | "script";
+  message: string;
+  stack?: string;
+  /** `file:line:col`, when the browser gave one. */
+  at?: string;
+  count?: number;
+}
+
+/**
+ * What the browser saw when the app crashed while starting, as the monitor
+ * inside the preview reported it. Mirrors `runtimeErrorSchema` in the API.
+ */
+export interface PreviewRuntimeError {
+  /** The route that was open. */
+  path?: string;
+  errors: PreviewRuntimeErrorEntry[];
+}
+
 /** A persisted message row as returned by `GET /project/:id`. `content` is the
  *  raw JSON the worker/api stored (OpenAI chat shape), decoded lazily in the
  *  store: we keep it `unknown` here rather than over-specifying. */

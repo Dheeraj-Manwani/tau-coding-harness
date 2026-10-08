@@ -15,6 +15,7 @@ import type {
   ListProjectsResponse,
   OlderMessagesResponse,
   PreviewBuildError,
+  PreviewRuntimeError,
   PreviewStatusResponse,
   ProjectDetail,
   ProjectFileResponse,
@@ -112,6 +113,9 @@ export function useAddMessage(projectId: string) {
       /** Vite's build failure, when sent from "Fix with tau". Becomes a
        *  `<build-error>` block on the same terms. */
       buildError?: PreviewBuildError;
+      /** What the browser saw when the app crashed while starting, when sent
+       *  from "Ask tau to fix". Becomes a `<runtime-error>` block. */
+      runtimeError?: PreviewRuntimeError;
     }) =>
       api
         .post<AddMessageResponse>(`/project/${projectId}/message`, vars)

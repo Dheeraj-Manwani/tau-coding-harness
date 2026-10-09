@@ -97,6 +97,12 @@ router.delete("/:projectId/secrets/:name", deleteSecret);
 // Publish panel. The site itself is served by the public routes in
 // `sites.routes.ts`, which sit outside this authenticated router.
 router.get("/:projectId/deploy", deploy.getStatus);
+// Live check behind the address field in the Publish panel.
+router.get(
+  "/:projectId/deploy/name-available",
+  visualEditRateLimiter,
+  deploy.nameAvailable,
+);
 router.post("/:projectId/deploy", publishRateLimiter, deploy.publish);
 router.delete("/:projectId/deploy", deploy.unpublish);
 router.post(

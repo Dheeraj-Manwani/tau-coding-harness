@@ -5,6 +5,26 @@ import { projectIdParamSchema } from "../schemas/project.schema";
 import * as deployService from "../services/deploy.service";
 import { requireUserId } from "../middleware/auth.middleware";
 
+/** The address chosen for a first publish. Ignored once the project has one. */
+const publishBodySchema = z.object({ name: z.string().trim().max(80).optional() });
+
+const nameQuerySchema = z.object({ name: z.string().trim().min(1).max(80) });
+
+export const nameAvailable = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { name } = parse(nameQuerySchema, req.query);
+    res.status(200).json(await deployService.checkNameAvailable(projectId, userId, name));
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getStatus = async (
   req: Request,
   res: Response,
@@ -27,10 +47,13 @@ export const publish = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
+    const { name } = parse(publishBodySchema, req.body ?? {});
     // 202: the build runs as a job. The body carries the jobId to stream and the
     // URL the site will be at, which is already final — the slug is allocated
     // before the job is queued.
-    res.status(202).json(await deployService.requestDeploy(projectId, userId));
+    res
+      .status(202)
+      .json(await deployService.requestDeploy(projectId, userId, name));
   } catch (err) {
     next(err);
   }

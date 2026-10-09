@@ -413,6 +413,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  SiteName: 'SiteName',
   LogoGeneration: 'LogoGeneration',
   BillingAccount: 'BillingAccount',
   CreditLedger: 'CreditLedger',
@@ -438,7 +439,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
+    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "siteName" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1626,6 +1627,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SiteName: {
+      payload: Prisma.$SiteNamePayload<ExtArgs>
+      fields: Prisma.SiteNameFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SiteNameFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SiteNameFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        findFirst: {
+          args: Prisma.SiteNameFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SiteNameFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        findMany: {
+          args: Prisma.SiteNameFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>[]
+        }
+        create: {
+          args: Prisma.SiteNameCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        createMany: {
+          args: Prisma.SiteNameCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SiteNameCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>[]
+        }
+        delete: {
+          args: Prisma.SiteNameDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        update: {
+          args: Prisma.SiteNameUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        deleteMany: {
+          args: Prisma.SiteNameDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SiteNameUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SiteNameUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>[]
+        }
+        upsert: {
+          args: Prisma.SiteNameUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteNamePayload>
+        }
+        aggregate: {
+          args: Prisma.SiteNameAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSiteName>
+        }
+        groupBy: {
+          args: Prisma.SiteNameGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteNameGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SiteNameCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteNameCountAggregateOutputType> | number
+        }
+      }
+    }
     LogoGeneration: {
       payload: Prisma.$LogoGenerationPayload<ExtArgs>
       fields: Prisma.LogoGenerationFieldRefs
@@ -2686,6 +2761,16 @@ export const DeploymentScalarFieldEnum = {
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
 
 
+export const SiteNameScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  projectId: 'projectId',
+  createdAt: 'createdAt'
+} as const
+
+export type SiteNameScalarFieldEnum = (typeof SiteNameScalarFieldEnum)[keyof typeof SiteNameScalarFieldEnum]
+
+
 export const LogoGenerationScalarFieldEnum = {
   id: 'id',
   projectId: 'projectId',
@@ -3418,6 +3503,7 @@ export type GlobalOmitConfig = {
   usage?: Prisma.UsageOmit
   tokenUsage?: Prisma.TokenUsageOmit
   deployment?: Prisma.DeploymentOmit
+  siteName?: Prisma.SiteNameOmit
   logoGeneration?: Prisma.LogoGenerationOmit
   billingAccount?: Prisma.BillingAccountOmit
   creditLedger?: Prisma.CreditLedgerOmit

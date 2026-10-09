@@ -6,6 +6,7 @@ import { Errors } from "../lib/errors";
 import { log } from "../lib/log";
 import { e2bPreviewUrl } from "../lib/providers";
 import { invalidateSiteLookup } from "../lib/siteLookup";
+import { syncProject, syncUser } from "@/lib/edgeRegistry";
 import { publicSiteUrl } from "@/lib/sites";
 import { settle, grantBonusCredits, grantPlanCycle, ensureBillingAccount } from "@/lib/credits";
 import { terminateStrandedJob, reapStaleJobs } from "../lib/jobs";
@@ -576,6 +577,9 @@ export async function setUserPlan(
     });
   }
 
+  // The badge follows the plan, and the edge keeps its own copy of that.
+  await syncUser(userId);
+
   const acc = await prisma.billingAccount.findUnique({ where: { userId } });
   const availableCredits = acc
     ? toCredits(acc.freeBalance + acc.planBalance + acc.bonusBalance)
@@ -905,6 +909,7 @@ export async function suspendProjectSite(projectId: string, reason: string) {
   // Without this the site would keep serving for up to the lookup's TTL, which
   // is ten seconds too long for the thing this exists to stop.
   if (project.slug) invalidateSiteLookup(project.slug);
+  await syncProject(projectId);
   log.warn("admin.site.suspend", { projectId, slug: project.slug, reason });
   return updated;
 }
@@ -923,6 +928,7 @@ export async function unsuspendProjectSite(projectId: string) {
   });
 
   if (project.slug) invalidateSiteLookup(project.slug);
+  await syncProject(projectId);
   log.warn("admin.site.unsuspend", { projectId, slug: project.slug });
   return updated;
 }

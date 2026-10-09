@@ -27,6 +27,7 @@ import { reapStaleJobs } from "./lib/jobs";
 import { runAlertCheck } from "./lib/alerts";
 import { sweepAttachments } from "./services/attachment.service";
 import { runDeploySweep } from "./lib/deploySweep";
+import { runEdgeReconcile } from "@/lib/edgeRegistry";
 import { prisma } from "@/lib/prisma";
 import { isDraining } from "@/lib/lifecycle";
 import { startTelemetry } from "@/lib/telemetry";
@@ -102,6 +103,12 @@ export function startApiBackground(): void {
   // boot: it deletes bytes, and nothing it would find is urgent enough to do
   // before the process is known to be healthy.
   setInterval(() => void runDeploySweep(), 60 * 60 * 1000);
+
+  // Repair the edge router's routing records: any push that failed, and any
+  // record that no longer matches the database. A no-op where Cloudflare is not
+  // configured. Run on boot too, so a restart after an outage heals at once.
+  void runEdgeReconcile();
+  setInterval(() => void runEdgeReconcile(), 60 * 60 * 1000);
 }
 
 /**

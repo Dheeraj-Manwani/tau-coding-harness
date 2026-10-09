@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  RESERVED_SITE_NAMES,
   cacheControlFor,
+  checkSiteName,
   contentTypeFor,
   isValidSlug,
   normalizeSitePath,
@@ -261,5 +263,36 @@ describe("cacheControlFor", () => {
     expect(cacheControlFor("assets/logo.svg")).toBe(
       "public, max-age=0, must-revalidate",
     );
+  });
+});
+
+describe("checkSiteName", () => {
+  test("accepts a valid name and lowercases it", () => {
+    expect(checkSiteName("My-App-2")).toEqual({ ok: true, name: "my-app-2" });
+    expect(checkSiteName("  kurinji  ")).toEqual({ ok: true, name: "kurinji" });
+  });
+
+  test("refuses what is not a DNS label", () => {
+    for (const bad of ["ab", "-abc", "abc-", "a_b_c", "a.b.c", "has space", "x".repeat(41), "", "ünï"]) {
+      expect(checkSiteName(bad)).toEqual({ ok: false, problem: "invalid" });
+    }
+  });
+
+  // The sites domain contains "tauai": these would read as tau's own pages.
+  test("refuses every reserved name, in any case", () => {
+    for (const name of ["www", "api", "app", "admin", "mail", "login", "auth", "account", "billing", "support", "secure", "status", "docs", "cname", "fallback"]) {
+      expect(RESERVED_SITE_NAMES.has(name)).toBe(true);
+      expect(checkSiteName(name)).toEqual({ ok: false, problem: "reserved" });
+      expect(checkSiteName(name.toUpperCase())).toEqual({ ok: false, problem: "reserved" });
+    }
+  });
+
+  test("a reserved name inside a longer one is fine", () => {
+    expect(checkSiteName("login-helper").ok).toBe(true);
+    expect(checkSiteName("my-api").ok).toBe(true);
+  });
+
+  test("too short is invalid before it is reserved", () => {
+    expect(checkSiteName("ap")).toEqual({ ok: false, problem: "invalid" });
   });
 });

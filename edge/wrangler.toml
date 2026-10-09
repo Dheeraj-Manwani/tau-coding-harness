@@ -1,0 +1,27 @@
+# The router Worker for published apps (doc/PUBLISHING.md Phase 2, step B).
+#
+# Nothing secret lives here. The two ids below are filled in when the Worker is
+# first deployed, and the route is added at cut-over; see the doc.
+name = "tau-sites"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Reads published files. Same bucket tau's server writes to (R2_BUCKET).
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "tau"
+
+# Routing records, keyed `host:{hostname}`. Create with:
+#   bunx wrangler kv namespace create ROUTES
+# and paste the id it prints.
+[[kv_namespaces]]
+binding = "ROUTES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+LANDING_URL = "https://tauai.pro"
+APP_URL = "https://app.tauai.pro"
+
+# Cut-over: uncomment once the wildcard DNS record exists. Until then the Worker
+# is deployed but receives nothing.
+# routes = [{ pattern = "*.bytauai.pro/*", zone_name = "bytauai.pro" }]

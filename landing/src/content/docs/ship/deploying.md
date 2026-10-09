@@ -28,6 +28,21 @@ down, it just leaves the previous version serving.
 > Your address is fixed the first time you publish and does not change when you
 > rename the project. Links you have shared keep working.
 
+## Choosing your address
+
+Before your first publish, the panel offers an **Address** for your app, such as
+`kurinji-leaf.bytauai.pro`. Change it to anything you like: 3 to 40 letters,
+numbers and hyphens. The panel tells you as you type whether it is free.
+
+- It is **fixed after the first publish**, so choose it first. Links you share
+  keep working because the address never changes.
+- Names such as `login`, `billing` and `admin` are reserved, because the domain
+  would make a page there look like one of tau's own.
+- A name belongs to one project for good. If you delete the project, nobody else
+  can take its address, so an old link can never open a stranger's app.
+- This is not the title in a browser tab. That is the **Name** under **Name and
+  logo**, and you can change it any time.
+
 ## What it costs
 
 The first publish of a project costs **200 credits**, taken when that first

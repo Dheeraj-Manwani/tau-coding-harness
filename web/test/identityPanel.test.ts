@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { initialTitle, isScaffoldTitle } from "../src/features/project/deploy";
+import { cleanAddressInput, initialTitle, isScaffoldTitle } from "../src/features/project/deploy";
 import {
   base64Bytes,
   bytesToBase64,
@@ -64,5 +64,22 @@ describe("base64", () => {
   test("takes the payload out of a data URI, and leaves a bare one alone", () => {
     expect(stripDataUri("data:image/png;base64,AAAA")).toBe("AAAA");
     expect(stripDataUri("AAAA")).toBe("AAAA");
+  });
+});
+
+describe("what can be typed as an address", () => {
+  test("lowercases, and turns anything else into a hyphen", () => {
+    expect(cleanAddressInput("My Cool App")).toBe("my-cool-app");
+    expect(cleanAddressInput("kurinji_leaf!")).toBe("kurinji-leaf-");
+    expect(cleanAddressInput("Ünï")).toBe("-n-");
+  });
+
+  test("collapses repeated hyphens and stops at 40 characters", () => {
+    expect(cleanAddressInput("a---b")).toBe("a-b");
+    expect(cleanAddressInput("x".repeat(60))).toHaveLength(40);
+  });
+
+  test("leaves a valid address alone", () => {
+    expect(cleanAddressInput("my-app-2")).toBe("my-app-2");
   });
 });

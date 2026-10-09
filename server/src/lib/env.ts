@@ -324,6 +324,14 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
 
+  // The edge router's routing records (doc/PUBLISHING.md Phase 2). All three,
+  // with SITES_DOMAIN, switch the registry on; with any unset nothing is pushed
+  // and a laptop behaves as before. The token needs Workers KV Storage: Edit on
+  // this account and nothing else.
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  CLOUDFLARE_KV_NAMESPACE_ID: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: z.string().optional(),
+
   // What `/sites/{slug}/…` on this server's own origin does once SITES_DOMAIN
   // is set. `serve` answers from here, which runs a published app's JavaScript
   // on the API's origin. `redirect` sends the visitor to the app's own

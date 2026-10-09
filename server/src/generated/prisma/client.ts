@@ -135,6 +135,16 @@ export type TokenUsage = Prisma.TokenUsageModel
  */
 export type Deployment = Prisma.DeploymentModel
 /**
+ * Model SiteName
+ * Every address a project has ever held, kept after the project is gone.
+ * 
+ * A name that changed hands would point somebody else's shared links, and
+ * possibly their cookies and saved data, at a different app. So a name is
+ * claimed once and never returns to the pool. `projectId` is a plain column,
+ * not a relation, on purpose: deleting a project must not delete its claim.
+ */
+export type SiteName = Prisma.SiteNameModel
+/**
  * Model LogoGeneration
  * One AI-generated logo picture, recorded when it was charged. The picture
  * itself is never stored: the owner picks one and the identity save writes it.

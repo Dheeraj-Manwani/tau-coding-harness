@@ -1,3 +1,4 @@
+import { syncUser } from "@/lib/edgeRegistry";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
@@ -468,6 +469,7 @@ async function handleActivated(subscriptionDbId: string, userId: string) {
       data: { plan: Plan.PRO },
     }),
   ]);
+  await syncUser(userId);
 }
 
 async function handleCharged(
@@ -521,4 +523,5 @@ async function handleTerminal(
       data: { plan: Plan.FREE },
     }),
   ]);
+  await syncUser(userId);
 }

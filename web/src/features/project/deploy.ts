@@ -48,6 +48,10 @@ export interface DeployFailure {
 export interface DeployStatus {
   slug: string | null;
   url: string | null;
+  /** The address offered before the first publish; null once it is fixed. */
+  suggestedName: string | null;
+  /** `bytauai.pro`, or null where sites are served by path. */
+  domain: string | null;
   live: DeploymentSummary | null;
   deployments: DeploymentSummary[];
   inProgress: boolean;
@@ -86,9 +90,10 @@ export function useDeployStatus(projectId: string | null) {
 export function usePublishProject(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () =>
+    // `name` is the address, chosen once, on a project's first publish.
+    mutationFn: (name?: string) =>
       api
-        .post<PublishResult>(`/project/${projectId}/deploy`, {})
+        .post<PublishResult>(`/project/${projectId}/deploy`, name ? { name } : {})
         .then((r) => r.data),
     onSuccess: () => {
       toast.success("Publishing: building your app");
@@ -99,6 +104,33 @@ export function usePublishProject(projectId: string | null) {
     onError: (err: unknown) =>
       toast.error(errorMessage(err, "Couldn't start publishing")),
   });
+}
+
+export interface NameCheck {
+  name: string;
+  available: boolean;
+  /** The project already has its address. */
+  locked: boolean;
+  problem: "invalid" | "reserved" | "taken" | null;
+  message: string | null;
+}
+
+/** The live check behind the address field. Pass null to stay idle. */
+export function useNameCheck(projectId: string | null, name: string | null) {
+  return useQuery({
+    queryKey: ["project", projectId ?? "", "name-check", name ?? ""],
+    queryFn: () =>
+      api
+        .get<NameCheck>(`/project/${projectId}/deploy/name-available`, { params: { name } })
+        .then((r) => r.data),
+    enabled: !!projectId && !!name,
+    staleTime: 10_000,
+  });
+}
+
+/** Lowercase letters, numbers and hyphens, as typed: what an address can hold. */
+export function cleanAddressInput(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-{2,}/g, "-").slice(0, 40);
 }
 
 // ── Name and logo ────────────────────────────────────────────────────────────

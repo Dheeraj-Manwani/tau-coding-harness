@@ -22,6 +22,7 @@ const tables = {
   job: [] as Row[],
   user: [] as Row[],
   projectFile: [] as Row[],
+  siteName: [] as Row[],
 };
 
 function same(a: unknown, b: unknown): boolean {
@@ -128,6 +129,19 @@ const db = {
   job: model(tables.job, () => ({ status: "QUEUED" })),
   user: model(tables.user, () => ({})),
   projectFile: model(tables.projectFile, () => ({})),
+  siteName: (() => {
+    const base = model(tables.siteName, () => ({}));
+    return {
+      ...base,
+      // The unique index is what decides a race, so the stand-in has one.
+      create: async (args: { data: Row }) => {
+        if (tables.siteName.some((r) => r.name === args.data.name)) {
+          throw Object.assign(new Error("unique"), { code: "P2002" });
+        }
+        return base.create(args);
+      },
+    };
+  })(),
 };
 
 mock.module("@/lib/prisma", () => ({
@@ -182,7 +196,7 @@ mock.module("@/api/lib/queue", () => ({
 }));
 
 const { env } = await import("@/lib/env");
-const { getDeployStatus, requestDeploy, rollbackDeploy, unpublish } =
+const { checkNameAvailable, getDeployStatus, requestDeploy, rollbackDeploy, unpublish } =
   await import("@/api/services/deploy.service");
 const { suspendProjectSite, unsuspendProjectSite } = await import(
   "@/api/services/admin.service"
@@ -670,5 +684,142 @@ describe("the publish fee", () => {
     await unpublish(PROJECT, OWNER);
     await rollbackDeploy(PROJECT, "new", OWNER);
     expect((await getDeployStatus(PROJECT, OWNER)).publishFee.due).toBe(false);
+  });
+});
+
+describe("choosing the address", () => {
+  const NEW = "33333333-3333-4333-8333-333333333333";
+
+  /** A second project with files, no address yet, and a name of its own. */
+  function fresh(name = "Kurinji Leaf", id = NEW) {
+    tables.project.push({
+      id,
+      userId: OWNER,
+      name,
+      slug: null,
+      templateKey: "v2-frontend",
+      headSequence: 1,
+      liveDeploymentId: null,
+      siteSuspendedAt: null,
+      publishFeePaidAt: new Date(),
+    });
+    tables.projectFile.push({ projectId: id, path: "index.html", lastSequence: 1 });
+    return tables.project.find((p) => p.id === id)!;
+  }
+  const claimed = (name: string) => tables.siteName.find((r) => r.name === name);
+
+  test("a chosen name is claimed for good and becomes the address", async () => {
+    const p = fresh();
+    const res = await requestDeploy(NEW, OWNER, "Kurinji-Tea");
+
+    expect(res.slug).toBe("kurinji-tea");
+    expect(p.slug).toBe("kurinji-tea");
+    expect(claimed("kurinji-tea")).toMatchObject({ projectId: NEW });
+  });
+
+  test("a reserved or invalid name is refused with 400, and nothing is created", async () => {
+    fresh();
+    for (const name of ["login", "WWW", "ab", "a_b_c", "has space"]) {
+      const err = await failure(() => requestDeploy(NEW, OWNER, name));
+      expect(err.statusCode).toBe(400);
+    }
+    expect(tables.job).toHaveLength(0);
+    expect(tables.siteName).toHaveLength(0);
+  });
+
+  test("a taken name is refused with 409", async () => {
+    fresh();
+    tables.siteName.push({ id: "n", name: "kurinji-tea", projectId: "someone-elses" });
+
+    const err = await failure(() => requestDeploy(NEW, OWNER, "kurinji-tea"));
+    expect(err.statusCode).toBe(409);
+    expect(err.message).toContain("taken");
+    expect(tables.job).toHaveLength(0);
+  });
+
+  // The name outlives the project: a handed-on name would point old links at a stranger.
+  test("a deleted project's name is not handed out again", async () => {
+    fresh();
+    tables.siteName.push({ id: "n", name: "old-app", projectId: "deleted-project" });
+
+    const check = await checkNameAvailable(NEW, OWNER, "old-app");
+    expect(check).toMatchObject({ available: false, problem: "taken" });
+    expect((await failure(() => requestDeploy(NEW, OWNER, "old-app"))).statusCode).toBe(409);
+  });
+
+  test("two projects racing for one name: exactly one wins", async () => {
+    fresh();
+    fresh("Other", "44444444-4444-4444-8444-444444444444");
+
+    const results = await Promise.allSettled([
+      requestDeploy(NEW, OWNER, "contested"),
+      requestDeploy("44444444-4444-4444-8444-444444444444", OWNER, "contested"),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(tables.siteName.filter((r) => r.name === "contested")).toHaveLength(1);
+  });
+
+  test("once chosen the address is fixed", async () => {
+    fresh();
+    await requestDeploy(NEW, OWNER, "first-choice");
+
+    const err = await failure(() => requestDeploy(NEW, OWNER, "second-choice"));
+    expect(err.statusCode).toBe(409);
+    expect(err.message).toContain("fixed");
+    // Asking for the same one again, or for none, is fine.
+    tables.job.length = 0;
+    expect((await requestDeploy(NEW, OWNER, "FIRST-CHOICE")).slug).toBe("first-choice");
+    tables.job.length = 0;
+    expect((await requestDeploy(NEW, OWNER)).slug).toBe("first-choice");
+    expect(tables.siteName).toHaveLength(1);
+  });
+
+  test("with no name given, the project's own name is used when it is free", async () => {
+    fresh();
+    expect((await requestDeploy(NEW, OWNER)).slug).toBe("kurinji-leaf");
+  });
+
+  test("with no name given and the name taken, a code is added, and the panel is offered the same one", async () => {
+    fresh();
+    tables.siteName.push({ id: "n", name: "kurinji-leaf", projectId: "someone-elses" });
+
+    const status = await getDeployStatus(NEW, OWNER);
+    expect(status.suggestedName).toMatch(/^kurinji-leaf-[0-9a-f]{6}$/);
+    expect((await getDeployStatus(NEW, OWNER)).suggestedName).toBe(status.suggestedName);
+    expect((await requestDeploy(NEW, OWNER)).slug).toBe(status.suggestedName!);
+  });
+
+  test("a project name that would be reserved is not suggested", async () => {
+    fresh("API");
+    const suggested = (await getDeployStatus(NEW, OWNER)).suggestedName!;
+    expect(suggested).not.toBe("api");
+    expect(suggested.startsWith("api-")).toBe(true);
+  });
+
+  test("the availability check answers for the panel", async () => {
+    fresh();
+    tables.siteName.push({ id: "n", name: "taken-one", projectId: "someone-elses" });
+
+    expect(await checkNameAvailable(NEW, OWNER, "free-one")).toMatchObject({ available: true, locked: false, message: null });
+    expect(await checkNameAvailable(NEW, OWNER, "taken-one")).toMatchObject({ available: false, problem: "taken" });
+    expect(await checkNameAvailable(NEW, OWNER, "login")).toMatchObject({ available: false, problem: "reserved" });
+    expect(await checkNameAvailable(NEW, OWNER, "a b")).toMatchObject({ available: false, problem: "invalid" });
+    // Case does not make a name different.
+    expect(await checkNameAvailable(NEW, OWNER, "TAKEN-ONE")).toMatchObject({ available: false });
+  });
+
+  test("after the first publish the check says locked, and there is no suggestion", async () => {
+    fresh();
+    await requestDeploy(NEW, OWNER, "chosen");
+
+    expect(await checkNameAvailable(NEW, OWNER, "anything")).toMatchObject({ locked: true, available: false });
+    expect((await getDeployStatus(NEW, OWNER)).suggestedName).toBeNull();
+  });
+
+  test("only the owner can check or choose", async () => {
+    fresh();
+    expect((await failure(() => checkNameAvailable(NEW, "someone-else", "x-name"))).statusCode).toBe(403);
+    expect((await failure(() => requestDeploy(NEW, "someone-else", "x-name"))).statusCode).toBe(403);
+    expect(tables.siteName).toHaveLength(0);
   });
 });

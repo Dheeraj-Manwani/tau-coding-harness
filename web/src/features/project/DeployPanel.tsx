@@ -21,7 +21,12 @@ import { useProjectStore } from "@/src/stores/useProjectStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import { useSendMessage } from "@/src/features/project/useSendMessage";
-import { BuyCredits, IdentitySection } from "@/src/features/project/IdentitySection";
+import {
+  AddressPicker,
+  BuyCredits,
+  IdentitySection,
+} from "@/src/features/project/IdentitySection";
+import { useNameCheck } from "@/src/features/project/deploy";
 import {
   deployedAgo,
   formatBytes,
@@ -148,6 +153,21 @@ function PanelBody({
   const publish = usePublishProject(projectId);
   const { data: balance } = useBalance();
 
+  // The address, chosen once. null while the owner has not touched the suggestion.
+  const [typedName, setTypedName] = useState<string | null>(null);
+  const choosing = !status.slug && status.suggestedName !== null;
+  const addressWanted = typedName ?? status.suggestedName;
+  const addressCheck = useNameCheck(
+    choosing ? projectId : null,
+    choosing ? addressWanted : null,
+  );
+  // A typed address that is known to be unavailable holds the button.
+  const addressBlocked =
+    choosing &&
+    typedName !== null &&
+    addressCheck.data?.name === typedName.trim().toLowerCase() &&
+    !addressCheck.data.available;
+
   // The first publish of a project is paid for, so the button says what it costs
   // and, when the balance cannot cover it, gives way to buying credits. Only
   // known once the balance has loaded: until then it is not called short.
@@ -204,12 +224,22 @@ function PanelBody({
 
       <BadgeRow />
 
+      {choosing && (
+        <AddressPicker
+          projectId={projectId}
+          suggested={status.suggestedName!}
+          domain={status.domain}
+          value={typedName}
+          onChange={setTypedName}
+        />
+      )}
+
       <IdentitySection projectId={projectId} />
 
       <button
         type="button"
-        disabled={busy || !!suspended || short}
-        onClick={() => publish.mutate()}
+        disabled={busy || !!suspended || short || addressBlocked}
+        onClick={() => publish.mutate(choosing ? (addressWanted ?? undefined) : undefined)}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? (

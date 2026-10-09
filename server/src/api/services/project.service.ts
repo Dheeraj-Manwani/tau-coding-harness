@@ -78,6 +78,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { normalizeDesignConfig } from "@/worker/design/config";
 import { readPreferences } from "../schemas/preferences.schema";
 import { syncDesignAfterThemeEdit } from "./design.service";
+import { removeSite } from "@/lib/edgeRegistry";
+import { invalidateSiteLookup } from "../lib/siteLookup";
 import type { Effort } from "@/generated/prisma/enums";
 
 const MAX_NAME_LENGTH = 48;
@@ -981,6 +983,11 @@ export async function deleteProject(
   // Delete R2 blobs first; if this fails we abort before touching the DB.
   await deleteProjectBlobs(userId, projectId);
   await projectRepo.deleteProject(projectId);
+  // The address is gone for good (SiteName keeps the name), so the edge must stop serving it.
+  if (project.slug) {
+    invalidateSiteLookup(project.slug);
+    await removeSite(project.slug);
+  }
 }
 
 /**

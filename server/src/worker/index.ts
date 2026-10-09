@@ -19,6 +19,7 @@ import { PREVIEW_PORT } from "./agent/config";
 import { buildAndUpload, DeployError } from "./lib/deploy";
 import { publicSiteUrl } from "@/lib/sites";
 import { invalidateSiteLookup } from "@/api/lib/siteLookup";
+import { syncProject } from "@/lib/edgeRegistry";
 import { isDraining } from "@/lib/lifecycle";
 import {
   DeploymentStatus,
@@ -205,6 +206,8 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
     // now so the link we are about to hand the user serves the build they just
     // made, rather than the previous one until the TTL lapses.
     if (slug) invalidateSiteLookup(slug);
+    // And the edge: the router reads its own copy, which this brings up to date.
+    await syncProject(projectId);
     log.info("deploy.done", {
       jobId,
       projectId,

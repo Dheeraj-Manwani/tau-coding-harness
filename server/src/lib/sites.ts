@@ -108,6 +108,50 @@ export function slugifyProjectName(name: string): string {
   return base.length >= 3 ? base : "app";
 }
 
+/**
+ * Names nobody may claim as an address.
+ *
+ * The sites domain contains "tauai", so a page at `login.bytauai.pro` or
+ * `billing.bytauai.pro` would read as one of tau's own. These are refused for
+ * every user (doc/PUBLISHING.md D5). `www` and `cname`/`fallback` are also the
+ * hostnames the edge and custom-domain setup use themselves.
+ */
+export const RESERVED_SITE_NAMES: ReadonlySet<string> = new Set([
+  "www",
+  "api",
+  "app",
+  "admin",
+  "mail",
+  "login",
+  "auth",
+  "account",
+  "billing",
+  "support",
+  "secure",
+  "status",
+  "docs",
+  "cname",
+  "fallback",
+  "tau",
+  "tauai",
+  "bytauai",
+]);
+
+export type SiteNameProblem = "invalid" | "reserved";
+
+/**
+ * Whether a name may be an app's address, before anyone checks whether it is
+ * taken. Case does not matter; the normalised name is returned.
+ */
+export function checkSiteName(
+  raw: string,
+): { ok: true; name: string } | { ok: false; problem: SiteNameProblem } {
+  const name = raw.trim().toLowerCase();
+  if (!isValidSlug(name)) return { ok: false, problem: "invalid" };
+  if (RESERVED_SITE_NAMES.has(name)) return { ok: false, problem: "reserved" };
+  return { ok: true, name };
+}
+
 /** `{stem}-{suffix}`, clamped so the whole thing stays a legal label. */
 export function slugWithSuffix(stem: string, suffix: string): string {
   return `${stem.slice(0, SLUG_BASE_MAX)}-${suffix}`.slice(0, SLUG_MAX);

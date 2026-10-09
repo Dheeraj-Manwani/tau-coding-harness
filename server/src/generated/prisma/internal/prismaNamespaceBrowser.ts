@@ -67,6 +67,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  SiteName: 'SiteName',
   LogoGeneration: 'LogoGeneration',
   BillingAccount: 'BillingAccount',
   CreditLedger: 'CreditLedger',
@@ -374,6 +375,16 @@ export const DeploymentScalarFieldEnum = {
 } as const
 
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
+
+
+export const SiteNameScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  projectId: 'projectId',
+  createdAt: 'createdAt'
+} as const
+
+export type SiteNameScalarFieldEnum = (typeof SiteNameScalarFieldEnum)[keyof typeof SiteNameScalarFieldEnum]
 
 
 export const LogoGenerationScalarFieldEnum = {

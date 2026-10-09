@@ -640,6 +640,21 @@ model Deployment {
   @@index([purgedAt, completedAt])
 }
 
+/// Every address a project has ever held, kept after the project is gone.
+///
+/// A name that changed hands would point somebody else's shared links, and
+/// possibly their cookies and saved data, at a different app. So a name is
+/// claimed once and never returns to the pool. `projectId` is a plain column,
+/// not a relation, on purpose: deleting a project must not delete its claim.
+model SiteName {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  projectId String
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
 /// One AI-generated logo picture, recorded when it was charged. The picture
 /// itself is never stored: the owner picks one and the identity save writes it.
 /// This row is what lets that save skip the upload fee, once, and only for a

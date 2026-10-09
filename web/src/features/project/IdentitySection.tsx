@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronDownIcon,
@@ -14,6 +14,8 @@ import { APP_BILLING } from "@/src/lib/routes";
 import { useBalance } from "@/src/features/billing/api";
 import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import {
+  cleanAddressInput,
+  useNameCheck,
   useGenerateLogo,
   useIdentity,
   useSaveIdentity,
@@ -302,6 +304,81 @@ function IdentityForm({
       )}
       <p className="text-[10px] leading-snug text-silver-600">
         Saving changes your project's files; publish to put them on the site.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The app's address, chosen once before the first publish.
+ *
+ * Deliberately not inside the collapsed "Name and logo" section: it is the one
+ * choice here that cannot be undone, so it is on view next to the Publish
+ * button. The title in a browser tab (the section below) is a different thing
+ * and stays editable. The check runs as the owner types, after a short pause.
+ */
+export function AddressPicker({
+  projectId,
+  suggested,
+  domain,
+  value,
+  onChange,
+}: {
+  projectId: string | null;
+  suggested: string;
+  domain: string | null;
+  /** What was typed, or null while the suggestion is untouched. */
+  value: string | null;
+  onChange: (next: string | null) => void;
+}) {
+  const shown = value ?? suggested;
+  const [settled, setSettled] = useState(shown);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(shown), 400);
+    return () => clearTimeout(t);
+  }, [shown]);
+
+  const check = useNameCheck(projectId, settled);
+  const stale = settled !== shown || check.isFetching;
+  const result = check.data && check.data.name === shown.trim().toLowerCase() ? check.data : null;
+
+  return (
+    <div className="rounded-lg border border-silver-400/20 bg-space-void/40 p-3">
+      <label className="block">
+        <span className="mb-1 block text-[11px] text-silver-600">
+          Address <span className="text-silver-600">· fixed after you publish</span>
+        </span>
+        <span className="flex items-center overflow-hidden rounded-md border border-silver-400/30 bg-space-surface focus-within:border-brand">
+          <input
+            value={shown}
+            maxLength={40}
+            spellCheck={false}
+            autoCapitalize="none"
+            aria-label="Address"
+            onChange={(e) => onChange(cleanAddressInput(e.target.value))}
+            className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-xs text-silver-900 outline-none"
+          />
+          <span className="shrink-0 pr-2 text-[11px] text-silver-600">
+            {domain ? `.${domain}` : ""}
+          </span>
+        </span>
+      </label>
+      <p
+        className={cn(
+          "mt-1.5 min-h-[14px] text-[11px] leading-snug",
+          stale || !result
+            ? "text-silver-600"
+            : result.available
+              ? "text-green-400"
+              : "text-red-300",
+        )}
+        aria-live="polite"
+      >
+        {stale || !result
+          ? "Checking…"
+          : result.available
+            ? "Available."
+            : (result.message ?? "Not available.")}
       </p>
     </div>
   );

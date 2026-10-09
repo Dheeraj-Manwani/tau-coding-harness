@@ -7,7 +7,7 @@
  * the read model the Publish panel renders, and the two ways the live pointer
  * moves without a build: rolling back and taking the site offline.
  */
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { getBalance } from "@/lib/credits";
@@ -17,8 +17,10 @@ import { AppError, Errors } from "../lib/errors";
 import { log } from "../lib/log";
 import { enqueueJob } from "../lib/queue";
 import { invalidateSiteLookup } from "../lib/siteLookup";
+import { syncProject } from "@/lib/edgeRegistry";
 import * as projectRepo from "../repositories/project.repository";
 import {
+  checkSiteName,
   isValidSlug,
   publicSiteUrl,
   sitePrefix,
@@ -74,6 +76,13 @@ export interface DeployStatus {
   slug: string | null;
   /** Null until the first publish allocates a slug. */
   url: string | null;
+  /**
+   * What the Publish panel offers as the address before the first publish, and
+   * null once it is fixed. Free at the time of asking, not reserved.
+   */
+  suggestedName: string | null;
+  /** The sites domain (bytauai.pro), or null where sites are served by path. */
+  domain: string | null;
   live: DeploymentSummary | null;
   /** Most recent first, including the live one. */
   deployments: DeploymentSummary[];
@@ -190,6 +199,8 @@ export async function getDeployStatus(
   return {
     slug: project.slug,
     url: project.slug ? publicSiteUrl(project.slug) : null,
+    suggestedName: project.slug ? null : await suggestName(project),
+    domain: env.SITES_DOMAIN ?? null,
     live: live ? toSummary(live, project.liveDeploymentId) : null,
     deployments: deployments.map((d) =>
       toSummary(d, project.liveDeploymentId),
@@ -220,35 +231,131 @@ export async function getDeployStatus(
   };
 }
 
+export type NameProblem = "invalid" | "reserved" | "taken";
+
+const NAME_MESSAGES: Record<NameProblem, string> = {
+  invalid:
+    "Use 3 to 40 letters, numbers and hyphens, and do not start or end with a hyphen.",
+  reserved: "That name is reserved. Choose another.",
+  taken: "That name is taken. Choose another.",
+};
+
+/** Whether `name` could be this project's address right now. */
+async function problemWith(
+  name: string,
+  projectId: string,
+): Promise<NameProblem | null> {
+  const checked = checkSiteName(name);
+  if (!checked.ok) return checked.problem;
+  const claimed = await prisma.siteName.findUnique({
+    where: { name: checked.name },
+    select: { projectId: true },
+  });
+  return claimed && claimed.projectId !== projectId ? "taken" : null;
+}
+
 /**
- * Give the project a slug, once, and keep it.
+ * Whether a name can be chosen as an app's address, for the panel's live check.
+ *
+ * Says nothing about who holds a taken name. Once a project has its address it
+ * is fixed, and the answer is that it is `locked`.
+ */
+export async function checkNameAvailable(
+  projectId: string,
+  userId: string,
+  rawName: string,
+) {
+  const project = await ownedProject(projectId, userId);
+  const name = rawName.trim().toLowerCase();
+  if (project.slug) {
+    return {
+      name,
+      available: false,
+      locked: true,
+      problem: null,
+      message: "This project's address is fixed.",
+    };
+  }
+  const problem = await problemWith(name, projectId);
+  return {
+    name,
+    available: problem === null,
+    locked: false,
+    problem,
+    message: problem ? NAME_MESSAGES[problem] : null,
+  };
+}
+
+/**
+ * The address offered before the first publish: the project's own name if it is
+ * free, otherwise the name with a short code that is the same on every call (so
+ * the panel does not shuffle it), otherwise a random one.
+ */
+async function suggestName(project: Project): Promise<string> {
+  const stem = slugifyProjectName(project.name);
+  const fixed = slugWithSuffix(
+    stem,
+    createHash("sha256").update(project.id).digest("hex").slice(0, 6),
+  );
+  for (const candidate of [stem, fixed]) {
+    if ((await problemWith(candidate, project.id)) === null) return candidate;
+  }
+  return slugWithSuffix(stem, randomBytes(3).toString("hex"));
+}
+
+/** Claim a name for the project for good: the claim and the slug land together or not at all. */
+async function claim(project: Project, name: string): Promise<boolean> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.siteName.create({ data: { name, projectId: project.id } });
+      await tx.project.update({ where: { id: project.id }, data: { slug: name } });
+    });
+    return true;
+  } catch (err) {
+    // The unique index, not the check before it, is what decides a race.
+    if ((err as { code?: string }).code === "P2002") return false;
+    throw err;
+  }
+}
+
+/**
+ * Give the project its address, once, and keep it.
  *
  * Allocated here rather than in the worker so the publish response can hand
- * back the final URL immediately — the user gets a link to watch instead of a
- * spinner that eventually reveals one. Retried on collision because the stem
- * comes from the project name and two "My Todo App"s are entirely likely; the
- * unique index, not this loop, is what actually guarantees uniqueness.
+ * back the final URL immediately: the owner gets a link to watch instead of a
+ * spinner that eventually reveals one. A name they chose is claimed as asked or
+ * refused; with none, the suggestion is claimed, retrying with a random suffix
+ * on collision. A claim is permanent (`SiteName`): the name is never offered to
+ * anyone else, even after the project is deleted.
  */
-async function ensureSlug(project: Project): Promise<string> {
-  if (project.slug && isValidSlug(project.slug)) return project.slug;
-
-  const stem = slugifyProjectName(project.name);
-
-  for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
-    const candidate = slugWithSuffix(stem, randomBytes(3).toString("hex"));
-    try {
-      const updated = await prisma.project.update({
-        where: { id: project.id },
-        data: { slug: candidate },
-      });
-      return updated.slug!;
-    } catch {
-      // Unique violation on `slug` — try another suffix. Any other failure
-      // surfaces on the next attempt or as the error below.
+async function ensureSlug(project: Project, requested?: string): Promise<string> {
+  if (project.slug && isValidSlug(project.slug)) {
+    if (requested && requested.trim().toLowerCase() !== project.slug) {
+      throw Errors.conflict("This project's address is already fixed and cannot be changed.");
     }
+    return project.slug;
   }
 
-  throw new AppError("Couldn't allocate a site address. Try again.", 500);
+  if (requested) {
+    const checked = checkSiteName(requested);
+    if (!checked.ok) throw Errors.badRequest(NAME_MESSAGES[checked.problem]);
+    if (!(await claim(project, checked.name))) {
+      throw Errors.conflict(NAME_MESSAGES.taken);
+    }
+    return checked.name;
+  }
+
+  const stem = slugifyProjectName(project.name);
+  const first = await suggestName(project);
+  if ((await problemWith(first, project.id)) === null && (await claim(project, first))) {
+    return first;
+  }
+  for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
+    const candidate = slugWithSuffix(stem, randomBytes(3).toString("hex"));
+    if (checkSiteName(candidate).ok && (await claim(project, candidate))) return candidate;
+  }
+
+  throw new AppError("Could not allocate a site address. Try again.", 500);
 }
 
 export interface RequestDeployResult {
@@ -268,6 +375,7 @@ export interface RequestDeployResult {
 export async function requestDeploy(
   projectId: string,
   userId: string,
+  name?: string,
 ): Promise<RequestDeployResult> {
   const project = await ownedProject(projectId, userId);
   if (project.siteSuspendedAt) throw Errors.forbidden(SUSPENDED_MESSAGE);
@@ -301,7 +409,7 @@ export async function requestDeploy(
     throw Errors.badRequest("Nothing to publish yet — build something first");
   }
 
-  const slug = await ensureSlug(project);
+  const slug = await ensureSlug(project, name);
 
   const { jobId, deploymentId } = await prisma.$transaction(
     async (tx) => {
@@ -447,6 +555,7 @@ export async function rollbackDeploy(
   );
 
   if (slug) invalidateSiteLookup(slug);
+  await syncProject(projectId);
   log.info("deploy.rollback", { projectId, deploymentId, previousLiveId });
 
   return getDeployStatus(projectId, userId);
@@ -513,6 +622,7 @@ export async function unpublish(
   );
 
   if (slug) invalidateSiteLookup(slug);
+  await syncProject(projectId);
   if (wasLiveId) {
     log.info("deploy.unpublish", { projectId, deploymentId: wasLiveId });
   }

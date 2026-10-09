@@ -67,6 +67,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  LogoGeneration: 'LogoGeneration',
   BillingAccount: 'BillingAccount',
   CreditLedger: 'CreditLedger',
   CreditHold: 'CreditHold',
@@ -160,6 +161,7 @@ export const ProjectScalarFieldEnum = {
   liveDeploymentId: 'liveDeploymentId',
   siteSuspendedAt: 'siteSuspendedAt',
   siteSuspendedReason: 'siteSuspendedReason',
+  publishFeePaidAt: 'publishFeePaidAt',
   githubRepo: 'githubRepo',
   githubDefaultBranch: 'githubDefaultBranch',
   githubVisibility: 'githubVisibility',
@@ -372,6 +374,18 @@ export const DeploymentScalarFieldEnum = {
 } as const
 
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
+
+
+export const LogoGenerationScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  createdAt: 'createdAt',
+  usedAt: 'usedAt',
+  usedHash: 'usedHash'
+} as const
+
+export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
 
 
 export const BillingAccountScalarFieldEnum = {

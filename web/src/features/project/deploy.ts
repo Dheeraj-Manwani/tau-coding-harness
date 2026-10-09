@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import { api, isTerminalRequestError } from "@/src/lib/api-client";
+import { billingKeys } from "@/src/features/billing/api";
+import { projectKeys } from "@/src/features/project/api";
 import type { PreviewBuildError } from "@/src/features/project/types";
 
 /**
@@ -54,6 +56,8 @@ export interface DeployStatus {
   /** Set when tau has taken the site down; `reason` is for the owner. */
   suspended: { reason: string | null } | null;
   lastFailure: DeployFailure | null;
+  /** First publish of a project costs `credits`; `due` is false once paid. */
+  publishFee: { credits: number; due: boolean };
 }
 
 export interface PublishResult {
@@ -94,6 +98,106 @@ export function usePublishProject(projectId: string | null) {
     },
     onError: (err: unknown) =>
       toast.error(errorMessage(err, "Couldn't start publishing")),
+  });
+}
+
+// ── Name and logo ────────────────────────────────────────────────────────────
+
+export interface IdentityView {
+  title: string | null;
+  description: string | null;
+  /** `default` is tau's mark, `custom` an uploaded or generated logo. */
+  icon: "default" | "custom" | "other" | null;
+  /** What to prefill the name with while the page still has the scaffold's title. */
+  projectName: string;
+  plan: "FREE" | "PRO";
+  /** In credits. The numbers live on the server; nothing here repeats them. */
+  prices: { publishFee: number; logoUpload: number; logoGeneration: number };
+  canGenerate: boolean;
+  generationsLeftToday: number;
+}
+
+export interface SaveIdentityInput {
+  title?: string;
+  description?: string;
+  logo?: { favicon: string; icon512: string; generationId?: string };
+}
+
+export interface GeneratedLogo {
+  generationId: string;
+  mimeType: string;
+  /** Base64, no `data:` prefix. */
+  image: string;
+  /** Balance after the charge, in credits. */
+  balance: number;
+  generationsLeftToday: number;
+}
+
+/**
+ * Whether a page's title is still whatever the scaffold wrote. Then the Name
+ * field opens on the project's name instead, which is what the owner would type.
+ */
+export function isScaffoldTitle(title: string | null): boolean {
+  return !title || /^(vite|react|tau|my app|untitled)(?![a-z0-9])/i.test(title.trim()) || /^vite-/i.test(title);
+}
+
+export function initialTitle(identity: Pick<IdentityView, "title" | "projectName">): string {
+  return isScaffoldTitle(identity.title) ? identity.projectName : (identity.title as string);
+}
+
+export const identityKeys = {
+  get: (projectId: string) => ["project", projectId, "identity"] as const,
+};
+
+export function useIdentity(projectId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: identityKeys.get(projectId ?? ""),
+    queryFn: () =>
+      api.get<IdentityView>(`/project/${projectId}/identity`).then((r) => r.data),
+    enabled: !!projectId && enabled,
+    staleTime: 15_000,
+  });
+}
+
+/** What a save or a generation changes: the page, the files, the balance, and "unpublished changes". */
+function refreshAfterIdentityChange(
+  qc: ReturnType<typeof useQueryClient>,
+  projectId: string | null,
+) {
+  const id = projectId ?? "";
+  void qc.invalidateQueries({ queryKey: identityKeys.get(id) });
+  void qc.invalidateQueries({ queryKey: deployKeys.status(id) });
+  void qc.invalidateQueries({ queryKey: projectKeys.tree(id) });
+  void qc.invalidateQueries({ queryKey: billingKeys.balance });
+}
+
+export function useSaveIdentity(projectId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveIdentityInput) =>
+      api.put(`/project/${projectId}/identity`, input).then((r) => r.data),
+    onSuccess: () => {
+      toast.success("Saved");
+      refreshAfterIdentityChange(qc, projectId);
+    },
+    onError: (err: unknown) => {
+      toast.error(errorMessage(err, "Couldn't save"));
+      // A 402 or a refusal after a charge still moves the balance shown.
+      void qc.invalidateQueries({ queryKey: billingKeys.balance });
+    },
+  });
+}
+
+export function useGenerateLogo(projectId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post<GeneratedLogo>(`/project/${projectId}/identity/logo/generate`, {})
+        .then((r) => r.data),
+    onSuccess: () => refreshAfterIdentityChange(qc, projectId),
+    onError: (err: unknown) =>
+      toast.error(errorMessage(err, "Couldn't make a logo")),
   });
 }
 

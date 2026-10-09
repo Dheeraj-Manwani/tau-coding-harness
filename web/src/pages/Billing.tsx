@@ -89,6 +89,9 @@ const LEDGER_LABELS: Record<string, string> = {
   // something for you". Different enough that one label for both would be
   // actively misleading on a bill.
   GATEWAY_DEBIT: "App AI usage",
+  // Not a model run: a flat price for putting an app online, or for its logo.
+  PUBLISH_FEE: "Publish fee",
+  LOGO_FEE: "App logo",
   REFUND: "Refund",
   EXPIRE: "Expired credits",
   ADJUSTMENT: "Adjustment",
@@ -228,6 +231,7 @@ function BalanceCard() {
 const PRO_FEATURES = [
   "5,000 credits per month",
   "No tau badge on your previews and sites",
+  "Generate logos for your published apps with AI",
   "Your builds move to the front",
   "Credits reset monthly",
 ];

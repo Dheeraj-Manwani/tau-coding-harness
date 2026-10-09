@@ -166,6 +166,13 @@ mock.module("@/lib/s3", () => ({
   },
 }));
 
+let balanceMicro = 300_000_000n;
+const realCredits = await import("@/lib/credits");
+mock.module("@/lib/credits", () => ({
+  ...realCredits,
+  getBalance: async () => ({ available: balanceMicro }),
+}));
+
 const enqueued: string[] = [];
 mock.module("@/api/lib/queue", () => ({
   enqueueJob: async ({ jobId }: { jobId: string }) => {
@@ -174,6 +181,7 @@ mock.module("@/api/lib/queue", () => ({
   },
 }));
 
+const { env } = await import("@/lib/env");
 const { getDeployStatus, requestDeploy, rollbackDeploy, unpublish } =
   await import("@/api/services/deploy.service");
 const { suspendProjectSite, unsuspendProjectSite } = await import(
@@ -240,6 +248,8 @@ beforeEach(() => {
   objects.clear();
   enqueued.length = 0;
   failDeletes = false;
+  balanceMicro = 300_000_000n;
+  env.CREDITS_ENFORCE = false;
   invalidateSiteLookup(SLUG);
 
   tables.user.push({ id: OWNER, emailVerifiedAt: new Date() });
@@ -254,6 +264,7 @@ beforeEach(() => {
     liveDeploymentId: "new",
     siteSuspendedAt: null,
     siteSuspendedReason: null,
+    publishFeePaidAt: new Date(),
     user: { billing: { plan: "PRO" } },
   });
   // Two publishes: "old" was replaced a day ago by "new", which is live.
@@ -596,5 +607,68 @@ describe("the status the panel reads", () => {
     build("failed", { status: "FAILED", supersededAt: null, createdAt: daysAgo(5), error: "x" });
 
     expect((await getDeployStatus(PROJECT, OWNER)).lastFailure).toBeNull();
+  });
+});
+
+describe("the publish fee", () => {
+  const unpaid = () => {
+    project().publishFeePaidAt = null;
+  };
+
+  test("the status says what the first publish costs and whether it is still due", async () => {
+    expect((await getDeployStatus(PROJECT, OWNER)).publishFee).toEqual({ credits: 200, due: false });
+
+    unpaid();
+    expect((await getDeployStatus(PROJECT, OWNER)).publishFee).toEqual({ credits: 200, due: true });
+  });
+
+  test("a first publish with too few credits is refused at the request, before any job", async () => {
+    unpaid();
+    env.CREDITS_ENFORCE = true;
+    balanceMicro = 199_999_999n;
+
+    const err = await failure(() => requestDeploy(PROJECT, OWNER));
+    expect(err.statusCode).toBe(402);
+    expect(err.message).toContain("200 credits");
+    expect(tables.job).toHaveLength(0);
+    expect(enqueued).toHaveLength(0);
+  });
+
+  test("exactly enough is enough", async () => {
+    unpaid();
+    env.CREDITS_ENFORCE = true;
+    balanceMicro = 200_000_000n;
+
+    expect((await requestDeploy(PROJECT, OWNER)).slug).toBe(SLUG);
+  });
+
+  // Nothing is charged at the request: the fee is taken when the build goes live.
+  test("the request charges nothing, and a paid project is never asked again", async () => {
+    unpaid();
+    env.CREDITS_ENFORCE = true;
+    await requestDeploy(PROJECT, OWNER);
+    expect(project().publishFeePaidAt).toBeNull();
+
+    // An update after the fee, with an empty balance.
+    tables.job.length = 0;
+    project().publishFeePaidAt = new Date();
+    balanceMicro = 0n;
+    expect((await requestDeploy(PROJECT, OWNER)).slug).toBe(SLUG);
+  });
+
+  test("with credits not enforced the balance is not consulted", async () => {
+    unpaid();
+    balanceMicro = 0n;
+    expect((await requestDeploy(PROJECT, OWNER)).slug).toBe(SLUG);
+  });
+
+  test("rolling back and taking offline cost nothing and leave the fee paid", async () => {
+    env.CREDITS_ENFORCE = true;
+    balanceMicro = 0n;
+
+    await rollbackDeploy(PROJECT, "old", OWNER);
+    await unpublish(PROJECT, OWNER);
+    await rollbackDeploy(PROJECT, "new", OWNER);
+    expect((await getDeployStatus(PROJECT, OWNER)).publishFee.due).toBe(false);
   });
 });

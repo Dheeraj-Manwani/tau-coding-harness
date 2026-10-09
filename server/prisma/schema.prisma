@@ -151,6 +151,14 @@ model Project {
   /// Why, in words the owner can be shown. The Publish panel prints it.
   siteSuspendedReason String?
 
+  /// When the one-time publish fee was charged. Set in the transaction that
+  /// first makes a deployment of this project live, so a failed build never
+  /// costs anything and an update, rollback or republish never costs again.
+  /// Projects already live when the fee shipped were backfilled.
+  publishFeePaidAt DateTime?
+
+  logoGenerations LogoGeneration[]
+
   // "owner/repo" once the first GitHub push creates/links a repo; null before.
   githubRepo String?
 
@@ -632,6 +640,25 @@ model Deployment {
   @@index([purgedAt, completedAt])
 }
 
+/// One AI-generated logo picture, recorded when it was charged. The picture
+/// itself is never stored: the owner picks one and the identity save writes it.
+/// This row is what lets that save skip the upload fee, once, and only for a
+/// picture this server made for this project.
+model LogoGeneration {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  /// Set when a logo saved with this generation's id waived the upload fee.
+  usedAt   DateTime?
+  /// Hash of the logo that did, so retrying the same save is still waived.
+  usedHash String?
+
+  @@index([projectId, createdAt])
+}
+
 // ───────────────────────────── Credits & billing ─────────────────────────────
 
 enum Plan {
@@ -682,6 +709,11 @@ enum LedgerType {
   /// than by a build. Distinct from DEBIT so /billing and the admin views can
   /// split "building" from "app usage" with a `where`, not a string match.
   GATEWAY_DEBIT
+  /// The one-time charge for a project's first publish. Split from DEBIT so the
+  /// billing history and the admin views can tell it from token metering.
+  PUBLISH_FEE
+  /// A logo uploaded or generated for a published app.
+  LOGO_FEE
 }
 
 // Append-only money record. Invariant (gross balance) == Σ amount per account.

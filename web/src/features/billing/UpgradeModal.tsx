@@ -16,6 +16,7 @@ import { PRO_PRICE_INR } from "@/src/lib/pricing";
 const PRO_FEATURES = [
   "5,000 credits per month",
   "No tau badge on your previews and sites",
+  "Generate logos for your published apps with AI",
   "Credits reset monthly",
   "Priority support",
 ];

@@ -380,6 +380,100 @@ export async function meter(
   });
 }
 
+// ── Flat prices ──────────────────────────────────────────────────────────────
+
+export interface ChargeFlatResult {
+  /** False when this key had been charged before: nothing was taken again. */
+  charged: boolean;
+  /** Micro-credits taken now (0 on a repeat, or in shadow mode). */
+  debited: bigint;
+  available: bigint;
+}
+
+/**
+ * Take a fixed price for something that is not a model call: publishing, a
+ * logo. Sibling of {@link meter}, which prices tokens against a job's hold.
+ *
+ * **Idempotent on `idempotencyKey`**, like every other writer here, so a retried
+ * request or a re-run job step charges once. Refuses with
+ * {@link InsufficientCreditsError} when the balance is short and writes nothing:
+ * unlike metering, which absorbs an overshoot, a flat price is either payable or
+ * the thing does not happen.
+ *
+ * With `enforce` off (shadow mode, `CREDITS_ENFORCE=false`) the ledger row is
+ * written at the real price and no balance moves, as `meter` does, so the
+ * calibration data is the same. It also never refuses, because a local account
+ * has no credits to run short of.
+ *
+ * Pass `tx` to charge inside a transaction the caller already holds, so the
+ * charge and the change it pays for commit or roll back together.
+ */
+export async function chargeFlat(
+  userId: string,
+  amountMicro: bigint,
+  idempotencyKey: string,
+  type: LedgerType,
+  reason: string,
+  opts: { enforce?: boolean; tx?: Tx } = {},
+): Promise<ChargeFlatResult> {
+  if (amountMicro <= 0n) throw new Error("chargeFlat: amount must be positive");
+  const enforce = opts.enforce ?? true;
+
+  const run = async (tx: Tx): Promise<ChargeFlatResult> => {
+    await ensureBillingAccount(userId, tx);
+    const acc = await lockAccount(tx, userId);
+
+    const dup = await tx.creditLedger.findUnique({ where: { idempotencyKey } });
+    if (dup) return { charged: false, debited: 0n, available: gross(acc) };
+
+    let debited: bigint;
+    let newGross: bigint;
+    if (enforce) {
+      if (gross(acc) < amountMicro) throw new InsufficientCreditsError();
+      const spent = spendBuckets(
+        { free: acc.freeBalance, plan: acc.planBalance, bonus: acc.bonusBalance },
+        amountMicro,
+      );
+      debited = spent.debited;
+      newGross = spent.buckets.free + spent.buckets.plan + spent.buckets.bonus;
+      await tx.billingAccount.update({
+        where: { userId },
+        data: {
+          freeBalance: spent.buckets.free,
+          planBalance: spent.buckets.plan,
+          bonusBalance: spent.buckets.bonus,
+        },
+      });
+    } else {
+      debited = amountMicro;
+      newGross = gross(acc);
+    }
+
+    await tx.creditLedger.create({
+      data: {
+        userId,
+        type,
+        amount: -debited,
+        balanceAfter: newGross,
+        idempotencyKey,
+        reason: enforce ? reason : `shadow ${reason}`,
+      },
+    });
+
+    creditLog("credits.flat", {
+      userId,
+      type,
+      idempotencyKey,
+      amountMicro: amountMicro.toString(),
+      enforce,
+    });
+
+    return { charged: true, debited: enforce ? debited : 0n, available: newGross };
+  };
+
+  return opts.tx ? run(opts.tx) : prisma.$transaction(run);
+}
+
 // ── Gateway metering (/v1 runtime inference) ─────────────────────────────────
 
 export interface MeterGatewayArgs {

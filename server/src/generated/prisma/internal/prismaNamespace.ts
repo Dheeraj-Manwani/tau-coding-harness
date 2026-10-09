@@ -413,6 +413,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  LogoGeneration: 'LogoGeneration',
   BillingAccount: 'BillingAccount',
   CreditLedger: 'CreditLedger',
   CreditHold: 'CreditHold',
@@ -437,7 +438,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
+    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1625,6 +1626,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LogoGeneration: {
+      payload: Prisma.$LogoGenerationPayload<ExtArgs>
+      fields: Prisma.LogoGenerationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LogoGenerationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LogoGenerationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        findFirst: {
+          args: Prisma.LogoGenerationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LogoGenerationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        findMany: {
+          args: Prisma.LogoGenerationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        create: {
+          args: Prisma.LogoGenerationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        createMany: {
+          args: Prisma.LogoGenerationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LogoGenerationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        delete: {
+          args: Prisma.LogoGenerationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        update: {
+          args: Prisma.LogoGenerationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        deleteMany: {
+          args: Prisma.LogoGenerationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LogoGenerationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LogoGenerationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>[]
+        }
+        upsert: {
+          args: Prisma.LogoGenerationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LogoGenerationPayload>
+        }
+        aggregate: {
+          args: Prisma.LogoGenerationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLogoGeneration>
+        }
+        groupBy: {
+          args: Prisma.LogoGenerationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LogoGenerationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LogoGenerationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LogoGenerationCountAggregateOutputType> | number
+        }
+      }
+    }
     BillingAccount: {
       payload: Prisma.$BillingAccountPayload<ExtArgs>
       fields: Prisma.BillingAccountFieldRefs
@@ -2396,6 +2471,7 @@ export const ProjectScalarFieldEnum = {
   liveDeploymentId: 'liveDeploymentId',
   siteSuspendedAt: 'siteSuspendedAt',
   siteSuspendedReason: 'siteSuspendedReason',
+  publishFeePaidAt: 'publishFeePaidAt',
   githubRepo: 'githubRepo',
   githubDefaultBranch: 'githubDefaultBranch',
   githubVisibility: 'githubVisibility',
@@ -2608,6 +2684,18 @@ export const DeploymentScalarFieldEnum = {
 } as const
 
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
+
+
+export const LogoGenerationScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  createdAt: 'createdAt',
+  usedAt: 'usedAt',
+  usedHash: 'usedHash'
+} as const
+
+export type LogoGenerationScalarFieldEnum = (typeof LogoGenerationScalarFieldEnum)[keyof typeof LogoGenerationScalarFieldEnum]
 
 
 export const BillingAccountScalarFieldEnum = {
@@ -3330,6 +3418,7 @@ export type GlobalOmitConfig = {
   usage?: Prisma.UsageOmit
   tokenUsage?: Prisma.TokenUsageOmit
   deployment?: Prisma.DeploymentOmit
+  logoGeneration?: Prisma.LogoGenerationOmit
   billingAccount?: Prisma.BillingAccountOmit
   creditLedger?: Prisma.CreditLedgerOmit
   creditHold?: Prisma.CreditHoldOmit

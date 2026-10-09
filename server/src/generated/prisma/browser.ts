@@ -111,6 +111,14 @@ export type TokenUsage = Prisma.TokenUsageModel
  */
 export type Deployment = Prisma.DeploymentModel
 /**
+ * Model LogoGeneration
+ * One AI-generated logo picture, recorded when it was charged. The picture
+ * itself is never stored: the owner picks one and the identity save writes it.
+ * This row is what lets that save skip the upload fee, once, and only for a
+ * picture this server made for this project.
+ */
+export type LogoGeneration = Prisma.LogoGenerationModel
+/**
  * Model BillingAccount
  * 
  */

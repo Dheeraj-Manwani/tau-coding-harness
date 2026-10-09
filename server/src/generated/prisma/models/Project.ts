@@ -58,6 +58,7 @@ export type ProjectMinAggregateOutputType = {
   liveDeploymentId: string | null
   siteSuspendedAt: Date | null
   siteSuspendedReason: string | null
+  publishFeePaidAt: Date | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -89,6 +90,7 @@ export type ProjectMaxAggregateOutputType = {
   liveDeploymentId: string | null
   siteSuspendedAt: Date | null
   siteSuspendedReason: string | null
+  publishFeePaidAt: Date | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -122,6 +124,7 @@ export type ProjectCountAggregateOutputType = {
   liveDeploymentId: number
   siteSuspendedAt: number
   siteSuspendedReason: number
+  publishFeePaidAt: number
   githubRepo: number
   githubDefaultBranch: number
   githubVisibility: number
@@ -167,6 +170,7 @@ export type ProjectMinAggregateInputType = {
   liveDeploymentId?: true
   siteSuspendedAt?: true
   siteSuspendedReason?: true
+  publishFeePaidAt?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -198,6 +202,7 @@ export type ProjectMaxAggregateInputType = {
   liveDeploymentId?: true
   siteSuspendedAt?: true
   siteSuspendedReason?: true
+  publishFeePaidAt?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -231,6 +236,7 @@ export type ProjectCountAggregateInputType = {
   liveDeploymentId?: true
   siteSuspendedAt?: true
   siteSuspendedReason?: true
+  publishFeePaidAt?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -351,6 +357,7 @@ export type ProjectGroupByOutputType = {
   liveDeploymentId: string | null
   siteSuspendedAt: Date | null
   siteSuspendedReason: string | null
+  publishFeePaidAt: Date | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -407,6 +414,7 @@ export type ProjectWhereInput = {
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
   siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
+  publishFeePaidAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -416,6 +424,7 @@ export type ProjectWhereInput = {
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
+  logoGenerations?: Prisma.LogoGenerationListRelationFilter
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   jobs?: Prisma.JobListRelationFilter
@@ -448,6 +457,7 @@ export type ProjectOrderByWithRelationInput = {
   liveDeploymentId?: Prisma.SortOrderInput | Prisma.SortOrder
   siteSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   siteSuspendedReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  publishFeePaidAt?: Prisma.SortOrderInput | Prisma.SortOrder
   githubRepo?: Prisma.SortOrderInput | Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrderInput | Prisma.SortOrder
   githubVisibility?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -457,6 +467,7 @@ export type ProjectOrderByWithRelationInput = {
   lastPushedSequence?: Prisma.SortOrderInput | Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
+  logoGenerations?: Prisma.LogoGenerationOrderByRelationAggregateInput
   user?: Prisma.UserOrderByWithRelationInput
   messages?: Prisma.MessageOrderByRelationAggregateInput
   jobs?: Prisma.JobOrderByRelationAggregateInput
@@ -492,6 +503,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
   siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
+  publishFeePaidAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -501,6 +513,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
+  logoGenerations?: Prisma.LogoGenerationListRelationFilter
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   jobs?: Prisma.JobListRelationFilter
@@ -533,6 +546,7 @@ export type ProjectOrderByWithAggregationInput = {
   liveDeploymentId?: Prisma.SortOrderInput | Prisma.SortOrder
   siteSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   siteSuspendedReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  publishFeePaidAt?: Prisma.SortOrderInput | Prisma.SortOrder
   githubRepo?: Prisma.SortOrderInput | Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrderInput | Prisma.SortOrder
   githubVisibility?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -574,6 +588,7 @@ export type ProjectScalarWhereWithAggregatesInput = {
   liveDeploymentId?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   siteSuspendedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   siteSuspendedReason?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
+  publishFeePaidAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   githubRepo?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
@@ -606,6 +621,7 @@ export type ProjectCreateInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -615,6 +631,7 @@ export type ProjectCreateInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -647,6 +664,7 @@ export type ProjectUncheckedCreateInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -656,6 +674,7 @@ export type ProjectUncheckedCreateInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -686,6 +705,7 @@ export type ProjectUpdateInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -695,6 +715,7 @@ export type ProjectUpdateInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -727,6 +748,7 @@ export type ProjectUncheckedUpdateInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -736,6 +758,7 @@ export type ProjectUncheckedUpdateInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -767,6 +790,7 @@ export type ProjectCreateManyInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -799,6 +823,7 @@ export type ProjectUpdateManyMutationInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -832,6 +857,7 @@ export type ProjectUncheckedUpdateManyInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -883,6 +909,7 @@ export type ProjectCountOrderByAggregateInput = {
   liveDeploymentId?: Prisma.SortOrder
   siteSuspendedAt?: Prisma.SortOrder
   siteSuspendedReason?: Prisma.SortOrder
+  publishFeePaidAt?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -920,6 +947,7 @@ export type ProjectMaxOrderByAggregateInput = {
   liveDeploymentId?: Prisma.SortOrder
   siteSuspendedAt?: Prisma.SortOrder
   siteSuspendedReason?: Prisma.SortOrder
+  publishFeePaidAt?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -951,6 +979,7 @@ export type ProjectMinOrderByAggregateInput = {
   liveDeploymentId?: Prisma.SortOrder
   siteSuspendedAt?: Prisma.SortOrder
   siteSuspendedReason?: Prisma.SortOrder
+  publishFeePaidAt?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -1146,6 +1175,20 @@ export type ProjectUpdateOneRequiredWithoutDeploymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutDeploymentsInput, Prisma.ProjectUpdateWithoutDeploymentsInput>, Prisma.ProjectUncheckedUpdateWithoutDeploymentsInput>
 }
 
+export type ProjectCreateNestedOneWithoutLogoGenerationsInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedCreateWithoutLogoGenerationsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutLogoGenerationsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutLogoGenerationsNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedCreateWithoutLogoGenerationsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutLogoGenerationsInput
+  upsert?: Prisma.ProjectUpsertWithoutLogoGenerationsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutLogoGenerationsInput, Prisma.ProjectUpdateWithoutLogoGenerationsInput>, Prisma.ProjectUncheckedUpdateWithoutLogoGenerationsInput>
+}
+
 export type ProjectCreateWithoutUserInput = {
   id?: string
   name: string
@@ -1167,6 +1210,7 @@ export type ProjectCreateWithoutUserInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1176,6 +1220,7 @@ export type ProjectCreateWithoutUserInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1206,6 +1251,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1215,6 +1261,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -1275,6 +1322,7 @@ export type ProjectScalarWhereInput = {
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
   siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
+  publishFeePaidAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -1307,6 +1355,7 @@ export type ProjectCreateWithoutSecretsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1316,6 +1365,7 @@ export type ProjectCreateWithoutSecretsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -1347,6 +1397,7 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1356,6 +1407,7 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -1401,6 +1453,7 @@ export type ProjectUpdateWithoutSecretsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1410,6 +1463,7 @@ export type ProjectUpdateWithoutSecretsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -1441,6 +1495,7 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1450,6 +1505,7 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -1479,6 +1535,7 @@ export type ProjectCreateWithoutMessagesInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1488,6 +1545,7 @@ export type ProjectCreateWithoutMessagesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1519,6 +1577,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1528,6 +1587,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -1573,6 +1633,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1582,6 +1643,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -1613,6 +1675,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1622,6 +1685,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -1651,6 +1715,7 @@ export type ProjectCreateWithoutJobsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1660,6 +1725,7 @@ export type ProjectCreateWithoutJobsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1691,6 +1757,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1700,6 +1767,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -1745,6 +1813,7 @@ export type ProjectUpdateWithoutJobsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1754,6 +1823,7 @@ export type ProjectUpdateWithoutJobsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -1785,6 +1855,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1794,6 +1865,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -1823,6 +1895,7 @@ export type ProjectCreateWithoutFilesInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1832,6 +1905,7 @@ export type ProjectCreateWithoutFilesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -1863,6 +1937,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1872,6 +1947,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -1917,6 +1993,7 @@ export type ProjectUpdateWithoutFilesInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1926,6 +2003,7 @@ export type ProjectUpdateWithoutFilesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -1957,6 +2035,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1966,6 +2045,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -1995,6 +2075,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2004,6 +2085,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2035,6 +2117,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2044,6 +2127,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2089,6 +2173,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2098,6 +2183,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2129,6 +2215,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2138,6 +2225,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2167,6 +2255,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2176,6 +2265,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2207,6 +2297,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2216,6 +2307,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -2261,6 +2353,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2270,6 +2363,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2301,6 +2395,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2310,6 +2405,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -2339,6 +2435,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2348,6 +2445,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2379,6 +2477,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2388,6 +2487,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2433,6 +2533,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2442,6 +2543,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2473,6 +2575,187 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectCreateWithoutLogoGenerationsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  user: Prisma.UserCreateNestedOneWithoutProjectsInput
+  messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectUncheckedCreateWithoutLogoGenerationsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  userId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectCreateOrConnectWithoutLogoGenerationsInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedCreateWithoutLogoGenerationsInput>
+}
+
+export type ProjectUpsertWithoutLogoGenerationsInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedUpdateWithoutLogoGenerationsInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedCreateWithoutLogoGenerationsInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutLogoGenerationsInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedUpdateWithoutLogoGenerationsInput>
+}
+
+export type ProjectUpdateWithoutLogoGenerationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutLogoGenerationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2487,6 +2770,7 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
   secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
@@ -2511,6 +2795,7 @@ export type ProjectCreateManyUserInput = {
   liveDeploymentId?: string | null
   siteSuspendedAt?: Date | string | null
   siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2543,6 +2828,7 @@ export type ProjectUpdateWithoutUserInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2552,6 +2838,7 @@ export type ProjectUpdateWithoutUserInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -2582,6 +2869,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2591,6 +2879,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2621,6 +2910,7 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2638,6 +2928,7 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
  */
 
 export type ProjectCountOutputType = {
+  logoGenerations: number
   messages: number
   jobs: number
   tokenUsage: number
@@ -2648,6 +2939,7 @@ export type ProjectCountOutputType = {
 }
 
 export type ProjectCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  logoGenerations?: boolean | ProjectCountOutputTypeCountLogoGenerationsArgs
   messages?: boolean | ProjectCountOutputTypeCountMessagesArgs
   jobs?: boolean | ProjectCountOutputTypeCountJobsArgs
   tokenUsage?: boolean | ProjectCountOutputTypeCountTokenUsageArgs
@@ -2665,6 +2957,13 @@ export type ProjectCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
    * Select specific fields to fetch from the ProjectCountOutputType
    */
   select?: Prisma.ProjectCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ProjectCountOutputType without action
+ */
+export type ProjectCountOutputTypeCountLogoGenerationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LogoGenerationWhereInput
 }
 
 /**
@@ -2739,6 +3038,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   liveDeploymentId?: boolean
   siteSuspendedAt?: boolean
   siteSuspendedReason?: boolean
+  publishFeePaidAt?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2748,6 +3048,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   lastPushedSequence?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
+  logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
   jobs?: boolean | Prisma.Project$jobsArgs<ExtArgs>
@@ -2781,6 +3082,7 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   liveDeploymentId?: boolean
   siteSuspendedAt?: boolean
   siteSuspendedReason?: boolean
+  publishFeePaidAt?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2815,6 +3117,7 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   liveDeploymentId?: boolean
   siteSuspendedAt?: boolean
   siteSuspendedReason?: boolean
+  publishFeePaidAt?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2849,6 +3152,7 @@ export type ProjectSelectScalar = {
   liveDeploymentId?: boolean
   siteSuspendedAt?: boolean
   siteSuspendedReason?: boolean
+  publishFeePaidAt?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2860,8 +3164,9 @@ export type ProjectSelectScalar = {
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
   jobs?: boolean | Prisma.Project$jobsArgs<ExtArgs>
@@ -2882,6 +3187,7 @@ export type ProjectIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Project"
   objects: {
+    logoGenerations: Prisma.$LogoGenerationPayload<ExtArgs>[]
     user: Prisma.$UserPayload<ExtArgs>
     messages: Prisma.$MessagePayload<ExtArgs>[]
     jobs: Prisma.$JobPayload<ExtArgs>[]
@@ -2957,6 +3263,13 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * Why, in words the owner can be shown. The Publish panel prints it.
      */
     siteSuspendedReason: string | null
+    /**
+     * When the one-time publish fee was charged. Set in the transaction that
+     * first makes a deployment of this project live, so a failed build never
+     * costs anything and an update, rollback or republish never costs again.
+     * Projects already live when the fee shipped were backfilled.
+     */
+    publishFeePaidAt: Date | null
     githubRepo: string | null
     githubDefaultBranch: string | null
     githubVisibility: string | null
@@ -3360,6 +3673,7 @@ readonly fields: ProjectFieldRefs;
  */
 export interface Prisma__ProjectClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  logoGenerations<T extends Prisma.Project$logoGenerationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$logoGenerationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LogoGenerationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   messages<T extends Prisma.Project$messagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$messagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   jobs<T extends Prisma.Project$jobsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$jobsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -3418,6 +3732,7 @@ export interface ProjectFieldRefs {
   readonly liveDeploymentId: Prisma.FieldRef<"Project", 'String'>
   readonly siteSuspendedAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly siteSuspendedReason: Prisma.FieldRef<"Project", 'String'>
+  readonly publishFeePaidAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly githubRepo: Prisma.FieldRef<"Project", 'String'>
   readonly githubDefaultBranch: Prisma.FieldRef<"Project", 'String'>
   readonly githubVisibility: Prisma.FieldRef<"Project", 'String'>
@@ -3825,6 +4140,30 @@ export type ProjectDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Limit how many Projects to delete.
    */
   limit?: number
+}
+
+/**
+ * Project.logoGenerations
+ */
+export type Project$logoGenerationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the LogoGeneration
+   */
+  select?: Prisma.LogoGenerationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the LogoGeneration
+   */
+  omit?: Prisma.LogoGenerationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.LogoGenerationInclude<ExtArgs> | null
+  where?: Prisma.LogoGenerationWhereInput
+  orderBy?: Prisma.LogoGenerationOrderByWithRelationInput | Prisma.LogoGenerationOrderByWithRelationInput[]
+  cursor?: Prisma.LogoGenerationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.LogoGenerationScalarFieldEnum | Prisma.LogoGenerationScalarFieldEnum[]
 }
 
 /**

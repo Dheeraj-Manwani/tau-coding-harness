@@ -21,6 +21,7 @@ import { useProjectStore } from "@/src/stores/useProjectStore";
 import { useBalance } from "@/src/features/billing/api";
 import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import { useSendMessage } from "@/src/features/project/useSendMessage";
+import { BuyCredits, IdentitySection } from "@/src/features/project/IdentitySection";
 import {
   deployedAgo,
   formatBytes,
@@ -107,7 +108,7 @@ export function DeployPanel() {
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-80 rounded-xl border border-silver-400/30 bg-space-surface p-4 text-left shadow-2xl outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          className="z-50 max-h-[var(--radix-popover-content-available-height)] w-80 overflow-y-auto rounded-xl border border-silver-400/30 bg-space-surface p-4 text-left shadow-2xl outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
           <Popover.Arrow className="fill-space-surface" />
           <div className="mb-3 flex items-center gap-2">
@@ -145,6 +146,14 @@ function PanelBody({
   onClose: () => void;
 }) {
   const publish = usePublishProject(projectId);
+  const { data: balance } = useBalance();
+
+  // The first publish of a project is paid for, so the button says what it costs
+  // and, when the balance cannot cover it, gives way to buying credits. Only
+  // known once the balance has loaded: until then it is not called short.
+  const fee = status.publishFee;
+  const feeDue = fee.due && !status.live;
+  const short = feeDue && balance !== undefined && balance.credits.available < fee.credits;
 
   // A failed publish leaves the previous build serving, so a failure and a
   // caveat on the live site can both be true at once.
@@ -195,9 +204,11 @@ function PanelBody({
 
       <BadgeRow />
 
+      <IdentitySection projectId={projectId} />
+
       <button
         type="button"
-        disabled={busy || !!suspended}
+        disabled={busy || !!suspended || short}
         onClick={() => publish.mutate()}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
@@ -209,10 +220,21 @@ function PanelBody({
         ) : (
           <>
             <RocketIcon className="size-4" />
-            {status.live ? "Publish update" : "Publish"}
+            {status.live
+              ? "Publish update"
+              : feeDue
+                ? `Publish · ${fee.credits} credits`
+                : "Publish"}
           </>
         )}
       </button>
+      {feeDue && balance !== undefined && (
+        <p className="text-center text-[11px] text-silver-600">
+          First publish of a project. Updates are free. Balance{" "}
+          {Math.floor(balance.credits.available)}.
+        </p>
+      )}
+      {short && <BuyCredits>Publishing needs {fee.credits} credits.</BuyCredits>}
 
       <p className="text-center text-[11px] text-silver-600">
         {publishLabel(status)}

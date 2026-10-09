@@ -994,7 +994,7 @@ export async function deleteProject(
  * than against the manifest — otherwise a legitimately diverged sandbox would
  * reject every save.
  */
-async function readProjectFileContent(
+export async function readProjectFileContent(
   project: { id: string; sandboxId: string | null; sandboxStatus: SandboxStatus },
   userId: string,
   filePath: string,

@@ -12,7 +12,8 @@ import {
   captureProjectScreenshot,
   runAgentLoop,
 } from "./agent/loop";
-import { settle } from "@/lib/credits";
+import { InsufficientCreditsError, chargeFlat, settle } from "@/lib/credits";
+import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
 import { finalizeJobRollups } from "./lib/jobRollups";
 import { PREVIEW_PORT } from "./agent/config";
 import { buildAndUpload, DeployError } from "./lib/deploy";
@@ -24,6 +25,7 @@ import {
   FinishReason,
   JobStatus,
   JobType,
+  LedgerType,
   type Effort,
 } from "@/generated/prisma/enums";
 
@@ -136,8 +138,28 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
     const { previousLiveId, slug } = await prisma.$transaction(async (tx) => {
       const project = await tx.project.findUniqueOrThrow({
         where: { id: projectId },
-        select: { liveDeploymentId: true, slug: true },
+        select: { liveDeploymentId: true, slug: true, publishFeePaidAt: true },
       });
+
+      // The first publish of a project is paid for here, in the transaction that
+      // makes it live, so the fee and the site commit together or not at all. A
+      // build that failed never got this far and cost nothing. The balance may
+      // have fallen since the request checked it; then this throws and the
+      // whole transaction, including the READY row, rolls back.
+      if (project.publishFeePaidAt === null) {
+        await chargeFlat(
+          userId,
+          PUBLISH_FEE_MICRO,
+          `publish-fee:${projectId}`,
+          LedgerType.PUBLISH_FEE,
+          "first publish",
+          { enforce: env.CREDITS_ENFORCE, tx },
+        );
+        await tx.project.update({
+          where: { id: projectId },
+          data: { publishFeePaidAt: new Date() },
+        });
+      }
 
       await tx.deployment.update({
         where: { id: deployment.id },
@@ -198,7 +220,15 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
       deploymentId: deployment.id,
       warning: outcome.warning ?? null,
     });
-  } catch (err) {
+  } catch (raised) {
+    // A balance that fell short between the request and going live is the
+    // owner's to fix, not an outage.
+    const err: unknown =
+      raised instanceof InsufficientCreditsError
+        ? new DeployError(
+            `Not enough credits to publish. A project's first publish costs ${toCredits(PUBLISH_FEE_MICRO)} credits. Nothing was charged.`,
+          )
+        : raised;
     const isUserFacing = err instanceof DeployError;
     await prisma.deployment
       .update({

@@ -79,6 +79,25 @@ app's traffic did.
 
 → [Gateway billing](/docs/ai/billing)
 
+## Publishing and logos
+
+Putting an app online is paid for in credits, once, rather than monthly. These
+are the only fixed prices; everything else is metered.
+
+| What | Who | Credits |
+|---|---|---|
+| Publish a project for the first time | Every plan | 200 |
+| Publish an update, roll back, take offline, publish again | Every plan | Free |
+| Save your own logo | Every plan | 25 |
+| Generate a logo with AI | Pro | 20 for each picture |
+
+The 200 credits are taken when your first build goes live. A publish that fails
+costs nothing. The price is printed on the button, next to your balance, and a
+button you cannot afford is disabled with a link to buy credits.
+
+A generated logo you keep is not charged the 25 credits on top. They show in
+your ledger as **Publish fee** and **App logo**.
+
 ## Reading your ledger
 
 Your billing page shows:

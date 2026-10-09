@@ -37,6 +37,7 @@ export const PRO_FEATURES = [
   "Everything in Free",
   "Unlimited projects",
   "No tau badge on your previews and published sites",
+  "AI-generated logos for your published apps",
   "Credits reset monthly with your billing cycle",
   "Priority support",
 ];

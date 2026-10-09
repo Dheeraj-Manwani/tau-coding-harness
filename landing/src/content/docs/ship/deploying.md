@@ -28,6 +28,33 @@ down, it just leaves the previous version serving.
 > Your address is fixed the first time you publish and does not change when you
 > rename the project. Links you have shared keep working.
 
+## What it costs
+
+The first publish of a project costs **200 credits**, taken when that first
+build goes live. A free account starts with 300, so one publish takes most of
+them: that is intended. Everything after is free: publishing updates, rolling
+back, taking the site offline and publishing it again.
+
+- A publish that fails costs nothing.
+- The price is on the **Publish** button, with your balance beside it. If you
+  can't cover it, the button is disabled and links to buying credits.
+
+## Name and logo
+
+Open **Name and logo** in the panel to set what your app is called. All three
+are optional, and anything you leave alone keeps its default.
+
+- **Name** is the title in a browser tab and in a link someone shares. It is
+  not your address, and you can change it whenever you publish.
+- **Description** is the line under the name in a shared link.
+- **Logo** is the icon in the tab. Every app starts with tau's. **Upload logo**
+  takes a PNG or SVG and costs 25 credits to save. **Generate logo** (Pro) makes
+  a picture for 20 credits each; keeping a generated one costs nothing more.
+
+These are written into your project like any other change, so they appear in
+your files, in a GitHub push and in the count of unpublished changes. Publish
+to put them on the site.
+
 ## What gets published
 
 The front-end. That is the whole app for a frontend-only project, and it is what

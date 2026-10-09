@@ -174,6 +174,12 @@ export function buildApp(
 
   app.use("/webhooks", webhookRoutes);
 
+  // A logo is two PNGs sent as base64 in one JSON body, which is over the default
+  // 100 KB. Raised for that one route only, and ahead of the global parser, which
+  // skips a body that is already read. Auth comes later, so an anonymous caller
+  // can make this route read up to 1 MB before being refused: bounded, and the
+  // route does nothing without a session.
+  app.use("/project/:projectId/identity", express.json({ limit: "1mb" }));
   app.use(express.json());
   app.use(cookieParser());
 

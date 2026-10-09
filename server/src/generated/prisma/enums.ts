@@ -170,7 +170,9 @@ export const LedgerType = {
   REFUND: 'REFUND',
   EXPIRE: 'EXPIRE',
   ADJUSTMENT: 'ADJUSTMENT',
-  GATEWAY_DEBIT: 'GATEWAY_DEBIT'
+  GATEWAY_DEBIT: 'GATEWAY_DEBIT',
+  PUBLISH_FEE: 'PUBLISH_FEE',
+  LOGO_FEE: 'LOGO_FEE'
 } as const
 
 export type LedgerType = (typeof LedgerType)[keyof typeof LedgerType]

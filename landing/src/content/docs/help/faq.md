@@ -70,11 +70,11 @@ email, and we complete it within 30 days.
 
 ## Can I deploy the app from tau?
 
-**No.** Not yet.
-
-Tau builds and runs your app in a sandbox on a temporary URL. To publish it, push
-to GitHub and deploy from there: Vercel, Netlify, Fly, Render, Cloudflare Pages,
-anything.
+**Yes, for the front end.** Press **Publish** in your project and tau puts it
+online at a public link. The first publish of a project costs 200 credits;
+updates are free. Apps with a backend or a database are not hosted yet: push
+those to GitHub and deploy from there (Vercel, Netlify, Fly, Render, Cloudflare
+Pages, anything).
 
 → [Deploying](/docs/ship/deploying)
 

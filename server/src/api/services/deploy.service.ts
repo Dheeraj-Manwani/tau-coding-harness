@@ -9,6 +9,9 @@
  */
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
+import { getBalance } from "@/lib/credits";
+import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
 import { withinRollbackWindow } from "../lib/deploySweep";
 import { AppError, Errors } from "../lib/errors";
 import { log } from "../lib/log";
@@ -90,6 +93,12 @@ export interface DeployStatus {
    */
   suspended: { reason: string | null } | null;
   lastFailure: DeployFailure | null;
+  /**
+   * The one-time price of a project's first publish. `due` is false once it has
+   * been paid, and a project that was live before the fee existed counts as
+   * paid. Updates, rollbacks and take-offline never cost anything.
+   */
+  publishFee: { credits: number; due: boolean };
 }
 
 /** Statuses a deployment can only have after it went live at least once. */
@@ -193,6 +202,10 @@ export async function getDeployStatus(
     ),
     unpublishedChanges,
     serverWarning: serverWarningFor(project.templateKey),
+    publishFee: {
+      credits: toCredits(PUBLISH_FEE_MICRO),
+      due: project.publishFeePaidAt === null,
+    },
     suspended: project.siteSuspendedAt
       ? { reason: project.siteSuspendedReason }
       : null,
@@ -269,6 +282,18 @@ export async function requestDeploy(
   });
   if (!user?.emailVerifiedAt) {
     throw Errors.forbidden("Verify your email to publish.");
+  }
+
+  // Nothing is charged here: the fee is taken when the first build goes live, so
+  // a failed one costs nothing. This only refuses a publish that could not pay,
+  // before a sandbox is spent building it.
+  if (project.publishFeePaidAt === null && env.CREDITS_ENFORCE) {
+    const { available } = await getBalance(userId);
+    if (available < PUBLISH_FEE_MICRO) {
+      throw Errors.paymentRequired(
+        `Publishing a project for the first time costs ${toCredits(PUBLISH_FEE_MICRO)} credits. You have ${Math.floor(toCredits(available))}.`,
+      );
+    }
   }
 
   const fileCount = await prisma.projectFile.count({ where: { projectId } });

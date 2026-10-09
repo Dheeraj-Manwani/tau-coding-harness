@@ -84,6 +84,14 @@ export const PRO_MONTHLY_PRICE_INR = 1_499;
 export const JOB_RESERVE_CEILING_MICRO = 25_000n * MICRO; // legacy/default HIGH ceiling
 export const MIN_SPEND_TO_START_MICRO = 1n * MICRO; // refuse a job below this available
 
+// ── Publishing prices (micro-credits). doc/PUBLISHING.md D7 ─────────────────────
+/** The first publish of a project. Updates, rollbacks and take-offline are free. */
+export const PUBLISH_FEE_MICRO = 200n * MICRO;
+/** Each logo saved to an app. A generated one is not charged this on top. */
+export const LOGO_UPLOAD_FEE_MICRO = 25n * MICRO;
+/** Each AI-generated logo picture (Pro only). Covers the model call: ~18 credits. */
+export const LOGO_GENERATION_FEE_MICRO = 20n * MICRO;
+
 // Max concurrent projects a FREE-plan user may own (PRO is unlimited).
 export const FREE_PLAN_MAX_PROJECTS = 3;
 

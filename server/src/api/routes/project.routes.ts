@@ -29,6 +29,7 @@ import {
 } from "../controllers/project.controller";
 import * as github from "../controllers/githubProject.controller";
 import * as deploy from "../controllers/deploy.controller";
+import * as identity from "../controllers/identity.controller";
 import * as context from "../controllers/context.controller";
 import * as design from "../controllers/design.controller";
 import {
@@ -102,6 +103,16 @@ router.post(
   "/:projectId/deployments/:deploymentId/rollback",
   publishRateLimiter,
   deploy.rollback,
+);
+
+// Name, description and logo of the published app (Publish panel). Saving a
+// logo or generating one costs credits, so both share the import limiter.
+router.get("/:projectId/identity", identity.get);
+router.put("/:projectId/identity", assetImportRateLimiter, identity.save);
+router.post(
+  "/:projectId/identity/logo/generate",
+  assetImportRateLimiter,
+  identity.generateLogo,
 );
 
 // GitHub panel

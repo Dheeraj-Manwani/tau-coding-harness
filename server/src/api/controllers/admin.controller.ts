@@ -93,6 +93,21 @@ export const projectDetail = handler((req) =>
   admin.getProjectDetail(String(req.params.id)),
 );
 
+const suspendSiteSchema = z.object({
+  reason: z.string().trim().min(1, "A reason is required").max(500),
+});
+
+/** POST /projects/:id/site/suspend — take a published site down for abuse. */
+export const suspendSite = handler((req) => {
+  const { reason } = parse(suspendSiteSchema, req.body);
+  return admin.suspendProjectSite(String(req.params.id), reason);
+});
+
+/** POST /projects/:id/site/unsuspend — put it back exactly as it was. */
+export const unsuspendSite = handler((req) =>
+  admin.unsuspendProjectSite(String(req.params.id)),
+);
+
 /** Gateway traffic across every key — the abuse-triage view. `?hours=` (default 24). */
 export const gatewayOverview = handler((req) => {
   const raw = Number(req.query.hours);

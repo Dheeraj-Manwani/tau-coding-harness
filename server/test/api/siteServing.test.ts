@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 
@@ -9,7 +9,10 @@ import type { AddressInfo } from "node:net";
 // HTTP with only the two I/O edges (R2, the slug lookup) stubbed.
 
 const objects = new Map<string, string>();
-let lookup: { storagePrefix: string; showBadge: boolean } | null = null;
+let lookup:
+  | { state: "live"; storagePrefix: string; showBadge: boolean }
+  | { state: "suspended" }
+  | null = null;
 
 const realS3 = await import("@/lib/s3");
 mock.module("@/lib/s3", () => ({
@@ -26,10 +29,11 @@ mock.module("@/lib/s3", () => ({
 }));
 
 mock.module("@/api/lib/siteLookup", () => ({
-  resolveLiveSite: async () => lookup,
+  resolveSite: async () => lookup,
   invalidateSiteLookup: () => {},
 }));
 
+const { env } = await import("@/lib/env");
 const express = (await import("express")).default;
 const siteRoutes = (await import("@/api/routes/sites.routes")).default;
 
@@ -54,7 +58,7 @@ function publish(
   for (const [path, body] of Object.entries(files)) {
     objects.set(`${PREFIX}/${path}`, body);
   }
-  lookup = { storagePrefix: PREFIX, showBadge };
+  lookup = { state: "live", storagePrefix: PREFIX, showBadge };
 }
 
 describe("published site serving", () => {
@@ -146,6 +150,96 @@ describe("published site serving", () => {
 
     const second = await get("/sites/my-app/", { "if-none-match": etag });
     expect(second.status).toBe(304);
+  });
+});
+
+describe("a suspended site", () => {
+  test("every path answers 403 with the suspended page", async () => {
+    publish({
+      "index.html": "<h1>hello</h1>",
+      "assets/index-a1b2c3d4.js": "console.log(1)",
+    });
+    lookup = { state: "suspended" };
+
+    for (const path of ["/", "/settings", "/assets/index-a1b2c3d4.js"]) {
+      const res = await get(`/sites/my-app${path}`);
+      expect(res.status).toBe(403);
+      const body = await res.text();
+      expect(body).toContain("This site has been suspended");
+      expect(body).not.toContain("hello");
+      expect(body).not.toContain("console.log");
+    }
+  });
+
+  // A browser or proxy that kept the page would go on showing "suspended"
+  // after the suspension was lifted.
+  test("the suspended page is never cached", async () => {
+    lookup = { state: "suspended" };
+
+    const res = await get("/sites/my-app/");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+});
+
+describe("SITES_PATH_MODE=redirect", () => {
+  const original = {
+    mode: env.SITES_PATH_MODE,
+    domain: env.SITES_DOMAIN,
+  };
+  const set = (mode: "serve" | "redirect", domain: string | undefined) => {
+    env.SITES_PATH_MODE = mode;
+    env.SITES_DOMAIN = domain;
+  };
+  afterEach(() => set(original.mode, original.domain));
+
+  test("the path form redirects to the subdomain, path preserved", async () => {
+    publish({ "index.html": "<h1>hello</h1>" });
+    set("redirect", "usetau.app");
+
+    const asset = await get("/sites/my-app/assets/index-a1b2c3d4.js?v=2");
+    expect(asset.status).toBe(308);
+    expect(asset.headers.get("location")).toBe(
+      "https://my-app.usetau.app/assets/index-a1b2c3d4.js?v=2",
+    );
+
+    const root = await get("/sites/my-app/");
+    expect(root.status).toBe(308);
+    expect(root.headers.get("location")).toBe("https://my-app.usetau.app/");
+
+    const bare = await get("/sites/my-app");
+    expect(bare.status).toBe(308);
+    expect(bare.headers.get("location")).toBe("https://my-app.usetau.app/");
+  });
+
+  // Nothing of the app is served from this origin in redirect mode, whatever
+  // state the site is in: the subdomain answers for it.
+  test("it redirects without reading the site", async () => {
+    lookup = null;
+    set("redirect", "usetau.app");
+
+    const res = await get("/sites/not-published/");
+    expect(res.status).toBe(308);
+  });
+
+  test("without a sites domain the path form is still served", async () => {
+    publish({ "index.html": "<h1>hello</h1>" });
+    set("redirect", undefined);
+
+    const res = await get("/sites/my-app/");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("<h1>hello</h1>");
+  });
+
+  test("serve mode is unchanged with a sites domain set", async () => {
+    publish({ "index.html": "<h1>hello</h1>" });
+    set("serve", "usetau.app");
+
+    const res = await get("/sites/my-app/");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("<h1>hello</h1>");
+
+    const bare = await get("/sites/my-app");
+    expect(bare.headers.get("location")).toBe("/sites/my-app/");
   });
 });
 

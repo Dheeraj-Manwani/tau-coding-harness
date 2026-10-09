@@ -324,6 +324,14 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
 
+  // What `/sites/{slug}/…` on this server's own origin does once SITES_DOMAIN
+  // is set. `serve` answers from here, which runs a published app's JavaScript
+  // on the API's origin. `redirect` sends the visitor to the app's own
+  // subdomain instead, so nothing user-written ever executes here. Ignored
+  // while SITES_DOMAIN is unset: the path form is then the only address a site
+  // has. Stays `serve` until the sites domain is live.
+  SITES_PATH_MODE: z.enum(["serve", "redirect"]).default("serve"),
+
   // Ceilings on one published build. A static bundle that exceeds either of
   // these is a build gone wrong (a `dist/` containing node_modules, a stray
   // video) — failing loudly beats quietly uploading it to R2 on our bill.

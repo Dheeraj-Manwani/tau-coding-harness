@@ -4,6 +4,7 @@ import {
   contentTypeFor,
   isValidSlug,
   normalizeSitePath,
+  pathFormRedirect,
   publicSiteUrl,
   siteObjectKey,
   sitePrefix,
@@ -168,6 +169,60 @@ describe("publicSiteUrl", () => {
     const domain = "usetau.app";
     const url = new URL(publicSiteUrl("my-app-ab12cd", { domain }));
     expect(slugFromHost(url.host, domain)).toBe("my-app-ab12cd");
+  });
+});
+
+describe("pathFormRedirect", () => {
+  const on = { mode: "redirect", domain: "usetau.app" } as const;
+
+  test("serve mode never redirects", () => {
+    expect(
+      pathFormRedirect("my-app", "/sites/my-app/", {
+        mode: "serve",
+        domain: "usetau.app",
+      }),
+    ).toBeNull();
+  });
+
+  // With no sites domain the path form is the only address a site has, so
+  // there is nowhere to send anyone.
+  test("redirect mode without a domain never redirects", () => {
+    expect(
+      pathFormRedirect("my-app", "/sites/my-app/", {
+        mode: "redirect",
+        domain: undefined,
+      }),
+    ).toBeNull();
+  });
+
+  test("the root goes to the subdomain root", () => {
+    expect(pathFormRedirect("my-app", "/sites/my-app", on)).toBe(
+      "https://my-app.usetau.app/",
+    );
+    expect(pathFormRedirect("my-app", "/sites/my-app/", on)).toBe(
+      "https://my-app.usetau.app/",
+    );
+  });
+
+  test("the path and query are carried over as sent", () => {
+    expect(
+      pathFormRedirect("my-app", "/sites/my-app/assets/a%20b.js?v=1&x=%2F", on),
+    ).toBe("https://my-app.usetau.app/assets/a%20b.js?v=1&x=%2F");
+    expect(pathFormRedirect("my-app", "/sites/my-app?ref=x", on)).toBe(
+      "https://my-app.usetau.app/?ref=x",
+    );
+  });
+
+  // The slug becomes a hostname, so anything that is not a DNS label must not
+  // produce a redirect at all, and nothing in the path can change the host.
+  test("the request cannot choose the host", () => {
+    expect(pathFormRedirect("evil.com", "/sites/evil.com/", on)).toBeNull();
+    expect(pathFormRedirect("a@b", "/sites/a@b/", on)).toBeNull();
+
+    const url = new URL(
+      pathFormRedirect("my-app", "/sites/my-app//evil.com/x", on)!,
+    );
+    expect(url.hostname).toBe("my-app.usetau.app");
   });
 });
 

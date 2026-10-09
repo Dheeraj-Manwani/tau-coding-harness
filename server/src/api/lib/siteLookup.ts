@@ -1,5 +1,5 @@
 /**
- * slug → live deployment, cached briefly.
+ * slug → what to serve there, cached briefly.
  *
  * One page load of a published app is a dozen requests (html, bundles, fonts,
  * images) that all resolve to the same two rows. Without a cache, every
@@ -17,15 +17,26 @@ import { showsBadge } from "@/lib/badge";
  *  and that an upgrade takes the badge off every site about as fast. */
 const LOOKUP_TTL_MS = 10_000;
 
-export interface LiveSite {
-  storagePrefix: string;
-  /** The owner is on the free plan, so pages get the "Built with tau" badge. */
-  showBadge: boolean;
-}
+/**
+ * What a slug resolves to. `null` is "nothing published here".
+ *
+ * A union on `state` rather than a row of optional fields, so a state added
+ * later (the routing record this becomes when sites move to the edge) is a new
+ * member the handler has to deal with, not a flag it can forget to read.
+ */
+export type SiteLookup =
+  | {
+      state: "live";
+      storagePrefix: string;
+      /** The owner is on the free plan, so pages get the "Built with tau" badge. */
+      showBadge: boolean;
+    }
+  /** Taken down by an admin. Wins over whatever build is live. */
+  | { state: "suspended" };
 
-const cache = new Map<string, { value: LiveSite | null; expiresAt: number }>();
+const cache = new Map<string, { value: SiteLookup | null; expiresAt: number }>();
 
-export async function resolveLiveSite(slug: string): Promise<LiveSite | null> {
+export async function resolveSite(slug: string): Promise<SiteLookup | null> {
   const cached = cache.get(slug);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
@@ -33,18 +44,22 @@ export async function resolveLiveSite(slug: string): Promise<LiveSite | null> {
     where: { slug },
     select: {
       liveDeploymentId: true,
+      siteSuspendedAt: true,
       user: { select: { billing: { select: { plan: true } } } },
     },
   });
 
-  let value: LiveSite | null = null;
-  if (project?.liveDeploymentId) {
+  let value: SiteLookup | null = null;
+  if (project?.siteSuspendedAt) {
+    value = { state: "suspended" };
+  } else if (project?.liveDeploymentId) {
     const deployment = await prisma.deployment.findFirst({
       where: { id: project.liveDeploymentId, status: DeploymentStatus.READY },
       select: { storagePrefix: true },
     });
     if (deployment?.storagePrefix) {
       value = {
+        state: "live",
         storagePrefix: deployment.storagePrefix,
         showBadge: showsBadge(project.user.billing?.plan),
       };
@@ -58,7 +73,8 @@ export async function resolveLiveSite(slug: string): Promise<LiveSite | null> {
 }
 
 /**
- * Drop a slug's entry so a just-finished publish is visible immediately.
+ * Drop a slug's entry so a just-finished publish, a rollback, a site taken
+ * offline or a suspension is visible immediately.
  *
  * Correctness does not depend on this — the TTL gets there on its own — but the
  * ten seconds it saves are precisely the ten seconds the user spends clicking

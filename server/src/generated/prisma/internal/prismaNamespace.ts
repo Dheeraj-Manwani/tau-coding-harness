@@ -2394,6 +2394,8 @@ export const ProjectScalarFieldEnum = {
   previewImageUpdatedAt: 'previewImageUpdatedAt',
   slug: 'slug',
   liveDeploymentId: 'liveDeploymentId',
+  siteSuspendedAt: 'siteSuspendedAt',
+  siteSuspendedReason: 'siteSuspendedReason',
   githubRepo: 'githubRepo',
   githubDefaultBranch: 'githubDefaultBranch',
   githubVisibility: 'githubVisibility',
@@ -2601,6 +2603,7 @@ export const DeploymentScalarFieldEnum = {
   buildLog: 'buildLog',
   createdAt: 'createdAt',
   completedAt: 'completedAt',
+  supersededAt: 'supersededAt',
   purgedAt: 'purgedAt'
 } as const
 

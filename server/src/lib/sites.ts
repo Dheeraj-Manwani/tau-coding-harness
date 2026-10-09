@@ -137,6 +137,35 @@ export function publicSiteUrl(
 }
 
 /**
+ * Where a path-form request (`/sites/{slug}/…`) should be sent instead of being
+ * served here, or null to serve it.
+ *
+ * Only ever the slug's own subdomain: the slug is checked against the DNS-label
+ * rules first, so the host in the result cannot be chosen by the request, and
+ * everything after it is the request's own path and query, carried over as
+ * sent.
+ *
+ * The settings are parameters with env defaults for the same reason as in
+ * `publicSiteUrl`.
+ */
+export function pathFormRedirect(
+  slug: string,
+  originalUrl: string,
+  opts: { mode?: "serve" | "redirect"; domain?: string } = {},
+): string | null {
+  const mode = opts.mode ?? env.SITES_PATH_MODE;
+  const domain = "domain" in opts ? opts.domain : env.SITES_DOMAIN;
+  if (mode !== "redirect" || !domain || !isValidSlug(slug)) return null;
+
+  // Cut on the URL as it arrived rather than rebuilding it from the decoded
+  // route parameters, so an escaped path reaches the subdomain unchanged.
+  const afterPrefix = originalUrl.replace(/^\/sites\//, "");
+  const cut = afterPrefix.search(/[/?]/);
+  const rest = cut === -1 ? "" : afterPrefix.slice(cut);
+  return `https://${slug}.${domain}${rest.startsWith("/") ? rest : `/${rest}`}`;
+}
+
+/**
  * The slug a request is for, from its Host header, or null when the host is not
  * a site subdomain (the API's own domain, an IP, localhost).
  *

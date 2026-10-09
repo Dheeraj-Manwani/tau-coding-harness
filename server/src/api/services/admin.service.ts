@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { bus, type JobRegistryEntry } from "@/lib/bus";
 import { env } from "@/lib/env";
 import { Errors } from "../lib/errors";
+import { log } from "../lib/log";
 import { e2bPreviewUrl } from "../lib/providers";
+import { invalidateSiteLookup } from "../lib/siteLookup";
+import { publicSiteUrl } from "@/lib/sites";
 import { settle, grantBonusCredits, grantPlanCycle, ensureBillingAccount } from "@/lib/credits";
 import { terminateStrandedJob, reapStaleJobs } from "../lib/jobs";
 import { toCredits, MICRO } from "@/lib/pricing";
@@ -809,6 +812,10 @@ export async function getProjectDetail(projectId: string) {
       sandboxStatus: true,
       sandboxExpiresAt: true,
       githubRepo: true,
+      slug: true,
+      liveDeploymentId: true,
+      siteSuspendedAt: true,
+      siteSuspendedReason: true,
     },
   });
   if (!project) throw Errors.notFound("Project not found");
@@ -852,6 +859,9 @@ export async function getProjectDetail(projectId: string) {
         project.sandboxId && project.sandboxStatus === SandboxStatus.READY
           ? e2bPreviewUrl(project.sandboxId)
           : null,
+      // The address exists from the first publish on, live or not: it is what
+      // an abuse report names, so it is shown even for a site that is offline.
+      siteUrl: project.slug ? publicSiteUrl(project.slug) : null,
     },
     fileCount,
     messageCount,
@@ -862,6 +872,59 @@ export async function getProjectDetail(projectId: string) {
       credits: toCredits(j.costMicro),
     })),
   };
+}
+
+/**
+ * Take a project's published site down, or put it back.
+ *
+ * Suspension is a flag on the project, not a change to its deployments: the
+ * address answers with a "suspended" page on every path and the owner cannot
+ * publish or roll back, but the live pointer, the builds and the project are
+ * all untouched. Lifting it serves exactly what was there before.
+ *
+ * `reason` is shown to the owner in the Publish panel, so it is written for
+ * them. Suspending an already-suspended site replaces the reason and keeps the
+ * original time.
+ */
+export async function suspendProjectSite(projectId: string, reason: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { slug: true, siteSuspendedAt: true },
+  });
+  if (!project) throw Errors.notFound("Project not found");
+
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      siteSuspendedAt: project.siteSuspendedAt ?? new Date(),
+      siteSuspendedReason: reason,
+    },
+    select: { siteSuspendedAt: true, siteSuspendedReason: true },
+  });
+
+  // Without this the site would keep serving for up to the lookup's TTL, which
+  // is ten seconds too long for the thing this exists to stop.
+  if (project.slug) invalidateSiteLookup(project.slug);
+  log.warn("admin.site.suspend", { projectId, slug: project.slug, reason });
+  return updated;
+}
+
+export async function unsuspendProjectSite(projectId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { slug: true },
+  });
+  if (!project) throw Errors.notFound("Project not found");
+
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: { siteSuspendedAt: null, siteSuspendedReason: null },
+    select: { siteSuspendedAt: true, siteSuspendedReason: true },
+  });
+
+  if (project.slug) invalidateSiteLookup(project.slug);
+  log.warn("admin.site.unsuspend", { projectId, slug: project.slug });
+  return updated;
 }
 
 // ── sandbox inventory ────────────────────────────────────────────────────────

@@ -42,11 +42,16 @@ export const visualContextSchema = z.object({
  * genuinely the payload here, and truncating it to a tidy size would cut the
  * caret line that says where the problem is. `buildErrorBlock` clamps each part
  * again on the way into the prompt.
+ *
+ * `source: "publish"` is the Publish panel's version of the same button: the
+ * failure is the production build's, `message` is what the panel told the user
+ * and `frame` is the tail of the build log.
  */
 export const buildErrorSchema = z.object({
   message: z.string().min(1).max(8000),
   file: z.string().max(1000).optional(),
   frame: z.string().max(4000).optional(),
+  source: z.enum(["preview", "publish"]).optional(),
 });
 
 /**

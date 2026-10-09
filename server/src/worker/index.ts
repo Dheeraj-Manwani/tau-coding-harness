@@ -158,7 +158,12 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
             id: project.liveDeploymentId,
             status: DeploymentStatus.READY,
           },
-          data: { status: DeploymentStatus.SUPERSEDED },
+          // The rollback window starts now, when it stops serving, not when it
+          // was built (`deploySweep.ts`).
+          data: {
+            status: DeploymentStatus.SUPERSEDED,
+            supersededAt: new Date(),
+          },
         });
       }
 

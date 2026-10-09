@@ -481,6 +481,14 @@ export interface ProjectDetail {
     githubRepo: string | null;
     /** Set while the row says READY; the row can be stale, so the link may 404. */
     previewUrl: string | null;
+    /** The published site's address, from the first publish on. Null before. */
+    slug: string | null;
+    siteUrl: string | null;
+    /** Null when nothing is live: never published, or taken offline. */
+    liveDeploymentId: string | null;
+    siteSuspendedAt: ISODate | null;
+    /** Shown to the owner in their Publish panel. */
+    siteSuspendedReason: string | null;
   };
   fileCount: number;
   messageCount: number;

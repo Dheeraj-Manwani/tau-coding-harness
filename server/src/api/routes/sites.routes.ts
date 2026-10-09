@@ -12,6 +12,10 @@
  * The path form is not a fallback for the subdomain form — both stay live. It
  * is what makes publishing work on a laptop and on any host without a wildcard
  * record, and it is the origin a CDN would sit in front of.
+ *
+ * The exception is `SITES_PATH_MODE=redirect`, for a deployment that has a
+ * sites domain: the path form then only redirects to the subdomain, so a
+ * published app's JavaScript never runs on this server's own origin.
  */
 import { createHash } from "node:crypto";
 import express, { Router, type Request, type Response } from "express";
@@ -27,10 +31,11 @@ import {
   contentTypeFor,
   isValidSlug,
   normalizeSitePath,
+  pathFormRedirect,
   siteObjectKey,
   slugFromHost,
 } from "@/lib/sites";
-import { resolveLiveSite } from "../lib/siteLookup";
+import { resolveSite } from "../lib/siteLookup";
 
 function notFound(res: Response, message: string): void {
   res
@@ -59,9 +64,20 @@ async function serveSite(
     return;
   }
 
-  const site = await resolveLiveSite(slug);
+  const site = await resolveSite(slug);
   if (!site) {
     notFound(res, "No app is published at this address yet.");
+    return;
+  }
+  if (site.state === "suspended") {
+    // Every path, assets included: nothing of a suspended app is served. The
+    // reason is the owner's business and is shown to them in the Publish
+    // panel, not to whoever follows the link.
+    res
+      .status(403)
+      .type("text/html; charset=utf-8")
+      .set("Cache-Control", "no-store")
+      .send(errorPage("Site suspended", "This site has been suspended."));
     return;
   }
 
@@ -168,10 +184,19 @@ router.get(BADGE_SCRIPT_PATH, serveBadgeScript);
 // No trailing slash redirects to one, so relative asset URLs in the served HTML
 // resolve against the site root rather than against `/sites/`.
 router.get("/sites/:slug", (req, res) => {
-  res.redirect(308, `/sites/${req.params.slug}/`);
+  res.redirect(
+    308,
+    pathFormRedirect(req.params.slug!, req.originalUrl) ??
+      `/sites/${req.params.slug}/`,
+  );
 });
 
 router.get("/sites/:slug/{*path}", (req, res, next) => {
+  const elsewhere = pathFormRedirect(req.params.slug!, req.originalUrl);
+  if (elsewhere) {
+    res.redirect(308, elsewhere);
+    return;
+  }
   const rest = (req.params as { path?: string | string[] }).path;
   const rawPath = Array.isArray(rest) ? rest.join("/") : (rest ?? "");
   void serveSite(req.params.slug!, rawPath, req, res).catch(next);

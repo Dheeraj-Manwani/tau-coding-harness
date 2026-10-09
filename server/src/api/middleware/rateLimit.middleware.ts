@@ -69,6 +69,24 @@ export const assetImportRateLimiter = rateLimit({
   },
 });
 
+// Publishing and rolling back change what a public URL on tau's domain serves,
+// and a publish is also a build in a sandbox that costs the user nothing. One
+// build per project at a time already bounds the sandbox side; this bounds how
+// often one account can change what its addresses show. Far above real use: a
+// person iterating on a live site publishes a few times an hour.
+export const publishRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req: Request) =>
+    req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
+  message: {
+    error: "Too many publishes. Please try again in a little while.",
+  },
+});
+
 // Revealing or rotating hands out a live spend credential in plaintext. Neither
 // is something a legitimate user does more than a handful of times, so the limit
 // is tight enough to make scripted extraction pointless without ever being felt.

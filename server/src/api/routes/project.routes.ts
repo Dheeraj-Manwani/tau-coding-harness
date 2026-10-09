@@ -33,6 +33,7 @@ import * as context from "../controllers/context.controller";
 import * as design from "../controllers/design.controller";
 import {
   visualEditRateLimiter,
+  publishRateLimiter,
   assetImportRateLimiter,
   attachmentRateLimiter,
 } from "../middleware/rateLimit.middleware";
@@ -95,7 +96,13 @@ router.delete("/:projectId/secrets/:name", deleteSecret);
 // Publish panel. The site itself is served by the public routes in
 // `sites.routes.ts`, which sit outside this authenticated router.
 router.get("/:projectId/deploy", deploy.getStatus);
-router.post("/:projectId/deploy", deploy.publish);
+router.post("/:projectId/deploy", publishRateLimiter, deploy.publish);
+router.delete("/:projectId/deploy", deploy.unpublish);
+router.post(
+  "/:projectId/deployments/:deploymentId/rollback",
+  publishRateLimiter,
+  deploy.rollback,
+);
 
 // GitHub panel
 router.get("/:projectId/github", github.getInfo);

@@ -143,6 +143,12 @@ export interface BuildErrorContext {
   file?: string;
   /** The offending source excerpt with its caret. */
   frame?: string;
+  /**
+   * Where the failure was seen. `publish` is a production build that failed
+   * during a publish: then `message` is what the Publish panel told the user
+   * and `frame` is the tail of the build log. Absent means the preview.
+   */
+  source?: "preview" | "publish";
 }
 
 /** The sandbox's app root, stripped so the agent sees paths it can act on. */
@@ -183,6 +189,8 @@ export function buildErrorBlock(err: BuildErrorContext): string | null {
   const message = fenced(err.message, 4000);
   if (!message.trim()) return null;
 
+  if (err.source === "publish") return publishErrorBlock(message, err.frame);
+
   const parts = [message];
   // `/home/user/app/src/App.tsx` is a path the agent's tools cannot open —
   // every one of them is rooted at the app directory already.
@@ -195,6 +203,42 @@ export function buildErrorBlock(err: BuildErrorContext): string | null {
     "<build-error>\n" +
     "The preview is showing this build error. Read the file, find the cause and" +
     " fix it. This is Vite's own output, verbatim:\n\n" +
+    parts.join("\n\n") +
+    "\n</build-error>"
+  );
+}
+
+/**
+ * The same block for a publish that failed.
+ *
+ * Its own wording because the preview's would mislead: a publish runs the
+ * production build, which can fail while the dev server is serving the app
+ * without complaint, and an agent told "the preview is showing this" would go
+ * and look at a preview that is fine. So it is told which command failed and
+ * to run it.
+ *
+ * A build log's error is at its end, so the log is cut from the front, the
+ * opposite of `fenced`.
+ */
+function publishErrorBlock(message: string, rawLog: string | undefined): string {
+  const parts = [message];
+  // Colour codes, from a log stored before the worker started removing them.
+  const log = rawLog?.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
+  if (log?.trim()) {
+    const tail = log.length > 4000 ? `…${log.slice(-4000)}` : log;
+    parts.push(
+      "The end of the build output, verbatim:\n\n" +
+        fenced(tail, tail.length).split(SANDBOX_APP_DIR).join(""),
+    );
+  }
+
+  return (
+    "<build-error>\n" +
+    "Publishing this app failed: its production build (`bun run build`) did" +
+    " not succeed. The preview may be running fine, because the dev server" +
+    " does not run that build. Run the build, fix what it reports, and run it" +
+    " again until it passes. The user publishes again themselves. This is" +
+    " what they were told:\n\n" +
     parts.join("\n\n") +
     "\n</build-error>"
   );

@@ -8,8 +8,11 @@
  *
  * What survives:
  *   - the live deployment, always, whatever its age;
- *   - superseded builds for {@link SUPERSEDED_RETENTION_DAYS}, so there is a
- *     window in which the previous version can be restored;
+ *   - superseded builds for {@link SUPERSEDED_RETENTION_DAYS} after they
+ *     stopped serving, so there is a window in which a previous version can be
+ *     restored. Counted from `supersededAt`, not from when the build finished:
+ *     a build that was live for a month is still a week from being purged on
+ *     the day it is replaced;
  *   - failed builds for {@link FAILED_RETENTION_DAYS}, only long enough for
  *     someone to read the error.
  *
@@ -30,6 +33,25 @@ const BATCH = 50;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Is a superseded deployment still inside its rollback window?
+ *
+ * The sweep and rollback share this one rule on purpose. The sweep only takes
+ * rows it is false for and a rollback only accepts rows it is true for, so a
+ * build whose bytes are being deleted, or were half deleted by a pass that
+ * failed, can never be put back in front of visitors.
+ *
+ * Rows superseded before `supersededAt` existed have nothing better to go on
+ * than when they were built.
+ */
+export function withinRollbackWindow(
+  deployment: { supersededAt: Date | null; completedAt: Date | null },
+  now: number = Date.now(),
+): boolean {
+  const since = deployment.supersededAt ?? deployment.completedAt;
+  return !!since && since.getTime() >= now - SUPERSEDED_RETENTION_DAYS * DAY_MS;
+}
+
 export interface DeploySweepResult {
   purged: number;
   objectsDeleted: number;
@@ -42,15 +64,21 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
   let purged = 0;
   let objectsDeleted = 0;
 
+  const supersededBefore = new Date(now - SUPERSEDED_RETENTION_DAYS * DAY_MS);
+
   const candidates = await prisma.deployment.findMany({
     where: {
       purgedAt: null,
       OR: [
         {
           status: DeploymentStatus.SUPERSEDED,
-          completedAt: {
-            lt: new Date(now - SUPERSEDED_RETENTION_DAYS * DAY_MS),
-          },
+          supersededAt: { lt: supersededBefore },
+        },
+        // The fallback in `withinRollbackWindow`.
+        {
+          status: DeploymentStatus.SUPERSEDED,
+          supersededAt: null,
+          completedAt: { lt: supersededBefore },
         },
         {
           status: DeploymentStatus.FAILED,
@@ -58,33 +86,40 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
         },
       ],
     },
-    select: { id: true, projectId: true, storagePrefix: true },
+    select: { id: true, storagePrefix: true },
     orderBy: { completedAt: "asc" },
     take: BATCH,
   });
 
   for (const deployment of candidates) {
-    // Belt and braces against the one outcome that would actually hurt: a live
-    // site losing its bytes. The status filter above should already exclude it,
-    // but a race with a publish that moved the pointer is cheap to rule out.
-    const project = await prisma.project.findUnique({
-      where: { id: deployment.projectId },
-      select: { liveDeploymentId: true },
+    // Claim the row before touching its bytes. A rollback that started a moment
+    // before the window closed may still be committing, and it only accepts a
+    // row whose `purgedAt` is null: so once this update lands the row can no
+    // longer go live, and if the rollback got there first the status no longer
+    // matches and there is nothing to claim. Either way a live site never
+    // loses its bytes.
+    const claimed = await prisma.deployment.updateMany({
+      where: {
+        id: deployment.id,
+        purgedAt: null,
+        status: { in: [DeploymentStatus.SUPERSEDED, DeploymentStatus.FAILED] },
+      },
+      data: { purgedAt: new Date() },
     });
-    if (project?.liveDeploymentId === deployment.id) continue;
+    if (claimed.count === 0) continue;
 
     try {
       if (deployment.storagePrefix) {
         objectsDeleted += await deleteSitePrefix(deployment.storagePrefix);
       }
-      await prisma.deployment.update({
-        where: { id: deployment.id },
-        data: { purgedAt: new Date() },
-      });
       purged += 1;
     } catch (err) {
-      // Leave purgedAt null so the next pass retries — an R2 blip should not
-      // strand the objects permanently.
+      // Hand the row back so the next pass retries: an R2 blip should not
+      // strand the objects permanently. It is outside the rollback window, so
+      // being unclaimed again does not make it restorable.
+      await prisma.deployment
+        .update({ where: { id: deployment.id }, data: { purgedAt: null } })
+        .catch(() => {});
       errors.push(`${deployment.id}: ${String(err)}`);
     }
   }

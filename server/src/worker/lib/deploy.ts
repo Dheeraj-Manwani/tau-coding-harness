@@ -56,7 +56,16 @@ export interface BuildOutcome {
   buildLog: string;
 }
 
-function tail(text: string): string {
+/** Colour codes: the build tools write as if to a terminal. */
+const ANSI = /\u001b\[[0-9;]*[A-Za-z]/g;
+
+/**
+ * The end of a build's output, as plain text. Colours go first, before the
+ * cut: a bundler colours a code frame one token at a time, so left in they are
+ * most of the characters and push the error itself out of the part we keep.
+ */
+function tail(output: string): string {
+  const text = output.replace(ANSI, "");
   return text.length <= BUILD_LOG_TAIL
     ? text
     : `…\n${text.slice(-BUILD_LOG_TAIL)}`;
@@ -299,9 +308,15 @@ export async function buildAndUpload(opts: {
       paths.slice(i, i + UPLOAD_BATCH).map(async (path) => {
         // Bytes, not text: a font or an image round-tripped through a UTF-8
         // decode comes out corrupt, and a published site is mostly assets.
-        const bytes = await sandbox.files.read(`${outputDir}/${path}`, {
-          format: "bytes",
-        });
+        //
+        // An absolute path, unlike the commands above: those run with
+        // `cwd: WORK_DIR`, but the files API has no working directory and
+        // resolves a relative path against the sandbox user's home, where
+        // there is no `dist/`.
+        const bytes = await sandbox.files.read(
+          `${WORK_DIR}/${outputDir}/${path}`,
+          { format: "bytes" },
+        );
         await putSiteObject(
           siteObjectKey(storagePrefix, path),
           bytes,

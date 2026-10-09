@@ -144,6 +144,13 @@ model Project {
   /// also what makes rollback a single UPDATE.
   liveDeploymentId String?
 
+  /// Set by an admin to take the published site down for abuse. While set, the
+  /// address serves a plain "suspended" page and the owner cannot publish or
+  /// roll back. Nothing is deleted: clearing it puts the same build back.
+  siteSuspendedAt     DateTime?
+  /// Why, in words the owner can be shown. The Publish panel prints it.
+  siteSuspendedReason String?
+
   // "owner/repo" once the first GitHub push creates/links a repo; null before.
   githubRepo String?
 
@@ -606,6 +613,13 @@ model Deployment {
 
   createdAt   DateTime  @default(now())
   completedAt DateTime?
+
+  /// When this deployment stopped being the live one: replaced by a newer
+  /// publish, rolled back from, or taken offline. The rollback window is
+  /// measured from here, not from `completedAt`, so a build that served for a
+  /// month is still restorable for a week after it is replaced. Cleared when a
+  /// rollback makes the row live again.
+  supersededAt DateTime?
 
   /// When this deployment's R2 objects were reclaimed. The row survives — it is
   /// the history of what was published — but its bytes are gone and it can no

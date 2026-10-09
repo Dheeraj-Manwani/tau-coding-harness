@@ -30,6 +30,8 @@ import {
   killSandbox,
   grantCredits,
   setPlan,
+  suspendSite,
+  unsuspendSite,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -79,6 +81,8 @@ router.post("/jobs/reconcile-stuck", reconcileStuckJobs);
 router.post("/jobs/:id/kill", killJob);
 router.post("/users/:id/holds/release", releaseHolds);
 router.post("/sandboxes/:id/kill", killSandbox); // orphans only — refuses anything owned
+router.post("/projects/:id/site/suspend", suspendSite); // { reason } — shown to the owner
+router.post("/projects/:id/site/unsuspend", unsuspendSite);
 
 // ── console ──────────────────────────────────────────────────────────────────
 router.get("/costs", costSeed); // calculator seed: live catalog + provider rates

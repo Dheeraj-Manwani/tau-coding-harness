@@ -41,6 +41,12 @@ export interface PreviewBuildError {
   file?: string;
   /** The offending source excerpt with its caret. */
   frame?: string;
+  /**
+   * `publish` when the failure is a publish's production build rather than the
+   * preview: then `message` is what the Publish panel said and `frame` is the
+   * tail of the build log. See `publishFailureError` in `deploy.ts`.
+   */
+  source?: "preview" | "publish";
 }
 
 /** One error the preview's bootstrap monitor recorded while the app started. */

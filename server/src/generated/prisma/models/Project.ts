@@ -56,6 +56,8 @@ export type ProjectMinAggregateOutputType = {
   previewImageUpdatedAt: Date | null
   slug: string | null
   liveDeploymentId: string | null
+  siteSuspendedAt: Date | null
+  siteSuspendedReason: string | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -85,6 +87,8 @@ export type ProjectMaxAggregateOutputType = {
   previewImageUpdatedAt: Date | null
   slug: string | null
   liveDeploymentId: string | null
+  siteSuspendedAt: Date | null
+  siteSuspendedReason: string | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -116,6 +120,8 @@ export type ProjectCountAggregateOutputType = {
   previewImageUpdatedAt: number
   slug: number
   liveDeploymentId: number
+  siteSuspendedAt: number
+  siteSuspendedReason: number
   githubRepo: number
   githubDefaultBranch: number
   githubVisibility: number
@@ -159,6 +165,8 @@ export type ProjectMinAggregateInputType = {
   previewImageUpdatedAt?: true
   slug?: true
   liveDeploymentId?: true
+  siteSuspendedAt?: true
+  siteSuspendedReason?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -188,6 +196,8 @@ export type ProjectMaxAggregateInputType = {
   previewImageUpdatedAt?: true
   slug?: true
   liveDeploymentId?: true
+  siteSuspendedAt?: true
+  siteSuspendedReason?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -219,6 +229,8 @@ export type ProjectCountAggregateInputType = {
   previewImageUpdatedAt?: true
   slug?: true
   liveDeploymentId?: true
+  siteSuspendedAt?: true
+  siteSuspendedReason?: true
   githubRepo?: true
   githubDefaultBranch?: true
   githubVisibility?: true
@@ -337,6 +349,8 @@ export type ProjectGroupByOutputType = {
   previewImageUpdatedAt: Date | null
   slug: string | null
   liveDeploymentId: string | null
+  siteSuspendedAt: Date | null
+  siteSuspendedReason: string | null
   githubRepo: string | null
   githubDefaultBranch: string | null
   githubVisibility: string | null
@@ -391,6 +405,8 @@ export type ProjectWhereInput = {
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableFilter<"Project"> | string | null
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
+  siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -430,6 +446,8 @@ export type ProjectOrderByWithRelationInput = {
   previewImageUpdatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   slug?: Prisma.SortOrderInput | Prisma.SortOrder
   liveDeploymentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  siteSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  siteSuspendedReason?: Prisma.SortOrderInput | Prisma.SortOrder
   githubRepo?: Prisma.SortOrderInput | Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrderInput | Prisma.SortOrder
   githubVisibility?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -472,6 +490,8 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
+  siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -511,6 +531,8 @@ export type ProjectOrderByWithAggregationInput = {
   previewImageUpdatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   slug?: Prisma.SortOrderInput | Prisma.SortOrder
   liveDeploymentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  siteSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  siteSuspendedReason?: Prisma.SortOrderInput | Prisma.SortOrder
   githubRepo?: Prisma.SortOrderInput | Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrderInput | Prisma.SortOrder
   githubVisibility?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -550,6 +572,8 @@ export type ProjectScalarWhereWithAggregatesInput = {
   previewImageUpdatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   liveDeploymentId?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
+  siteSuspendedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
+  siteSuspendedReason?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubRepo?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
@@ -580,6 +604,8 @@ export type ProjectCreateInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -619,6 +645,8 @@ export type ProjectUncheckedCreateInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -656,6 +684,8 @@ export type ProjectUpdateInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -695,6 +725,8 @@ export type ProjectUncheckedUpdateInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -733,6 +765,8 @@ export type ProjectCreateManyInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -763,6 +797,8 @@ export type ProjectUpdateManyMutationInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -794,6 +830,8 @@ export type ProjectUncheckedUpdateManyInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -843,6 +881,8 @@ export type ProjectCountOrderByAggregateInput = {
   previewImageUpdatedAt?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   liveDeploymentId?: Prisma.SortOrder
+  siteSuspendedAt?: Prisma.SortOrder
+  siteSuspendedReason?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -878,6 +918,8 @@ export type ProjectMaxOrderByAggregateInput = {
   previewImageUpdatedAt?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   liveDeploymentId?: Prisma.SortOrder
+  siteSuspendedAt?: Prisma.SortOrder
+  siteSuspendedReason?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -907,6 +949,8 @@ export type ProjectMinOrderByAggregateInput = {
   previewImageUpdatedAt?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   liveDeploymentId?: Prisma.SortOrder
+  siteSuspendedAt?: Prisma.SortOrder
+  siteSuspendedReason?: Prisma.SortOrder
   githubRepo?: Prisma.SortOrder
   githubDefaultBranch?: Prisma.SortOrder
   githubVisibility?: Prisma.SortOrder
@@ -1121,6 +1165,8 @@ export type ProjectCreateWithoutUserInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1158,6 +1204,8 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1225,6 +1273,8 @@ export type ProjectScalarWhereInput = {
   previewImageUpdatedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   slug?: Prisma.StringNullableFilter<"Project"> | string | null
   liveDeploymentId?: Prisma.StringNullableFilter<"Project"> | string | null
+  siteSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  siteSuspendedReason?: Prisma.StringNullableFilter<"Project"> | string | null
   githubRepo?: Prisma.StringNullableFilter<"Project"> | string | null
   githubDefaultBranch?: Prisma.StringNullableFilter<"Project"> | string | null
   githubVisibility?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -1255,6 +1305,8 @@ export type ProjectCreateWithoutSecretsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1293,6 +1345,8 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1345,6 +1399,8 @@ export type ProjectUpdateWithoutSecretsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1383,6 +1439,8 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1419,6 +1477,8 @@ export type ProjectCreateWithoutMessagesInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1457,6 +1517,8 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1509,6 +1571,8 @@ export type ProjectUpdateWithoutMessagesInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1547,6 +1611,8 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1583,6 +1649,8 @@ export type ProjectCreateWithoutJobsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1621,6 +1689,8 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1673,6 +1743,8 @@ export type ProjectUpdateWithoutJobsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1711,6 +1783,8 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1747,6 +1821,8 @@ export type ProjectCreateWithoutFilesInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1785,6 +1861,8 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1837,6 +1915,8 @@ export type ProjectUpdateWithoutFilesInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1875,6 +1955,8 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1911,6 +1993,8 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -1949,6 +2033,8 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2001,6 +2087,8 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2039,6 +2127,8 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2075,6 +2165,8 @@ export type ProjectCreateWithoutTokenUsageInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2113,6 +2205,8 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2165,6 +2259,8 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2203,6 +2299,8 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2239,6 +2337,8 @@ export type ProjectCreateWithoutDeploymentsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2277,6 +2377,8 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2329,6 +2431,8 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2367,6 +2471,8 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2403,6 +2509,8 @@ export type ProjectCreateManyUserInput = {
   previewImageUpdatedAt?: Date | string | null
   slug?: string | null
   liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
   githubRepo?: string | null
   githubDefaultBranch?: string | null
   githubVisibility?: string | null
@@ -2433,6 +2541,8 @@ export type ProjectUpdateWithoutUserInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2470,6 +2580,8 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2507,6 +2619,8 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2623,6 +2737,8 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   previewImageUpdatedAt?: boolean
   slug?: boolean
   liveDeploymentId?: boolean
+  siteSuspendedAt?: boolean
+  siteSuspendedReason?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2663,6 +2779,8 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   previewImageUpdatedAt?: boolean
   slug?: boolean
   liveDeploymentId?: boolean
+  siteSuspendedAt?: boolean
+  siteSuspendedReason?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2695,6 +2813,8 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   previewImageUpdatedAt?: boolean
   slug?: boolean
   liveDeploymentId?: boolean
+  siteSuspendedAt?: boolean
+  siteSuspendedReason?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2727,6 +2847,8 @@ export type ProjectSelectScalar = {
   previewImageUpdatedAt?: boolean
   slug?: boolean
   liveDeploymentId?: boolean
+  siteSuspendedAt?: boolean
+  siteSuspendedReason?: boolean
   githubRepo?: boolean
   githubDefaultBranch?: boolean
   githubVisibility?: boolean
@@ -2738,7 +2860,7 @@ export type ProjectSelectScalar = {
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
@@ -2825,6 +2947,16 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * also what makes rollback a single UPDATE.
      */
     liveDeploymentId: string | null
+    /**
+     * Set by an admin to take the published site down for abuse. While set, the
+     * address serves a plain "suspended" page and the owner cannot publish or
+     * roll back. Nothing is deleted: clearing it puts the same build back.
+     */
+    siteSuspendedAt: Date | null
+    /**
+     * Why, in words the owner can be shown. The Publish panel prints it.
+     */
+    siteSuspendedReason: string | null
     githubRepo: string | null
     githubDefaultBranch: string | null
     githubVisibility: string | null
@@ -3284,6 +3416,8 @@ export interface ProjectFieldRefs {
   readonly previewImageUpdatedAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly slug: Prisma.FieldRef<"Project", 'String'>
   readonly liveDeploymentId: Prisma.FieldRef<"Project", 'String'>
+  readonly siteSuspendedAt: Prisma.FieldRef<"Project", 'DateTime'>
+  readonly siteSuspendedReason: Prisma.FieldRef<"Project", 'String'>
   readonly githubRepo: Prisma.FieldRef<"Project", 'String'>
   readonly githubDefaultBranch: Prisma.FieldRef<"Project", 'String'>
   readonly githubVisibility: Prisma.FieldRef<"Project", 'String'>

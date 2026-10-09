@@ -59,6 +59,7 @@ export type DeploymentMinAggregateOutputType = {
   buildLog: string | null
   createdAt: Date | null
   completedAt: Date | null
+  supersededAt: Date | null
   purgedAt: Date | null
 }
 
@@ -77,6 +78,7 @@ export type DeploymentMaxAggregateOutputType = {
   buildLog: string | null
   createdAt: Date | null
   completedAt: Date | null
+  supersededAt: Date | null
   purgedAt: Date | null
 }
 
@@ -95,6 +97,7 @@ export type DeploymentCountAggregateOutputType = {
   buildLog: number
   createdAt: number
   completedAt: number
+  supersededAt: number
   purgedAt: number
   _all: number
 }
@@ -127,6 +130,7 @@ export type DeploymentMinAggregateInputType = {
   buildLog?: true
   createdAt?: true
   completedAt?: true
+  supersededAt?: true
   purgedAt?: true
 }
 
@@ -145,6 +149,7 @@ export type DeploymentMaxAggregateInputType = {
   buildLog?: true
   createdAt?: true
   completedAt?: true
+  supersededAt?: true
   purgedAt?: true
 }
 
@@ -163,6 +168,7 @@ export type DeploymentCountAggregateInputType = {
   buildLog?: true
   createdAt?: true
   completedAt?: true
+  supersededAt?: true
   purgedAt?: true
   _all?: true
 }
@@ -268,6 +274,7 @@ export type DeploymentGroupByOutputType = {
   buildLog: string | null
   createdAt: Date
   completedAt: Date | null
+  supersededAt: Date | null
   purgedAt: Date | null
   _count: DeploymentCountAggregateOutputType | null
   _avg: DeploymentAvgAggregateOutputType | null
@@ -309,6 +316,7 @@ export type DeploymentWhereInput = {
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Deployment"> | Date | string
   completedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
+  supersededAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
   purgedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
   project?: Prisma.XOR<Prisma.ProjectScalarRelationFilter, Prisma.ProjectWhereInput>
 }
@@ -328,6 +336,7 @@ export type DeploymentOrderByWithRelationInput = {
   buildLog?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  supersededAt?: Prisma.SortOrderInput | Prisma.SortOrder
   purgedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   project?: Prisma.ProjectOrderByWithRelationInput
 }
@@ -350,6 +359,7 @@ export type DeploymentWhereUniqueInput = Prisma.AtLeast<{
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Deployment"> | Date | string
   completedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
+  supersededAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
   purgedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
   project?: Prisma.XOR<Prisma.ProjectScalarRelationFilter, Prisma.ProjectWhereInput>
 }, "id" | "jobId">
@@ -369,6 +379,7 @@ export type DeploymentOrderByWithAggregationInput = {
   buildLog?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  supersededAt?: Prisma.SortOrderInput | Prisma.SortOrder
   purgedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.DeploymentCountOrderByAggregateInput
   _avg?: Prisma.DeploymentAvgOrderByAggregateInput
@@ -395,6 +406,7 @@ export type DeploymentScalarWhereWithAggregatesInput = {
   buildLog?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Deployment"> | Date | string
   completedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Deployment"> | Date | string | null
+  supersededAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Deployment"> | Date | string | null
   purgedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Deployment"> | Date | string | null
 }
 
@@ -412,6 +424,7 @@ export type DeploymentCreateInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
   project: Prisma.ProjectCreateNestedOneWithoutDeploymentsInput
 }
@@ -431,6 +444,7 @@ export type DeploymentUncheckedCreateInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
 }
 
@@ -448,6 +462,7 @@ export type DeploymentUpdateInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   project?: Prisma.ProjectUpdateOneRequiredWithoutDeploymentsNestedInput
 }
@@ -467,6 +482,7 @@ export type DeploymentUncheckedUpdateInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -485,6 +501,7 @@ export type DeploymentCreateManyInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
 }
 
@@ -502,6 +519,7 @@ export type DeploymentUpdateManyMutationInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -520,6 +538,7 @@ export type DeploymentUncheckedUpdateManyInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -548,6 +567,7 @@ export type DeploymentCountOrderByAggregateInput = {
   buildLog?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  supersededAt?: Prisma.SortOrder
   purgedAt?: Prisma.SortOrder
 }
 
@@ -572,6 +592,7 @@ export type DeploymentMaxOrderByAggregateInput = {
   buildLog?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  supersededAt?: Prisma.SortOrder
   purgedAt?: Prisma.SortOrder
 }
 
@@ -590,6 +611,7 @@ export type DeploymentMinOrderByAggregateInput = {
   buildLog?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  supersededAt?: Prisma.SortOrder
   purgedAt?: Prisma.SortOrder
 }
 
@@ -659,6 +681,7 @@ export type DeploymentCreateWithoutProjectInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
 }
 
@@ -676,6 +699,7 @@ export type DeploymentUncheckedCreateWithoutProjectInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
 }
 
@@ -723,6 +747,7 @@ export type DeploymentScalarWhereInput = {
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Deployment"> | Date | string
   completedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
+  supersededAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
   purgedAt?: Prisma.DateTimeNullableFilter<"Deployment"> | Date | string | null
 }
 
@@ -740,6 +765,7 @@ export type DeploymentCreateManyProjectInput = {
   buildLog?: string | null
   createdAt?: Date | string
   completedAt?: Date | string | null
+  supersededAt?: Date | string | null
   purgedAt?: Date | string | null
 }
 
@@ -757,6 +783,7 @@ export type DeploymentUpdateWithoutProjectInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -774,6 +801,7 @@ export type DeploymentUncheckedUpdateWithoutProjectInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -791,6 +819,7 @@ export type DeploymentUncheckedUpdateManyWithoutProjectInput = {
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  supersededAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   purgedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -811,6 +840,7 @@ export type DeploymentSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   buildLog?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  supersededAt?: boolean
   purgedAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deployment"]>
@@ -830,6 +860,7 @@ export type DeploymentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   buildLog?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  supersededAt?: boolean
   purgedAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deployment"]>
@@ -849,6 +880,7 @@ export type DeploymentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   buildLog?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  supersededAt?: boolean
   purgedAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deployment"]>
@@ -868,10 +900,11 @@ export type DeploymentSelectScalar = {
   buildLog?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  supersededAt?: boolean
   purgedAt?: boolean
 }
 
-export type DeploymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "status" | "storagePrefix" | "sequence" | "outputDir" | "fileCount" | "sizeBytes" | "jobId" | "error" | "buildLog" | "createdAt" | "completedAt" | "purgedAt", ExtArgs["result"]["deployment"]>
+export type DeploymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "status" | "storagePrefix" | "sequence" | "outputDir" | "fileCount" | "sizeBytes" | "jobId" | "error" | "buildLog" | "createdAt" | "completedAt" | "supersededAt" | "purgedAt", ExtArgs["result"]["deployment"]>
 export type DeploymentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }
@@ -931,6 +964,14 @@ export type $DeploymentPayload<ExtArgs extends runtime.Types.Extensions.Internal
     buildLog: string | null
     createdAt: Date
     completedAt: Date | null
+    /**
+     * When this deployment stopped being the live one: replaced by a newer
+     * publish, rolled back from, or taken offline. The rollback window is
+     * measured from here, not from `completedAt`, so a build that served for a
+     * month is still restorable for a week after it is replaced. Cleared when a
+     * rollback makes the row live again.
+     */
+    supersededAt: Date | null
     /**
      * When this deployment's R2 objects were reclaimed. The row survives — it is
      * the history of what was published — but its bytes are gone and it can no
@@ -1376,6 +1417,7 @@ export interface DeploymentFieldRefs {
   readonly buildLog: Prisma.FieldRef<"Deployment", 'String'>
   readonly createdAt: Prisma.FieldRef<"Deployment", 'DateTime'>
   readonly completedAt: Prisma.FieldRef<"Deployment", 'DateTime'>
+  readonly supersededAt: Prisma.FieldRef<"Deployment", 'DateTime'>
   readonly purgedAt: Prisma.FieldRef<"Deployment", 'DateTime'>
 }
     

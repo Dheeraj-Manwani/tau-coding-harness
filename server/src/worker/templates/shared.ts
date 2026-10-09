@@ -550,7 +550,10 @@ export function writeVisualEdit(t: TemplateBuilder): TemplateBuilder {
 
 /**
  * Install Hono and seed a minimal `server/index.ts`. Bun serves the default
- * export natively — no adapter, no app.listen.
+ * export natively — no adapter, no app.listen. The same default export is what
+ * a published app hands to its Node entry (`lambdaEntry` in
+ * `worker/lib/deployTransforms.ts`), which is why the contract is only
+ * `{ port, fetch }` and why preflight refuses `Bun.*` under `server/`.
  */
 export function writeHonoApi(t: TemplateBuilder): TemplateBuilder {
   // `<<'EOF'` (quoted delimiter) means the shell expands nothing, so the
@@ -589,9 +592,12 @@ import { drizzle } from 'drizzle-orm/pglite'
 import * as schema from './schema'
 
 // PGlite = real Postgres in WASM, in-process, persisted to ./data/pgdata.
-// Single connection is fine: only this one Hono server talks to it. At deploy,
-// swap this driver for drizzle-orm/node-postgres (Neon/Postgres) — the schema
-// and queries stay identical because the dialect is the same.
+// Single connection is fine: only this one Hono server talks to it. At publish,
+// tau replaces this whole file with one on drizzle-orm/node-postgres
+// (productionDbClient in worker/lib/deployTransforms.ts), built from the SQL
+// in initDb() below and keeping these same two exports. So keep that SQL as
+// plain text in one client.exec() call with no interpolation inside it, and
+// export nothing else that other code uses.
 mkdirSync('./data', { recursive: true })
 const client = new PGlite('./data/pgdata')
 

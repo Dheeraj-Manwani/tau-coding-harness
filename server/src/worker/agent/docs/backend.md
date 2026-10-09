@@ -14,6 +14,13 @@ The app has a server: `server/index.ts`, a Hono app that Bun serves on port 3000
 - Every route path starts with `/api/`. Anything else never reaches the server.
 - Secrets live on the server only. Read them with `process.env.NAME` inside a route; never send one to the browser.
 
+## So it can be published
+Here the server runs on Bun. When the app is published it runs on Node, one request at a time, with no disk of its own. Write the server so it works in both:
+- Use standard web and Node APIs only. No `Bun.*` (`Bun.file`, `Bun.write`, `Bun.serve`, `Bun.env`) and no `bun:` imports (`bun:sqlite`) in anything under `server/`: they work here and fail once published.
+- Nothing kept in memory or written to a file survives. A module-level variable, a cache, a counter, an upload saved under `server/` and a `setInterval` job are all gone or never run between requests. Keep state in the database.
+- No WebSockets (`hono/ws`, `upgradeWebSocket`, `ws`). Use ordinary requests, or polling.
+- Read configuration from `process.env.NAME`, and tolerate a missing key: answer with a clear error for that one feature instead of crashing at startup.
+
 ## Hono cheat-sheet
 - Route + handler: `app.get('/api/things', (c) => c.json([...]))`
 - Route param: `c.req.param('id')` — for `/api/things/:id`

@@ -19,6 +19,8 @@ The app has a database: PGlite (real Postgres, running in-process) with Drizzle 
 - `server/index.ts` must `await initDb()` before it handles a request.
 - Use Postgres through PGlite. Do NOT use sqlite or `bun:sqlite` — the published app runs on Postgres, and a different dialect means rewriting the schema later.
 - One connection is correct here: only this server talks to the database.
+- Keep the table SQL in `initDb()` as plain statements inside one `client.exec(`…`)` call, with no `${…}` in them, and keep `server/db/client.ts` exporting only `db` and `initDb`. Publishing swaps that one file for the real database by reading those statements, and refuses to publish if it cannot.
+- Open the database only through `db` from `server/db/client.ts`. Never import `@electric-sql/pglite` anywhere else.
 - The frontend never touches the database. It calls `/api/*` routes, through React Query.
 - Validate request bodies on write routes: `zValidator('json', insertThingSchema)` from `@hono/zod-validator`.
 

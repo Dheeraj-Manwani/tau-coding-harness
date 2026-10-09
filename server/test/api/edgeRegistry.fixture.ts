@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import type { RoutingRecord } from "@/lib/edgeRegistry";
 
 // What the edge router is told. The record for each state a site can be in, the
 // Cloudflare calls that carry it, and the reconciler that repairs any drift.
@@ -38,7 +39,9 @@ const {
   recordHash,
   recordJson,
   recordKey,
+  recordsFor,
   reconcileEdge,
+  removeHostnames,
   removeSite,
   setKvClientForTests,
   syncProject,
@@ -91,6 +94,7 @@ function project(over: Row = {}): Row {
     slug: "my-app",
     siteSuspendedAt: null,
     liveDeploymentId: "d1",
+    domains: [],
     userId: "u1",
     user: { billing: { plan: "FREE" } },
     ...over,
@@ -108,10 +112,10 @@ beforeEach(() => {
 });
 
 describe("the record for each state a site can be in", () => {
-  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const };
+  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const, domains: [] };
 
   test("live on the free plan carries the prefix and the badge", () => {
-    expect(recordFor(base)).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false });
+    expect(recordFor(base)).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null });
   });
 
   test("live on Pro has no badge", () => {
@@ -146,7 +150,7 @@ describe("the record for each state a site can be in", () => {
     const a = recordFor(base)!;
     expect(recordHash(a)).toBe(recordHash({ ...a }));
     expect(recordHash(a)).not.toBe(recordHash({ ...a, showBadge: false }));
-    expect(recordJson(a)).toBe(recordJson({ suspended: false, showBadge: true, prefix: PREFIX, slug: "my-app", projectId: "p1" }));
+    expect(recordJson(a)).toBe(recordJson({ redirectTo: null, suspended: false, showBadge: true, prefix: PREFIX, slug: "my-app", projectId: "p1" }));
   });
 });
 
@@ -155,7 +159,7 @@ describe("pushing a project", () => {
     project();
     await syncProject("p1");
 
-    expect(kv.record("my-app")).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false });
+    expect(kv.record("my-app")).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null });
   });
 
   test("taking it offline removes the record", async () => {
@@ -368,5 +372,98 @@ describe("the Cloudflare KV client", () => {
     const { calls, client } = recorder([]);
     await client.put(Array.from({ length: 2500 }, (_, i) => ({ key: `host:s${i}.bytauai.pro`, value: "{}", hash: "h" })));
     expect(calls).toHaveLength(3);
+  });
+});
+
+describe("custom domains", () => {
+  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const };
+  const WWW = { hostname: "www.example.com", isPrimary: false };
+  const ROOT = { hostname: "example.com", isPrimary: false };
+  const keysOf = (site: Parameters<typeof recordsFor>[0]) => recordsFor(site, DOMAIN).map((r) => r.key);
+
+  test("each active domain is another hostname with the same record", () => {
+    const out = recordsFor({ ...base, domains: [WWW, ROOT] }, DOMAIN);
+
+    expect(out.map((r) => r.key)).toEqual(["host:my-app.bytauai.pro", "host:www.example.com", "host:example.com"]);
+    const [def, www, root] = out.map((r) => r.record!) as [RoutingRecord, RoutingRecord, RoutingRecord];
+    expect(www).toEqual(def);
+    expect(root).toEqual(def);
+    expect(def.redirectTo).toBeNull();
+  });
+
+  test("a project with no domains has just its default address", () => {
+    expect(keysOf({ ...base, domains: [] })).toEqual(["host:my-app.bytauai.pro"]);
+  });
+
+  test("once a domain is primary the default address redirects to it, and it does not", () => {
+    const out = recordsFor({ ...base, domains: [{ ...WWW, isPrimary: true }, ROOT] }, DOMAIN);
+
+    expect(out[0]!.record!.redirectTo).toBe("https://www.example.com");
+    expect(out[1]!.record!.redirectTo).toBeNull();
+    // The other domain is served, not redirected: only the default address follows the primary.
+    expect(out[2]!.record!.redirectTo).toBeNull();
+  });
+
+  test("offline takes every hostname away, custom ones included", () => {
+    const out = recordsFor({ ...base, livePrefix: null, domains: [WWW, ROOT] }, DOMAIN);
+    expect(out.map((r) => r.record)).toEqual([null, null, null]);
+  });
+
+  // Suspension applies to every hostname, and is never hidden behind a redirect.
+  test("suspended is the same on every hostname, and the default does not redirect", () => {
+    const out = recordsFor({ ...base, siteSuspendedAt: new Date(), domains: [{ ...WWW, isPrimary: true }] }, DOMAIN);
+
+    expect(out.every((r) => r.record!.suspended)).toBe(true);
+    expect(out[0]!.record!.redirectTo).toBeNull();
+  });
+
+  test("the badge follows the plan on every hostname", () => {
+    const out = recordsFor({ ...base, plan: "PRO", domains: [WWW] }, DOMAIN);
+    expect(out.map((r) => r.record!.showBadge)).toEqual([false, false]);
+  });
+
+  test("a project with no address has nothing to serve", () => {
+    expect(recordsFor({ ...base, slug: null, domains: [WWW] }, DOMAIN)).toEqual([]);
+  });
+
+  test("pushing a project writes all its hostnames, and taking it offline removes them all", async () => {
+    const p = project();
+    p.domains = [WWW, ROOT];
+    await syncProject("p1");
+    expect([...kv.store.keys()].sort()).toEqual(["host:example.com", "host:my-app.bytauai.pro", "host:www.example.com"]);
+
+    p.liveDeploymentId = null;
+    await syncProject("p1");
+    expect(kv.store.size).toBe(0);
+  });
+
+  test("the primary redirect is pushed, and lifted again", async () => {
+    const p = project();
+    p.domains = [{ hostname: "www.example.com", isPrimary: true }];
+    await syncProject("p1");
+    expect(kv.record("my-app").redirectTo).toBe("https://www.example.com");
+
+    p.domains = [{ hostname: "www.example.com", isPrimary: false }];
+    await syncProject("p1");
+    expect(kv.record("my-app").redirectTo).toBeNull();
+  });
+
+  test("a removed domain's record is removed by hostname", async () => {
+    const p = project();
+    p.domains = [WWW];
+    await syncProject("p1");
+    await removeHostnames(["WWW.example.com"]);
+    expect(kv.store.has("host:www.example.com")).toBe(false);
+    expect(kv.store.has("host:my-app.bytauai.pro")).toBe(true);
+  });
+
+  test("the reconciler removes a custom record whose domain is gone", async () => {
+    const p = project();
+    p.domains = [WWW];
+    await reconcileEdge();
+    p.domains = [];
+
+    expect(await reconcileEdge()).toEqual({ expected: 1, written: 0, removed: 1 });
+    expect(kv.store.has("host:www.example.com")).toBe(false);
   });
 });

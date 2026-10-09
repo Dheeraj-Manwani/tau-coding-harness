@@ -184,7 +184,7 @@ function PanelBody({
   return (
     <div className="space-y-3">
       {status.url ? (
-        <LiveUrl url={status.url} live={suspended ? null : status.live} />
+        <LiveUrl url={status.primaryUrl ?? status.url} live={suspended ? null : status.live} />
       ) : (
         <p className="text-xs leading-relaxed text-silver-600">
           Publish your app to a public URL anyone can open. No account, no setup

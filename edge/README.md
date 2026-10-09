@@ -49,14 +49,22 @@ DNS, Workers Routes: Edit and DNS: Edit on the zone.
    `wrangler.toml` (replacing `REPLACE_WITH_KV_NAMESPACE_ID`).
 3. `bun run deploy`. The Worker is deployed and receives nothing yet, because
    no route is set.
-4. In Cloudflare DNS add a proxied wildcard record: type `AAAA`, name `*`,
-   value `100::`. It only makes Cloudflare answer for every subdomain; there is
-   no origin.
-5. In `wrangler.toml` uncomment `routes`, and `bun run deploy` again.
+4. DNS and Cloudflare for SaaS, in one go. With `CLOUDFLARE_ZONE_ID`,
+   `CLOUDFLARE_API_TOKEN` (needs DNS: Edit and SSL and Certificates: Edit on the
+   zone) and `SITES_DOMAIN` in `server/.env`, run from `server/`:
+   `bun run scripts/cloudflare-setup.ts` to see what it would do, then
+   `bun run scripts/cloudflare-setup.ts --apply`. It adds the proxied wildcard
+   `*` (AAAA `100::`, no origin: the Worker answers), `fallback` and `cname`
+   records and sets the fallback origin Cloudflare for SaaS needs. Enable
+   Cloudflare for SaaS on the zone first (SSL/TLS, Custom Hostnames).
+5. In `wrangler.toml` uncomment `routes` (`*/*`, so custom domains reach the
+   Worker too), and `bun run deploy` again.
 6. On the API server set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_NAMESPACE_ID`
-   and `CLOUDFLARE_API_TOKEN` (the token needs only Workers KV Storage: Edit
-   there), then `SITES_DOMAIN=bytauai.pro` and `SITES_PATH_MODE=redirect`, and
-   restart. The reconciler runs at boot and writes a record for every live
+   and `CLOUDFLARE_API_TOKEN` (Workers KV Storage: Edit is all the routing
+   records need), and for custom domains `CLOUDFLARE_ZONE_ID` and
+   `CLOUDFLARE_SAAS_TOKEN` (SSL and Certificates: Edit on this zone only; one
+   token with all of it also works, with `CLOUDFLARE_SAAS_TOKEN` left unset).
+   Then `SITES_DOMAIN=bytauai.pro` and `SITES_PATH_MODE=redirect`, and restart. The reconciler runs at boot and writes a record for every live
    site; from then on tau pushes one after every publish, rollback, take
    offline, suspension, plan change and project delete.
 7. Check: publish an app and open `https://{name}.bytauai.pro`; stop the API

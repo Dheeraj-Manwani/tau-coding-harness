@@ -152,6 +152,17 @@ export const DeploymentStatus = {
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
 
 
+export const DomainStatus = {
+  PENDING_DNS: 'PENDING_DNS',
+  VERIFYING: 'VERIFYING',
+  ISSUING: 'ISSUING',
+  ACTIVE: 'ACTIVE',
+  FAILED: 'FAILED'
+} as const
+
+export type DomainStatus = (typeof DomainStatus)[keyof typeof DomainStatus]
+
+
 export const Plan = {
   FREE: 'FREE',
   PRO: 'PRO'

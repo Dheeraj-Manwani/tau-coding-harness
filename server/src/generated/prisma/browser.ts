@@ -121,6 +121,15 @@ export type Deployment = Prisma.DeploymentModel
  */
 export type SiteName = Prisma.SiteNameModel
 /**
+ * Model Domain
+ * A domain an owner has connected to a published app (doc/PUBLISHING.md C10).
+ * 
+ * `hostname` is unique, so one project at a time holds a name. Removing a
+ * domain deletes the row, and a name added again gets a fresh `verificationToken`:
+ * an old record left in someone's DNS proves nothing about the new claim.
+ */
+export type Domain = Prisma.DomainModel
+/**
  * Model LogoGeneration
  * One AI-generated logo picture, recorded when it was charged. The picture
  * itself is never stored: the owner picks one and the identity save writes it.

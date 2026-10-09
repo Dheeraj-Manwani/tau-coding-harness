@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/log";
-import { DeploymentStatus } from "@/generated/prisma/enums";
+import { DeploymentStatus, DomainStatus } from "@/generated/prisma/enums";
 import { showsBadge } from "@/lib/badge";
 
 const { log } = createLogger("edge");
@@ -31,6 +31,8 @@ export interface RoutingRecord {
   prefix: string;
   showBadge: boolean;
   suspended: boolean;
+  /** Where the router sends this hostname (308), or null to serve it. Set on the default address once a custom domain is primary. */
+  redirectTo: string | null;
 }
 
 export const KEY_PREFIX = "host:";
@@ -47,6 +49,7 @@ export function recordJson(record: RoutingRecord): string {
     prefix: record.prefix,
     showBadge: record.showBadge,
     suspended: record.suspended,
+    redirectTo: record.redirectTo,
   });
 }
 
@@ -62,6 +65,8 @@ export interface SiteState {
   /** The live deployment's prefix, when one is live and its files are intact. */
   livePrefix: string | null;
   plan: "FREE" | "PRO" | null;
+  /** Custom domains that are serving (ACTIVE), and which of them the app lives at. */
+  domains: { hostname: string; isPrimary: boolean }[];
 }
 
 /**
@@ -80,7 +85,34 @@ export function recordFor(site: SiteState): RoutingRecord | null {
     prefix: site.livePrefix ?? "",
     showBadge: showsBadge(site.plan ?? undefined),
     suspended: site.siteSuspendedAt !== null,
+    redirectTo: null,
   };
+}
+
+/**
+ * Every hostname a project is served at, with its record (or null when nothing
+ * is served there).
+ *
+ * The default address and each active custom domain share one record, so
+ * publish, rollback, take offline and suspend cover all of them with no extra
+ * work. The one difference: once a custom domain is primary, the default
+ * address redirects to it. A suspended site is never redirected; the suspended
+ * page shows on every hostname.
+ */
+export function recordsFor(site: SiteState, sitesDomain: string): { key: string; record: RoutingRecord | null }[] {
+  if (!site.slug) return [];
+  const base = recordFor(site);
+  const primary = site.domains.find((d) => d.isPrimary);
+  const out: { key: string; record: RoutingRecord | null }[] = [
+    {
+      key: recordKey(site.slug, sitesDomain),
+      record: base && primary && !base.suspended ? { ...base, redirectTo: `https://${primary.hostname}` } : base,
+    },
+  ];
+  for (const d of site.domains) {
+    out.push({ key: `${KEY_PREFIX}${d.hostname}`, record: base });
+  }
+  return out;
 }
 
 // ── Cloudflare KV ────────────────────────────────────────────────────────────
@@ -187,6 +219,7 @@ const SITE_SELECT = {
   slug: true,
   siteSuspendedAt: true,
   liveDeploymentId: true,
+  domains: { where: { status: DomainStatus.ACTIVE }, select: { hostname: true, isPrimary: true } },
   user: { select: { billing: { select: { plan: true } } } },
 } as const;
 
@@ -195,6 +228,7 @@ type SiteRow = {
   slug: string | null;
   siteSuspendedAt: Date | null;
   liveDeploymentId: string | null;
+  domains: { hostname: string; isPrimary: boolean }[];
   user: { billing: { plan: "FREE" | "PRO" } | null };
 };
 
@@ -215,6 +249,7 @@ async function statesOf(rows: SiteRow[]): Promise<SiteState[]> {
     siteSuspendedAt: r.siteSuspendedAt,
     livePrefix: (r.liveDeploymentId && prefixById.get(r.liveDeploymentId)) || null,
     plan: r.user.billing?.plan ?? null,
+    domains: r.domains ?? [],
   }));
 }
 
@@ -240,11 +275,10 @@ async function syncRows(rows: SiteRow[]): Promise<void> {
   const removes: string[] = [];
 
   for (const state of await statesOf(rows)) {
-    if (!state.slug) continue;
-    const key = recordKey(state.slug, target.domain);
-    const record = recordFor(state);
-    if (record) puts.push({ key, value: recordJson(record), hash: recordHash(record) });
-    else removes.push(key);
+    for (const { key, record } of recordsFor(state, target.domain)) {
+      if (record) puts.push({ key, value: recordJson(record), hash: recordHash(record) });
+      else removes.push(key);
+    }
   }
   await target.kv.put(puts);
   await target.kv.remove(removes);
@@ -292,6 +326,17 @@ export async function removeSite(slug: string | null): Promise<void> {
   }
 }
 
+/** Remove the records for these hostnames: a custom domain that was removed, or its project deleted. */
+export async function removeHostnames(hostnames: string[]): Promise<void> {
+  const target = clientAndDomain();
+  if (!target || hostnames.length === 0) return;
+  try {
+    await target.kv.remove(hostnames.map((h) => `${KEY_PREFIX}${h.toLowerCase()}`));
+  } catch (err) {
+    log.warn("edge.remove_hostnames_failed", { hostnames, error: String(err).slice(0, 300) });
+  }
+}
+
 export interface ReconcileResult {
   /** Records the database says should exist. */
   expected: number;
@@ -318,9 +363,8 @@ export async function reconcileEdge(): Promise<ReconcileResult | null> {
   });
   const wanted = new Map<string, { value: string; hash: string }>();
   for (const state of await statesOf(rows as SiteRow[])) {
-    const record = recordFor(state);
-    if (record && state.slug) {
-      wanted.set(recordKey(state.slug, target.domain), { value: recordJson(record), hash: recordHash(record) });
+    for (const { key, record } of recordsFor(state, target.domain)) {
+      if (record) wanted.set(key, { value: recordJson(record), hash: recordHash(record) });
     }
   }
 

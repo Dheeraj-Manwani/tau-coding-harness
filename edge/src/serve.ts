@@ -31,6 +31,8 @@ export interface RoutingRecord {
   prefix: string;
   showBadge: boolean;
   suspended: boolean;
+  /** Send this hostname to another (308) instead of serving it. Set on the default address once a custom domain is primary. */
+  redirectTo: string | null;
 }
 
 export interface Env {
@@ -96,7 +98,28 @@ function usable(record: unknown): RoutingRecord | null {
     prefix: r.prefix,
     showBadge: r.showBadge === true,
     suspended: r.suspended === true,
+    redirectTo: typeof r.redirectTo === "string" ? r.redirectTo : null,
   };
+}
+
+/**
+ * Where a redirect record sends this request, or null when it must not redirect.
+ *
+ * The record is tau's, so the target is trusted to be an address tau chose, but
+ * it is still checked: it must be an `https` URL for a different host (a record
+ * pointing at itself would loop), and only its host is used, with the request's
+ * own path and query carried over.
+ */
+export function redirectLocation(target: string | null, request: URL): string | null {
+  if (!target) return null;
+  let to: URL;
+  try {
+    to = new URL(target);
+  } catch {
+    return null;
+  }
+  if (to.protocol !== "https:" || to.hostname.toLowerCase() === request.hostname.toLowerCase()) return null;
+  return `https://${to.host}${request.pathname}${request.search}`;
 }
 
 /** Whether a prefix may be served at all. The R2 binding reaches the whole bucket, which also holds project source. */
@@ -127,6 +150,11 @@ export async function handle(request: Request, env: Env): Promise<Response> {
   if (record.suspended) {
     // Every path, assets included. The reason is the owner's business.
     return page(403, "Site suspended", "This site has been suspended.", { "Cache-Control": "no-store" });
+  }
+  const elsewhere = redirectLocation(record.redirectTo, url);
+  if (elsewhere) {
+    // A permanent move, but cached only briefly: the owner can change which domain is primary.
+    return new Response(null, { status: 308, headers: { Location: elsewhere, "Cache-Control": "public, max-age=300" } });
   }
   if (!prefixAllowed(record.prefix) || !isValidSlug(record.slug)) {
     return page(404, "Not found", "No app is published at this address yet.");

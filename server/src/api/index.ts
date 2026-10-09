@@ -28,6 +28,7 @@ import { runAlertCheck } from "./lib/alerts";
 import { sweepAttachments } from "./services/attachment.service";
 import { runDeploySweep } from "./lib/deploySweep";
 import { runEdgeReconcile } from "@/lib/edgeRegistry";
+import { runDomainVerificationSafely } from "./services/domain.service";
 import { prisma } from "@/lib/prisma";
 import { isDraining } from "@/lib/lifecycle";
 import { startTelemetry } from "@/lib/telemetry";
@@ -109,6 +110,11 @@ export function startApiBackground(): void {
   // configured. Run on boot too, so a restart after an outage heals at once.
   void runEdgeReconcile();
   setInterval(() => void runEdgeReconcile(), 60 * 60 * 1000);
+
+  // Look again at every custom domain that is still waiting: its DNS, then
+  // Cloudflare. Each domain is only actually checked when it is due, on a
+  // back-off (domains.ts), so a minute's tick is cheap when nothing is waiting.
+  setInterval(() => void runDomainVerificationSafely(), 60 * 1000);
 }
 
 /**

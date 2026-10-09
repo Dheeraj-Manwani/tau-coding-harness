@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import worker from "../src/index";
 import { BADGE_SOURCE } from "../src/badgeSource";
-import { handle, prefixAllowed, type Env, type RoutingRecord } from "../src/serve";
+import { handle, prefixAllowed, redirectLocation, type Env, type RoutingRecord } from "../src/serve";
 
 // The router against stand-ins for R2 and KV. Every rule here has a twin in
 // server/test/api/siteServing.test.ts: the two serve the same sites.
@@ -55,6 +55,7 @@ function publish(
     prefix: PREFIX,
     showBadge: false,
     suspended: false,
+    redirectTo: null,
     ...over,
   });
 }
@@ -316,5 +317,74 @@ describe("the Worker's entry point", () => {
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("30");
     expect(await res.text()).not.toContain("secret detail");
+  });
+});
+
+describe("a custom domain", () => {
+  test("is served from its own hostname with the same record", async () => {
+    publish({ "index.html": "<h1>hello</h1>" }, {}, "www.example.com");
+
+    const res = await get("/", { host: "www.example.com" });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("<h1>hello</h1>");
+  });
+
+  test("the badge reports the app's own name, not the hostname", async () => {
+    publish({ "index.html": "<body></body>" }, { showBadge: true, slug: "my-app" }, "www.example.com");
+    expect(await (await get("/", { host: "www.example.com" })).text()).toContain('data-site="my-app"');
+  });
+
+  test("a hostname with no record is 404, whatever it looks like", async () => {
+    publish({ "index.html": "x" });
+    for (const host of ["www.example.com", "bytauai.pro", "evil.com"]) {
+      expect((await get("/", { host })).status).toBe(404);
+    }
+  });
+});
+
+describe("the primary redirect", () => {
+  test("the default address sends everything to the primary domain, path and query kept", async () => {
+    publish({ "index.html": "x" }, { redirectTo: "https://www.example.com" });
+
+    const res = await get("/settings/profile?tab=2");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("https://www.example.com/settings/profile?tab=2");
+    expect(await res.text()).toBe("");
+    expect(reads).toHaveLength(0);
+  });
+
+  test("assets are redirected too, not served from the old address", async () => {
+    publish({ "index.html": "x", "assets/index-a1b2c3d4.js": "x" }, { redirectTo: "https://www.example.com" });
+    expect((await get("/assets/index-a1b2c3d4.js")).status).toBe(308);
+  });
+
+  test("a suspended site is never redirected away from its suspended page", async () => {
+    publish({ "index.html": "x" }, { suspended: true, redirectTo: "https://www.example.com" });
+    expect((await get("/")).status).toBe(403);
+  });
+
+  test("the badge script is still answered here", async () => {
+    publish({ "index.html": "x" }, { redirectTo: "https://www.example.com" });
+    expect((await get("/_tau/badge.js")).status).toBe(200);
+  });
+
+  test("a redirect that would loop, or leave https, is ignored", async () => {
+    publish({ "index.html": "<h1>served</h1>" }, { redirectTo: `https://${HOST}` });
+    expect(await (await get("/")).text()).toBe("<h1>served</h1>");
+
+    publish({ "index.html": "<h1>served</h1>" }, { redirectTo: "http://www.example.com" });
+    expect((await get("/")).status).toBe(200);
+
+    publish({ "index.html": "<h1>served</h1>" }, { redirectTo: "not a url" });
+    expect((await get("/")).status).toBe(200);
+  });
+
+  test("redirectLocation", () => {
+    const at = (url: string) => new URL(`https://${HOST}${url}`);
+    expect(redirectLocation(null, at("/"))).toBeNull();
+    expect(redirectLocation("https://www.example.com", at("/a?b=1"))).toBe("https://www.example.com/a?b=1");
+    expect(redirectLocation("https://www.example.com/ignored/path", at("/x"))).toBe("https://www.example.com/x");
+    expect(redirectLocation("https://WWW.example.com:8443", at("/"))).toBe("https://www.example.com:8443/");
+    expect(redirectLocation(`https://${HOST.toUpperCase()}`, at("/"))).toBeNull();
   });
 });

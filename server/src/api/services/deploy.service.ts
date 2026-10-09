@@ -30,6 +30,7 @@ import {
 import { TEMPLATES, toTemplateKey } from "@/worker/templates/registry";
 import {
   DeploymentStatus,
+  DomainStatus,
   JobStatus,
   JobType,
 } from "@/generated/prisma/enums";
@@ -83,6 +84,8 @@ export interface DeployStatus {
   suggestedName: string | null;
   /** The sites domain (bytauai.pro), or null where sites are served by path. */
   domain: string | null;
+  /** The custom domain the app lives at, when one is active and primary. */
+  primaryUrl: string | null;
   live: DeploymentSummary | null;
   /** Most recent first, including the live one. */
   deployments: DeploymentSummary[];
@@ -172,6 +175,15 @@ function serverWarningFor(templateKey: string): string | null {
     : "This project has a backend. Publishing ships the front-end only — anything that calls the API won't work on the published site yet.";
 }
 
+/** `https://{hostname}` of the project's active primary domain, if it has one. */
+async function primaryUrlOf(projectId: string): Promise<string | null> {
+  const primary = await prisma.domain.findFirst({
+    where: { projectId, isPrimary: true, status: DomainStatus.ACTIVE },
+    select: { hostname: true },
+  });
+  return primary ? `https://${primary.hostname}` : null;
+}
+
 export async function getDeployStatus(
   projectId: string,
   userId: string,
@@ -201,6 +213,7 @@ export async function getDeployStatus(
     url: project.slug ? publicSiteUrl(project.slug) : null,
     suggestedName: project.slug ? null : await suggestName(project),
     domain: env.SITES_DOMAIN ?? null,
+    primaryUrl: await primaryUrlOf(projectId),
     live: live ? toSummary(live, project.liveDeploymentId) : null,
     deployments: deployments.map((d) =>
       toSummary(d, project.liveDeploymentId),

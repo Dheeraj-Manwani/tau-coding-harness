@@ -158,6 +158,7 @@ model Project {
   publishFeePaidAt DateTime?
 
   logoGenerations LogoGeneration[]
+  domains         Domain[]
 
   // "owner/repo" once the first GitHub push creates/links a repo; null before.
   githubRepo String?
@@ -653,6 +654,56 @@ model SiteName {
   createdAt DateTime @default(now())
 
   @@index([projectId])
+}
+
+enum DomainStatus {
+  /// Waiting for the owner to add the DNS records. Nothing has been asked of Cloudflare.
+  PENDING_DNS
+  /// Tau has seen the ownership record, asked Cloudflare for the hostname, and is waiting for it to validate.
+  VERIFYING
+  /// Cloudflare is issuing the certificate.
+  ISSUING
+  /// Serving over HTTPS. The only state with a routing record.
+  ACTIVE
+  /// Gave up. `error` says why; checking again starts over.
+  FAILED
+}
+
+/// A domain an owner has connected to a published app (doc/PUBLISHING.md C10).
+///
+/// `hostname` is unique, so one project at a time holds a name. Removing a
+/// domain deletes the row, and a name added again gets a fresh `verificationToken`:
+/// an old record left in someone's DNS proves nothing about the new claim.
+model Domain {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// Lower case, ASCII (punycode for an international name), no scheme, path or trailing dot.
+  hostname String @unique
+
+  status DomainStatus @default(PENDING_DNS)
+
+  /// What the owner puts in a TXT record at `_tau.{hostname}` to prove it is theirs.
+  verificationToken String
+
+  /// Cloudflare's id for the custom hostname. Null until the ownership record has been seen.
+  cloudflareHostnameId String?
+
+  /// Serve the app here and send the default address (and any other domain) to it.
+  isPrimary Boolean @default(false)
+
+  lastCheckedAt DateTime?
+  /// Why it is FAILED, in words the owner can act on.
+  error         String?
+  /// Past this, a domain that has not become ACTIVE is FAILED.
+  checkUntil    DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status, lastCheckedAt])
 }
 
 /// One AI-generated logo picture, recorded when it was charged. The picture

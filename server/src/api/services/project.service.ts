@@ -79,6 +79,7 @@ import { normalizeDesignConfig } from "@/worker/design/config";
 import { readPreferences } from "../schemas/preferences.schema";
 import { syncDesignAfterThemeEdit } from "./design.service";
 import { removeSite } from "@/lib/edgeRegistry";
+import { releaseProjectDomains } from "./domain.service";
 import { invalidateSiteLookup } from "../lib/siteLookup";
 import type { Effort } from "@/generated/prisma/enums";
 
@@ -982,6 +983,8 @@ export async function deleteProject(
   }
   // Delete R2 blobs first; if this fails we abort before touching the DB.
   await deleteProjectBlobs(userId, projectId);
+  // Before the rows go: the database would delete the domains, but not at Cloudflare or the edge.
+  await releaseProjectDomains(projectId);
   await projectRepo.deleteProject(projectId);
   // The address is gone for good (SiteName keeps the name), so the edge must stop serving it.
   if (project.slug) {

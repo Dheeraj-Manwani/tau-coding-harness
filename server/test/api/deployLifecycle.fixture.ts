@@ -23,6 +23,7 @@ const tables = {
   user: [] as Row[],
   projectFile: [] as Row[],
   siteName: [] as Row[],
+  domain: [] as Row[],
 };
 
 function same(a: unknown, b: unknown): boolean {
@@ -129,6 +130,7 @@ const db = {
   job: model(tables.job, () => ({ status: "QUEUED" })),
   user: model(tables.user, () => ({})),
   projectFile: model(tables.projectFile, () => ({})),
+  domain: model(tables.domain, () => ({})),
   siteName: (() => {
     const base = model(tables.siteName, () => ({}));
     return {

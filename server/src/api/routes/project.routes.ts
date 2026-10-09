@@ -30,6 +30,7 @@ import {
 import * as github from "../controllers/githubProject.controller";
 import * as deploy from "../controllers/deploy.controller";
 import * as identity from "../controllers/identity.controller";
+import * as domainRoutes from "../controllers/domain.controller";
 import * as context from "../controllers/context.controller";
 import * as design from "../controllers/design.controller";
 import {
@@ -120,6 +121,14 @@ router.post(
   assetImportRateLimiter,
   identity.generateLogo,
 );
+
+// Custom domains (Tools -> Domains). Adding and checking reach DNS and
+// Cloudflare, so they share the import limiter.
+router.get("/:projectId/domains", domainRoutes.list);
+router.post("/:projectId/domains", assetImportRateLimiter, domainRoutes.add);
+router.post("/:projectId/domains/:domainId/check", assetImportRateLimiter, domainRoutes.check);
+router.post("/:projectId/domains/:domainId/primary", domainRoutes.primary);
+router.delete("/:projectId/domains/:domainId", domainRoutes.remove);
 
 // GitHub panel
 router.get("/:projectId/github", github.getInfo);

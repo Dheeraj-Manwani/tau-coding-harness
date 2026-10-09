@@ -331,6 +331,11 @@ const envSchema = z.object({
   CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
   CLOUDFLARE_KV_NAMESPACE_ID: z.string().optional(),
   CLOUDFLARE_API_TOKEN: z.string().optional(),
+  // Custom domains (Phase 3) also need the zone, and a token with SSL and
+  // Certificates: Edit on it. CLOUDFLARE_SAAS_TOKEN keeps that apart from the
+  // KV-only token above; with it unset CLOUDFLARE_API_TOKEN is used.
+  CLOUDFLARE_ZONE_ID: z.string().optional(),
+  CLOUDFLARE_SAAS_TOKEN: z.string().optional(),
 
   // What `/sites/{slug}/…` on this server's own origin does once SITES_DOMAIN
   // is set. `serve` answers from here, which runs a published app's JavaScript

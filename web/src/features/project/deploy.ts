@@ -52,6 +52,8 @@ export interface DeployStatus {
   suggestedName: string | null;
   /** `bytauai.pro`, or null where sites are served by path. */
   domain: string | null;
+  /** The custom domain the app lives at, when one is active and primary. */
+  primaryUrl: string | null;
   live: DeploymentSummary | null;
   deployments: DeploymentSummary[];
   inProgress: boolean;

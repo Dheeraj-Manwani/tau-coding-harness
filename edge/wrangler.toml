@@ -24,4 +24,9 @@ APP_URL = "https://app.tauai.pro"
 
 # Cut-over: uncomment once the wildcard DNS record exists. Until then the Worker
 # is deployed but receives nothing.
-# routes = [{ pattern = "*.bytauai.pro/*", zone_name = "bytauai.pro" }]
+#
+# `*/*` and not `*.bytauai.pro/*`: a custom domain (Cloudflare for SaaS) reaches
+# this zone as its own hostname, and only a zone-wide route sends it here. The
+# router answers 404 for any host it has no record for, so the apex and
+# anything else on the zone are safe.
+# routes = [{ pattern = "*/*", zone_name = "bytauai.pro" }]

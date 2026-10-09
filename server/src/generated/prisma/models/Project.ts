@@ -425,6 +425,7 @@ export type ProjectWhereInput = {
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
   logoGenerations?: Prisma.LogoGenerationListRelationFilter
+  domains?: Prisma.DomainListRelationFilter
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   jobs?: Prisma.JobListRelationFilter
@@ -468,6 +469,7 @@ export type ProjectOrderByWithRelationInput = {
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
   logoGenerations?: Prisma.LogoGenerationOrderByRelationAggregateInput
+  domains?: Prisma.DomainOrderByRelationAggregateInput
   user?: Prisma.UserOrderByWithRelationInput
   messages?: Prisma.MessageOrderByRelationAggregateInput
   jobs?: Prisma.JobOrderByRelationAggregateInput
@@ -514,6 +516,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
   logoGenerations?: Prisma.LogoGenerationListRelationFilter
+  domains?: Prisma.DomainListRelationFilter
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   messages?: Prisma.MessageListRelationFilter
   jobs?: Prisma.JobListRelationFilter
@@ -632,6 +635,7 @@ export type ProjectCreateInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -675,6 +679,7 @@ export type ProjectUncheckedCreateInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -716,6 +721,7 @@ export type ProjectUpdateInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -759,6 +765,7 @@ export type ProjectUncheckedUpdateInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -1175,6 +1182,20 @@ export type ProjectUpdateOneRequiredWithoutDeploymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutDeploymentsInput, Prisma.ProjectUpdateWithoutDeploymentsInput>, Prisma.ProjectUncheckedUpdateWithoutDeploymentsInput>
 }
 
+export type ProjectCreateNestedOneWithoutDomainsInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutDomainsInput, Prisma.ProjectUncheckedCreateWithoutDomainsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutDomainsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutDomainsNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutDomainsInput, Prisma.ProjectUncheckedCreateWithoutDomainsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutDomainsInput
+  upsert?: Prisma.ProjectUpsertWithoutDomainsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutDomainsInput, Prisma.ProjectUpdateWithoutDomainsInput>, Prisma.ProjectUncheckedUpdateWithoutDomainsInput>
+}
+
 export type ProjectCreateNestedOneWithoutLogoGenerationsInput = {
   create?: Prisma.XOR<Prisma.ProjectCreateWithoutLogoGenerationsInput, Prisma.ProjectUncheckedCreateWithoutLogoGenerationsInput>
   connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutLogoGenerationsInput
@@ -1221,6 +1242,7 @@ export type ProjectCreateWithoutUserInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1262,6 +1284,7 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -1366,6 +1389,7 @@ export type ProjectCreateWithoutSecretsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -1408,6 +1432,7 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -1464,6 +1489,7 @@ export type ProjectUpdateWithoutSecretsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -1506,6 +1532,7 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -1546,6 +1573,7 @@ export type ProjectCreateWithoutMessagesInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1588,6 +1616,7 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -1644,6 +1673,7 @@ export type ProjectUpdateWithoutMessagesInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -1686,6 +1716,7 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -1726,6 +1757,7 @@ export type ProjectCreateWithoutJobsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
@@ -1768,6 +1800,7 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -1824,6 +1857,7 @@ export type ProjectUpdateWithoutJobsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -1866,6 +1900,7 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -1906,6 +1941,7 @@ export type ProjectCreateWithoutFilesInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -1948,6 +1984,7 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2004,6 +2041,7 @@ export type ProjectUpdateWithoutFilesInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2046,6 +2084,7 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2086,6 +2125,7 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2128,6 +2168,7 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2184,6 +2225,7 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2226,6 +2268,7 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2266,6 +2309,7 @@ export type ProjectCreateWithoutTokenUsageInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2308,6 +2352,7 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
@@ -2364,6 +2409,7 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2406,6 +2452,7 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
@@ -2446,6 +2493,7 @@ export type ProjectCreateWithoutDeploymentsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2488,6 +2536,7 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   githubPushMode?: string
   headSequence?: number
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2544,6 +2593,7 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2586,11 +2636,196 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
   files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
   contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectCreateWithoutDomainsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  user: Prisma.UserCreateNestedOneWithoutProjectsInput
+  messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectUncheckedCreateWithoutDomainsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  userId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectCreateOrConnectWithoutDomainsInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutDomainsInput, Prisma.ProjectUncheckedCreateWithoutDomainsInput>
+}
+
+export type ProjectUpsertWithoutDomainsInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutDomainsInput, Prisma.ProjectUncheckedUpdateWithoutDomainsInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutDomainsInput, Prisma.ProjectUncheckedCreateWithoutDomainsInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutDomainsInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutDomainsInput, Prisma.ProjectUncheckedUpdateWithoutDomainsInput>
+}
+
+export type ProjectUpdateWithoutDomainsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutDomainsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
   secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
 }
 
@@ -2625,6 +2860,7 @@ export type ProjectCreateWithoutLogoGenerationsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
   messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
@@ -2667,6 +2903,7 @@ export type ProjectUncheckedCreateWithoutLogoGenerationsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
   jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
   tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
@@ -2723,6 +2960,7 @@ export type ProjectUpdateWithoutLogoGenerationsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
@@ -2765,6 +3003,7 @@ export type ProjectUncheckedUpdateWithoutLogoGenerationsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2839,6 +3078,7 @@ export type ProjectUpdateWithoutUserInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
@@ -2880,6 +3120,7 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
   jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
   tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2929,6 +3170,7 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
 
 export type ProjectCountOutputType = {
   logoGenerations: number
+  domains: number
   messages: number
   jobs: number
   tokenUsage: number
@@ -2940,6 +3182,7 @@ export type ProjectCountOutputType = {
 
 export type ProjectCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   logoGenerations?: boolean | ProjectCountOutputTypeCountLogoGenerationsArgs
+  domains?: boolean | ProjectCountOutputTypeCountDomainsArgs
   messages?: boolean | ProjectCountOutputTypeCountMessagesArgs
   jobs?: boolean | ProjectCountOutputTypeCountJobsArgs
   tokenUsage?: boolean | ProjectCountOutputTypeCountTokenUsageArgs
@@ -2964,6 +3207,13 @@ export type ProjectCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
  */
 export type ProjectCountOutputTypeCountLogoGenerationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.LogoGenerationWhereInput
+}
+
+/**
+ * ProjectCountOutputType without action
+ */
+export type ProjectCountOutputTypeCountDomainsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DomainWhereInput
 }
 
 /**
@@ -3049,6 +3299,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   githubPushMode?: boolean
   headSequence?: boolean
   logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
+  domains?: boolean | Prisma.Project$domainsArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
   jobs?: boolean | Prisma.Project$jobsArgs<ExtArgs>
@@ -3167,6 +3418,7 @@ export type ProjectSelectScalar = {
 export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
+  domains?: boolean | Prisma.Project$domainsArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   messages?: boolean | Prisma.Project$messagesArgs<ExtArgs>
   jobs?: boolean | Prisma.Project$jobsArgs<ExtArgs>
@@ -3188,6 +3440,7 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   name: "Project"
   objects: {
     logoGenerations: Prisma.$LogoGenerationPayload<ExtArgs>[]
+    domains: Prisma.$DomainPayload<ExtArgs>[]
     user: Prisma.$UserPayload<ExtArgs>
     messages: Prisma.$MessagePayload<ExtArgs>[]
     jobs: Prisma.$JobPayload<ExtArgs>[]
@@ -3674,6 +3927,7 @@ readonly fields: ProjectFieldRefs;
 export interface Prisma__ProjectClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   logoGenerations<T extends Prisma.Project$logoGenerationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$logoGenerationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LogoGenerationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  domains<T extends Prisma.Project$domainsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$domainsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DomainPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   messages<T extends Prisma.Project$messagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$messagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   jobs<T extends Prisma.Project$jobsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$jobsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -4164,6 +4418,30 @@ export type Project$logoGenerationsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.LogoGenerationScalarFieldEnum | Prisma.LogoGenerationScalarFieldEnum[]
+}
+
+/**
+ * Project.domains
+ */
+export type Project$domainsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Domain
+   */
+  select?: Prisma.DomainSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Domain
+   */
+  omit?: Prisma.DomainOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DomainInclude<ExtArgs> | null
+  where?: Prisma.DomainWhereInput
+  orderBy?: Prisma.DomainOrderByWithRelationInput | Prisma.DomainOrderByWithRelationInput[]
+  cursor?: Prisma.DomainWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DomainScalarFieldEnum | Prisma.DomainScalarFieldEnum[]
 }
 
 /**

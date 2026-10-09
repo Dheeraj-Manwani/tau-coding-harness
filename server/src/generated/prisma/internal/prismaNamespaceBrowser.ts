@@ -68,6 +68,7 @@ export const ModelName = {
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
   SiteName: 'SiteName',
+  Domain: 'Domain',
   LogoGeneration: 'LogoGeneration',
   BillingAccount: 'BillingAccount',
   CreditLedger: 'CreditLedger',
@@ -385,6 +386,24 @@ export const SiteNameScalarFieldEnum = {
 } as const
 
 export type SiteNameScalarFieldEnum = (typeof SiteNameScalarFieldEnum)[keyof typeof SiteNameScalarFieldEnum]
+
+
+export const DomainScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  hostname: 'hostname',
+  status: 'status',
+  verificationToken: 'verificationToken',
+  cloudflareHostnameId: 'cloudflareHostnameId',
+  isPrimary: 'isPrimary',
+  lastCheckedAt: 'lastCheckedAt',
+  error: 'error',
+  checkUntil: 'checkUntil',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DomainScalarFieldEnum = (typeof DomainScalarFieldEnum)[keyof typeof DomainScalarFieldEnum]
 
 
 export const LogoGenerationScalarFieldEnum = {

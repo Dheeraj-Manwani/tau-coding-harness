@@ -51,6 +51,8 @@ export type ProjectMinAggregateOutputType = {
   sandboxExpiresAt: Date | null
   templateKey: string | null
   aiEnabled: boolean | null
+  storageEnabled: boolean | null
+  storageSuspendedAt: Date | null
   instructions: string | null
   previewImageKey: string | null
   previewImageUpdatedAt: Date | null
@@ -83,6 +85,8 @@ export type ProjectMaxAggregateOutputType = {
   sandboxExpiresAt: Date | null
   templateKey: string | null
   aiEnabled: boolean | null
+  storageEnabled: boolean | null
+  storageSuspendedAt: Date | null
   instructions: string | null
   previewImageKey: string | null
   previewImageUpdatedAt: Date | null
@@ -116,6 +120,8 @@ export type ProjectCountAggregateOutputType = {
   sandboxExpiresAt: number
   templateKey: number
   aiEnabled: number
+  storageEnabled: number
+  storageSuspendedAt: number
   designConfig: number
   instructions: number
   previewImageKey: number
@@ -163,6 +169,8 @@ export type ProjectMinAggregateInputType = {
   sandboxExpiresAt?: true
   templateKey?: true
   aiEnabled?: true
+  storageEnabled?: true
+  storageSuspendedAt?: true
   instructions?: true
   previewImageKey?: true
   previewImageUpdatedAt?: true
@@ -195,6 +203,8 @@ export type ProjectMaxAggregateInputType = {
   sandboxExpiresAt?: true
   templateKey?: true
   aiEnabled?: true
+  storageEnabled?: true
+  storageSuspendedAt?: true
   instructions?: true
   previewImageKey?: true
   previewImageUpdatedAt?: true
@@ -228,6 +238,8 @@ export type ProjectCountAggregateInputType = {
   sandboxExpiresAt?: true
   templateKey?: true
   aiEnabled?: true
+  storageEnabled?: true
+  storageSuspendedAt?: true
   designConfig?: true
   instructions?: true
   previewImageKey?: true
@@ -349,6 +361,8 @@ export type ProjectGroupByOutputType = {
   sandboxExpiresAt: Date | null
   templateKey: string
   aiEnabled: boolean
+  storageEnabled: boolean
+  storageSuspendedAt: Date | null
   designConfig: runtime.JsonValue | null
   instructions: string | null
   previewImageKey: string | null
@@ -406,6 +420,8 @@ export type ProjectWhereInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   designConfig?: Prisma.JsonNullableFilter<"Project">
   instructions?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -424,6 +440,8 @@ export type ProjectWhereInput = {
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
+  storageKeys?: Prisma.StorageKeyListRelationFilter
+  storageObjects?: Prisma.StorageObjectListRelationFilter
   logoGenerations?: Prisma.LogoGenerationListRelationFilter
   domains?: Prisma.DomainListRelationFilter
   resources?: Prisma.ProjectResourceListRelationFilter
@@ -451,6 +469,8 @@ export type ProjectOrderByWithRelationInput = {
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  storageEnabled?: Prisma.SortOrder
+  storageSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   designConfig?: Prisma.SortOrderInput | Prisma.SortOrder
   instructions?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -469,6 +489,8 @@ export type ProjectOrderByWithRelationInput = {
   lastPushedSequence?: Prisma.SortOrderInput | Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
+  storageKeys?: Prisma.StorageKeyOrderByRelationAggregateInput
+  storageObjects?: Prisma.StorageObjectOrderByRelationAggregateInput
   logoGenerations?: Prisma.LogoGenerationOrderByRelationAggregateInput
   domains?: Prisma.DomainOrderByRelationAggregateInput
   resources?: Prisma.ProjectResourceOrderByRelationAggregateInput
@@ -500,6 +522,8 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   designConfig?: Prisma.JsonNullableFilter<"Project">
   instructions?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -517,6 +541,8 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
+  storageKeys?: Prisma.StorageKeyListRelationFilter
+  storageObjects?: Prisma.StorageObjectListRelationFilter
   logoGenerations?: Prisma.LogoGenerationListRelationFilter
   domains?: Prisma.DomainListRelationFilter
   resources?: Prisma.ProjectResourceListRelationFilter
@@ -544,6 +570,8 @@ export type ProjectOrderByWithAggregationInput = {
   sandboxExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  storageEnabled?: Prisma.SortOrder
+  storageSuspendedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   designConfig?: Prisma.SortOrderInput | Prisma.SortOrder
   instructions?: Prisma.SortOrderInput | Prisma.SortOrder
   previewImageKey?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -586,6 +614,8 @@ export type ProjectScalarWhereWithAggregatesInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringWithAggregatesFilter<"Project"> | string
   aiEnabled?: Prisma.BoolWithAggregatesFilter<"Project"> | boolean
+  storageEnabled?: Prisma.BoolWithAggregatesFilter<"Project"> | boolean
+  storageSuspendedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
   designConfig?: Prisma.JsonNullableWithAggregatesFilter<"Project">
   instructions?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   previewImageKey?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
@@ -619,6 +649,8 @@ export type ProjectCreateInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -637,6 +669,8 @@ export type ProjectCreateInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -664,6 +698,8 @@ export type ProjectUncheckedCreateInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -682,6 +718,8 @@ export type ProjectUncheckedCreateInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -707,6 +745,8 @@ export type ProjectUpdateInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -725,6 +765,8 @@ export type ProjectUpdateInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -752,6 +794,8 @@ export type ProjectUncheckedUpdateInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -770,6 +814,8 @@ export type ProjectUncheckedUpdateInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -796,6 +842,8 @@ export type ProjectCreateManyInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -829,6 +877,8 @@ export type ProjectUpdateManyMutationInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -863,6 +913,8 @@ export type ProjectUncheckedUpdateManyInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -915,6 +967,8 @@ export type ProjectCountOrderByAggregateInput = {
   sandboxExpiresAt?: Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  storageEnabled?: Prisma.SortOrder
+  storageSuspendedAt?: Prisma.SortOrder
   designConfig?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
   previewImageKey?: Prisma.SortOrder
@@ -954,6 +1008,8 @@ export type ProjectMaxOrderByAggregateInput = {
   sandboxExpiresAt?: Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  storageEnabled?: Prisma.SortOrder
+  storageSuspendedAt?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
   previewImageKey?: Prisma.SortOrder
   previewImageUpdatedAt?: Prisma.SortOrder
@@ -986,6 +1042,8 @@ export type ProjectMinOrderByAggregateInput = {
   sandboxExpiresAt?: Prisma.SortOrder
   templateKey?: Prisma.SortOrder
   aiEnabled?: Prisma.SortOrder
+  storageEnabled?: Prisma.SortOrder
+  storageSuspendedAt?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
   previewImageKey?: Prisma.SortOrder
   previewImageUpdatedAt?: Prisma.SortOrder
@@ -1238,6 +1296,34 @@ export type ProjectUpdateOneRequiredWithoutLogoGenerationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutLogoGenerationsInput, Prisma.ProjectUpdateWithoutLogoGenerationsInput>, Prisma.ProjectUncheckedUpdateWithoutLogoGenerationsInput>
 }
 
+export type ProjectCreateNestedOneWithoutStorageKeysInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutStorageKeysInput, Prisma.ProjectUncheckedCreateWithoutStorageKeysInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutStorageKeysInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutStorageKeysNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutStorageKeysInput, Prisma.ProjectUncheckedCreateWithoutStorageKeysInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutStorageKeysInput
+  upsert?: Prisma.ProjectUpsertWithoutStorageKeysInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutStorageKeysInput, Prisma.ProjectUpdateWithoutStorageKeysInput>, Prisma.ProjectUncheckedUpdateWithoutStorageKeysInput>
+}
+
+export type ProjectCreateNestedOneWithoutStorageObjectsInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutStorageObjectsInput, Prisma.ProjectUncheckedCreateWithoutStorageObjectsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutStorageObjectsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutStorageObjectsNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutStorageObjectsInput, Prisma.ProjectUncheckedCreateWithoutStorageObjectsInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutStorageObjectsInput
+  upsert?: Prisma.ProjectUpsertWithoutStorageObjectsInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutStorageObjectsInput, Prisma.ProjectUpdateWithoutStorageObjectsInput>, Prisma.ProjectUncheckedUpdateWithoutStorageObjectsInput>
+}
+
 export type ProjectCreateWithoutUserInput = {
   id?: string
   name: string
@@ -1251,6 +1337,8 @@ export type ProjectCreateWithoutUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1269,6 +1357,8 @@ export type ProjectCreateWithoutUserInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -1294,6 +1384,8 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1312,6 +1404,8 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -1367,6 +1461,8 @@ export type ProjectScalarWhereInput = {
   sandboxExpiresAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   templateKey?: Prisma.StringFilter<"Project"> | string
   aiEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageEnabled?: Prisma.BoolFilter<"Project"> | boolean
+  storageSuspendedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
   designConfig?: Prisma.JsonNullableFilter<"Project">
   instructions?: Prisma.StringNullableFilter<"Project"> | string | null
   previewImageKey?: Prisma.StringNullableFilter<"Project"> | string | null
@@ -1400,6 +1496,8 @@ export type ProjectCreateWithoutSecretsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1418,6 +1516,8 @@ export type ProjectCreateWithoutSecretsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -1444,6 +1544,8 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1462,6 +1564,8 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -1502,6 +1606,8 @@ export type ProjectUpdateWithoutSecretsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1520,6 +1626,8 @@ export type ProjectUpdateWithoutSecretsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -1546,6 +1654,8 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1564,6 +1674,8 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -1588,6 +1700,8 @@ export type ProjectCreateWithoutMessagesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1606,6 +1720,8 @@ export type ProjectCreateWithoutMessagesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -1632,6 +1748,8 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1650,6 +1768,8 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -1690,6 +1810,8 @@ export type ProjectUpdateWithoutMessagesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1708,6 +1830,8 @@ export type ProjectUpdateWithoutMessagesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -1734,6 +1858,8 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1752,6 +1878,8 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -1776,6 +1904,8 @@ export type ProjectCreateWithoutJobsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1794,6 +1924,8 @@ export type ProjectCreateWithoutJobsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -1820,6 +1952,8 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1838,6 +1972,8 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -1878,6 +2014,8 @@ export type ProjectUpdateWithoutJobsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1896,6 +2034,8 @@ export type ProjectUpdateWithoutJobsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -1922,6 +2062,8 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1940,6 +2082,8 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -1964,6 +2108,8 @@ export type ProjectCreateWithoutFilesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -1982,6 +2128,8 @@ export type ProjectCreateWithoutFilesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -2008,6 +2156,8 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2026,6 +2176,8 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -2066,6 +2218,8 @@ export type ProjectUpdateWithoutFilesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2084,6 +2238,8 @@ export type ProjectUpdateWithoutFilesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -2110,6 +2266,8 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2128,6 +2286,8 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -2152,6 +2312,8 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2170,6 +2332,8 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -2196,6 +2360,8 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2214,6 +2380,8 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -2254,6 +2422,8 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2272,6 +2442,8 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -2298,6 +2470,8 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2316,6 +2490,8 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -2340,6 +2516,8 @@ export type ProjectCreateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2358,6 +2536,8 @@ export type ProjectCreateWithoutTokenUsageInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -2384,6 +2564,8 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2402,6 +2584,8 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -2442,6 +2626,8 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2460,6 +2646,8 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -2486,6 +2674,8 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2504,6 +2694,8 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -2528,6 +2720,8 @@ export type ProjectCreateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2546,6 +2740,8 @@ export type ProjectCreateWithoutDeploymentsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
@@ -2572,6 +2768,8 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2590,6 +2788,8 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
@@ -2630,6 +2830,8 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2648,6 +2850,8 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -2674,6 +2878,8 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2692,6 +2898,8 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -2716,6 +2924,8 @@ export type ProjectCreateWithoutResourcesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2734,6 +2944,8 @@ export type ProjectCreateWithoutResourcesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
@@ -2760,6 +2972,8 @@ export type ProjectUncheckedCreateWithoutResourcesInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2778,6 +2992,8 @@ export type ProjectUncheckedCreateWithoutResourcesInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
@@ -2818,6 +3034,8 @@ export type ProjectUpdateWithoutResourcesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2836,6 +3054,8 @@ export type ProjectUpdateWithoutResourcesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
@@ -2862,6 +3082,8 @@ export type ProjectUncheckedUpdateWithoutResourcesInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2880,6 +3102,8 @@ export type ProjectUncheckedUpdateWithoutResourcesInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
@@ -2904,6 +3128,8 @@ export type ProjectCreateWithoutDomainsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2922,6 +3148,8 @@ export type ProjectCreateWithoutDomainsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
@@ -2948,6 +3176,8 @@ export type ProjectUncheckedCreateWithoutDomainsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -2966,6 +3196,8 @@ export type ProjectUncheckedCreateWithoutDomainsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
@@ -3006,6 +3238,8 @@ export type ProjectUpdateWithoutDomainsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3024,6 +3258,8 @@ export type ProjectUpdateWithoutDomainsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
@@ -3050,6 +3286,8 @@ export type ProjectUncheckedUpdateWithoutDomainsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3068,6 +3306,8 @@ export type ProjectUncheckedUpdateWithoutDomainsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
@@ -3092,6 +3332,8 @@ export type ProjectCreateWithoutLogoGenerationsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -3110,6 +3352,8 @@ export type ProjectCreateWithoutLogoGenerationsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
   user: Prisma.UserCreateNestedOneWithoutProjectsInput
@@ -3136,6 +3380,8 @@ export type ProjectUncheckedCreateWithoutLogoGenerationsInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -3154,6 +3400,8 @@ export type ProjectUncheckedCreateWithoutLogoGenerationsInput = {
   lastPushedSequence?: number | null
   githubPushMode?: string
   headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
   domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
   resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
   messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
@@ -3194,6 +3442,8 @@ export type ProjectUpdateWithoutLogoGenerationsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3212,6 +3462,8 @@ export type ProjectUpdateWithoutLogoGenerationsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
@@ -3238,6 +3490,8 @@ export type ProjectUncheckedUpdateWithoutLogoGenerationsInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3256,6 +3510,416 @@ export type ProjectUncheckedUpdateWithoutLogoGenerationsInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
+  resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
+  messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectCreateWithoutStorageKeysInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
+  resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
+  user: Prisma.UserCreateNestedOneWithoutProjectsInput
+  messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectUncheckedCreateWithoutStorageKeysInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  userId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
+  resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
+  messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectCreateOrConnectWithoutStorageKeysInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutStorageKeysInput, Prisma.ProjectUncheckedCreateWithoutStorageKeysInput>
+}
+
+export type ProjectUpsertWithoutStorageKeysInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutStorageKeysInput, Prisma.ProjectUncheckedUpdateWithoutStorageKeysInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutStorageKeysInput, Prisma.ProjectUncheckedCreateWithoutStorageKeysInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutStorageKeysInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutStorageKeysInput, Prisma.ProjectUncheckedUpdateWithoutStorageKeysInput>
+}
+
+export type ProjectUpdateWithoutStorageKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
+  resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutStorageKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
+  resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
+  messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUncheckedUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUncheckedUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUncheckedUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUncheckedUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUncheckedUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectCreateWithoutStorageObjectsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
+  logoGenerations?: Prisma.LogoGenerationCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainCreateNestedManyWithoutProjectInput
+  resources?: Prisma.ProjectResourceCreateNestedManyWithoutProjectInput
+  user: Prisma.UserCreateNestedOneWithoutProjectsInput
+  messages?: Prisma.MessageCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectUncheckedCreateWithoutStorageObjectsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  tags?: Prisma.ProjectCreatetagsInput | string[]
+  userId: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspaceStartedAt?: Date | string | null
+  sandboxId?: string | null
+  sandboxStatus?: $Enums.SandboxStatus
+  sandboxExpiresAt?: Date | string | null
+  templateKey?: string
+  aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: string | null
+  previewImageKey?: string | null
+  previewImageUpdatedAt?: Date | string | null
+  slug?: string | null
+  liveDeploymentId?: string | null
+  siteSuspendedAt?: Date | string | null
+  siteSuspendedReason?: string | null
+  publishFeePaidAt?: Date | string | null
+  githubRepo?: string | null
+  githubDefaultBranch?: string | null
+  githubVisibility?: string | null
+  lastPushedBranch?: string | null
+  lastPrUrl?: string | null
+  lastPrNumber?: number | null
+  lastPushedSequence?: number | null
+  githubPushMode?: string
+  headSequence?: number
+  storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
+  logoGenerations?: Prisma.LogoGenerationUncheckedCreateNestedManyWithoutProjectInput
+  domains?: Prisma.DomainUncheckedCreateNestedManyWithoutProjectInput
+  resources?: Prisma.ProjectResourceUncheckedCreateNestedManyWithoutProjectInput
+  messages?: Prisma.MessageUncheckedCreateNestedManyWithoutProjectInput
+  jobs?: Prisma.JobUncheckedCreateNestedManyWithoutProjectInput
+  tokenUsage?: Prisma.TokenUsageUncheckedCreateNestedManyWithoutProjectInput
+  files?: Prisma.ProjectFileUncheckedCreateNestedManyWithoutProjectInput
+  contextCheckpoints?: Prisma.ContextCheckpointUncheckedCreateNestedManyWithoutProjectInput
+  deployments?: Prisma.DeploymentUncheckedCreateNestedManyWithoutProjectInput
+  secrets?: Prisma.ProjectSecretUncheckedCreateNestedManyWithoutProjectInput
+}
+
+export type ProjectCreateOrConnectWithoutStorageObjectsInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutStorageObjectsInput, Prisma.ProjectUncheckedCreateWithoutStorageObjectsInput>
+}
+
+export type ProjectUpsertWithoutStorageObjectsInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutStorageObjectsInput, Prisma.ProjectUncheckedUpdateWithoutStorageObjectsInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutStorageObjectsInput, Prisma.ProjectUncheckedCreateWithoutStorageObjectsInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutStorageObjectsInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutStorageObjectsInput, Prisma.ProjectUncheckedUpdateWithoutStorageObjectsInput>
+}
+
+export type ProjectUpdateWithoutStorageObjectsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
+  domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
+  resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  messages?: Prisma.MessageUpdateManyWithoutProjectNestedInput
+  jobs?: Prisma.JobUpdateManyWithoutProjectNestedInput
+  tokenUsage?: Prisma.TokenUsageUpdateManyWithoutProjectNestedInput
+  files?: Prisma.ProjectFileUpdateManyWithoutProjectNestedInput
+  contextCheckpoints?: Prisma.ContextCheckpointUpdateManyWithoutProjectNestedInput
+  deployments?: Prisma.DeploymentUpdateManyWithoutProjectNestedInput
+  secrets?: Prisma.ProjectSecretUpdateManyWithoutProjectNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutStorageObjectsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProjectUpdatetagsInput | string[]
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspaceStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sandboxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sandboxStatus?: Prisma.EnumSandboxStatusFieldUpdateOperationsInput | $Enums.SandboxStatus
+  sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  templateKey?: Prisma.StringFieldUpdateOperationsInput | string
+  aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  previewImageUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  liveDeploymentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  siteSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  siteSuspendedReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishFeePaidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  githubRepo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubDefaultBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  githubVisibility?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPushedBranch?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
+  headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
   messages?: Prisma.MessageUncheckedUpdateManyWithoutProjectNestedInput
@@ -3280,6 +3944,8 @@ export type ProjectCreateManyUserInput = {
   sandboxExpiresAt?: Date | string | null
   templateKey?: string
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: string | null
   previewImageKey?: string | null
@@ -3313,6 +3979,8 @@ export type ProjectUpdateWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3331,6 +3999,8 @@ export type ProjectUpdateWithoutUserInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUpdateManyWithoutProjectNestedInput
@@ -3356,6 +4026,8 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3374,6 +4046,8 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
+  storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
   logoGenerations?: Prisma.LogoGenerationUncheckedUpdateManyWithoutProjectNestedInput
   domains?: Prisma.DomainUncheckedUpdateManyWithoutProjectNestedInput
   resources?: Prisma.ProjectResourceUncheckedUpdateManyWithoutProjectNestedInput
@@ -3399,6 +4073,8 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   sandboxExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   templateKey?: Prisma.StringFieldUpdateOperationsInput | string
   aiEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  storageSuspendedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   designConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   previewImageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3425,6 +4101,8 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
  */
 
 export type ProjectCountOutputType = {
+  storageKeys: number
+  storageObjects: number
   logoGenerations: number
   domains: number
   resources: number
@@ -3438,6 +4116,8 @@ export type ProjectCountOutputType = {
 }
 
 export type ProjectCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  storageKeys?: boolean | ProjectCountOutputTypeCountStorageKeysArgs
+  storageObjects?: boolean | ProjectCountOutputTypeCountStorageObjectsArgs
   logoGenerations?: boolean | ProjectCountOutputTypeCountLogoGenerationsArgs
   domains?: boolean | ProjectCountOutputTypeCountDomainsArgs
   resources?: boolean | ProjectCountOutputTypeCountResourcesArgs
@@ -3458,6 +4138,20 @@ export type ProjectCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
    * Select specific fields to fetch from the ProjectCountOutputType
    */
   select?: Prisma.ProjectCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ProjectCountOutputType without action
+ */
+export type ProjectCountOutputTypeCountStorageKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StorageKeyWhereInput
+}
+
+/**
+ * ProjectCountOutputType without action
+ */
+export type ProjectCountOutputTypeCountStorageObjectsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StorageObjectWhereInput
 }
 
 /**
@@ -3545,6 +4239,8 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: boolean
   designConfig?: boolean
   instructions?: boolean
   previewImageKey?: boolean
@@ -3563,6 +4259,8 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   lastPushedSequence?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
+  storageKeys?: boolean | Prisma.Project$storageKeysArgs<ExtArgs>
+  storageObjects?: boolean | Prisma.Project$storageObjectsArgs<ExtArgs>
   logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
   domains?: boolean | Prisma.Project$domainsArgs<ExtArgs>
   resources?: boolean | Prisma.Project$resourcesArgs<ExtArgs>
@@ -3591,6 +4289,8 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: boolean
   designConfig?: boolean
   instructions?: boolean
   previewImageKey?: boolean
@@ -3626,6 +4326,8 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: boolean
   designConfig?: boolean
   instructions?: boolean
   previewImageKey?: boolean
@@ -3661,6 +4363,8 @@ export type ProjectSelectScalar = {
   sandboxExpiresAt?: boolean
   templateKey?: boolean
   aiEnabled?: boolean
+  storageEnabled?: boolean
+  storageSuspendedAt?: boolean
   designConfig?: boolean
   instructions?: boolean
   previewImageKey?: boolean
@@ -3681,8 +4385,10 @@ export type ProjectSelectScalar = {
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "storageEnabled" | "storageSuspendedAt" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  storageKeys?: boolean | Prisma.Project$storageKeysArgs<ExtArgs>
+  storageObjects?: boolean | Prisma.Project$storageObjectsArgs<ExtArgs>
   logoGenerations?: boolean | Prisma.Project$logoGenerationsArgs<ExtArgs>
   domains?: boolean | Prisma.Project$domainsArgs<ExtArgs>
   resources?: boolean | Prisma.Project$resourcesArgs<ExtArgs>
@@ -3706,6 +4412,8 @@ export type ProjectIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Project"
   objects: {
+    storageKeys: Prisma.$StorageKeyPayload<ExtArgs>[]
+    storageObjects: Prisma.$StorageObjectPayload<ExtArgs>[]
     logoGenerations: Prisma.$LogoGenerationPayload<ExtArgs>[]
     domains: Prisma.$DomainPayload<ExtArgs>[]
     resources: Prisma.$ProjectResourcePayload<ExtArgs>[]
@@ -3744,6 +4452,16 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      * never persisted to the manifest, so it has to be rewritten each rebuild.
      */
     aiEnabled: boolean
+    /**
+     * Set by the `enable_storage` tool. Drives re-injection of TAU_STORAGE_KEY
+     * and TAU_STORAGE_URL, as `aiEnabled` does for the AI key.
+     */
+    storageEnabled: boolean
+    /**
+     * Set by an admin (or by suspending the site). No new uploads or download
+     * addresses while set; files are kept.
+     */
+    storageSuspendedAt: Date | null
     /**
      * What the user chose about the app's look — a style, an accent, light or
      * dark, a font pairing, the three feel dials, or a DESIGN.md they brought
@@ -4194,6 +4912,8 @@ readonly fields: ProjectFieldRefs;
  */
 export interface Prisma__ProjectClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  storageKeys<T extends Prisma.Project$storageKeysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$storageKeysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StorageKeyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  storageObjects<T extends Prisma.Project$storageObjectsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$storageObjectsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StorageObjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   logoGenerations<T extends Prisma.Project$logoGenerationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$logoGenerationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LogoGenerationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   domains<T extends Prisma.Project$domainsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$domainsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DomainPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   resources<T extends Prisma.Project$resourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$resourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProjectResourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -4247,6 +4967,8 @@ export interface ProjectFieldRefs {
   readonly sandboxExpiresAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly templateKey: Prisma.FieldRef<"Project", 'String'>
   readonly aiEnabled: Prisma.FieldRef<"Project", 'Boolean'>
+  readonly storageEnabled: Prisma.FieldRef<"Project", 'Boolean'>
+  readonly storageSuspendedAt: Prisma.FieldRef<"Project", 'DateTime'>
   readonly designConfig: Prisma.FieldRef<"Project", 'Json'>
   readonly instructions: Prisma.FieldRef<"Project", 'String'>
   readonly previewImageKey: Prisma.FieldRef<"Project", 'String'>
@@ -4663,6 +5385,54 @@ export type ProjectDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Limit how many Projects to delete.
    */
   limit?: number
+}
+
+/**
+ * Project.storageKeys
+ */
+export type Project$storageKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StorageKey
+   */
+  select?: Prisma.StorageKeySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StorageKey
+   */
+  omit?: Prisma.StorageKeyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StorageKeyInclude<ExtArgs> | null
+  where?: Prisma.StorageKeyWhereInput
+  orderBy?: Prisma.StorageKeyOrderByWithRelationInput | Prisma.StorageKeyOrderByWithRelationInput[]
+  cursor?: Prisma.StorageKeyWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StorageKeyScalarFieldEnum | Prisma.StorageKeyScalarFieldEnum[]
+}
+
+/**
+ * Project.storageObjects
+ */
+export type Project$storageObjectsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StorageObject
+   */
+  select?: Prisma.StorageObjectSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StorageObject
+   */
+  omit?: Prisma.StorageObjectOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StorageObjectInclude<ExtArgs> | null
+  where?: Prisma.StorageObjectWhereInput
+  orderBy?: Prisma.StorageObjectOrderByWithRelationInput | Prisma.StorageObjectOrderByWithRelationInput[]
+  cursor?: Prisma.StorageObjectWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StorageObjectScalarFieldEnum | Prisma.StorageObjectScalarFieldEnum[]
 }
 
 /**

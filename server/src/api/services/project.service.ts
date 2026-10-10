@@ -20,6 +20,7 @@ import {
   ConcurrentJobLimitError,
 } from "@/lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "@/lib/pricing";
+import { deleteStoragePrefix, projectStoragePrefix, storageConfigured } from "@/lib/storageBucket";
 import {
   getBlobText,
   getBlob,
@@ -985,6 +986,8 @@ export async function deleteProject(
   }
   // Delete R2 blobs first; if this fails we abort before touching the DB.
   await deleteProjectBlobs(userId, projectId);
+  // The storage rows would cascade away with the project and leave the bytes.
+  if (storageConfigured()) await deleteStoragePrefix(projectStoragePrefix(projectId));
   // Before the rows go: the database would delete the domains, but not at Cloudflare or the edge.
   await releaseProjectDomains(projectId);
   // Also before the rows go: they are what says which AWS resources exist. Throws

@@ -166,6 +166,23 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
 
+  // Tau Cloud Storage (doc/TAU_CLOUD_STORAGE.md). Everything is optional: the
+  // `/storage` surface is simply not mounted without a bucket.
+  R2_STORAGE_BUCKET: z.string().min(1).optional(),
+  // A token scoped to the storage bucket. Falls back to the main R2 pair.
+  R2_STORAGE_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  // The address a generated app calls (`${TAU_STORAGE_URL}/uploads`). Public,
+  // like TAU_AI_URL: it is used from a sandbox and from a published function.
+  TAU_STORAGE_URL: z.string().url().optional(),
+  // Requests a minute per storage key.
+  STORAGE_RPM: z.coerce.number().int().positive().default(300),
+  STORAGE_UPLOAD_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  STORAGE_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  STORAGE_URL_TTL_MAX_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Age at which an upload that was never confirmed is swept.
+  STORAGE_PENDING_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+
   // Credits / billing — when false, credit enforcement is off (shadow mode).
   CREDITS_ENFORCE: z
     .string()

@@ -95,6 +95,28 @@ export const LOGO_GENERATION_FEE_MICRO = 20n * MICRO;
 // Max concurrent projects a FREE-plan user may own (PRO is unlimited).
 export const FREE_PLAN_MAX_PROJECTS = 3;
 
+/** Mirrors `enum Plan` in prisma/schema.prisma, declared locally for the reason
+ *  given on {@link Effort}. The exhaustive Records below flag a new plan. */
+export type StoragePlan = "FREE" | "PRO";
+
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+
+// Tau Cloud Storage allowances (doc/TAU_CLOUD_STORAGE.md D6). Sized for a free
+// R2 account (10 GB shared with everything else); raise them when that changes.
+/** Bytes an account may keep across all its projects and environments. */
+export const STORAGE_QUOTA_BYTES: Record<StoragePlan, number> = {
+  FREE: 100 * MB,
+  PRO: 5 * GB,
+};
+/** Largest single file. */
+export const STORAGE_MAX_FILE_BYTES: Record<StoragePlan, number> = {
+  FREE: 10 * MB,
+  PRO: 100 * MB,
+};
+/** What one project's preview environment may hold (counts toward the total). */
+export const STORAGE_PREVIEW_QUOTA_BYTES = 50 * MB;
+
 export const RESERVE_CEILING_BY_EFFORT: Record<Effort, bigint> = {
   LOW: 5_000n * MICRO,
   HIGH: 25_000n * MICRO,

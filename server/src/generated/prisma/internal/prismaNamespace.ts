@@ -425,7 +425,9 @@ export const ModelName = {
   Subscription: 'Subscription',
   ApiKey: 'ApiKey',
   GatewayUsage: 'GatewayUsage',
-  WebhookEvent: 'WebhookEvent'
+  WebhookEvent: 'WebhookEvent',
+  StorageKey: 'StorageKey',
+  StorageObject: 'StorageObject'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -441,7 +443,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "projectResource" | "siteName" | "domain" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
+    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "projectResource" | "siteName" | "domain" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent" | "storageKey" | "storageObject"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2591,6 +2593,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    StorageKey: {
+      payload: Prisma.$StorageKeyPayload<ExtArgs>
+      fields: Prisma.StorageKeyFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StorageKeyFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StorageKeyFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        findFirst: {
+          args: Prisma.StorageKeyFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StorageKeyFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        findMany: {
+          args: Prisma.StorageKeyFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>[]
+        }
+        create: {
+          args: Prisma.StorageKeyCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        createMany: {
+          args: Prisma.StorageKeyCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StorageKeyCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>[]
+        }
+        delete: {
+          args: Prisma.StorageKeyDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        update: {
+          args: Prisma.StorageKeyUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        deleteMany: {
+          args: Prisma.StorageKeyDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StorageKeyUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StorageKeyUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>[]
+        }
+        upsert: {
+          args: Prisma.StorageKeyUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageKeyPayload>
+        }
+        aggregate: {
+          args: Prisma.StorageKeyAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStorageKey>
+        }
+        groupBy: {
+          args: Prisma.StorageKeyGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorageKeyGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StorageKeyCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorageKeyCountAggregateOutputType> | number
+        }
+      }
+    }
+    StorageObject: {
+      payload: Prisma.$StorageObjectPayload<ExtArgs>
+      fields: Prisma.StorageObjectFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StorageObjectFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StorageObjectFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        findFirst: {
+          args: Prisma.StorageObjectFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StorageObjectFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        findMany: {
+          args: Prisma.StorageObjectFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>[]
+        }
+        create: {
+          args: Prisma.StorageObjectCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        createMany: {
+          args: Prisma.StorageObjectCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StorageObjectCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>[]
+        }
+        delete: {
+          args: Prisma.StorageObjectDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        update: {
+          args: Prisma.StorageObjectUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        deleteMany: {
+          args: Prisma.StorageObjectDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StorageObjectUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StorageObjectUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>[]
+        }
+        upsert: {
+          args: Prisma.StorageObjectUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StorageObjectPayload>
+        }
+        aggregate: {
+          args: Prisma.StorageObjectAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStorageObject>
+        }
+        groupBy: {
+          args: Prisma.StorageObjectGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorageObjectGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StorageObjectCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StorageObjectCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2688,6 +2838,8 @@ export const ProjectScalarFieldEnum = {
   sandboxExpiresAt: 'sandboxExpiresAt',
   templateKey: 'templateKey',
   aiEnabled: 'aiEnabled',
+  storageEnabled: 'storageEnabled',
+  storageSuspendedAt: 'storageSuspendedAt',
   designConfig: 'designConfig',
   instructions: 'instructions',
   previewImageKey: 'previewImageKey',
@@ -3115,6 +3267,41 @@ export const WebhookEventScalarFieldEnum = {
 } as const
 
 export type WebhookEventScalarFieldEnum = (typeof WebhookEventScalarFieldEnum)[keyof typeof WebhookEventScalarFieldEnum]
+
+
+export const StorageKeyScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  env: 'env',
+  lookupHash: 'lookupHash',
+  ciphertext: 'ciphertext',
+  prefix: 'prefix',
+  status: 'status',
+  lastUsedAt: 'lastUsedAt',
+  createdAt: 'createdAt',
+  revokeAfter: 'revokeAfter',
+  revokedAt: 'revokedAt'
+} as const
+
+export type StorageKeyScalarFieldEnum = (typeof StorageKeyScalarFieldEnum)[keyof typeof StorageKeyScalarFieldEnum]
+
+
+export const StorageObjectScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  env: 'env',
+  key: 'key',
+  contentType: 'contentType',
+  sizeBytes: 'sizeBytes',
+  status: 'status',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StorageObjectScalarFieldEnum = (typeof StorageObjectScalarFieldEnum)[keyof typeof StorageObjectScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -3557,6 +3744,34 @@ export type ListEnumApiKeyStatusFieldRefInput<$PrismaModel> = FieldRefInputType<
 
 
 /**
+ * Reference to a field of type 'StorageEnv'
+ */
+export type EnumStorageEnvFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorageEnv'>
+    
+
+
+/**
+ * Reference to a field of type 'StorageEnv[]'
+ */
+export type ListEnumStorageEnvFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorageEnv[]'>
+    
+
+
+/**
+ * Reference to a field of type 'StorageObjectStatus'
+ */
+export type EnumStorageObjectStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorageObjectStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'StorageObjectStatus[]'
+ */
+export type ListEnumStorageObjectStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StorageObjectStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -3749,6 +3964,8 @@ export type GlobalOmitConfig = {
   apiKey?: Prisma.ApiKeyOmit
   gatewayUsage?: Prisma.GatewayUsageOmit
   webhookEvent?: Prisma.WebhookEventOmit
+  storageKey?: Prisma.StorageKeyOmit
+  storageObject?: Prisma.StorageObjectOmit
 }
 
 /* Types for Logging */

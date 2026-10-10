@@ -79,7 +79,9 @@ export const ModelName = {
   Subscription: 'Subscription',
   ApiKey: 'ApiKey',
   GatewayUsage: 'GatewayUsage',
-  WebhookEvent: 'WebhookEvent'
+  WebhookEvent: 'WebhookEvent',
+  StorageKey: 'StorageKey',
+  StorageObject: 'StorageObject'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -156,6 +158,8 @@ export const ProjectScalarFieldEnum = {
   sandboxExpiresAt: 'sandboxExpiresAt',
   templateKey: 'templateKey',
   aiEnabled: 'aiEnabled',
+  storageEnabled: 'storageEnabled',
+  storageSuspendedAt: 'storageSuspendedAt',
   designConfig: 'designConfig',
   instructions: 'instructions',
   previewImageKey: 'previewImageKey',
@@ -583,6 +587,41 @@ export const WebhookEventScalarFieldEnum = {
 } as const
 
 export type WebhookEventScalarFieldEnum = (typeof WebhookEventScalarFieldEnum)[keyof typeof WebhookEventScalarFieldEnum]
+
+
+export const StorageKeyScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  env: 'env',
+  lookupHash: 'lookupHash',
+  ciphertext: 'ciphertext',
+  prefix: 'prefix',
+  status: 'status',
+  lastUsedAt: 'lastUsedAt',
+  createdAt: 'createdAt',
+  revokeAfter: 'revokeAfter',
+  revokedAt: 'revokedAt'
+} as const
+
+export type StorageKeyScalarFieldEnum = (typeof StorageKeyScalarFieldEnum)[keyof typeof StorageKeyScalarFieldEnum]
+
+
+export const StorageObjectScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  env: 'env',
+  key: 'key',
+  contentType: 'contentType',
+  sizeBytes: 'sizeBytes',
+  status: 'status',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StorageObjectScalarFieldEnum = (typeof StorageObjectScalarFieldEnum)[keyof typeof StorageObjectScalarFieldEnum]
 
 
 export const SortOrder = {

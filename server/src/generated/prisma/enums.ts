@@ -239,3 +239,20 @@ export const ApiKeyStatus = {
 } as const
 
 export type ApiKeyStatus = (typeof ApiKeyStatus)[keyof typeof ApiKeyStatus]
+
+
+export const StorageEnv = {
+  PREVIEW: 'PREVIEW',
+  LIVE: 'LIVE'
+} as const
+
+export type StorageEnv = (typeof StorageEnv)[keyof typeof StorageEnv]
+
+
+export const StorageObjectStatus = {
+  PENDING: 'PENDING',
+  READY: 'READY',
+  DELETING: 'DELETING'
+} as const
+
+export type StorageObjectStatus = (typeof StorageObjectStatus)[keyof typeof StorageObjectStatus]

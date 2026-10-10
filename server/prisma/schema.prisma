@@ -117,6 +117,16 @@ model Project {
   /// never persisted to the manifest, so it has to be rewritten each rebuild.
   aiEnabled Boolean @default(false)
 
+  /// Set by the `enable_storage` tool. Drives re-injection of TAU_STORAGE_KEY
+  /// and TAU_STORAGE_URL, as `aiEnabled` does for the AI key.
+  storageEnabled     Boolean   @default(false)
+  /// Set by an admin (or by suspending the site). No new uploads or download
+  /// addresses while set; files are kept.
+  storageSuspendedAt DateTime?
+
+  storageKeys    StorageKey[]
+  storageObjects StorageObject[]
+
   /// What the user chose about the app's look — a style, an accent, light or
   /// dark, a font pairing, the three feel dials, or a DESIGN.md they brought
   /// (`DesignConfig` in worker/design/types.ts). Null means they chose nothing
@@ -1061,4 +1071,69 @@ model WebhookEvent {
   payload     Json
   processedAt DateTime?
   createdAt   DateTime  @default(now())
+}
+
+
+// ───────────────────────────── Tau Cloud Storage ─────────────────────────────
+// doc/TAU_CLOUD_STORAGE.md
+
+enum StorageEnv {
+  PREVIEW
+  LIVE
+}
+
+enum StorageObjectStatus {
+  /// Address handed out, bytes not confirmed.
+  PENDING
+  READY
+  /// Row kept until the R2 delete succeeds.
+  DELETING
+}
+
+/// A project's credential for tau's /storage endpoint. One usable key per
+/// project and environment. Stored like ApiKey: reversible, because tau writes
+/// the plaintext into the sandbox and, later, the published function.
+model StorageKey {
+  id         String       @id @default(uuid())
+  projectId  String
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// The owner. Denormalised: the allowance and suspension are per owner, and
+  /// the hot path should not join to find out whose key this is.
+  userId     String
+  env        StorageEnv
+  lookupHash String       @unique
+  ciphertext String
+  prefix     String
+  status     ApiKeyStatus @default(ACTIVE)
+
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  revokeAfter DateTime?
+  revokedAt   DateTime?
+
+  @@index([projectId, env, status])
+}
+
+/// One row per stored file. The R2 key is `apps/{projectId}/{env}/{id}`; `key`
+/// is the app's own name for the file and never reaches R2.
+///
+/// At most one READY row per (projectId, env, key) is enforced by a partial
+/// unique index written by hand in the migration; Prisma cannot express it.
+model StorageObject {
+  id          String              @id @default(uuid())
+  projectId   String
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  env         StorageEnv
+  key         String
+  contentType String
+  sizeBytes   BigInt
+  status      StorageObjectStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([projectId, env, status, key])
+  @@index([userId, status])
+  @@index([status, createdAt])
 }

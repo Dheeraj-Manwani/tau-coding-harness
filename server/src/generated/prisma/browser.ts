@@ -200,3 +200,19 @@ export type GatewayUsage = Prisma.GatewayUsageModel
  * 
  */
 export type WebhookEvent = Prisma.WebhookEventModel
+/**
+ * Model StorageKey
+ * A project's credential for tau's /storage endpoint. One usable key per
+ * project and environment. Stored like ApiKey: reversible, because tau writes
+ * the plaintext into the sandbox and, later, the published function.
+ */
+export type StorageKey = Prisma.StorageKeyModel
+/**
+ * Model StorageObject
+ * One row per stored file. The R2 key is `apps/{projectId}/{env}/{id}`; `key`
+ * is the app's own name for the file and never reaches R2.
+ * 
+ * At most one READY row per (projectId, env, key) is enforced by a partial
+ * unique index written by hand in the migration; Prisma cannot express it.
+ */
+export type StorageObject = Prisma.StorageObjectModel

@@ -13,6 +13,8 @@ import billingRoutes from "./routes/billing.routes";
 import webhookRoutes from "./routes/webhook.routes";
 import gatewayRoutes from "./routes/gateway.routes";
 import aiRoutes from "./routes/ai.routes";
+import storageRoutes from "./routes/storage.routes";
+import { storageConfigured } from "@/lib/storageBucket";
 import accountRoutes from "./routes/account.routes";
 import { getAvatar } from "./controllers/account.controller";
 import siteRoutes, { siteHostMiddleware } from "./routes/sites.routes";
@@ -26,6 +28,7 @@ import { captureException, log } from "./lib/log";
 import { reapStaleJobs } from "./lib/jobs";
 import { runAlertCheck } from "./lib/alerts";
 import { sweepAttachments } from "./services/attachment.service";
+import { sweepStorage } from "./services/storage.service";
 import { runDeploySweep } from "./lib/deploySweep";
 import { runEdgeReconcile } from "@/lib/edgeRegistry";
 import { runDomainVerificationSafely } from "./services/domain.service";
@@ -79,6 +82,15 @@ async function runAttachmentSweep(): Promise<void> {
   }
 }
 
+async function runStorageSweep(): Promise<void> {
+  try {
+    const { stale, deleted } = await sweepStorage();
+    if (stale > 0 || deleted > 0) log.info("storage.sweep", { stale, deleted });
+  } catch (err) {
+    captureException(err, { detail: "storage sweep failed" });
+  }
+}
+
 /**
  * Reap stranded jobs and reclaim stuck credit holds on startup, then every hour.
  * Extracted from top-level so combined (economy) mode can start it explicitly
@@ -99,6 +111,10 @@ export function startApiBackground(): void {
 
   void runAttachmentSweep();
   setInterval(() => void runAttachmentSweep(), 60 * 60 * 1000);
+
+  // Unconfirmed uploads and failed deletes in the storage bucket. Not run on
+  // boot: it deletes bytes, and nothing it would find is urgent.
+  if (storageConfigured()) setInterval(() => void runStorageSweep(), 60 * 60 * 1000);
 
   // Reclaim R2 objects behind superseded and failed deployments. Not run on
   // boot: it deletes bytes, and nothing it would find is urgent enough to do
@@ -235,6 +251,17 @@ export function buildApp(
     app.use("/v1", gatewayRoutes);
     app.use("/ai", aiRoutes);
     log.info("gateway.ready", { enforce: env.GATEWAY_ENFORCE });
+  }
+
+  // Tau Cloud Storage authenticates with a `tau_st_*` key, so it sits above
+  // requireAuth too. Fails closed like the gateway: an unmounted route 404s.
+  if (!storageConfigured()) {
+    log.info("storage.disabled", { reason: "R2_STORAGE_BUCKET is not set" });
+  } else if (!keyEncryptionConfigured()) {
+    log.warn("storage.disabled", { reason: "TAU_KEY_ENC_SECRET is not set" });
+  } else {
+    app.use("/storage", storageRoutes);
+    log.info("storage.ready", { bucket: env.R2_STORAGE_BUCKET });
   }
 
   // Economy: mount extra self-authenticating routes (the SSE event stream +

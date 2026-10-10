@@ -732,6 +732,40 @@ export type BigIntNullableWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedBigIntNullableFilter<$PrismaModel>
 }
 
+export type EnumStorageEnvFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageEnv | Prisma.EnumStorageEnvFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel> | $Enums.StorageEnv
+}
+
+export type EnumStorageEnvWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageEnv | Prisma.EnumStorageEnvFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageEnvWithAggregatesFilter<$PrismaModel> | $Enums.StorageEnv
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel>
+}
+
+export type EnumStorageObjectStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageObjectStatus | Prisma.EnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel> | $Enums.StorageObjectStatus
+}
+
+export type EnumStorageObjectStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageObjectStatus | Prisma.EnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageObjectStatusWithAggregatesFilter<$PrismaModel> | $Enums.StorageObjectStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -1407,6 +1441,40 @@ export type NestedBigIntNullableWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedBigIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedBigIntNullableFilter<$PrismaModel>
   _max?: Prisma.NestedBigIntNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumStorageEnvFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageEnv | Prisma.EnumStorageEnvFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel> | $Enums.StorageEnv
+}
+
+export type NestedEnumStorageEnvWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageEnv | Prisma.EnumStorageEnvFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageEnv[] | Prisma.ListEnumStorageEnvFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageEnvWithAggregatesFilter<$PrismaModel> | $Enums.StorageEnv
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStorageEnvFilter<$PrismaModel>
+}
+
+export type NestedEnumStorageObjectStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageObjectStatus | Prisma.EnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel> | $Enums.StorageObjectStatus
+}
+
+export type NestedEnumStorageObjectStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StorageObjectStatus | Prisma.EnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StorageObjectStatus[] | Prisma.ListEnumStorageObjectStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStorageObjectStatusWithAggregatesFilter<$PrismaModel> | $Enums.StorageObjectStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStorageObjectStatusFilter<$PrismaModel>
 }
 
 

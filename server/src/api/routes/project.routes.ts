@@ -33,6 +33,7 @@ import * as identity from "../controllers/identity.controller";
 import * as domainRoutes from "../controllers/domain.controller";
 import * as context from "../controllers/context.controller";
 import * as design from "../controllers/design.controller";
+import * as storageOwner from "../controllers/storageOwner.controller";
 import {
   visualEditRateLimiter,
   publishRateLimiter,
@@ -91,6 +92,12 @@ router.post("/:projectId/jobs/:jobId/answer", submitJobAnswer);
 // Third-party API keys. Values travel only in these request bodies — never
 // through `answer`, which is persisted into the chat transcript.
 router.post("/:projectId/jobs/:jobId/secrets", submitSecretAnswer);
+// Tools -> Storage: the owner view of the files their app has stored.
+router.get("/:projectId/storage", storageOwner.getOverview);
+router.get("/:projectId/storage/files", storageOwner.listFiles);
+router.post("/:projectId/storage/files/url", storageOwner.fileUrl);
+router.post("/:projectId/storage/files/delete", storageOwner.deleteFiles);
+router.post("/:projectId/storage/clear", storageOwner.clearPreview);
 router.get("/:projectId/secrets", listSecrets);
 router.put("/:projectId/secrets/:name", setSecret);
 router.delete("/:projectId/secrets/:name", deleteSecret);

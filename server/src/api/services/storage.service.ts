@@ -348,6 +348,29 @@ export async function deleteFiles(ctx: StorageCtx, input: { keys?: unknown; pref
   return { deleted: rows.length };
 }
 
+/** Delete every file in the environment: the owner's "clear preview files". */
+export async function clearFiles(ctx: StorageCtx): Promise<{ deleted: number }> {
+  let deleted = 0;
+  for (;;) {
+    const rows = await prisma.storageObject.findMany({
+      where: { ...scope(ctx), status: { in: ["READY", "PENDING"] } },
+      select: { id: true, projectId: true, env: true },
+      take: MAX_DELETE_KEYS,
+    });
+    if (rows.length === 0) break;
+    await prisma.storageObject.updateMany({
+      where: { id: { in: rows.map((r) => r.id) }, status: { in: ["READY", "PENDING"] } },
+      data: { status: "DELETING" },
+    });
+    deleted += rows.length;
+    // A page that could not be removed from R2 stays DELETING for the sweep; stop
+    // rather than loop on it.
+    if ((await finishDeleting(rows)) < rows.length) break;
+  }
+  log.info("storage.cleared", { projectId: ctx.projectId, env: ctx.env, count: deleted });
+  return { deleted };
+}
+
 export async function usage(ctx: StorageCtx) {
   const [plan, usedBytes, fileCount] = await Promise.all([
     planFor(ctx.userId),

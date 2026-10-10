@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
 import { useDeleteProject } from "@/src/features/project/api";
+import { useProjectStorage } from "@/src/features/project/storage";
 import type { ProjectListItem } from "@/src/features/project/types";
 
 interface DeleteProjectDialogProps {
@@ -30,6 +31,9 @@ export function DeleteProjectDialog({
   onDeleted,
 }: DeleteProjectDialogProps) {
   const deleteProject = useDeleteProject();
+  // Only asked for while the dialog is open: stored files are deleted with the project.
+  const storage = useProjectStorage(project?.id, open);
+  const storedFiles = (storage.data?.environments ?? []).reduce((n, e) => n + e.fileCount, 0);
 
   const handleDelete = (event: MouseEvent) => {
     // Prevent Radix from auto-closing the dialog on Action click so it stays
@@ -68,6 +72,12 @@ export function DeleteProjectDialog({
             and all its messages, files, and history will be permanently deleted
             and{" "}
             <span className="text-red-400">cannot be recovered</span>.
+            {storedFiles > 0 && (
+              <>
+                {" "}
+                The {storedFiles === 1 ? "1 file" : `${storedFiles} files`} its app has stored will be deleted too.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

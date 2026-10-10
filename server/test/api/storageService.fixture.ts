@@ -8,6 +8,11 @@ import { beforeEach, afterAll, describe, expect, mock, test } from "bun:test";
 import express from "express";
 
 type Row = Record<string, any>;
+const PA = "00000000-0000-4000-8000-00000000000a";
+const PB = "00000000-0000-4000-8000-00000000000b";
+const PC = "00000000-0000-4000-8000-00000000000c";
+const PNONE = "00000000-0000-4000-8000-0000000000ff";
+const ids: Record<string, string> = { A: PA, B: PB, C: PC, nope: PNONE };
 const tables: Record<"storageObject" | "storageKey", Row[]> = { storageObject: [], storageKey: [] };
 const projects: Record<string, Row> = {};
 const billing: Record<string, Row> = {};
@@ -61,6 +66,15 @@ function table(name: "storageObject" | "storageKey") {
       for (const r of hit) rows.splice(rows.indexOf(r), 1);
       return { count: hit.length };
     },
+    groupBy: async ({ where }: Row) => {
+      const groups = new Map<string, Row[]>();
+      for (const r of rows.filter((x) => matches(x, where))) groups.set(r.env, [...(groups.get(r.env) ?? []), r]);
+      return [...groups].map(([env, rs]) => ({
+        env,
+        _count: { _all: rs.length },
+        _sum: { sizeBytes: rs.reduce((n, r) => n + r.sizeBytes, 0n) },
+      }));
+    },
     aggregate: async ({ where }: Row) => ({
       _sum: { sizeBytes: rows.filter((r) => matches(r, where)).reduce((n, r) => n + r.sizeBytes, 0n) },
     }),
@@ -70,7 +84,7 @@ function table(name: "storageObject" | "storageKey") {
 const fakePrisma: Row = {
   storageObject: table("storageObject"),
   storageKey: table("storageKey"),
-  project: { findUnique: async ({ where }: Row) => projects[where.id] ?? null },
+  project: { findUnique: async ({ where }: Row) => Object.values(projects).find((p) => p.id === where.id) ?? null },
   billingAccount: { findUnique: async ({ where }: Row) => billing[where.userId] ?? null },
   $transaction: async (cb: (tx: Row) => unknown) => cb(fakePrisma),
 };
@@ -98,6 +112,15 @@ mock.module("@/lib/storageBucket", () => ({
   },
 }));
 
+const { Errors } = await import("@/api/lib/errors");
+mock.module("@/api/middleware/auth.middleware", () => ({
+  requireUserId: (req: express.Request) => {
+    const id = req.headers["x-test-user"];
+    if (typeof id !== "string") throw Errors.unauthorized();
+    return id;
+  },
+}));
+const ownerCtl = await import("@/api/controllers/storageOwner.controller");
 const { default: routes } = await import("@/api/routes/storage.routes");
 const { __resetStorageLimiter } = await import("@/api/middleware/storageKey.middleware");
 const { ensureStorageKey, rotateStorageKey, revokeStorageKeys } = await import("@/lib/storageKeys");
@@ -106,8 +129,19 @@ const { sweepStorage } = await import("@/api/services/storage.service");
 const app = express();
 app.use(express.json());
 app.use("/storage", routes);
+const projectRouter = express.Router();
+projectRouter.get("/:projectId/storage", ownerCtl.getOverview);
+projectRouter.get("/:projectId/storage/files", ownerCtl.listFiles);
+projectRouter.post("/:projectId/storage/files/url", ownerCtl.fileUrl);
+projectRouter.post("/:projectId/storage/files/delete", ownerCtl.deleteFiles);
+projectRouter.post("/:projectId/storage/clear", ownerCtl.clearPreview);
+app.use("/project", projectRouter);
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  res.status(err.statusCode ?? 500).json({ error: err.message });
+});
 const server = app.listen(0);
-const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/storage`;
+const root = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+const base = `${root}/storage`;
 afterAll(() => server.close());
 
 const call = (key: string | null, method: string, path: string, body?: unknown) =>
@@ -133,12 +167,13 @@ beforeEach(async () => {
   bucket.clear();
   signed.length = 0;
   __resetStorageLimiter();
-  projects.A = { id: "A", storageSuspendedAt: null };
-  projects.B = { id: "B", storageSuspendedAt: null };
+  projects.A = { id: PA, userId: "owner", storageEnabled: true, storageSuspendedAt: null };
+  projects.B = { id: PB, userId: "owner", storageEnabled: true, storageSuspendedAt: null };
+  projects.C = { id: PC, userId: "someone-else", storageEnabled: true, storageSuspendedAt: null };
   billing.owner = { plan: "FREE" };
-  previewA = (await ensureStorageKey("A", "owner", "PREVIEW")).key;
-  liveA = (await ensureStorageKey("A", "owner", "LIVE")).key;
-  previewB = (await ensureStorageKey("B", "owner", "PREVIEW")).key;
+  previewA = (await ensureStorageKey(PA, "owner", "PREVIEW")).key;
+  liveA = (await ensureStorageKey(PA, "owner", "LIVE")).key;
+  previewB = (await ensureStorageKey(PB, "owner", "PREVIEW")).key;
 });
 
 describe("upload flow", () => {
@@ -342,7 +377,7 @@ describe("keys and isolation", () => {
     });
     expect((await res.json() as any).files).toEqual([]);
     expect((await call(previewA, "POST", "/uploads", { key: "z", size: 1, projectId: "B", env: "LIVE" })).status).toBe(201);
-    expect(tables.storageObject.at(-1)).toMatchObject({ projectId: "A", env: "PREVIEW" });
+    expect(tables.storageObject.at(-1)).toMatchObject({ projectId: PA, env: "PREVIEW" });
   });
 
   test("a completion id from another project is not found", async () => {
@@ -351,12 +386,12 @@ describe("keys and isolation", () => {
   });
 
   test("a revoked key and a closed grace window are refused; the grace window works", async () => {
-    const rotated = await rotateStorageKey("A", "owner", "PREVIEW");
+    const rotated = await rotateStorageKey(PA, "owner", "PREVIEW");
     expect((await call(previewA, "GET", "/files")).status).toBe(200); // old key, inside grace
     expect((await call(rotated.key, "GET", "/files")).status).toBe(200);
     tables.storageKey.find((k) => k.status === "ROTATING")!.revokeAfter = new Date(Date.now() - 1000);
     expect((await call(previewA, "GET", "/files")).status).toBe(401);
-    await revokeStorageKeys("A");
+    await revokeStorageKeys(PA);
     expect((await call(rotated.key, "GET", "/files")).status).toBe(401);
   });
 
@@ -393,5 +428,110 @@ describe("sweep", () => {
     const left = tables.storageObject.map((r) => r.id);
     expect(left).toEqual([fresh.json.id]);
     expect(bucket.size).toBe(0);
+  });
+});
+
+describe("the owner routes (Tools -> Storage)", () => {
+  const own = (method: string, path: string, body?: unknown, user: string | null = "owner") =>
+    fetch(`${root}/project${path.replace(/^\/(A|B|C|nope)\//, (_m, k: string) => `/${ids[k]}/`)}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...(user ? { "x-test-user": user } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: (await r.json()) as any }));
+
+  test("the overview reports usage, plan limits and the files per environment", async () => {
+    await put(previewA, "a", 100);
+    await put(previewA, "b", 50);
+    const o = await own("GET", "/A/storage");
+    expect(o.status).toBe(200);
+    expect(o.json).toMatchObject({
+      enabled: true,
+      suspended: false,
+      usage: { usedBytes: 150, quotaBytes: 100 * 1024 * 1024, maxFileBytes: 10 * 1024 * 1024 },
+    });
+    expect(o.json.environments[0]).toEqual({ env: "PREVIEW", fileCount: 2, usedBytes: 150 });
+  });
+
+  test("Live appears once a live key exists, and not before", async () => {
+    // beforeEach minted a LIVE key for A and none for B.
+    expect((await own("GET", "/A/storage")).json.environments.map((e: any) => e.env)).toEqual(["PREVIEW", "LIVE"]);
+    expect((await own("GET", "/B/storage")).json.environments.map((e: any) => e.env)).toEqual(["PREVIEW"]);
+  });
+
+  test("another user's project and an unknown one are both 404; no session is 401", async () => {
+    expect((await own("GET", "/C/storage")).status).toBe(404);
+    expect((await own("GET", "/nope/storage")).status).toBe(404);
+    expect((await own("GET", "/C/storage/files")).status).toBe(404);
+    expect((await own("POST", "/C/storage/clear")).status).toBe(404);
+    expect((await own("POST", "/C/storage/files/delete", { keys: ["x"] })).status).toBe(404);
+    expect((await own("POST", "/C/storage/files/url", { key: "x" })).status).toBe(404);
+    expect((await own("GET", "/A/storage", undefined, null)).status).toBe(401);
+  });
+
+  test("the listing is the one the app key sees, per environment", async () => {
+    await put(previewA, "docs/a.txt", 3, "text/plain");
+    await put(liveA, "live/b.txt", 3, "text/plain");
+    const viaKey = (await call(previewA, "GET", "/files")).json.files;
+    expect((await own("GET", "/A/storage/files?env=PREVIEW")).json.files).toEqual(viaKey);
+    expect((await own("GET", "/A/storage/files?env=LIVE")).json.files.map((f: any) => f.key)).toEqual(["live/b.txt"]);
+    expect((await own("GET", "/A/storage/files?prefix=docs/")).json.files).toHaveLength(1);
+  });
+
+  test("a preview address opens a picture inline and downloads on request", async () => {
+    await put(previewA, "p.png", 3, "image/png");
+    expect(decodeURIComponent((await own("POST", "/A/storage/files/url", { key: "p.png" })).json.url)).toContain("inline");
+    expect(decodeURIComponent((await own("POST", "/A/storage/files/url", { key: "p.png", download: true })).json.url)).toContain("attachment");
+    expect((await own("POST", "/A/storage/files/url", { key: "missing" })).status).toBe(404);
+  });
+
+  test("delete by keys and by prefix; the body must name exactly one of them", async () => {
+    await put(previewA, "t/a", 1);
+    await put(previewA, "t/b", 1);
+    await put(previewA, "k", 1);
+    expect((await own("POST", "/A/storage/files/delete", { keys: ["k"] })).json.deleted).toBe(1);
+    expect((await own("POST", "/A/storage/files/delete", { prefix: "t/" })).json.deleted).toBe(2);
+    expect((await own("POST", "/A/storage/files/delete", {})).status).toBe(400);
+    expect((await own("POST", "/A/storage/files/delete", { keys: ["a"], prefix: "b" })).status).toBe(400);
+    expect(bucket.size).toBe(0);
+  });
+
+  test("clear removes the preview files and never touches live ones", async () => {
+    await put(previewA, "p1", 1);
+    await put(previewA, "p2", 1);
+    await put(liveA, "keep-me", 1);
+    await call(previewA, "POST", "/uploads", { key: "pending", size: 1 });
+    const res = await own("POST", "/A/storage/clear");
+    expect(res.json.deleted).toBe(3); // two files and the unconfirmed upload
+    expect((await call(previewA, "GET", "/files")).json.files).toEqual([]);
+    expect((await call(liveA, "GET", "/files")).json.files.map((f: any) => f.key)).toEqual(["keep-me"]);
+    expect(bucket.size).toBe(1);
+    // There is no way to ask it to clear Live.
+    expect((await own("POST", "/A/storage/clear", { env: "LIVE" })).json.deleted).toBe(0);
+    expect((await call(liveA, "GET", "/files")).json.files).toHaveLength(1);
+  });
+
+  test("suspended: the pane still lists, but no new addresses", async () => {
+    await put(previewA, "s.txt", 1, "text/plain");
+    projects.A!.storageSuspendedAt = new Date();
+    expect((await own("GET", "/A/storage")).json.suspended).toBe(true);
+    expect((await own("GET", "/A/storage/files")).json.files).toHaveLength(1);
+    expect((await own("POST", "/A/storage/files/url", { key: "s.txt" })).status).toBe(403);
+  });
+
+  test("a project that never enabled storage says so", async () => {
+    projects.B!.storageEnabled = false;
+    const o = await own("GET", "/B/storage");
+    expect(o.json.enabled).toBe(false);
+    expect(o.json.environments[0]).toEqual({ env: "PREVIEW", fileCount: 0, usedBytes: 0 });
+  });
+
+  test("the key never appears in an owner response", async () => {
+    await put(previewA, "x", 1);
+    const all = JSON.stringify([
+      (await own("GET", "/A/storage")).json,
+      (await own("GET", "/A/storage/files")).json,
+      (await own("POST", "/A/storage/files/url", { key: "x" })).json,
+    ]);
+    expect(all).not.toContain("tau_st_");
   });
 });

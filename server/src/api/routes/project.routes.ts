@@ -104,6 +104,8 @@ router.get(
   visualEditRateLimiter,
   deploy.nameAvailable,
 );
+// The live server's recent log lines, secrets masked (doc/PUBLISHING.md C14).
+router.get("/:projectId/deploy/logs", visualEditRateLimiter, deploy.getLogs);
 router.post("/:projectId/deploy", publishRateLimiter, deploy.publish);
 router.delete("/:projectId/deploy", deploy.unpublish);
 // The published database, as CSV files (doc/PUBLISHING.md 5.7).

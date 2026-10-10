@@ -50,6 +50,7 @@ import {
   PutRetentionPolicyCommand,
 } from "@aws-sdk/client-cloudwatch-logs";
 import { env } from "@/lib/env";
+import { redactAppLogs } from "@/lib/appLogs";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/log";
 import { ResourceKind } from "@/generated/prisma/enums";
@@ -507,7 +508,8 @@ export async function recentBackendLogs(projectId: string, sinceMs: number): Pro
     const lines = await have.api.recentLogs(logGroupName(projectId), sinceMs, 60);
     // Lambda's own START / END / REPORT lines say nothing about the app.
     const text = lines.filter((l) => l && !/^(START|END|REPORT|INIT_START) /.test(l)).join("\n");
-    return text.length <= 4_000 ? text : `…\n${text.slice(-4_000)}`;
+    const clipped = text.length <= 4_000 ? text : `…\n${text.slice(-4_000)}`;
+    return await redactAppLogs(projectId, clipped);
   } catch (err) {
     log.warn("lambda.logs_failed", { projectId, error: errorMessage(err).slice(0, 200) });
     return "";

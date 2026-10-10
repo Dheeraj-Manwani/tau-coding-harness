@@ -240,6 +240,8 @@ function PanelBody({
 
       <IdentitySection projectId={projectId} />
 
+      {status.backendPublished && <ServerLogs projectId={projectId} />}
+
       {status.databasePublished && <ExportData projectId={projectId} />}
 
       <button
@@ -605,6 +607,62 @@ function LiveUrl({
         <p className="mt-1.5 text-[11px] text-silver-600">
           {live.fileCount} files · {formatBytes(live.sizeBytes)}
         </p>
+      )}
+    </div>
+  );
+}
+
+/** What the live server printed in the last hour. Loaded on request, never polled. */
+function ServerLogs({ projectId }: { projectId: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [logs, setLogs] = useState<string | null>(null);
+
+  const load = async () => {
+    if (!projectId || busy) return;
+    setBusy(true);
+    try {
+      const res = await api.get<{ logs: string }>(`/project/${projectId}/deploy/logs`);
+      setLogs(res.data.logs);
+    } catch {
+      toast.error("Couldn't read the server's logs. Try again in a minute.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      <button
+        type="button"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next && logs === null) void load();
+        }}
+        className="flex w-full items-center justify-between text-foreground"
+      >
+        Server logs
+        <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mt-2">
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/30 p-2 font-mono text-[10px] text-silver-800">
+            {busy && logs === null
+              ? "Loading…"
+              : logs
+                ? logs
+                : "Nothing printed in the last hour. Secrets are hidden from these lines."}
+          </pre>
+          <button
+            type="button"
+            onClick={load}
+            disabled={busy}
+            className="mt-1.5 text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {busy ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
       )}
     </div>
   );

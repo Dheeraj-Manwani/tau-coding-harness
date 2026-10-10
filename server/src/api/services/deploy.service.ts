@@ -8,7 +8,7 @@
  * moves without a build: rolling back and taking the site offline.
  */
 import { createHash, randomBytes } from "node:crypto";
-import { backendHostingAvailable } from "@/lib/lambdaApps";
+import { backendHostingAvailable, recentBackendLogs } from "@/lib/lambdaApps";
 import { getDatabaseUrl } from "@/lib/neonApps";
 import { exportDatabase } from "@/lib/databaseExport";
 import { prisma } from "@/lib/prisma";
@@ -124,6 +124,8 @@ export interface DeployStatus {
   publishFee: { credits: number; due: boolean };
   /** The app has its own published database, so its data can be exported. */
   databasePublished: boolean;
+  /** The live version has a hosted server, so its recent log lines can be read. */
+  backendPublished: boolean;
 }
 
 /** Statuses a deployment can only have after it went live at least once. */
@@ -219,6 +221,25 @@ export async function exportPublishedData(projectId: string, userId: string): Pr
   }
 }
 
+const LOG_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * What the live app's server printed in the last hour, with secrets masked.
+ * `available` is false when the app has no hosted backend to read from.
+ */
+export async function getPublishedLogs(
+  projectId: string,
+  userId: string,
+): Promise<{ available: boolean; logs: string; sinceMinutes: number }> {
+  const project = await ownedProject(projectId, userId);
+  const live = project.liveDeploymentId
+    ? await prisma.deployment.findUnique({ where: { id: project.liveDeploymentId }, select: { backendUrl: true } })
+    : null;
+  const sinceMinutes = LOG_WINDOW_MS / 60_000;
+  if (!live?.backendUrl || !backendHostingAvailable()) return { available: false, logs: "", sinceMinutes };
+  return { available: true, logs: await recentBackendLogs(projectId, Date.now() - LOG_WINDOW_MS), sinceMinutes };
+}
+
 export async function getDeployStatus(
   projectId: string,
   userId: string,
@@ -256,6 +277,7 @@ export async function getDeployStatus(
     inProgress: deployments.some((d) => isInFlight(d.status)),
     unpublishedChanges,
     serverWarning: serverWarningFor(project.templateKey),
+    backendPublished: !!live?.backendUrl,
     databasePublished:
       (await prisma.projectResource.count({
         where: { projectId, kind: ResourceKind.NEON_PROJECT, deletedAt: null },

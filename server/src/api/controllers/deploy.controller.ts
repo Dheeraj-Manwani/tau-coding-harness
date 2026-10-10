@@ -86,6 +86,20 @@ export const rollback = async (
   }
 };
 
+export const getLogs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    res.status(200).set("Cache-Control", "no-store").json(await deployService.getPublishedLogs(projectId, userId));
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const exportData = async (
   req: Request,
   res: Response,

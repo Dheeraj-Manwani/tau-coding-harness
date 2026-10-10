@@ -71,6 +71,8 @@ export interface DeployStatus {
   publishFee: { credits: number; due: boolean };
   /** The app has its own published database, so its data can be exported. */
   databasePublished: boolean;
+  /** The live version has a hosted server, so its recent log lines can be read. */
+  backendPublished: boolean;
 }
 
 export interface PublishResult {

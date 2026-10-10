@@ -115,6 +115,7 @@ function model(rows: Row[], defaults: () => Row) {
 }
 
 const db = {
+  projectResource: { count: async () => 0 },
   project: model(tables.project, () => ({})),
   deployment: model(tables.deployment, () => ({
     status: "QUEUED",
@@ -603,6 +604,7 @@ describe("the status the panel reads", () => {
     expect(status.lastFailure).toEqual({
       error: "The build failed. Ask the agent to fix the errors, then publish again.",
       buildLog: "src/App.tsx(3,1): error TS1005: '}' expected.",
+      schemaChanges: null,
       changedSince: false,
     });
     // The log is kilobytes and only the newest failure is acted on, so it is

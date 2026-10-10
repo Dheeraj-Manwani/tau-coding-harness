@@ -161,7 +161,9 @@ describe("lambdaEntry", () => {
     const entry = lambdaEntry();
     expect(entry).toContain("import { streamHandle } from 'hono/aws-lambda'");
     expect(entry).toContain("import server from './index'");
-    expect(entry).toContain("server.fetch(c.req.raw)");
+    expect(entry).toContain("server.fetch(new Request(c.req.raw, { headers }))");
+    // The visitor's own Authorization comes back from where the router put it.
+    expect(entry).toContain("x-tau-authorization");
     expect(entry).toContain("export const handler = streamHandle(app)");
     expect(() => new Bun.Transpiler({ loader: "ts" }).transformSync(entry)).not.toThrow();
   });

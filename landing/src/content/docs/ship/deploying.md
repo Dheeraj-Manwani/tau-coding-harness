@@ -75,10 +75,37 @@ to put them on the site.
 The front-end. That is the whole app for a frontend-only project, and it is what
 most projects are.
 
-If your project has a **backend or a database**, publishing ships the front-end
-only: anything that calls your API or stores data will not work on the
-published site yet. The panel warns you before you publish. Server-side hosting
-is next; until then, use the GitHub route below for those projects.
+If your project has a **backend**, publishing also puts your server online. It
+is checked first, built into a single file, started on its own, and called once
+before your site switches over, so a server that fails to start never replaces
+the version that works. Your `/api` routes then answer at your site's address.
+
+A few things to know about a hosted backend:
+
+- It runs when a request arrives and sleeps when there are none, so the first
+  request after a quiet spell can take a second or two longer.
+- **No WebSockets.** Requests and responses only (streamed responses work).
+- A request body can be up to 6 MB, and one request can run for about 15 seconds.
+- Nothing is kept in memory or on disk between requests. Keep data in a
+  database, not in a variable or a file.
+- Your secrets are available to the server as environment variables, up to 4 KB
+  in total.
+
+If your project has a **database**, your published app gets its own, separate
+Postgres. **Preview data is not copied to it**: the published database starts
+empty, and what visitors add there is kept across every later publish.
+
+- Publishing again keeps your data. New tables are created, and a column you
+  add to a table is added to the published database as long as it is optional
+  or has a default.
+- If you remove a column, change its type, or add a required column with no
+  default, the publish stops and lists what changed. Nothing is published
+  until you choose **Publish anyway**. Tau then takes a restore point first,
+  adds what is new, and leaves your existing data as it is.
+- **Download your data** in the Publish panel gives you every table as a CSV
+  file, plus the schema.
+- Taking the app offline keeps the database. Deleting the project removes it
+  after 7 days.
 
 ## When a build fails
 
@@ -126,7 +153,7 @@ there is no tau runtime to depend on and nothing to eject from: so you can
 also push to GitHub and point Vercel, Netlify, Fly, Render or Cloudflare Pages
 at the repo. See [GitHub](/docs/ship/github).
 
-That is still the right route for a project with a server or a database.
+That is still the right route if you want to run the project on your own infrastructure.
 
 ## What about the environment?
 

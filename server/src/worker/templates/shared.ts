@@ -633,7 +633,7 @@ export const selectItemSchema = createSelectSchema(items)
 /** `server/index.ts` with the database wired in: `initDb()` at startup and a worked CRUD example. */
 export const HONO_DB_SERVER_INDEX = `import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db, initDb } from './db/client'
 import { items } from './db/schema'
 import { insertItemSchema } from './db/validation'
@@ -643,8 +643,12 @@ await initDb()
 
 const app = new Hono()
 
-// Health check.
-app.get('/api/health', (c) => c.json({ ok: true }))
+// Health check. It asks the database a question, so publishing can tell a server
+// that cannot reach its database from one that is running.
+app.get('/api/health', async (c) => {
+  await db.execute(sql\`select 1\`)
+  return c.json({ ok: true })
+})
 
 // --- Worked DB-backed CRUD example over the \`items\` table --------------------
 // The DB is already wired (server/db/*). Extend the schema + initDb() and add

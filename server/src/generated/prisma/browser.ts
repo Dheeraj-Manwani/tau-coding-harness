@@ -111,6 +111,14 @@ export type TokenUsage = Prisma.TokenUsageModel
  */
 export type Deployment = Prisma.DeploymentModel
 /**
+ * Model ProjectResource
+ * A cloud resource tau created for a project, recorded the moment it exists
+ * (doc/PUBLISHING.md C8). The row is how a half-finished publish is cleaned up
+ * and how a deleted project is removed from the cloud, so it is written before
+ * the next call is made, never after the whole publish succeeds.
+ */
+export type ProjectResource = Prisma.ProjectResourceModel
+/**
  * Model SiteName
  * Every address a project has ever held, kept after the project is gone.
  * 

@@ -80,6 +80,8 @@ import { readPreferences } from "../schemas/preferences.schema";
 import { syncDesignAfterThemeEdit } from "./design.service";
 import { removeSite } from "@/lib/edgeRegistry";
 import { releaseProjectDomains } from "./domain.service";
+import { removeBackend } from "@/lib/lambdaApps";
+import { scheduleDatabaseRemoval } from "@/lib/neonApps";
 import { invalidateSiteLookup } from "../lib/siteLookup";
 import type { Effort } from "@/generated/prisma/enums";
 
@@ -985,6 +987,13 @@ export async function deleteProject(
   await deleteProjectBlobs(userId, projectId);
   // Before the rows go: the database would delete the domains, but not at Cloudflare or the edge.
   await releaseProjectDomains(projectId);
+  // Also before the rows go: they are what says which AWS resources exist. Throws
+  // if AWS cannot be reached, so the delete is retried rather than leaving a
+  // running function nobody tracks.
+  await removeBackend(projectId);
+  // The database is kept for a few days more (DATABASE_DELETE_DELAY_DAYS), then
+  // the sweep removes it; the schedule must be written before the project's rows go.
+  await scheduleDatabaseRemoval(projectId);
   await projectRepo.deleteProject(projectId);
   // The address is gone for good (SiteName keeps the name), so the edge must stop serving it.
   if (project.slug) {

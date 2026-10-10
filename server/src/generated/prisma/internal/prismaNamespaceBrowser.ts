@@ -67,6 +67,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  ProjectResource: 'ProjectResource',
   SiteName: 'SiteName',
   Domain: 'Domain',
   LogoGeneration: 'LogoGeneration',
@@ -366,6 +367,14 @@ export const DeploymentScalarFieldEnum = {
   outputDir: 'outputDir',
   fileCount: 'fileCount',
   sizeBytes: 'sizeBytes',
+  target: 'target',
+  backendUrl: 'backendUrl',
+  backendVersion: 'backendVersion',
+  schemaSql: 'schemaSql',
+  schemaHash: 'schemaHash',
+  schemaChanges: 'schemaChanges',
+  databaseBranchId: 'databaseBranchId',
+  confirmSchemaChange: 'confirmSchemaChange',
   jobId: 'jobId',
   error: 'error',
   buildLog: 'buildLog',
@@ -376,6 +385,21 @@ export const DeploymentScalarFieldEnum = {
 } as const
 
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
+
+
+export const ProjectResourceScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  kind: 'kind',
+  providerId: 'providerId',
+  region: 'region',
+  secretCiphertext: 'secretCiphertext',
+  createdAt: 'createdAt',
+  deletedAt: 'deletedAt',
+  deleteAfter: 'deleteAfter'
+} as const
+
+export type ProjectResourceScalarFieldEnum = (typeof ProjectResourceScalarFieldEnum)[keyof typeof ProjectResourceScalarFieldEnum]
 
 
 export const SiteNameScalarFieldEnum = {

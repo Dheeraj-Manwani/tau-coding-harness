@@ -1,3 +1,4 @@
+import { IN_FLIGHT_DEPLOYMENT_STATUSES } from "@/lib/deployStatus";
 import { prisma } from "@/lib/prisma";
 import { bus } from "@/lib/bus";
 import { settle } from "@/lib/credits";
@@ -83,13 +84,7 @@ export async function terminateStrandedJob(
     .updateMany({
       where: {
         jobId,
-        status: {
-          in: [
-            DeploymentStatus.QUEUED,
-            DeploymentStatus.BUILDING,
-            DeploymentStatus.UPLOADING,
-          ],
-        },
+        status: { in: IN_FLIGHT_DEPLOYMENT_STATUSES },
       },
       data: {
         status: DeploymentStatus.FAILED,

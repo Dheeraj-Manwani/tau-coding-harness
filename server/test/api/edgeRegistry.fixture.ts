@@ -106,16 +106,16 @@ function project(over: Row = {}): Row {
 beforeEach(() => {
   projects.length = 0;
   deployments.length = 0;
-  deployments.push({ id: "d1", status: "READY", storagePrefix: PREFIX });
+  deployments.push({ id: "d1", status: "READY", storagePrefix: PREFIX, backendUrl: null });
   kv = new FakeKv();
   setKvClientForTests(kv);
 });
 
 describe("the record for each state a site can be in", () => {
-  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const, domains: [] };
+  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const, domains: [], backendUrl: null as string | null };
 
   test("live on the free plan carries the prefix and the badge", () => {
-    expect(recordFor(base)).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null });
+    expect(recordFor(base)).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null, api: null });
   });
 
   test("live on Pro has no badge", () => {
@@ -150,7 +150,7 @@ describe("the record for each state a site can be in", () => {
     const a = recordFor(base)!;
     expect(recordHash(a)).toBe(recordHash({ ...a }));
     expect(recordHash(a)).not.toBe(recordHash({ ...a, showBadge: false }));
-    expect(recordJson(a)).toBe(recordJson({ redirectTo: null, suspended: false, showBadge: true, prefix: PREFIX, slug: "my-app", projectId: "p1" }));
+    expect(recordJson(a)).toBe(recordJson({ api: null, redirectTo: null, suspended: false, showBadge: true, prefix: PREFIX, slug: "my-app", projectId: "p1" }));
   });
 });
 
@@ -159,7 +159,7 @@ describe("pushing a project", () => {
     project();
     await syncProject("p1");
 
-    expect(kv.record("my-app")).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null });
+    expect(kv.record("my-app")).toEqual({ projectId: "p1", slug: "my-app", prefix: PREFIX, showBadge: true, suspended: false, redirectTo: null, api: null });
   });
 
   test("taking it offline removes the record", async () => {
@@ -376,7 +376,7 @@ describe("the Cloudflare KV client", () => {
 });
 
 describe("custom domains", () => {
-  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, plan: "FREE" as const };
+  const base = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, backendUrl: null as string | null, plan: "FREE" as const };
   const WWW = { hostname: "www.example.com", isPrimary: false };
   const ROOT = { hostname: "example.com", isPrimary: false };
   const keysOf = (site: Parameters<typeof recordsFor>[0]) => recordsFor(site, DOMAIN).map((r) => r.key);
@@ -465,5 +465,52 @@ describe("custom domains", () => {
 
     expect(await reconcileEdge()).toEqual({ expected: 1, written: 0, removed: 1 });
     expect(kv.store.has("host:www.example.com")).toBe(false);
+  });
+});
+
+describe("an app with a backend", () => {
+  const URL_OK = "https://abc123.lambda-url.eu-west-1.on.aws";
+  const live = { id: "p1", slug: "my-app", siteSuspendedAt: null, livePrefix: PREFIX, backendUrl: URL_OK, plan: "FREE" as const, domains: [] };
+
+  test("the record carries the backend address of the live deployment", () => {
+    expect(recordFor(live)!.api).toEqual({ url: URL_OK });
+  });
+
+  test("a static deployment has no backend in its record", () => {
+    expect(recordFor({ ...live, backendUrl: null })!.api).toBeNull();
+  });
+
+  test("every hostname, custom domains included, gets the same backend", () => {
+    const out = recordsFor({ ...live, domains: [{ hostname: "www.example.com", isPrimary: false }] }, DOMAIN);
+    expect(out.map((r) => r.record!.api)).toEqual([{ url: URL_OK }, { url: URL_OK }]);
+  });
+
+  test("the backend address is part of what the reconciler compares", () => {
+    const a = recordFor(live)!;
+    expect(recordHash(a)).not.toBe(recordHash({ ...a, api: null }));
+    expect(recordHash(a)).not.toBe(recordHash({ ...a, api: { url: "https://other.lambda-url.eu-west-1.on.aws" } }));
+  });
+
+  test("pushing a project writes its live deployment's backend, and a rollback moves it", async () => {
+    deployments[0]!.backendUrl = URL_OK;
+    const p = project();
+    await syncProject("p1");
+    expect(kv.record("my-app").api).toEqual({ url: URL_OK });
+
+    // Rolled back to an earlier deployment with its own address: the record alone moves.
+    deployments.push({ id: "d0", status: "READY", storagePrefix: "tau/sites/u1/p1/d0", backendUrl: "https://old000.lambda-url.eu-west-1.on.aws" });
+    p.liveDeploymentId = "d0";
+    await syncProject("p1");
+    expect(kv.record("my-app").api).toEqual({ url: "https://old000.lambda-url.eu-west-1.on.aws" });
+    expect(kv.record("my-app").prefix).toBe("tau/sites/u1/p1/d0");
+  });
+
+  test("taking it offline removes the record, and with it the way to reach the backend", async () => {
+    deployments[0]!.backendUrl = URL_OK;
+    const p = project();
+    await syncProject("p1");
+    p.liveDeploymentId = null;
+    await syncProject("p1");
+    expect(kv.record("my-app")).toBeUndefined();
   });
 });

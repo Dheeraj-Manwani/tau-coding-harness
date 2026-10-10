@@ -413,6 +413,7 @@ export const ModelName = {
   Usage: 'Usage',
   TokenUsage: 'TokenUsage',
   Deployment: 'Deployment',
+  ProjectResource: 'ProjectResource',
   SiteName: 'SiteName',
   Domain: 'Domain',
   LogoGeneration: 'LogoGeneration',
@@ -440,7 +441,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "siteName" | "domain" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
+    modelProps: "user" | "oAuthAccount" | "refreshToken" | "project" | "projectSecret" | "message" | "attachment" | "feedback" | "toolCall" | "job" | "projectFile" | "contextCheckpoint" | "fragment" | "usage" | "tokenUsage" | "deployment" | "projectResource" | "siteName" | "domain" | "logoGeneration" | "billingAccount" | "creditLedger" | "creditHold" | "promoCode" | "promoRedemption" | "subscription" | "apiKey" | "gatewayUsage" | "webhookEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1625,6 +1626,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DeploymentCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DeploymentCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProjectResource: {
+      payload: Prisma.$ProjectResourcePayload<ExtArgs>
+      fields: Prisma.ProjectResourceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProjectResourceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProjectResourceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        findFirst: {
+          args: Prisma.ProjectResourceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProjectResourceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        findMany: {
+          args: Prisma.ProjectResourceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>[]
+        }
+        create: {
+          args: Prisma.ProjectResourceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        createMany: {
+          args: Prisma.ProjectResourceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProjectResourceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>[]
+        }
+        delete: {
+          args: Prisma.ProjectResourceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        update: {
+          args: Prisma.ProjectResourceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        deleteMany: {
+          args: Prisma.ProjectResourceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProjectResourceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProjectResourceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>[]
+        }
+        upsert: {
+          args: Prisma.ProjectResourceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectResourcePayload>
+        }
+        aggregate: {
+          args: Prisma.ProjectResourceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProjectResource>
+        }
+        groupBy: {
+          args: Prisma.ProjectResourceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectResourceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProjectResourceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectResourceCountAggregateOutputType> | number
         }
       }
     }
@@ -2824,6 +2899,14 @@ export const DeploymentScalarFieldEnum = {
   outputDir: 'outputDir',
   fileCount: 'fileCount',
   sizeBytes: 'sizeBytes',
+  target: 'target',
+  backendUrl: 'backendUrl',
+  backendVersion: 'backendVersion',
+  schemaSql: 'schemaSql',
+  schemaHash: 'schemaHash',
+  schemaChanges: 'schemaChanges',
+  databaseBranchId: 'databaseBranchId',
+  confirmSchemaChange: 'confirmSchemaChange',
   jobId: 'jobId',
   error: 'error',
   buildLog: 'buildLog',
@@ -2834,6 +2917,21 @@ export const DeploymentScalarFieldEnum = {
 } as const
 
 export type DeploymentScalarFieldEnum = (typeof DeploymentScalarFieldEnum)[keyof typeof DeploymentScalarFieldEnum]
+
+
+export const ProjectResourceScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  kind: 'kind',
+  providerId: 'providerId',
+  region: 'region',
+  secretCiphertext: 'secretCiphertext',
+  createdAt: 'createdAt',
+  deletedAt: 'deletedAt',
+  deleteAfter: 'deleteAfter'
+} as const
+
+export type ProjectResourceScalarFieldEnum = (typeof ProjectResourceScalarFieldEnum)[keyof typeof ProjectResourceScalarFieldEnum]
 
 
 export const SiteNameScalarFieldEnum = {
@@ -3347,6 +3445,34 @@ export type ListEnumDeploymentStatusFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
+ * Reference to a field of type 'DeployTarget'
+ */
+export type EnumDeployTargetFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DeployTarget'>
+    
+
+
+/**
+ * Reference to a field of type 'DeployTarget[]'
+ */
+export type ListEnumDeployTargetFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DeployTarget[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ResourceKind'
+ */
+export type EnumResourceKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ResourceKind'>
+    
+
+
+/**
+ * Reference to a field of type 'ResourceKind[]'
+ */
+export type ListEnumResourceKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ResourceKind[]'>
+    
+
+
+/**
  * Reference to a field of type 'DomainStatus'
  */
 export type EnumDomainStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DomainStatus'>
@@ -3610,6 +3736,7 @@ export type GlobalOmitConfig = {
   usage?: Prisma.UsageOmit
   tokenUsage?: Prisma.TokenUsageOmit
   deployment?: Prisma.DeploymentOmit
+  projectResource?: Prisma.ProjectResourceOmit
   siteName?: Prisma.SiteNameOmit
   domain?: Prisma.DomainOmit
   logoGeneration?: Prisma.LogoGenerationOmit

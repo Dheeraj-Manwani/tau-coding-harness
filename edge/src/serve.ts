@@ -11,6 +11,7 @@
  * Mirrors `server/src/api/routes/sites.routes.ts`, rule for rule.
  */
 import { BADGE_SOURCE } from "./badgeSource";
+import { forwardToBackend, isApiPath, type ApiEnv, type ForwardDeps } from "./api";
 import { BADGE_SCRIPT_PATH, badgeHash, injectBeforeBodyEnd, siteBadgeTag, withVariant } from "./badge";
 import {
   SITE_PREFIX,
@@ -33,9 +34,11 @@ export interface RoutingRecord {
   suspended: boolean;
   /** Send this hostname to another (308) instead of serving it. Set on the default address once a custom domain is primary. */
   redirectTo: string | null;
+  /** The app's backend: a Lambda function URL for this deployment. Null for a static app. */
+  api: { url: string } | null;
 }
 
-export interface Env {
+export interface Env extends ApiEnv {
   R2_BUCKET: R2Bucket;
   ROUTES: KVNamespace;
   /** Where the badge's links go. */
@@ -99,6 +102,7 @@ function usable(record: unknown): RoutingRecord | null {
     showBadge: r.showBadge === true,
     suspended: r.suspended === true,
     redirectTo: typeof r.redirectTo === "string" ? r.redirectTo : null,
+    api: typeof r.api?.url === "string" ? { url: r.api.url } : null,
   };
 }
 
@@ -131,12 +135,15 @@ export function prefixAllowed(prefix: string): boolean {
   );
 }
 
-export async function handle(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+export async function handle(request: Request, env: Env, deps: ForwardDeps = { fetcher: (input, init) => fetch(input, init) }): Promise<Response> {
+  const url = new URL(request.url);
+
+  // Static files are read-only. The app's own API takes every method: that is
+  // the one place a visitor may send a body.
+  if (request.method !== "GET" && request.method !== "HEAD" && !isApiPath(url.pathname)) {
     return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
   }
 
-  const url = new URL(request.url);
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
 
   // Reserved on every site host, and answered before the record is read, so an
@@ -156,6 +163,18 @@ export async function handle(request: Request, env: Env): Promise<Response> {
     // A permanent move, but cached only briefly: the owner can change which domain is primary.
     return new Response(null, { status: 308, headers: { Location: elsewhere, "Cache-Control": "public, max-age=300" } });
   }
+  // `/api` belongs to the app's backend. With none, it is an honest 404, not the
+  // front end's index.html answering a request meant for a server.
+  if (isApiPath(url.pathname)) {
+    if (!record.api) {
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
+      });
+    }
+    return forwardToBackend(request, record.api.url, env, deps);
+  }
+
   if (!prefixAllowed(record.prefix) || !isValidSlug(record.slug)) {
     return page(404, "Not found", "No app is published at this address yet.");
   }

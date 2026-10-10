@@ -22,6 +22,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { deleteSitePrefix } from "@/lib/s3";
+import { pruneBackend } from "@/lib/lambdaApps";
+import { sweepDatabases } from "@/lib/neonApps";
 import { DeploymentStatus } from "@/generated/prisma/enums";
 import { captureException, log } from "./log";
 
@@ -63,6 +65,8 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
   const errors: string[] = [];
   let purged = 0;
   let objectsDeleted = 0;
+  /** Projects that just lost a deployment which had a backend. */
+  const backendProjects = new Set<string>();
 
   const supersededBefore = new Date(now - SUPERSEDED_RETENTION_DAYS * DAY_MS);
 
@@ -86,7 +90,7 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
         },
       ],
     },
-    select: { id: true, storagePrefix: true },
+    select: { id: true, storagePrefix: true, projectId: true, backendUrl: true },
     orderBy: { completedAt: "asc" },
     take: BATCH,
   });
@@ -113,6 +117,7 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
         objectsDeleted += await deleteSitePrefix(deployment.storagePrefix);
       }
       purged += 1;
+      if (deployment.backendUrl) backendProjects.add(deployment.projectId);
     } catch (err) {
       // Hand the row back so the next pass retries: an R2 blip should not
       // strand the objects permanently. It is outside the rollback window, so
@@ -121,6 +126,21 @@ export async function sweepDeployments(): Promise<DeploySweepResult> {
         .update({ where: { id: deployment.id }, data: { purgedAt: null } })
         .catch(() => {});
       errors.push(`${deployment.id}: ${String(err)}`);
+    }
+  }
+
+  // The backend half of what was just purged: its alias, URL and version. What
+  // is kept is every deployment still holding bytes, which is the live one, the
+  // ones inside their rollback window and the ones still being built.
+  for (const projectId of backendProjects) {
+    try {
+      const keep = await prisma.deployment.findMany({
+        where: { projectId, purgedAt: null, backendUrl: { not: null } },
+        select: { id: true },
+      });
+      await pruneBackend(projectId, new Set(keep.map((d) => d.id)));
+    } catch (err) {
+      errors.push(`backend ${projectId}: ${String(err)}`);
     }
   }
 
@@ -136,5 +156,14 @@ export async function runDeploySweep(): Promise<void> {
     }
   } catch (err) {
     captureException(err, { detail: "deployment sweep failed" });
+  }
+  // Databases of deleted projects whose delay has passed (doc/PUBLISHING.md 5.6).
+  try {
+    const { removed, adopted, errors } = await sweepDatabases();
+    if (removed > 0 || adopted > 0 || errors.length > 0) {
+      log.info("databases.sweep", { removed, adopted, errors });
+    }
+  } catch (err) {
+    captureException(err, { detail: "database sweep failed" });
   }
 }

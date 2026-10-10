@@ -130,7 +130,7 @@ describe("the routing record", () => {
   // The server writes a record and the router reads it; a field one side adds
   // and the other does not know is a field that silently does nothing.
   test("the router's type has exactly the fields the server writes", () => {
-    const sample: RoutingRecord = { projectId: "p", slug: "s", prefix: "x", showBadge: true, suspended: false, redirectTo: null };
+    const sample: RoutingRecord = { projectId: "p", slug: "s", prefix: "x", showBadge: true, suspended: false, redirectTo: null, api: null };
     const written = Object.keys(JSON.parse(recordJson(sample))).sort();
 
     const source = readFileSync(join(import.meta.dir, "../../../edge/src/serve.ts"), "utf8");

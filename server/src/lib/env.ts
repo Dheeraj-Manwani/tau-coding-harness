@@ -324,6 +324,43 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v?.replace(/\/+$/, "")),
 
+  // ── Backend hosting (doc/PUBLISHING.md Phase 4) ─────────────────────────────
+  //
+  // Off unless BACKEND_HOSTING_ENABLED is "true" AND all four AWS settings are
+  // present; either missing and publishing behaves exactly as it did before
+  // backends were hosted. The credentials are for a separate AWS account that
+  // holds only published apps, and may only manage functions named `tau-app-*`,
+  // roles under the `/tau-apps/` path (with the permissions boundary below) and
+  // those functions' log groups. See ops/aws-apps-policy.json.
+  BACKEND_HOSTING_ENABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+  AWS_APPS_REGION: z.string().optional(),
+  AWS_APPS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_APPS_SECRET_ACCESS_KEY: z.string().optional(),
+  // The ceiling every function role is created under, so a role tau makes can
+  // never grant more than the boundary allows whatever policy it is given.
+  AWS_APPS_PERMISSIONS_BOUNDARY_ARN: z.string().optional(),
+  // Per function. Reserved concurrency also caps what one runaway app can take
+  // from the account's pool; a new account may be too small to reserve any.
+  AWS_APPS_RESERVED_CONCURRENCY: z.coerce.number().int().min(0).default(2),
+  AWS_APPS_MEMORY_MB: z.coerce.number().int().min(128).max(3008).default(512),
+  AWS_APPS_TIMEOUT_S: z.coerce.number().int().min(1).max(60).default(15),
+  AWS_APPS_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(14),
+
+  // ── Database hosting (doc/PUBLISHING.md Phase 5) ────────────────────────────
+  //
+  // One Neon project per app. Off without a key (and without backend hosting,
+  // which it needs): an app with a database then cannot be published, as before.
+  NEON_API_KEY: z.string().optional(),
+  // Same region as the functions, so a request does not cross an ocean.
+  NEON_REGION_ID: z.string().default("aws-us-east-1"),
+  // Only for a key that belongs to an organisation.
+  NEON_ORG_ID: z.string().optional(),
+  // How long a deleted project's database is kept before it is removed.
+  DATABASE_DELETE_DELAY_DAYS: z.coerce.number().int().min(0).default(7),
+
   // The edge router's routing records (doc/PUBLISHING.md Phase 2). All three,
   // with SITES_DOMAIN, switch the registry on; with any unset nothing is pushed
   // and a laptop behaves as before. The token needs Workers KV Storage: Edit on
@@ -354,6 +391,13 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(100 * 1024 * 1024),
+  // The largest server bundle one publish may produce, before zipping. Lambda
+  // takes a 50 MB zip directly; a bundle past this is a dependency gone wrong.
+  DEPLOY_MAX_BACKEND_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(20 * 1024 * 1024),
   DEPLOY_BUILD_TIMEOUT_MS: z.coerce
     .number()
     .int()

@@ -17,12 +17,22 @@ import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
 import { finalizeJobRollups } from "./lib/jobRollups";
 import { PREVIEW_PORT } from "./agent/config";
 import { buildAndUpload, DeployError } from "./lib/deploy";
+import { buildBackendBundle, validateBackend } from "./lib/deployBackend";
+import { prepareDatabase, SchemaChangeRequired, type PreparedDatabase } from "./lib/deployDatabase";
+import {
+  buildPublishEnv,
+  levelOfTemplate,
+  publishesBackend,
+  verifyBackend,
+} from "./lib/deployFullstack";
+import { LambdaEnvError, publishBackend, validateLambdaEnv, type PublishedBackend } from "@/lib/lambdaApps";
 import { publicSiteUrl } from "@/lib/sites";
 import { invalidateSiteLookup } from "@/api/lib/siteLookup";
 import { syncProject } from "@/lib/edgeRegistry";
 import { isDraining } from "@/lib/lifecycle";
 import {
   DeploymentStatus,
+  DeployTarget,
   FinishReason,
   JobStatus,
   JobType,
@@ -82,10 +92,17 @@ async function runPreviewJob(payload: DispatchPayload): Promise<void> {
 
 /**
  * Publish a project: build it in its sandbox, copy the static output to R2, and
- * move the project's live pointer onto the new deployment.
+ * move the project's live pointer onto the new deployment. A project with a
+ * server, where backend hosting is on, also has its backend checked, bundled,
+ * put on Lambda and called before the pointer moves.
  *
- * The pointer moves last, and only after the final byte is uploaded, so a
- * failure at any point leaves the previously published site serving untouched.
+ *   static:      BUILDING, UPLOADING
+ *   full-stack:  VALIDATING, BUILDING (server bundle, then frontend), UPLOADING,
+ *                PROVISIONING, VERIFYING
+ *
+ * The pointer moves last, and only after the final byte is uploaded (and, for a
+ * backend, after the new backend has answered), so a failure at any point leaves
+ * the previously published site serving untouched.
  * Nothing here is undone on failure either — the abandoned prefix is dead bytes
  * under a deployment id nothing points at, which the sweep can reclaim later,
  * and deleting it eagerly would only add a second way to fail.
@@ -108,14 +125,65 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
       lastHeartbeatAt: new Date(),
     },
   });
+  const project = await prisma.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: { templateKey: true, aiEnabled: true },
+  });
+  const level = levelOfTemplate(project.templateKey);
+  const hosted = publishesBackend(level);
+  const startedAtMs = Date.now();
+  const setStatus = (status: DeploymentStatus) =>
+    prisma.deployment.update({ where: { id: deployment.id }, data: { status } });
+
   await prisma.deployment.update({
     where: { id: deployment.id },
-    data: { status: DeploymentStatus.BUILDING },
+    data: {
+      status: hosted ? DeploymentStatus.VALIDATING : DeploymentStatus.BUILDING,
+      target: hosted ? DeployTarget.FULLSTACK : DeployTarget.STATIC,
+    },
   });
   await publish(jobId, { type: "thinking", message: "Preparing your app" });
 
   try {
     const sandbox = await provisionSandbox(projectId, userId, jobId);
+
+    // The server first, because it is the part most likely to fail and the part
+    // that costs nothing to find out about: nothing external has been touched.
+    let bundle: Awaited<ReturnType<typeof buildBackendBundle>> | null = null;
+    let publishEnv: Awaited<ReturnType<typeof buildPublishEnv>> | null = null;
+    let database: PreparedDatabase | null = null;
+    if (hosted) {
+      await publish(jobId, { type: "thinking", message: "Checking your server" });
+      publishEnv = await buildPublishEnv({ userId, projectId, jobId, aiEnabled: project.aiEnabled });
+      await validateBackend(sandbox, {
+        level,
+        secretNames: publishEnv.secretNames,
+        aiEnabled: project.aiEnabled,
+        envValueBytes: publishEnv.valueBytes,
+      });
+
+      if (level === "database") {
+        // Before anything is bundled: a structure change nobody confirmed stops
+        // here, and the app's own database is made if this is the first publish.
+        await publish(jobId, { type: "thinking", message: "Checking your database" });
+        database = await prepareDatabase(sandbox, { projectId, jobId, confirmed: deployment.confirmSchemaChange });
+        publishEnv.vars.DATABASE_URL = database.url;
+        publishEnv.valueBytes.DATABASE_URL = Buffer.byteLength(database.url);
+        await prisma.deployment.update({
+          where: { id: deployment.id },
+          data: { schemaSql: database.sql, schemaHash: database.hash, databaseBranchId: database.branchId },
+        });
+      }
+      validateLambdaEnv(publishEnv.vars);
+
+      await setStatus(DeploymentStatus.BUILDING);
+      await publish(jobId, { type: "thinking", message: "Bundling your server" });
+      bundle = await buildBackendBundle(sandbox, {
+        jobId,
+        projectId,
+        database: database ? { clientTs: database.clientTs, url: database.url } : undefined,
+      });
+    }
 
     const outcome = await buildAndUpload({
       sandbox,
@@ -132,6 +200,38 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
         await publish(jobId, { type: "thinking", message });
       },
     });
+
+    // Everything above has succeeded and nothing live has changed. Now the
+    // backend goes to AWS, under an alias of its own, and is called.
+    let backend: PublishedBackend | null = null;
+    if (bundle && publishEnv) {
+      await setStatus(DeploymentStatus.PROVISIONING);
+      await publish(jobId, { type: "thinking", message: "Setting up your server" });
+      try {
+        backend = await publishBackend({
+          projectId,
+          deploymentId: deployment.id,
+          zip: bundle.zip,
+          env: publishEnv.vars,
+        });
+      } catch (err) {
+        // AWS's own words (an ARN, a policy name) are for tau's logs, not the owner.
+        captureException(err, { jobId, projectId, detail: "backend provisioning" });
+        throw new DeployError(
+          "We couldn't set up your server on our hosting. Nothing was switched over, so your site is as it was. Try again in a few minutes.",
+        );
+      }
+      // Recorded straight away: if verifying fails, the sweep needs to know this
+      // deployment owns an alias and a URL that nothing will ever point at.
+      await prisma.deployment.update({
+        where: { id: deployment.id },
+        data: { backendUrl: backend.url, backendVersion: backend.version },
+      });
+
+      await setStatus(DeploymentStatus.VERIFYING);
+      await publish(jobId, { type: "thinking", message: "Checking your server is running" });
+      await verifyBackend({ projectId, url: backend.url, startedAtMs });
+    }
 
     // The live pointer and the new row's status move together: a READY
     // deployment nothing points at, or a pointer at a row still marked
@@ -167,6 +267,13 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
         data: {
           status: DeploymentStatus.READY,
           outputDir: outcome.outputDir,
+          ...(backend
+            ? {
+                target: DeployTarget.FULLSTACK,
+                backendUrl: backend.url,
+                backendVersion: backend.version,
+              }
+            : {}),
           fileCount: outcome.fileCount,
           sizeBytes: outcome.sizeBytes,
           buildLog: outcome.buildLog,
@@ -226,17 +333,21 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
   } catch (raised) {
     // A balance that fell short between the request and going live is the
     // owner's to fix, not an outage.
+    // What the owner can fix is told to them: a key AWS reserves, too many keys.
     const err: unknown =
       raised instanceof InsufficientCreditsError
         ? new DeployError(
             `Not enough credits to publish. A project's first publish costs ${toCredits(PUBLISH_FEE_MICRO)} credits. Nothing was charged.`,
           )
-        : raised;
+        : raised instanceof LambdaEnvError
+          ? new DeployError(raised.message)
+          : raised;
     const isUserFacing = err instanceof DeployError;
     await prisma.deployment
       .update({
         where: { id: deployment.id },
         data: {
+          schemaChanges: err instanceof SchemaChangeRequired ? err.changes.map((c) => ({ kind: c.kind, message: c.message })) : undefined,
           status: DeploymentStatus.FAILED,
           error: isUserFacing
             ? err.message

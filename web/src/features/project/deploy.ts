@@ -17,8 +17,11 @@ import type { PreviewBuildError } from "@/src/features/project/types";
 
 export type DeploymentStatus =
   | "QUEUED"
+  | "VALIDATING"
   | "BUILDING"
+  | "PROVISIONING"
   | "UPLOADING"
+  | "VERIFYING"
   | "READY"
   | "FAILED"
   | "SUPERSEDED";
@@ -41,6 +44,8 @@ export interface DeployFailure {
   error: string;
   /** Tail of the build output, for "Fix with tau". */
   buildLog: string | null;
+  /** The publish stopped for the owner to confirm database changes; what changed. */
+  schemaChanges: { kind: string; message: string }[] | null;
   /** The project has changed since, so the error may already be fixed. */
   changedSince: boolean;
 }
@@ -64,6 +69,8 @@ export interface DeployStatus {
   lastFailure: DeployFailure | null;
   /** First publish of a project costs `credits`; `due` is false once paid. */
   publishFee: { credits: number; due: boolean };
+  /** The app has its own published database, so its data can be exported. */
+  databasePublished: boolean;
 }
 
 export interface PublishResult {
@@ -93,10 +100,13 @@ export function usePublishProject(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     // `name` is the address, chosen once, on a project's first publish.
-    mutationFn: (name?: string) =>
-      api
-        .post<PublishResult>(`/project/${projectId}/deploy`, name ? { name } : {})
-        .then((r) => r.data),
+    // `confirmSchemaChange` says yes to the database changes a publish stopped for.
+    mutationFn: (arg?: string | { name?: string; confirmSchemaChange?: boolean }) => {
+      const body = typeof arg === "string" ? { name: arg } : (arg ?? {});
+      return api
+        .post<PublishResult>(`/project/${projectId}/deploy`, body.name || body.confirmSchemaChange ? body : {})
+        .then((r) => r.data);
+    },
     onSuccess: () => {
       toast.success("Publishing: building your app");
       void qc.invalidateQueries({
@@ -319,8 +329,11 @@ export function historyLabel(deployment: DeploymentSummary): string {
     case "FAILED":
       return "Failed";
     case "QUEUED":
+    case "VALIDATING":
     case "BUILDING":
+    case "PROVISIONING":
     case "UPLOADING":
+    case "VERIFYING":
       return "Publishing";
     default:
       // Went live and was replaced. Once its files have been cleared out it

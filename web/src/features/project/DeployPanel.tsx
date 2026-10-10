@@ -6,6 +6,7 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   CopyIcon,
+  DownloadIcon,
   ExternalLinkIcon,
   LoaderCircleIcon,
   RocketIcon,
@@ -15,6 +16,7 @@ import {
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { api } from "@/src/lib/api-client";
 
 import { cn } from "@/src/lib/utils";
 import { useProjectStore } from "@/src/stores/useProjectStore";
@@ -213,6 +215,8 @@ function PanelBody({
           projectId={projectId}
           failure={status.lastFailure}
           onSent={onClose}
+          onConfirmSchema={() => publish.mutate({ confirmSchemaChange: true })}
+          confirming={busy}
         />
       )}
 
@@ -235,6 +239,8 @@ function PanelBody({
       )}
 
       <IdentitySection projectId={projectId} />
+
+      {status.databasePublished && <ExportData projectId={projectId} />}
 
       <button
         type="button"
@@ -289,13 +295,41 @@ function FailureNotice({
   projectId,
   failure,
   onSent,
+  onConfirmSchema,
+  confirming,
 }: {
   projectId: string | null;
   failure: DeployFailure;
   onSent: () => void;
+  onConfirmSchema: () => void;
+  confirming: boolean;
 }) {
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const { send, canSend, isSending } = useSendMessage(projectId ?? undefined);
+
+  // The publish stopped to ask, not because anything is broken: nothing was
+  // published and the live site is as it was.
+  if (failure.schemaChanges && !failure.changedSince) {
+    return (
+      <Notice tone="warning" icon={AlertTriangleIcon}>
+        {failure.error}
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
+          {failure.schemaChanges.map((c) => (
+            <li key={c.message}>{c.message}</li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          onClick={onConfirmSchema}
+          disabled={confirming}
+          className="mt-2 flex items-center gap-1.5 rounded-full bg-brand px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40"
+        >
+          <RocketIcon className="size-3.5" />
+          Publish anyway
+        </button>
+      </Notice>
+    );
+  }
 
   if (failure.changedSince) {
     return (
@@ -572,6 +606,42 @@ function LiveUrl({
           {live.fileCount} files · {formatBytes(live.sizeBytes)}
         </p>
       )}
+    </div>
+  );
+}
+
+/** Download the published database as CSV files. */
+function ExportData({ projectId }: { projectId: string | null }) {
+  const [busy, setBusy] = useState(false);
+  const download = async () => {
+    if (!projectId || busy) return;
+    setBusy(true);
+    try {
+      const res = await api.get<Blob>(`/project/${projectId}/database/export`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "data-export.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Couldn't export your data. Try again in a minute.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      Your published app has its own database. Preview data is not copied to it.
+      <button
+        type="button"
+        onClick={download}
+        disabled={busy}
+        className="mt-1.5 flex items-center gap-1.5 text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+      >
+        <DownloadIcon className="size-3.5" />
+        {busy ? "Preparing…" : "Download your data (CSV)"}
+      </button>
     </div>
   );
 }

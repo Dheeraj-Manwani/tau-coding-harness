@@ -6,7 +6,11 @@ import * as deployService from "../services/deploy.service";
 import { requireUserId } from "../middleware/auth.middleware";
 
 /** The address chosen for a first publish. Ignored once the project has one. */
-const publishBodySchema = z.object({ name: z.string().trim().max(80).optional() });
+const publishBodySchema = z.object({
+  name: z.string().trim().max(80).optional(),
+  /** Set when the owner confirmed the database changes a previous publish stopped for. */
+  confirmSchemaChange: z.boolean().optional(),
+});
 
 const nameQuerySchema = z.object({ name: z.string().trim().min(1).max(80) });
 
@@ -47,13 +51,13 @@ export const publish = async (
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    const { name } = parse(publishBodySchema, req.body ?? {});
+    const { name, confirmSchemaChange } = parse(publishBodySchema, req.body ?? {});
     // 202: the build runs as a job. The body carries the jobId to stream and the
     // URL the site will be at, which is already final — the slug is allocated
     // before the job is queued.
     res
       .status(202)
-      .json(await deployService.requestDeploy(projectId, userId, name));
+      .json(await deployService.requestDeploy(projectId, userId, name, confirmSchemaChange === true));
   } catch (err) {
     next(err);
   }
@@ -77,6 +81,24 @@ export const rollback = async (
     res
       .status(200)
       .json(await deployService.rollbackDeploy(projectId, deploymentId, userId));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const exportData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const zip = await deployService.exportPublishedData(projectId, userId);
+    res
+      .status(200)
+      .set({ "Content-Type": "application/zip", "Content-Disposition": 'attachment; filename="data-export.zip"', "Cache-Control": "no-store" })
+      .send(Buffer.from(zip));
   } catch (err) {
     next(err);
   }

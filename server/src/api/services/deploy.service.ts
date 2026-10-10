@@ -8,11 +8,15 @@
  * moves without a build: rolling back and taking the site offline.
  */
 import { createHash, randomBytes } from "node:crypto";
+import { backendHostingAvailable } from "@/lib/lambdaApps";
+import { getDatabaseUrl } from "@/lib/neonApps";
+import { exportDatabase } from "@/lib/databaseExport";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { getBalance } from "@/lib/credits";
 import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
 import { withinRollbackWindow } from "../lib/deploySweep";
+import { isInFlight } from "@/lib/deployStatus";
 import { AppError, Errors } from "../lib/errors";
 import { log } from "../lib/log";
 import { enqueueJob } from "../lib/queue";
@@ -33,6 +37,7 @@ import {
   DomainStatus,
   JobStatus,
   JobType,
+  ResourceKind,
 } from "@/generated/prisma/enums";
 import type { Deployment, Project } from "@/generated/prisma/client";
 
@@ -66,6 +71,11 @@ export interface DeployFailure {
    * summary row: it is kilobytes, and only the newest failure is acted on.
    */
   buildLog: string | null;
+  /**
+   * Set when the publish stopped because the database structure changed in a way
+   * that cannot be applied automatically: what changed, for the owner to confirm.
+   */
+  schemaChanges: { kind: string; message: string }[] | null;
   /**
    * The project's files have changed since this build ran, so the error may
    * already be fixed and the thing to do is publish again.
@@ -111,6 +121,8 @@ export interface DeployStatus {
    * paid. Updates, rollbacks and take-offline never cost anything.
    */
   publishFee: { credits: number; due: boolean };
+  /** The app has its own published database, so its data can be exported. */
+  databasePublished: boolean;
 }
 
 /** Statuses a deployment can only have after it went live at least once. */
@@ -170,6 +182,12 @@ async function ownedProject(
 function serverWarningFor(templateKey: string): string | null {
   const template = TEMPLATES[toTemplateKey(templateKey)];
   if (!template.hasServer) return null;
+  if (backendHostingAvailable()) {
+    // The server is published too. A database is the part that is not yet.
+    return template.hasDb
+      ? "This project has a database, and publishing a database isn't available yet. Publishing will stop and tell you so; your preview is unaffected."
+      : null;
+  }
   return template.hasDb
     ? "This project has a backend and a database. Publishing ships the front-end only — anything that calls the API or stores data won't work on the published site yet."
     : "This project has a backend. Publishing ships the front-end only — anything that calls the API won't work on the published site yet.";
@@ -182,6 +200,22 @@ async function primaryUrlOf(projectId: string): Promise<string | null> {
     select: { hostname: true },
   });
   return primary ? `https://${primary.hostname}` : null;
+}
+
+/** The owner's published data as a zip (doc/PUBLISHING.md 5.7). */
+export async function exportPublishedData(projectId: string, userId: string): Promise<Uint8Array> {
+  const project = await ownedProject(projectId, userId);
+  const url = await getDatabaseUrl(projectId);
+  if (!url) throw Errors.notFound("This project has no published database.");
+  const live = project.liveDeploymentId
+    ? await prisma.deployment.findUnique({ where: { id: project.liveDeploymentId }, select: { schemaSql: true } })
+    : null;
+  try {
+    return (await exportDatabase(url, live?.schemaSql ?? null)).zip;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("too large")) throw Errors.badRequest(err.message);
+    throw new AppError("The database could not be reached. Try again in a minute.", 503);
+  }
 }
 
 export async function getDeployStatus(
@@ -218,14 +252,13 @@ export async function getDeployStatus(
     deployments: deployments.map((d) =>
       toSummary(d, project.liveDeploymentId),
     ),
-    inProgress: deployments.some(
-      (d) =>
-        d.status === DeploymentStatus.QUEUED ||
-        d.status === DeploymentStatus.BUILDING ||
-        d.status === DeploymentStatus.UPLOADING,
-    ),
+    inProgress: deployments.some((d) => isInFlight(d.status)),
     unpublishedChanges,
     serverWarning: serverWarningFor(project.templateKey),
+    databasePublished:
+      (await prisma.projectResource.count({
+        where: { projectId, kind: ResourceKind.NEON_PROJECT, deletedAt: null },
+      })) > 0,
     publishFee: {
       credits: toCredits(PUBLISH_FEE_MICRO),
       due: project.publishFeePaidAt === null,
@@ -238,6 +271,9 @@ export async function getDeployStatus(
         ? {
             error: newest.error ?? "Publishing failed.",
             buildLog: newest.buildLog,
+            schemaChanges: Array.isArray(newest.schemaChanges)
+              ? (newest.schemaChanges as { kind: string; message: string }[])
+              : null,
             changedSince: project.headSequence > newest.sequence,
           }
         : null,
@@ -389,6 +425,7 @@ export async function requestDeploy(
   projectId: string,
   userId: string,
   name?: string,
+  confirmSchemaChange = false,
 ): Promise<RequestDeployResult> {
   const project = await ownedProject(projectId, userId);
   if (project.siteSuspendedAt) throw Errors.forbidden(SUSPENDED_MESSAGE);
@@ -448,6 +485,7 @@ export async function requestDeploy(
           // the database assigns, so it can only be written after the insert.
           storagePrefix: "",
           sequence: project.headSequence,
+          confirmSchemaChange,
         },
       });
 

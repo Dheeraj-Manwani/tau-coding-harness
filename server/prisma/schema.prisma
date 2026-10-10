@@ -159,6 +159,7 @@ model Project {
 
   logoGenerations LogoGeneration[]
   domains         Domain[]
+  resources       ProjectResource[]
 
   // "owner/repo" once the first GitHub push creates/links a repo; null before.
   githubRepo String?
@@ -560,12 +561,25 @@ model TokenUsage {
 
 // ─────────────────────────────── Deployments ─────────────────────────────────
 
+/// What a deployment publishes. A STATIC one is files in R2; a FULLSTACK one is
+/// files plus a backend, and `Deployment.backendUrl` says where it answers.
+enum DeployTarget {
+  STATIC
+  FULLSTACK
+}
+
 enum DeploymentStatus {
   QUEUED
+  /// Full-stack publishes only: checking the server can be published before anything is built.
+  VALIDATING
   /// Running the project's build command inside its sandbox.
   BUILDING
+  /// Full-stack publishes only: creating the function the first time.
+  PROVISIONING
   /// Build succeeded; copying the static output into R2.
   UPLOADING
+  /// Full-stack publishes only: calling the new backend before anything points at it.
+  VERIFYING
   /// Serving. At most one deployment per project is READY *and* pointed at by
   /// `Project.liveDeploymentId`; older READY rows are kept for rollback.
   READY
@@ -606,6 +620,28 @@ model Deployment {
   fileCount Int @default(0)
   sizeBytes Int @default(0)
 
+  target DeployTarget @default(STATIC)
+
+  /// Where this deployment's backend answers: a Lambda function URL for this
+  /// version's alias, so the routing record alone decides which backend is live
+  /// and rolling back needs no call to AWS (doc/PUBLISHING.md C9). Null for STATIC.
+  backendUrl     String?
+  /// The Lambda version this deployment published.
+  backendVersion String?
+
+  /// The app's database SQL as published, and a hash of it (C6). The next publish
+  /// compares against the live deployment's.
+  schemaSql  String?
+  schemaHash String?
+  /// Set on a FAILED deployment that stopped for the owner to confirm a database
+  /// change: the list of changes the panel shows. Null otherwise.
+  schemaChanges Json?
+  /// The Neon branch taken as a restore point before a confirmed change.
+  databaseBranchId String?
+  /// The owner confirmed this publish may go ahead with the changes listed in a
+  /// previous failed one.
+  confirmSchemaChange Boolean @default(false)
+
   /// The DEPLOY job that produced this row. Nullable because the row is created
   /// before the job is enqueued, in the same transaction that reserves it.
   jobId String? @unique
@@ -639,6 +675,41 @@ model Deployment {
   @@index([projectId, createdAt])
   @@index([status])
   @@index([purgedAt, completedAt])
+}
+
+enum ResourceKind {
+  LAMBDA_FUNCTION
+  IAM_ROLE
+  NEON_PROJECT
+}
+
+/// A cloud resource tau created for a project, recorded the moment it exists
+/// (doc/PUBLISHING.md C8). The row is how a half-finished publish is cleaned up
+/// and how a deleted project is removed from the cloud, so it is written before
+/// the next call is made, never after the whole publish succeeds.
+model ProjectResource {
+  id        String       @id @default(uuid())
+  /// Null once the project has been deleted: a database outlives it for a few days
+  /// (`deleteAfter`), and the row is how the sweep finds it.
+  projectId String?
+  project   Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  kind      ResourceKind
+
+  /// The provider's own name or id: the function's name, the role's name.
+  providerId String
+  region     String
+
+  /// Anything secret that goes with it. Encrypted with `TAU_KEY_ENC_SECRET`; nullable.
+  secretCiphertext String?
+
+  createdAt DateTime  @default(now())
+  /// Set when the resource was removed. The row is kept as the record.
+  deletedAt DateTime?
+  /// When a resource whose project is gone is to be removed (doc/PUBLISHING.md 5.6).
+  deleteAfter DateTime?
+
+  @@unique([kind, providerId])
+  @@index([projectId])
 }
 
 /// Every address a project has ever held, kept after the project is gone.

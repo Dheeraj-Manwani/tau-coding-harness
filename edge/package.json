@@ -15,5 +15,8 @@
     "@types/bun": "latest",
     "typescript": "^5",
     "wrangler": "^4"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.20"
   }
 }

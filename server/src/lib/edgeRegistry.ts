@@ -33,6 +33,8 @@ export interface RoutingRecord {
   suspended: boolean;
   /** Where the router sends this hostname (308), or null to serve it. Set on the default address once a custom domain is primary. */
   redirectTo: string | null;
+  /** The app's backend: a Lambda function URL for this deployment's alias. Null for a static app. */
+  api: { url: string } | null;
 }
 
 export const KEY_PREFIX = "host:";
@@ -50,6 +52,7 @@ export function recordJson(record: RoutingRecord): string {
     showBadge: record.showBadge,
     suspended: record.suspended,
     redirectTo: record.redirectTo,
+    api: record.api,
   });
 }
 
@@ -64,6 +67,8 @@ export interface SiteState {
   siteSuspendedAt: Date | null;
   /** The live deployment's prefix, when one is live and its files are intact. */
   livePrefix: string | null;
+  /** The live deployment's backend address, for a full-stack publish. */
+  backendUrl: string | null;
   plan: "FREE" | "PRO" | null;
   /** Custom domains that are serving (ACTIVE), and which of them the app lives at. */
   domains: { hostname: string; isPrimary: boolean }[];
@@ -86,6 +91,7 @@ export function recordFor(site: SiteState): RoutingRecord | null {
     showBadge: showsBadge(site.plan ?? undefined),
     suspended: site.siteSuspendedAt !== null,
     redirectTo: null,
+    api: site.backendUrl ? { url: site.backendUrl } : null,
   };
 }
 
@@ -238,16 +244,18 @@ async function statesOf(rows: SiteRow[]): Promise<SiteState[]> {
   const deployments = liveIds.length
     ? await prisma.deployment.findMany({
         where: { id: { in: liveIds }, status: DeploymentStatus.READY },
-        select: { id: true, storagePrefix: true },
+        select: { id: true, storagePrefix: true, backendUrl: true },
       })
     : [];
   const prefixById = new Map(deployments.map((d) => [d.id, d.storagePrefix]));
+  const backendById = new Map(deployments.map((d) => [d.id, d.backendUrl]));
 
   return rows.map((r) => ({
     id: r.id,
     slug: r.slug,
     siteSuspendedAt: r.siteSuspendedAt,
     livePrefix: (r.liveDeploymentId && prefixById.get(r.liveDeploymentId)) || null,
+    backendUrl: (r.liveDeploymentId && backendById.get(r.liveDeploymentId)) || null,
     plan: r.user.billing?.plan ?? null,
     domains: r.domains ?? [],
   }));

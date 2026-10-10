@@ -140,16 +140,36 @@ export const ContextCheckpointReason = {
 export type ContextCheckpointReason = (typeof ContextCheckpointReason)[keyof typeof ContextCheckpointReason]
 
 
+export const DeployTarget = {
+  STATIC: 'STATIC',
+  FULLSTACK: 'FULLSTACK'
+} as const
+
+export type DeployTarget = (typeof DeployTarget)[keyof typeof DeployTarget]
+
+
 export const DeploymentStatus = {
   QUEUED: 'QUEUED',
+  VALIDATING: 'VALIDATING',
   BUILDING: 'BUILDING',
+  PROVISIONING: 'PROVISIONING',
   UPLOADING: 'UPLOADING',
+  VERIFYING: 'VERIFYING',
   READY: 'READY',
   FAILED: 'FAILED',
   SUPERSEDED: 'SUPERSEDED'
 } as const
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
+
+
+export const ResourceKind = {
+  LAMBDA_FUNCTION: 'LAMBDA_FUNCTION',
+  IAM_ROLE: 'IAM_ROLE',
+  NEON_PROJECT: 'NEON_PROJECT'
+} as const
+
+export type ResourceKind = (typeof ResourceKind)[keyof typeof ResourceKind]
 
 
 export const DomainStatus = {

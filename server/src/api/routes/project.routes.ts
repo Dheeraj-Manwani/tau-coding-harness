@@ -106,6 +106,8 @@ router.get(
 );
 router.post("/:projectId/deploy", publishRateLimiter, deploy.publish);
 router.delete("/:projectId/deploy", deploy.unpublish);
+// The published database, as CSV files (doc/PUBLISHING.md 5.7).
+router.get("/:projectId/database/export", publishRateLimiter, deploy.exportData);
 router.post(
   "/:projectId/deployments/:deploymentId/rollback",
   publishRateLimiter,

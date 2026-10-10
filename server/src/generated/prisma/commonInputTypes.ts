@@ -559,6 +559,13 @@ export type EnumDeploymentStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel> | $Enums.DeploymentStatus
 }
 
+export type EnumDeployTargetFilter<$PrismaModel = never> = {
+  equals?: $Enums.DeployTarget | Prisma.EnumDeployTargetFieldRefInput<$PrismaModel>
+  in?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel> | $Enums.DeployTarget
+}
+
 export type EnumDeploymentStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.DeploymentStatus | Prisma.EnumDeploymentStatusFieldRefInput<$PrismaModel>
   in?: $Enums.DeploymentStatus[] | Prisma.ListEnumDeploymentStatusFieldRefInput<$PrismaModel>
@@ -567,6 +574,33 @@ export type EnumDeploymentStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel>
+}
+
+export type EnumDeployTargetWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DeployTarget | Prisma.EnumDeployTargetFieldRefInput<$PrismaModel>
+  in?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDeployTargetWithAggregatesFilter<$PrismaModel> | $Enums.DeployTarget
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel>
+}
+
+export type EnumResourceKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.ResourceKind | Prisma.EnumResourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumResourceKindFilter<$PrismaModel> | $Enums.ResourceKind
+}
+
+export type EnumResourceKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ResourceKind | Prisma.EnumResourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumResourceKindWithAggregatesFilter<$PrismaModel> | $Enums.ResourceKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumResourceKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumResourceKindFilter<$PrismaModel>
 }
 
 export type EnumDomainStatusFilter<$PrismaModel = never> = {
@@ -1202,6 +1236,13 @@ export type NestedEnumDeploymentStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel> | $Enums.DeploymentStatus
 }
 
+export type NestedEnumDeployTargetFilter<$PrismaModel = never> = {
+  equals?: $Enums.DeployTarget | Prisma.EnumDeployTargetFieldRefInput<$PrismaModel>
+  in?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel> | $Enums.DeployTarget
+}
+
 export type NestedEnumDeploymentStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.DeploymentStatus | Prisma.EnumDeploymentStatusFieldRefInput<$PrismaModel>
   in?: $Enums.DeploymentStatus[] | Prisma.ListEnumDeploymentStatusFieldRefInput<$PrismaModel>
@@ -1210,6 +1251,33 @@ export type NestedEnumDeploymentStatusWithAggregatesFilter<$PrismaModel = never>
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumDeploymentStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumDeployTargetWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DeployTarget | Prisma.EnumDeployTargetFieldRefInput<$PrismaModel>
+  in?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DeployTarget[] | Prisma.ListEnumDeployTargetFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDeployTargetWithAggregatesFilter<$PrismaModel> | $Enums.DeployTarget
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDeployTargetFilter<$PrismaModel>
+}
+
+export type NestedEnumResourceKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.ResourceKind | Prisma.EnumResourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumResourceKindFilter<$PrismaModel> | $Enums.ResourceKind
+}
+
+export type NestedEnumResourceKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ResourceKind | Prisma.EnumResourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ResourceKind[] | Prisma.ListEnumResourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumResourceKindWithAggregatesFilter<$PrismaModel> | $Enums.ResourceKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumResourceKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumResourceKindFilter<$PrismaModel>
 }
 
 export type NestedEnumDomainStatusFilter<$PrismaModel = never> = {

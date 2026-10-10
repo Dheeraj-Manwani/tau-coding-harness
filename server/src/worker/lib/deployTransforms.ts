@@ -150,9 +150,12 @@ function templateSafe(text: string): string {
  * Null when the SQL cannot be read (see {@link extractInitSql}); the caller
  * blocks the publish with a message instead of publishing the wrong database.
  */
-export function productionDbClient(clientTs: string): string | null {
-  const sql = extractInitSql(clientTs);
-  if (sql === null) return null;
+export function productionDbClient(clientTs: string, additive: string[] = []): string | null {
+  const found = extractInitSql(clientTs);
+  if (found === null) return null;
+  // Columns tau adds to tables that already exist (src/worker/lib/schemaChange.ts),
+  // which the app's own CREATE TABLE IF NOT EXISTS would skip.
+  const sql = additive.length > 0 ? [found, ...additive].join("\n\n") : found;
   return `import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import * as schema from './schema'
@@ -181,7 +184,20 @@ import { streamHandle } from 'hono/aws-lambda'
 import server from './index'
 
 const app = new Hono()
-app.all('*', (c) => server.fetch(c.req.raw))
+
+// The function URL uses IAM authentication, which takes the Authorization header
+// for the AWS signature. The router therefore sends the visitor's own as
+// x-tau-authorization; put it back here so the app sees what the visitor sent
+// (and never the signature).
+app.all('*', (c) => {
+  const headers = new Headers(c.req.raw.headers)
+  const original = headers.get('x-tau-authorization')
+  headers.delete('x-tau-authorization')
+  headers.delete('authorization')
+  if (original !== null) headers.set('authorization', original)
+  return server.fetch(new Request(c.req.raw, { headers }))
+})
+
 export const handler = streamHandle(app)
 `;
 }

@@ -54,6 +54,13 @@ export type DeploymentMinAggregateOutputType = {
   outputDir: string | null
   fileCount: number | null
   sizeBytes: number | null
+  target: $Enums.DeployTarget | null
+  backendUrl: string | null
+  backendVersion: string | null
+  schemaSql: string | null
+  schemaHash: string | null
+  databaseBranchId: string | null
+  confirmSchemaChange: boolean | null
   jobId: string | null
   error: string | null
   buildLog: string | null
@@ -73,6 +80,13 @@ export type DeploymentMaxAggregateOutputType = {
   outputDir: string | null
   fileCount: number | null
   sizeBytes: number | null
+  target: $Enums.DeployTarget | null
+  backendUrl: string | null
+  backendVersion: string | null
+  schemaSql: string | null
+  schemaHash: string | null
+  databaseBranchId: string | null
+  confirmSchemaChange: boolean | null
   jobId: string | null
   error: string | null
   buildLog: string | null
@@ -92,6 +106,14 @@ export type DeploymentCountAggregateOutputType = {
   outputDir: number
   fileCount: number
   sizeBytes: number
+  target: number
+  backendUrl: number
+  backendVersion: number
+  schemaSql: number
+  schemaHash: number
+  schemaChanges: number
+  databaseBranchId: number
+  confirmSchemaChange: number
   jobId: number
   error: number
   buildLog: number
@@ -125,6 +147,13 @@ export type DeploymentMinAggregateInputType = {
   outputDir?: true
   fileCount?: true
   sizeBytes?: true
+  target?: true
+  backendUrl?: true
+  backendVersion?: true
+  schemaSql?: true
+  schemaHash?: true
+  databaseBranchId?: true
+  confirmSchemaChange?: true
   jobId?: true
   error?: true
   buildLog?: true
@@ -144,6 +173,13 @@ export type DeploymentMaxAggregateInputType = {
   outputDir?: true
   fileCount?: true
   sizeBytes?: true
+  target?: true
+  backendUrl?: true
+  backendVersion?: true
+  schemaSql?: true
+  schemaHash?: true
+  databaseBranchId?: true
+  confirmSchemaChange?: true
   jobId?: true
   error?: true
   buildLog?: true
@@ -163,6 +199,14 @@ export type DeploymentCountAggregateInputType = {
   outputDir?: true
   fileCount?: true
   sizeBytes?: true
+  target?: true
+  backendUrl?: true
+  backendVersion?: true
+  schemaSql?: true
+  schemaHash?: true
+  schemaChanges?: true
+  databaseBranchId?: true
+  confirmSchemaChange?: true
   jobId?: true
   error?: true
   buildLog?: true
@@ -269,6 +313,14 @@ export type DeploymentGroupByOutputType = {
   outputDir: string | null
   fileCount: number
   sizeBytes: number
+  target: $Enums.DeployTarget
+  backendUrl: string | null
+  backendVersion: string | null
+  schemaSql: string | null
+  schemaHash: string | null
+  schemaChanges: runtime.JsonValue | null
+  databaseBranchId: string | null
+  confirmSchemaChange: boolean
   jobId: string | null
   error: string | null
   buildLog: string | null
@@ -311,6 +363,14 @@ export type DeploymentWhereInput = {
   outputDir?: Prisma.StringNullableFilter<"Deployment"> | string | null
   fileCount?: Prisma.IntFilter<"Deployment"> | number
   sizeBytes?: Prisma.IntFilter<"Deployment"> | number
+  target?: Prisma.EnumDeployTargetFilter<"Deployment"> | $Enums.DeployTarget
+  backendUrl?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  backendVersion?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaSql?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaHash?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaChanges?: Prisma.JsonNullableFilter<"Deployment">
+  databaseBranchId?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  confirmSchemaChange?: Prisma.BoolFilter<"Deployment"> | boolean
   jobId?: Prisma.StringNullableFilter<"Deployment"> | string | null
   error?: Prisma.StringNullableFilter<"Deployment"> | string | null
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
@@ -331,6 +391,14 @@ export type DeploymentOrderByWithRelationInput = {
   outputDir?: Prisma.SortOrderInput | Prisma.SortOrder
   fileCount?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
+  target?: Prisma.SortOrder
+  backendUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  backendVersion?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaSql?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaChanges?: Prisma.SortOrderInput | Prisma.SortOrder
+  databaseBranchId?: Prisma.SortOrderInput | Prisma.SortOrder
+  confirmSchemaChange?: Prisma.SortOrder
   jobId?: Prisma.SortOrderInput | Prisma.SortOrder
   error?: Prisma.SortOrderInput | Prisma.SortOrder
   buildLog?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -355,6 +423,14 @@ export type DeploymentWhereUniqueInput = Prisma.AtLeast<{
   outputDir?: Prisma.StringNullableFilter<"Deployment"> | string | null
   fileCount?: Prisma.IntFilter<"Deployment"> | number
   sizeBytes?: Prisma.IntFilter<"Deployment"> | number
+  target?: Prisma.EnumDeployTargetFilter<"Deployment"> | $Enums.DeployTarget
+  backendUrl?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  backendVersion?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaSql?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaHash?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaChanges?: Prisma.JsonNullableFilter<"Deployment">
+  databaseBranchId?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  confirmSchemaChange?: Prisma.BoolFilter<"Deployment"> | boolean
   error?: Prisma.StringNullableFilter<"Deployment"> | string | null
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Deployment"> | Date | string
@@ -374,6 +450,14 @@ export type DeploymentOrderByWithAggregationInput = {
   outputDir?: Prisma.SortOrderInput | Prisma.SortOrder
   fileCount?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
+  target?: Prisma.SortOrder
+  backendUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  backendVersion?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaSql?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaChanges?: Prisma.SortOrderInput | Prisma.SortOrder
+  databaseBranchId?: Prisma.SortOrderInput | Prisma.SortOrder
+  confirmSchemaChange?: Prisma.SortOrder
   jobId?: Prisma.SortOrderInput | Prisma.SortOrder
   error?: Prisma.SortOrderInput | Prisma.SortOrder
   buildLog?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -401,6 +485,14 @@ export type DeploymentScalarWhereWithAggregatesInput = {
   outputDir?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
   fileCount?: Prisma.IntWithAggregatesFilter<"Deployment"> | number
   sizeBytes?: Prisma.IntWithAggregatesFilter<"Deployment"> | number
+  target?: Prisma.EnumDeployTargetWithAggregatesFilter<"Deployment"> | $Enums.DeployTarget
+  backendUrl?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
+  backendVersion?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
+  schemaSql?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
+  schemaHash?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
+  schemaChanges?: Prisma.JsonNullableWithAggregatesFilter<"Deployment">
+  databaseBranchId?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
+  confirmSchemaChange?: Prisma.BoolWithAggregatesFilter<"Deployment"> | boolean
   jobId?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
   error?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
   buildLog?: Prisma.StringNullableWithAggregatesFilter<"Deployment"> | string | null
@@ -419,6 +511,14 @@ export type DeploymentCreateInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -439,6 +539,14 @@ export type DeploymentUncheckedCreateInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -457,6 +565,14 @@ export type DeploymentUpdateInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -477,6 +593,14 @@ export type DeploymentUncheckedUpdateInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -496,6 +620,14 @@ export type DeploymentCreateManyInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -514,6 +646,14 @@ export type DeploymentUpdateManyMutationInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -533,6 +673,14 @@ export type DeploymentUncheckedUpdateManyInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -562,6 +710,14 @@ export type DeploymentCountOrderByAggregateInput = {
   outputDir?: Prisma.SortOrder
   fileCount?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
+  target?: Prisma.SortOrder
+  backendUrl?: Prisma.SortOrder
+  backendVersion?: Prisma.SortOrder
+  schemaSql?: Prisma.SortOrder
+  schemaHash?: Prisma.SortOrder
+  schemaChanges?: Prisma.SortOrder
+  databaseBranchId?: Prisma.SortOrder
+  confirmSchemaChange?: Prisma.SortOrder
   jobId?: Prisma.SortOrder
   error?: Prisma.SortOrder
   buildLog?: Prisma.SortOrder
@@ -587,6 +743,13 @@ export type DeploymentMaxOrderByAggregateInput = {
   outputDir?: Prisma.SortOrder
   fileCount?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
+  target?: Prisma.SortOrder
+  backendUrl?: Prisma.SortOrder
+  backendVersion?: Prisma.SortOrder
+  schemaSql?: Prisma.SortOrder
+  schemaHash?: Prisma.SortOrder
+  databaseBranchId?: Prisma.SortOrder
+  confirmSchemaChange?: Prisma.SortOrder
   jobId?: Prisma.SortOrder
   error?: Prisma.SortOrder
   buildLog?: Prisma.SortOrder
@@ -606,6 +769,13 @@ export type DeploymentMinOrderByAggregateInput = {
   outputDir?: Prisma.SortOrder
   fileCount?: Prisma.SortOrder
   sizeBytes?: Prisma.SortOrder
+  target?: Prisma.SortOrder
+  backendUrl?: Prisma.SortOrder
+  backendVersion?: Prisma.SortOrder
+  schemaSql?: Prisma.SortOrder
+  schemaHash?: Prisma.SortOrder
+  databaseBranchId?: Prisma.SortOrder
+  confirmSchemaChange?: Prisma.SortOrder
   jobId?: Prisma.SortOrder
   error?: Prisma.SortOrder
   buildLog?: Prisma.SortOrder
@@ -667,6 +837,10 @@ export type EnumDeploymentStatusFieldUpdateOperationsInput = {
   set?: $Enums.DeploymentStatus
 }
 
+export type EnumDeployTargetFieldUpdateOperationsInput = {
+  set?: $Enums.DeployTarget
+}
+
 export type DeploymentCreateWithoutProjectInput = {
   id?: string
   userId: string
@@ -676,6 +850,14 @@ export type DeploymentCreateWithoutProjectInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -694,6 +876,14 @@ export type DeploymentUncheckedCreateWithoutProjectInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -742,6 +932,14 @@ export type DeploymentScalarWhereInput = {
   outputDir?: Prisma.StringNullableFilter<"Deployment"> | string | null
   fileCount?: Prisma.IntFilter<"Deployment"> | number
   sizeBytes?: Prisma.IntFilter<"Deployment"> | number
+  target?: Prisma.EnumDeployTargetFilter<"Deployment"> | $Enums.DeployTarget
+  backendUrl?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  backendVersion?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaSql?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaHash?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  schemaChanges?: Prisma.JsonNullableFilter<"Deployment">
+  databaseBranchId?: Prisma.StringNullableFilter<"Deployment"> | string | null
+  confirmSchemaChange?: Prisma.BoolFilter<"Deployment"> | boolean
   jobId?: Prisma.StringNullableFilter<"Deployment"> | string | null
   error?: Prisma.StringNullableFilter<"Deployment"> | string | null
   buildLog?: Prisma.StringNullableFilter<"Deployment"> | string | null
@@ -760,6 +958,14 @@ export type DeploymentCreateManyProjectInput = {
   outputDir?: string | null
   fileCount?: number
   sizeBytes?: number
+  target?: $Enums.DeployTarget
+  backendUrl?: string | null
+  backendVersion?: string | null
+  schemaSql?: string | null
+  schemaHash?: string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: string | null
+  confirmSchemaChange?: boolean
   jobId?: string | null
   error?: string | null
   buildLog?: string | null
@@ -778,6 +984,14 @@ export type DeploymentUpdateWithoutProjectInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -796,6 +1010,14 @@ export type DeploymentUncheckedUpdateWithoutProjectInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -814,6 +1036,14 @@ export type DeploymentUncheckedUpdateManyWithoutProjectInput = {
   outputDir?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileCount?: Prisma.IntFieldUpdateOperationsInput | number
   sizeBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  target?: Prisma.EnumDeployTargetFieldUpdateOperationsInput | $Enums.DeployTarget
+  backendUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  backendVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaSql?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaChanges?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  databaseBranchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  confirmSchemaChange?: Prisma.BoolFieldUpdateOperationsInput | boolean
   jobId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buildLog?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -835,6 +1065,14 @@ export type DeploymentSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   outputDir?: boolean
   fileCount?: boolean
   sizeBytes?: boolean
+  target?: boolean
+  backendUrl?: boolean
+  backendVersion?: boolean
+  schemaSql?: boolean
+  schemaHash?: boolean
+  schemaChanges?: boolean
+  databaseBranchId?: boolean
+  confirmSchemaChange?: boolean
   jobId?: boolean
   error?: boolean
   buildLog?: boolean
@@ -855,6 +1093,14 @@ export type DeploymentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   outputDir?: boolean
   fileCount?: boolean
   sizeBytes?: boolean
+  target?: boolean
+  backendUrl?: boolean
+  backendVersion?: boolean
+  schemaSql?: boolean
+  schemaHash?: boolean
+  schemaChanges?: boolean
+  databaseBranchId?: boolean
+  confirmSchemaChange?: boolean
   jobId?: boolean
   error?: boolean
   buildLog?: boolean
@@ -875,6 +1121,14 @@ export type DeploymentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   outputDir?: boolean
   fileCount?: boolean
   sizeBytes?: boolean
+  target?: boolean
+  backendUrl?: boolean
+  backendVersion?: boolean
+  schemaSql?: boolean
+  schemaHash?: boolean
+  schemaChanges?: boolean
+  databaseBranchId?: boolean
+  confirmSchemaChange?: boolean
   jobId?: boolean
   error?: boolean
   buildLog?: boolean
@@ -895,6 +1149,14 @@ export type DeploymentSelectScalar = {
   outputDir?: boolean
   fileCount?: boolean
   sizeBytes?: boolean
+  target?: boolean
+  backendUrl?: boolean
+  backendVersion?: boolean
+  schemaSql?: boolean
+  schemaHash?: boolean
+  schemaChanges?: boolean
+  databaseBranchId?: boolean
+  confirmSchemaChange?: boolean
   jobId?: boolean
   error?: boolean
   buildLog?: boolean
@@ -904,7 +1166,7 @@ export type DeploymentSelectScalar = {
   purgedAt?: boolean
 }
 
-export type DeploymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "status" | "storagePrefix" | "sequence" | "outputDir" | "fileCount" | "sizeBytes" | "jobId" | "error" | "buildLog" | "createdAt" | "completedAt" | "supersededAt" | "purgedAt", ExtArgs["result"]["deployment"]>
+export type DeploymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "status" | "storagePrefix" | "sequence" | "outputDir" | "fileCount" | "sizeBytes" | "target" | "backendUrl" | "backendVersion" | "schemaSql" | "schemaHash" | "schemaChanges" | "databaseBranchId" | "confirmSchemaChange" | "jobId" | "error" | "buildLog" | "createdAt" | "completedAt" | "supersededAt" | "purgedAt", ExtArgs["result"]["deployment"]>
 export type DeploymentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }
@@ -945,6 +1207,37 @@ export type $DeploymentPayload<ExtArgs extends runtime.Types.Extensions.Internal
     outputDir: string | null
     fileCount: number
     sizeBytes: number
+    target: $Enums.DeployTarget
+    /**
+     * Where this deployment's backend answers: a Lambda function URL for this
+     * version's alias, so the routing record alone decides which backend is live
+     * and rolling back needs no call to AWS (doc/PUBLISHING.md C9). Null for STATIC.
+     */
+    backendUrl: string | null
+    /**
+     * The Lambda version this deployment published.
+     */
+    backendVersion: string | null
+    /**
+     * The app's database SQL as published, and a hash of it (C6). The next publish
+     * compares against the live deployment's.
+     */
+    schemaSql: string | null
+    schemaHash: string | null
+    /**
+     * Set on a FAILED deployment that stopped for the owner to confirm a database
+     * change: the list of changes the panel shows. Null otherwise.
+     */
+    schemaChanges: runtime.JsonValue | null
+    /**
+     * The Neon branch taken as a restore point before a confirmed change.
+     */
+    databaseBranchId: string | null
+    /**
+     * The owner confirmed this publish may go ahead with the changes listed in a
+     * previous failed one.
+     */
+    confirmSchemaChange: boolean
     /**
      * The DEPLOY job that produced this row. Nullable because the row is created
      * before the job is enqueued, in the same transaction that reserves it.
@@ -1412,6 +1705,14 @@ export interface DeploymentFieldRefs {
   readonly outputDir: Prisma.FieldRef<"Deployment", 'String'>
   readonly fileCount: Prisma.FieldRef<"Deployment", 'Int'>
   readonly sizeBytes: Prisma.FieldRef<"Deployment", 'Int'>
+  readonly target: Prisma.FieldRef<"Deployment", 'DeployTarget'>
+  readonly backendUrl: Prisma.FieldRef<"Deployment", 'String'>
+  readonly backendVersion: Prisma.FieldRef<"Deployment", 'String'>
+  readonly schemaSql: Prisma.FieldRef<"Deployment", 'String'>
+  readonly schemaHash: Prisma.FieldRef<"Deployment", 'String'>
+  readonly schemaChanges: Prisma.FieldRef<"Deployment", 'Json'>
+  readonly databaseBranchId: Prisma.FieldRef<"Deployment", 'String'>
+  readonly confirmSchemaChange: Prisma.FieldRef<"Deployment", 'Boolean'>
   readonly jobId: Prisma.FieldRef<"Deployment", 'String'>
   readonly error: Prisma.FieldRef<"Deployment", 'String'>
   readonly buildLog: Prisma.FieldRef<"Deployment", 'String'>

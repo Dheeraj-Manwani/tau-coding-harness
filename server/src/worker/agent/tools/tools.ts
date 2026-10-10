@@ -60,6 +60,26 @@ export const BASE_APP_TOOLS = [
   {
     type: "function",
     function: {
+      name: "enable_storage",
+      description:
+        "Turn on file storage for the app you are building, so it can keep files that users upload or that the app makes (pictures, documents, exports, profile photos). Call this BEFORE writing any code that stores a file. It gives the app a storage credential in its server environment, writes two helper files (`server/storage.ts` and `src/lib/uploadFile.ts`), and returns the guide with the routes to write — you never handle or see the key itself. Uploads go straight from the visitor's browser to tau's storage, so size is not limited by the app's server, and files survive rebuilding the sandbox. The user needs no account or key of their own. On an app with no server it adds one first, in place. Safe to call more than once. If it returns an error, tell the user the app cannot keep files, and do NOT fall back to the server's disk, base64 in a table, or the browser's storage.",
+      parameters: {
+        type: "object",
+        properties: {
+          purpose: {
+            type: "string",
+            description:
+              "One short phrase describing what the app will store, e.g. 'recipe photos' or 'users' uploaded invoices'. Recorded for the user's reference.",
+          },
+        },
+        required: ["purpose"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "add_backend",
       description:
         "Give this app a server: a Hono API in `server/index.ts`, reachable from the frontend at `/api/*`. Call it once, before writing any API route, when the app genuinely needs server-side logic. It sets everything up in place — installs what is needed and starts the server, with no rebuild — and returns the guide for writing routes. Safe to call again: on an app that already has a backend it changes nothing and returns the guide. You do NOT need it before `enable_ai`, `request_secret` or `add_database`; they add the backend themselves.",

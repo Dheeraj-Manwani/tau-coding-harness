@@ -11,7 +11,7 @@ import {
 } from "../agent/tools/functions/utils";
 import {
   buildProjectEnv,
-  isAiEnabled,
+  projectEnvFlags,
   needsProjectEnv,
   reinjectProjectEnv,
 } from "./aiEnv";
@@ -301,9 +301,9 @@ async function createFreshSandbox(
   const needsEnv = await needsProjectEnv(projectId);
   const envs =
     needsEnv && keyEncryptionConfigured()
-      ? await buildProjectEnv(userId, projectId, jobId, {
-          aiEnabled: await isAiEnabled(projectId),
-        }).catch(() => undefined)
+      ? await buildProjectEnv(userId, projectId, jobId, await projectEnvFlags(projectId)).catch(
+          () => undefined,
+        )
       : undefined;
 
   const sandbox = await Sandbox.create(e2bName, {

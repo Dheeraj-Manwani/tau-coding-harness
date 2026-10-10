@@ -8,88 +8,11 @@ import {
   writeEnvFile,
 } from "@/worker/lib/aiEnv";
 import { keyEncryptionConfigured } from "@/lib/apiKeys";
-import { persistFile } from "./utils";
+import { AI_ENV_ENTRIES, upsertDeployManifest } from "@/worker/lib/deployManifest";
 import { toTemplateKey, TEMPLATES } from "@/worker/templates/registry";
 import { migrateTemplate, type MigrateOutcome } from "@/worker/lib/migrateTemplate";
 import { addBackend } from "@/worker/lib/appStack";
 import { guideText } from "../../docs";
-
-/** The env vars a deployed app will need, declared for the deploy flow. */
-const DEPLOY_MANIFEST_PATH = ".tau/deploy.json";
-
-interface DeployManifest {
-  envRequired?: {
-    key: string;
-    description: string;
-    secret?: boolean;
-    managed?: string;
-  }[];
-}
-
-/**
- * Merge the tau-managed entries into `.tau/deploy.json` without clobbering
- * anything the agent put there. `managed: "tau"` tells the deploy flow to
- * resolve the value itself rather than prompting the user for it
- * (doc/AI_FOR_GENERATED_APPS.md §10).
- *
- * This file IS persisted — it contains no secret, only the names of the vars.
- */
-async function upsertDeployManifest(
-  sandbox: Sandbox,
-  jobId: string,
-  projectId: string,
-  userId: string,
-  indexer: () => number,
-): Promise<void> {
-  let manifest: DeployManifest = {};
-  try {
-    const existing = await sandbox.files.read(
-      `/home/user/app/${DEPLOY_MANIFEST_PATH}`,
-    );
-    manifest = JSON.parse(existing) as DeployManifest;
-  } catch {
-    // No manifest yet, or it is unparseable — start clean rather than fail the
-    // tool over a file the user never sees.
-  }
-
-  const managed = [
-    {
-      key: "TAU_API_KEY",
-      description: "tau AI credential",
-      secret: true,
-      managed: "tau",
-    },
-    {
-      key: "TAU_AI_URL",
-      description: "tau AI base URL (fetch surface)",
-      managed: "tau",
-    },
-    {
-      key: "TAU_API_URL",
-      description: "tau AI base URL (OpenAI-compatible surface)",
-      managed: "tau",
-    },
-  ];
-
-  const others = (manifest.envRequired ?? []).filter(
-    (e) => !managed.some((m) => m.key === e.key),
-  );
-  const body = JSON.stringify(
-    { ...manifest, envRequired: [...others, ...managed] },
-    null,
-    2,
-  );
-
-  await sandbox.files.write(`/home/user/app/${DEPLOY_MANIFEST_PATH}`, body);
-  await persistFile(
-    jobId,
-    projectId,
-    userId,
-    DEPLOY_MANIFEST_PATH,
-    body,
-    indexer,
-  );
-}
 
 /**
  * Turn on AI features for this project: mint/fetch the user's key, inject it
@@ -197,7 +120,7 @@ export async function enableAi(
     data: { aiEnabled: true },
   });
 
-  await upsertDeployManifest(sandbox, jobId, projectId, userId, indexer);
+  await upsertDeployManifest(sandbox, jobId, projectId, userId, indexer, AI_ENV_ENTRIES);
 
   // The server is already running and read its environment at boot, so it will
   // not see the new .env without this.

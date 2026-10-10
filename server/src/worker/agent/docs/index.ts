@@ -17,7 +17,7 @@
  *
  * Three ways, in order of how little they depend on the model choosing well:
  *
- *   1. **Returned by a tool.** `add_backend`, `add_database` and `enable_ai`
+ *   1. **Returned by a tool.** `add_backend`, `add_database`, `enable_ai` and `enable_storage`
  *      set an area up and return its guide in the same result.
  *   2. **Attached by tau.** The first time the agent opens or changes a file a
  *      guide covers, or first uses a tool it explains, the guide rides along on
@@ -34,6 +34,7 @@ export const DOC_NAMES = [
   "backend",
   "database",
   "ai",
+  "storage",
   "secrets",
   "theme",
   "layouts",
@@ -84,6 +85,10 @@ export const DOCS: Record<DocName, DocSpec> = {
   },
   ai: {
     when: "before writing code that calls a language model. Returned by `enable_ai`, which has to be called first — reading the guide alone turns nothing on.",
+  },
+  storage: {
+    when: "before building anything that keeps a user's files. Returned by `enable_storage`, which must be called first.",
+    covers: (p) => p === "server/storage.ts" || p === "src/lib/uploadFile.ts",
   },
   secrets: {
     when: "before building anything that needs a key for an outside service (Stripe, Resend, maps, …).",

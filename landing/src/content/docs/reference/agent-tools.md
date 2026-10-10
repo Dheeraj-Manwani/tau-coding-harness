@@ -66,6 +66,7 @@ than grey placeholder boxes.
 | Tool | What it does |
 |---|---|
 | `enable_ai` | Wires the [AI gateway](/docs/ai/overview) into your app: mints the key, injects the env vars, declares them in `.tau/deploy.json` |
+| `enable_storage` | Gives your app file storage: mints a project key, injects `TAU_STORAGE_KEY` and `TAU_STORAGE_URL`, writes the upload helpers, declares the variables in `.tau/deploy.json` |
 | `push_to_github` | Pushes your project: new PR, update PR, or direct |
 | `create_github_issue` | Opens an issue on your linked repo |
 

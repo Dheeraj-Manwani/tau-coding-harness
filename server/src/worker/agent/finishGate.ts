@@ -86,7 +86,7 @@ export interface WorkLog {
   /** Paths changed by `edit_file`, memory file excluded. */
   edited: Set<string>;
   deleted: number;
-  /** `add_backend` / `add_database` set something up. */
+  /** `add_backend` / `add_database` / `enable_storage` set something up. */
   stackGrew: boolean;
   /** The memory file was written or edited. */
   memoryTouched: boolean;
@@ -136,6 +136,10 @@ export function noteWork(
     work.deleted++;
   } else if (tool === "add_backend" || tool === "add_database") {
     if (!output.alreadySetUp) work.stackGrew = true;
+  } else if (tool === "enable_storage") {
+    // The app gains a capability a later request must know it has. The tool has
+    // no `alreadySetUp`, and a repeat call is harmless to count.
+    work.stackGrew = true;
   }
 }
 

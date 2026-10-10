@@ -28,6 +28,8 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { log } from "./log";
 import { ensureApiKey, keyEncryptionConfigured } from "@/lib/apiKeys";
+import { ensureStorageKey, type StorageEnvName } from "@/lib/storageKeys";
+import { storageConfigured } from "@/lib/storageBucket";
 import {
   hasProjectSecrets,
   projectSecretEnv,
@@ -110,6 +112,31 @@ function classifyHost(rawHost: string): HostClass {
 }
 
 /**
+ * Why an address can never work from a sandbox, or null when it can.
+ * Shared by the AI gateway's two URLs and the storage URL, so the three are
+ * judged by one table.
+ */
+function unreachableReason(
+  name: string,
+  value: string,
+): { reason: "loopback" | "private" | "malformed"; detail: string } | null {
+  let host: string;
+  try {
+    host = new URL(value).hostname;
+  } catch {
+    // Unreachable for env-sourced values (zod `.url()` ran at boot), but the
+    // override seam means this function no longer gets to assume that.
+    return { reason: "malformed", detail: `${name} is not a valid URL: ${value}` };
+  }
+  const cls = classifyHost(host);
+  if (cls === "public") return null;
+  return {
+    reason: cls,
+    detail: `${name} is ${value}, a ${cls} address. An E2B sandbox is a remote VM and cannot reach it — set it to a publicly reachable origin (a tunnel in dev).`,
+  };
+}
+
+/**
  * @param urls Overridable for tests — `env` is a frozen module-level const, so
  * there is no other way to exercise the classification table.
  */
@@ -133,27 +160,8 @@ export function checkGatewayReachability(urls?: {
     ["TAU_AI_URL", aiUrl],
     ["TAU_API_URL", apiUrl],
   ] as const) {
-    let host: string;
-    try {
-      host = new URL(value).hostname;
-    } catch {
-      // Unreachable for env-sourced values (zod `.url()` ran at boot), but the
-      // override seam means this function no longer gets to assume that.
-      return {
-        ok: false,
-        reason: "malformed",
-        detail: `${name} is not a valid URL: ${value}`,
-      };
-    }
-
-    const cls = classifyHost(host);
-    if (cls !== "public") {
-      return {
-        ok: false,
-        reason: cls,
-        detail: `${name} is ${value}, a ${cls} address. An E2B sandbox is a remote VM and cannot reach it — set it to a publicly reachable origin (a tunnel in dev).`,
-      };
-    }
+    const problem = unreachableReason(name, value);
+    if (problem) return { ok: false, ...problem };
   }
 
   return { ok: true, aiUrl, apiUrl };
@@ -177,6 +185,41 @@ export function gatewayUsable(): GatewayReachability {
     aiUrl: env.TAU_AI_URL as string,
     apiUrl: env.TAU_API_URL as string,
   };
+}
+
+// ── Storage reachability ─────────────────────────────────────────────────────
+
+export type StorageReachability =
+  | { ok: true; storageUrl: string }
+  | { ok: false; reason: "unconfigured" | "unset" | "loopback" | "private" | "malformed"; detail: string };
+
+/**
+ * Can a generated app use tau Cloud Storage from where it runs? Needs the
+ * bucket configured on this instance and a public `TAU_STORAGE_URL`: the app's
+ * server calls it from a sandbox, and later from a published function.
+ *
+ * @param override Overridable for tests, for the reason given on {@link checkGatewayReachability}.
+ */
+export function checkStorageReachability(override?: { configured?: boolean; url?: string }): StorageReachability {
+  const configured = override ? override.configured !== false : storageConfigured();
+  const url = override ? override.url : env.TAU_STORAGE_URL;
+  if (!configured) {
+    return { ok: false, reason: "unconfigured", detail: "R2_STORAGE_BUCKET is not set, so this instance has no file storage." };
+  }
+  if (!url) {
+    return { ok: false, reason: "unset", detail: "TAU_STORAGE_URL is not set. A generated app has no address to call." };
+  }
+  const problem = unreachableReason("TAU_STORAGE_URL", url);
+  return problem ? { ok: false, ...problem } : { ok: true, storageUrl: url.replace(/\/+$/, "") };
+}
+
+/** The verdict with `TAU_GATEWAY_ALLOW_UNREACHABLE` applied, as {@link gatewayUsable} does. */
+export function storageUsable(): StorageReachability {
+  const verdict = checkStorageReachability();
+  if (verdict.ok || verdict.reason === "unset" || verdict.reason === "unconfigured") return verdict;
+  if (!env.TAU_GATEWAY_ALLOW_UNREACHABLE) return verdict;
+  log.warn("storage.unreachable_allowed", { detail: verdict.detail });
+  return { ok: true, storageUrl: (env.TAU_STORAGE_URL as string).replace(/\/+$/, "") };
 }
 
 export class GatewayUnreachableError extends Error {
@@ -241,6 +284,28 @@ export async function buildAiEnv(
   };
 }
 
+/** What a generated app reads to reach tau Cloud Storage. */
+export interface StorageAppEnv extends Record<string, string> {
+  TAU_STORAGE_KEY: string;
+  TAU_STORAGE_URL: string;
+}
+
+/**
+ * The storage variables for one environment. The key decides which environment
+ * the app's requests touch, so the sandbox gets `PREVIEW` and, from S5, a
+ * published function gets `LIVE`: the target is an argument, not a default.
+ */
+export async function buildStorageEnv(
+  userId: string,
+  projectId: string,
+  target: StorageEnvName,
+): Promise<StorageAppEnv> {
+  const verdict = storageUsable();
+  if (!verdict.ok) throw new Error(verdict.detail);
+  const { key } = await ensureStorageKey(projectId, userId, target);
+  return { TAU_STORAGE_KEY: key, TAU_STORAGE_URL: verdict.storageUrl };
+}
+
 /**
  * Everything the app's `.env` should hold: the user's third-party keys
  * (`ProjectSecret`) plus, when AI is on, the tau gateway vars.
@@ -253,7 +318,7 @@ export async function buildProjectEnv(
   userId: string,
   projectId: string,
   jobId: string,
-  opts: { aiEnabled: boolean },
+  opts: { aiEnabled: boolean; storageEnabled?: boolean },
 ): Promise<Record<string, string>> {
   if (!keyEncryptionConfigured()) return {};
 
@@ -283,6 +348,18 @@ export async function buildProjectEnv(
       // Spread last: `TAU_*` names are reserved, so this never shadows a
       // user's key — but if one slipped in, tau's value must win.
       Object.assign(vars, await buildAiEnv(userId, projectId));
+    }
+  }
+
+  if (opts.storageEnabled) {
+    // Independent of the AI half: an unreachable storage address is logged and
+    // skipped, and must not keep the user's own keys out of the app.
+    try {
+      // The sandbox is the preview environment. A published function gets its
+      // own key in S5; today `buildPublishEnv` does not ask for storage.
+      Object.assign(vars, await buildStorageEnv(userId, projectId, "PREVIEW"));
+    } catch (err) {
+      log.error("storage.reinject_skipped", { jobId, projectId, detail: err instanceof Error ? err.message : String(err) });
     }
   }
   return vars;
@@ -401,9 +478,7 @@ export async function reinjectProjectEnv(
     return;
   }
   try {
-    const vars = await buildProjectEnv(userId, projectId, jobId, {
-      aiEnabled: await isAiEnabled(projectId),
-    });
+    const vars = await buildProjectEnv(userId, projectId, jobId, await projectEnvFlags(projectId));
     await writeEnvFile(sandbox, vars);
     if (opts.restart) await restartAppServer(sandbox, jobId);
     log.info("env.injected", {
@@ -423,11 +498,22 @@ export async function reinjectProjectEnv(
 
 /** Does this project need a tau-written `.env` at all? */
 export async function needsProjectEnv(projectId: string): Promise<boolean> {
-  const [ai, secrets] = await Promise.all([
-    isAiEnabled(projectId),
+  const [flags, secrets] = await Promise.all([
+    projectEnvFlags(projectId),
     hasProjectSecrets(projectId),
   ]);
-  return ai || secrets;
+  return flags.aiEnabled || flags.storageEnabled || secrets;
+}
+
+/** Which tau-managed variables this project's `.env` should carry. */
+export async function projectEnvFlags(
+  projectId: string,
+): Promise<{ aiEnabled: boolean; storageEnabled: boolean }> {
+  const p = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { aiEnabled: true, storageEnabled: true },
+  });
+  return { aiEnabled: p?.aiEnabled ?? false, storageEnabled: p?.storageEnabled ?? false };
 }
 
 /** Has the agent turned on AI for this project? */

@@ -27,6 +27,7 @@ import { searchImages } from "./functions/search-images";
 import { imageDimensions } from "./functions/image-dimensions";
 import { downloadAsset } from "./functions/download-asset";
 import { enableAi } from "./functions/enable-ai";
+import { enableStorage } from "./functions/enable-storage";
 import { addBackendTool } from "./functions/add-backend";
 import { addDatabaseTool } from "./functions/add-database";
 import { readDocTool } from "./functions/read-doc";
@@ -312,6 +313,8 @@ async function executeToolInner(
         }
         return result;
       }
+      case "enable_storage":
+        return await enableStorage(input, sandbox, jobId, projectId, userId, indexer);
       case "add_backend":
         return await addBackendTool(
           input,

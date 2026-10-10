@@ -185,6 +185,7 @@ const FILE_MUTATING_TOOLS = new Set<string>([
   "dispatch_implementer",
   "add_backend",
   "add_database",
+  "enable_storage",
 ]);
 
 const TOOL_SCHEMA_TOKENS = estimateStringTokens(

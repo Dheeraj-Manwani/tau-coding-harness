@@ -278,6 +278,8 @@ export interface AppBriefParts {
   serverSources?: readonly { path: string; text: string }[];
   /** `server/db/schema.ts`, when the app has a database. */
   schemaTs?: string | null;
+  /** `enable_storage` has been called: the helper files and credentials are in place. */
+  storageEnabled?: boolean;
 }
 
 export type BriefAudience =
@@ -350,6 +352,12 @@ export function renderAppBrief(parts: AppBriefParts, audience: BriefAudience): s
     sections.push(`<tables from="server/db/schema.ts">\n${tables.join("\n")}\n</tables>`);
   }
 
+  if (parts.storageEnabled) {
+    sections.push(
+      "<storage>File storage is already on for this app (`server/storage.ts`, `src/lib/uploadFile.ts`). Do not call `enable_storage` again; read the `storage` guide before changing how files are handled.</storage>",
+    );
+  }
+
   return `<tau_app>\n${INTRO[audience]} The memory is written by you; the file, page, route and table lists are computed by tau from the saved files and can miss unusual code — the files themselves are the truth.\n\n${sections.join("\n\n")}\n</tau_app>`;
 }
 
@@ -383,7 +391,7 @@ export async function loadAppBriefParts(projectId: string): Promise<AppBriefPart
   try {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { userId: true, templateKey: true },
+      select: { userId: true, templateKey: true, storageEnabled: true },
     });
     if (!project) return null;
     if (TEMPLATES[toTemplateKey(project.templateKey)].generation !== 2) return null;
@@ -428,6 +436,7 @@ export async function loadAppBriefParts(projectId: string): Promise<AppBriefPart
       files: rows,
       appTsx,
       schemaTs,
+      storageEnabled: project.storageEnabled,
       serverSources: serverPaths.flatMap((path, i) => {
         const text = serverTexts[i];
         return text ? [{ path, text }] : [];

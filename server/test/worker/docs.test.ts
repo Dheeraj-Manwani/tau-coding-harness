@@ -140,6 +140,27 @@ describe("the guides", () => {
     expect(doc).toContain("only after `enable_ai` has been called");
   });
 
+  test("the storage guide carries the routes, the helpers and the rules that lose files when missed", () => {
+    const doc = readDoc("storage");
+    for (const part of [
+      "only after `enable_storage` has been called",
+      "server/storage.ts",
+      "src/lib/uploadFile.ts",
+      "/api/files/upload-url",
+      "/api/files/complete",
+      "createUpload",
+      "completeUpload",
+      "never reaches the browser",
+      "storage_full",
+      "file_too_large",
+    ]) {
+      expect(doc).toContain(part);
+    }
+    // Opening a helper brings the guide.
+    expect(docsForPath("server/storage.ts")).toContain("storage");
+    expect(docsForPath("src/lib/uploadFile.ts")).toContain("storage");
+  });
+
   test("the assets and secrets guides keep the rules that lose work when missed", () => {
     expect(readDoc("assets")).toContain("Use `download_asset`, never `curl`");
     expect(readDoc("secrets")).toContain("never under a `VITE_` name");

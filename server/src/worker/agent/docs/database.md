@@ -21,6 +21,7 @@ The app has a database: PGlite (real Postgres, running in-process) with Drizzle 
 - One connection is correct here: only this server talks to the database.
 - Keep the table SQL in `initDb()` as plain statements inside one `client.exec(`…`)` call, with no `${…}` in them, and keep `server/db/client.ts` exporting only `db` and `initDb`. Publishing swaps that one file for the real database by reading those statements, and refuses to publish if it cannot.
 - Open the database only through `db` from `server/db/client.ts`. Never import `@electric-sql/pglite` anywhere else.
+- Never store a file's contents in a table. Call `enable_storage` and keep the file's `key` in the row.
 - The frontend never touches the database. It calls `/api/*` routes, through React Query.
 - Validate request bodies on write routes: `zValidator('json', insertThingSchema)` from `@hono/zod-validator`.
 

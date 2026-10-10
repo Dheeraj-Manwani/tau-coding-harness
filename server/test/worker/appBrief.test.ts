@@ -233,6 +233,13 @@ export const guestbookEntries = pgTable(
 });
 
 describe("renderAppBrief", () => {
+  test("says when file storage is on, and says nothing when it is not", () => {
+    const on = renderAppBrief({ memory: null, files: [file("server/index.ts")], storageEnabled: true }, "request");
+    expect(on).toContain("<storage>");
+    expect(on).toContain("Do not call `enable_storage` again");
+    expect(renderAppBrief({ memory: null, files: [file("server/index.ts")] }, "request")).not.toContain("<storage>");
+  });
+
   const memory = "# App memory\n\n## What this app is\nA guestbook.\n";
   const files = [file("src/App.tsx"), file("server/index.ts"), file("server/db/schema.ts")];
 
@@ -407,6 +414,13 @@ describe("what counts as work the memory should record", () => {
     const grew = log();
     noteWork(grew, "add_database", {}, { success: true, changed: ["server/db/schema.ts"] });
     expect(isSubstantialWork(grew)).toBe(true);
+
+    const stored = log();
+    noteWork(stored, "enable_storage", {}, { success: true, helpers: ["server/storage.ts"] });
+    expect(isSubstantialWork(stored)).toBe(true);
+    const refused = log();
+    noteWork(refused, "enable_storage", {}, { error: "not available" });
+    expect(isSubstantialWork(refused)).toBe(false);
 
     const spread = log();
     for (const p of ["a.tsx", "b.tsx", "c.tsx", "d.tsx"]) noteWork(spread, "edit_file", { path: `src/${p}` }, ok);

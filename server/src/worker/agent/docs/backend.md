@@ -42,3 +42,5 @@ const { data } = useQuery({
 
 ## What this does not give you
 No database. Data held in a server variable is lost on every restart. If the app must store data on the server, call `add_database`.
+
+No file storage. Files written to the server's disk are lost when the app is rebuilt. If the app must keep uploaded or generated files, call `enable_storage`.

@@ -24,11 +24,13 @@ import {
   DeleteAliasCommand,
   DeleteFunctionCommand,
   DeleteFunctionUrlConfigCommand,
+  GetFunctionCommand,
   GetFunctionConfigurationCommand,
   LambdaClient,
   ListAliasesCommand,
   ListVersionsByFunctionCommand,
   PutFunctionConcurrencyCommand,
+  UpdateAliasCommand,
   UpdateFunctionCodeCommand,
   UpdateFunctionConfigurationCommand,
   waitUntilFunctionActiveV2,
@@ -175,6 +177,10 @@ export interface AwsApi {
   putConcurrency(name: string, reserved: number): Promise<void>;
 
   createAlias(name: string, alias: string, version: string): Promise<void>;
+  /** Points an existing alias at another version; its function URL stays the same. */
+  updateAlias(name: string, alias: string, version: string): Promise<void>;
+  /** The zip a published version was made from. */
+  getVersionCode(name: string, version: string): Promise<Uint8Array>;
   createUrl(name: string, alias: string): Promise<{ url: string }>;
   deleteUrl(name: string, alias: string): Promise<void>;
   deleteAlias(name: string, alias: string): Promise<void>;
@@ -317,6 +323,17 @@ export function awsApi(config: HostingConfig): AwsApi {
 
     async createAlias(name, alias, version) {
       await lambda.send(new CreateAliasCommand({ FunctionName: name, Name: alias, FunctionVersion: version }));
+    },
+    async updateAlias(name, alias, version) {
+      await lambda.send(new UpdateAliasCommand({ FunctionName: name, Name: alias, FunctionVersion: version }));
+    },
+    async getVersionCode(name, version) {
+      const res = await lambda.send(new GetFunctionCommand({ FunctionName: name, Qualifier: version }));
+      const location = res.Code?.Location;
+      if (!location) throw new Error(`No code location for ${name}:${version}`);
+      const download = await fetch(location, { signal: AbortSignal.timeout(60_000) });
+      if (!download.ok) throw new Error(`Downloading ${name}:${version} answered ${download.status}`);
+      return new Uint8Array(await download.arrayBuffer());
     },
     async createUrl(name, alias) {
       const res = await lambda.send(
@@ -493,6 +510,34 @@ export async function publishBackend(args: {
   const { url } = await api.createUrl(fn, alias);
   log.info("lambda.published", { projectId: args.projectId, function: fn, version, alias });
   return { functionName: fn, version, alias, url };
+}
+
+/**
+ * Give a live deployment a new environment without a rebuild (doc/PUBLISHING.md C7).
+ *
+ * A version's environment is fixed when it is published, so this takes the code of
+ * the version the deployment's alias points at, publishes it again with the new
+ * environment, and moves the alias to the result. The alias keeps its function URL,
+ * so the routing record is untouched. Older deployments keep the environment they
+ * were published with.
+ */
+export async function refreshBackendEnv(args: { projectId: string; deploymentId: string; env: Record<string, string> }): Promise<{ version: string }> {
+  validateLambdaEnv(args.env);
+  const { api, config } = need();
+  const fn = functionName(args.projectId);
+  const alias = aliasName(args.deploymentId);
+
+  const current = (await api.listAliases(fn)).find((a) => a.alias === alias);
+  if (!current) throw new Error("This version's server is no longer deployed. Publish again.");
+  const role = await api.getRole(fn);
+  if (!role) throw new Error(`The function ${fn} exists but its role does not.`);
+
+  const zip = await api.getVersionCode(fn, current.version);
+  await api.updateConfiguration(fn, { roleArn: role.arn, memoryMb: config.memoryMb, timeoutS: config.timeoutS, env: args.env });
+  const { version } = await api.updateCode(fn, zip);
+  await api.updateAlias(fn, alias, version);
+  log.info("lambda.env_refreshed", { projectId: args.projectId, function: fn, from: current.version, version });
+  return { version };
 }
 
 /**

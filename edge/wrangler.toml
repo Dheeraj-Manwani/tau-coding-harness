@@ -35,3 +35,16 @@ APP_URL = "https://app.tauai.pro"
 # router answers 404 for any host it has no record for, so the apex and
 # anything else on the zone are safe.
 
+
+# Flood limits on /api/* (doc/PUBLISHING.md C15). Cloudflare counts per location,
+# so these are approximate: they stop a flood, they do not meter use. Without
+# these bindings the Worker simply applies no limit. `period` may only be 10 or 60.
+[[ratelimits]]
+name = "API_IP_LIMITER"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "API_APP_LIMITER"
+namespace_id = "1002"
+simple = { limit = 1200, period = 60 }

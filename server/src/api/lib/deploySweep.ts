@@ -23,6 +23,7 @@
 import { prisma } from "@/lib/prisma";
 import { deleteSitePrefix } from "@/lib/s3";
 import { pruneBackend } from "@/lib/lambdaApps";
+import { reconcileResources } from "@/lib/reconcileResources";
 import { sweepDatabases } from "@/lib/neonApps";
 import { DeploymentStatus } from "@/generated/prisma/enums";
 import { captureException, log } from "./log";
@@ -156,6 +157,15 @@ export async function runDeploySweep(): Promise<void> {
     }
   } catch (err) {
     captureException(err, { detail: "deployment sweep failed" });
+  }
+  // Resources whose project is gone but that were never removed (C9).
+  try {
+    const { backendsRemoved, databasesScheduled, errors } = await reconcileResources();
+    if (backendsRemoved > 0 || databasesScheduled > 0 || errors.length > 0) {
+      log.info("resources.reconcile", { backendsRemoved, databasesScheduled, errors });
+    }
+  } catch (err) {
+    captureException(err, { detail: "resource reconcile failed" });
   }
   // Databases of deleted projects whose delay has passed (doc/PUBLISHING.md 5.6).
   try {

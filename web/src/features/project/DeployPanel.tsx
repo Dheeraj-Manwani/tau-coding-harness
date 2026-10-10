@@ -240,6 +240,8 @@ function PanelBody({
 
       <IdentitySection projectId={projectId} />
 
+      {status.backendPublished && <RefreshSecrets projectId={projectId} />}
+
       {status.backendPublished && <ServerLogs projectId={projectId} />}
 
       {status.databasePublished && <ExportData projectId={projectId} />}
@@ -608,6 +610,40 @@ function LiveUrl({
           {live.fileCount} files · {formatBytes(live.sizeBytes)}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Secrets are copied into the live server when it is published, so one added or
+ * changed afterwards only reaches it on the next publish, or here, without a rebuild.
+ */
+function RefreshSecrets({ projectId }: { projectId: string | null }) {
+  const [busy, setBusy] = useState(false);
+  const refresh = async () => {
+    if (!projectId || busy) return;
+    setBusy(true);
+    try {
+      await api.post(`/project/${projectId}/deploy/refresh-secrets`);
+      toast.success("Your live server now has your latest secrets");
+    } catch (err) {
+      const message = (err as { message?: unknown })?.message;
+      toast.error(typeof message === "string" && message ? message : "Couldn't update the live server. Try again in a minute.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      Changed a secret after publishing? The live server keeps the ones it was published with.
+      <button
+        type="button"
+        onClick={refresh}
+        disabled={busy}
+        className="mt-1.5 block text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+      >
+        {busy ? "Updating…" : "Update secrets on the live server"}
+      </button>
     </div>
   );
 }

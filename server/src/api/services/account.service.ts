@@ -116,6 +116,9 @@ export async function rotate(userId: string): Promise<RotateResult> {
 
   const { key } = await rotateApiKey(userId);
   log.warn("apikey.rotated", { userId, replacedPrevious: had !== null });
+  // Published apps hold the old key in their environment; hand them the new one
+  // while the old one still works. Not awaited: the person is waiting for a key.
+  void import("@/lib/refreshSecrets").then((m) => m.refreshUserBackends(userId)).catch(() => {});
 
   return {
     key,

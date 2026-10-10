@@ -45,6 +45,7 @@ const {
   logGroupName,
   pruneBackend,
   publishBackend,
+  refreshBackendEnv,
   removeBackend,
   setLambdaDepsForTests,
   validateLambdaEnv,
@@ -122,6 +123,14 @@ class FakeAws {
       this.versions.set(name, ["1"]);
       this.last = { env: s.env, settings: s, zipBytes: zip.byteLength };
       return { version: "1" };
+    },
+    updateAlias: async (name: string, alias: string, version: string) => {
+      this.enter("updateAlias", `${name} ${alias} ${version}`);
+      this.aliases.set(name, (this.aliases.get(name) ?? []).map((a) => (a.alias === alias ? { ...a, version } : a)));
+    },
+    getVersionCode: async (name: string, version: string) => {
+      this.enter("getVersionCode", `${name} ${version}`);
+      return new Uint8Array(7);
     },
     updateConfiguration: async (name: string, s: any) => {
       this.enter("updateConfiguration", name);
@@ -524,5 +533,40 @@ describe("whether hosting is on", () => {
     await removeBackend(PROJECT);
     expect(await pruneBackend(PROJECT, new Set())).toEqual({ aliases: 0, versions: 0 });
     await expect(publish()).rejects.toThrow("not configured");
+  });
+});
+
+describe("refreshing a live server's environment", () => {
+  test("republishes the live version's own code with the new environment and moves the alias, keeping its URL", async () => {
+    const first = await publish(D1, { NODE_ENV: "production", KEY: "old" });
+    aws.calls.length = 0;
+
+    const out = await refreshBackendEnv({ projectId: PROJECT, deploymentId: D1, env: { NODE_ENV: "production", KEY: "new" } });
+
+    expect(aws.calls).toEqual([
+      `listAliases ${FN}`,
+      `getRole ${FN}`,
+      `getVersionCode ${FN} 1`,
+      `updateConfiguration ${FN}`,
+      `updateCode ${FN}`,
+      `updateAlias ${FN} ${aliasName(D1)} ${out.version}`,
+    ]);
+    expect(out.version).not.toBe(first.version);
+    expect(aws.last.env).toEqual({ NODE_ENV: "production", KEY: "new" });
+    // The URL belongs to the alias, so nothing is created and the routing record stays valid.
+    expect(aws.calls.some((c) => c.startsWith("createUrl") || c.startsWith("createAlias"))).toBe(false);
+    expect((await aws.api.listAliases(FN)).find((a) => a.alias === aliasName(D1))?.version).toBe(out.version);
+  });
+
+  test("an alias that was pruned is a clear error, not a new deployment", async () => {
+    await publish(D1);
+    await expect(refreshBackendEnv({ projectId: PROJECT, deploymentId: "gone", env: { NODE_ENV: "production" } })).rejects.toThrow("no longer deployed");
+  });
+
+  test("an environment over the size limit is refused before anything is changed", async () => {
+    await publish(D1);
+    aws.calls.length = 0;
+    await expect(refreshBackendEnv({ projectId: PROJECT, deploymentId: D1, env: { BIG: "x".repeat(5000) } })).rejects.toThrow();
+    expect(aws.calls).toEqual([]);
   });
 });

@@ -388,3 +388,75 @@ describe("the primary redirect", () => {
     expect(redirectLocation(`https://${HOST.toUpperCase()}`, at("/"))).toBeNull();
   });
 });
+
+describe("the API rate limits", () => {
+  const record: RoutingRecord = {
+    projectId: "p1",
+    slug: "my-app",
+    prefix: PREFIX,
+    showBadge: false,
+    suspended: false,
+    redirectTo: null,
+    api: { url: "https://abc123.lambda-url.us-east-1.on.aws" },
+  };
+  const forwarded: string[] = [];
+  const deps = {
+    fetcher: async (input: RequestInfo | URL) => {
+      forwarded.push(String(input));
+      return new Response("{}", { status: 200 });
+    },
+  };
+  const limiter = (log: string[], deny: (key: string) => boolean) => ({
+    limit: async ({ key }: { key: string }) => {
+      log.push(key);
+      return { success: !deny(key) };
+    },
+  });
+  const call = (e: Env, ip = "203.0.113.9") => {
+    records.set(`host:${HOST}`, record);
+    return handle(new Request(`https://${HOST}/api/items`, { headers: { "cf-connecting-ip": ip } }), { ...e, AWS_ACCESS_KEY_ID: "k", AWS_SECRET_ACCESS_KEY: "s" }, deps);
+  };
+
+  beforeEach(() => {
+    forwarded.length = 0;
+  });
+
+  test("no limiter configured means no limit", async () => {
+    expect((await call(env)).status).toBe(200);
+  });
+
+  test("a visitor over the per-address limit gets 429 and nothing reaches the backend", async () => {
+    const keys: string[] = [];
+    const res = await call({ ...env, API_IP_LIMITER: limiter(keys, () => true) });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(keys).toEqual(["p1:203.0.113.9"]);
+    expect(forwarded).toEqual([]);
+  });
+
+  test("the app-wide limit applies to every visitor", async () => {
+    const res = await call({ ...env, API_APP_LIMITER: limiter([], () => true) }, "198.51.100.7");
+    expect(res.status).toBe(429);
+    expect(forwarded).toEqual([]);
+  });
+
+  test("the limit is per app and address: one visitor over does not stop another", async () => {
+    const e = { ...env, API_IP_LIMITER: limiter([], (k) => k.endsWith(":203.0.113.9")) };
+    expect((await call(e, "203.0.113.9")).status).toBe(429);
+    expect((await call(e, "198.51.100.7")).status).toBe(200);
+  });
+
+  test("a limiter that fails does not take the app down", async () => {
+    const broken = { limit: async () => { throw new Error("down"); } };
+    expect((await call({ ...env, API_IP_LIMITER: broken, API_APP_LIMITER: broken })).status).toBe(200);
+  });
+
+  test("static files are never counted", async () => {
+    const keys: string[] = [];
+    publish({ "index.html": "<h1>hi</h1>" });
+    const res = await handle(new Request(`https://${HOST}/`), { ...env, API_IP_LIMITER: limiter(keys, () => true) });
+    expect(res.status).toBe(200);
+    expect(keys).toEqual([]);
+  });
+});

@@ -13,6 +13,7 @@ import { getDatabaseUrl } from "@/lib/neonApps";
 import { exportDatabase } from "@/lib/databaseExport";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import { refreshLiveBackend } from "@/lib/refreshSecrets";
 import { ensureBillingAccount, getBalance } from "@/lib/credits";
 import { publishQuotaProblem } from "@/lib/deployQuota";
 import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
@@ -219,6 +220,20 @@ export async function exportPublishedData(projectId: string, userId: string): Pr
     if (err instanceof Error && err.message.includes("too large")) throw Errors.badRequest(err.message);
     throw new AppError("The database could not be reached. Try again in a minute.", 503);
   }
+}
+
+/**
+ * Put the project's current secrets into its live server now, without a rebuild.
+ */
+export async function refreshSecretsNow(projectId: string, userId: string): Promise<{ refreshed: true }> {
+  await ownedProject(projectId, userId);
+  const out = await refreshLiveBackend(projectId);
+  if (out.status === "skipped") {
+    throw out.reason === "publish_in_progress"
+      ? Errors.conflict("A publish is in progress. Its result will include your latest secrets.")
+      : Errors.badRequest("This app has no hosted server to refresh.");
+  }
+  return { refreshed: true };
 }
 
 const LOG_WINDOW_MS = 60 * 60 * 1000;

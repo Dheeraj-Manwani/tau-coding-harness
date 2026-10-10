@@ -106,6 +106,8 @@ router.get(
 );
 // The live server's recent log lines, secrets masked (doc/PUBLISHING.md C14).
 router.get("/:projectId/deploy/logs", visualEditRateLimiter, deploy.getLogs);
+// Re-inject secrets into the live server without a rebuild (C7).
+router.post("/:projectId/deploy/refresh-secrets", publishRateLimiter, deploy.refreshSecrets);
 router.post("/:projectId/deploy", publishRateLimiter, deploy.publish);
 router.delete("/:projectId/deploy", deploy.unpublish);
 // The published database, as CSV files (doc/PUBLISHING.md 5.7).

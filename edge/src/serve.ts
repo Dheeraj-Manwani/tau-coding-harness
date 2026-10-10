@@ -38,7 +38,16 @@ export interface RoutingRecord {
   api: { url: string } | null;
 }
 
+/** Cloudflare's Rate Limiting binding. Counts are per location, so a limit is approximate and meant to stop a flood, not to meter. */
+export interface Limiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
 export interface Env extends ApiEnv {
+  /** Per app and visitor address. Absent where the binding is not configured: no limit then. */
+  API_IP_LIMITER?: Limiter;
+  /** Per app, all visitors together: the cap on a flood from many addresses. */
+  API_APP_LIMITER?: Limiter;
   R2_BUCKET: R2Bucket;
   ROUTES: KVNamespace;
   /** Where the badge's links go. */
@@ -135,6 +144,23 @@ export function prefixAllowed(prefix: string): boolean {
   );
 }
 
+/**
+ * Whether this API request is over a limit. A limiter that fails is treated as
+ * not limiting: an outage of the counting service must not take published apps
+ * down with it.
+ */
+export async function overLimit(request: Request, record: RoutingRecord, env: Env): Promise<boolean> {
+  const app = record.projectId || record.slug;
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+  try {
+    if (env.API_APP_LIMITER && !(await env.API_APP_LIMITER.limit({ key: app })).success) return true;
+    if (env.API_IP_LIMITER && !(await env.API_IP_LIMITER.limit({ key: `${app}:${ip}` })).success) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export async function handle(request: Request, env: Env, deps: ForwardDeps = { fetcher: (input, init) => fetch(input, init) }): Promise<Response> {
   const url = new URL(request.url);
 
@@ -170,6 +196,17 @@ export async function handle(request: Request, env: Env, deps: ForwardDeps = { f
       return new Response(JSON.stringify({ error: "Not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
+      });
+    }
+    if (await overLimit(request, record, env)) {
+      return new Response(JSON.stringify({ error: "Too many requests. Try again in a minute." }), {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Retry-After": "60",
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
       });
     }
     return forwardToBackend(request, record.api.url, env, deps);

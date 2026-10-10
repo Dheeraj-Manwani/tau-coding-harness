@@ -21,6 +21,7 @@ import {
 } from "@/lib/credits";
 import { FREE_PLAN_MAX_PROJECTS } from "@/lib/pricing";
 import { deleteStoragePrefix, projectStoragePrefix, storageConfigured } from "@/lib/storageBucket";
+import { revokeStorageKeys } from "@/lib/storageKeys";
 import {
   getBlobText,
   getBlob,
@@ -986,8 +987,15 @@ export async function deleteProject(
   }
   // Delete R2 blobs first; if this fails we abort before touching the DB.
   await deleteProjectBlobs(userId, projectId);
-  // The storage rows would cascade away with the project and leave the bytes.
-  if (storageConfigured()) await deleteStoragePrefix(projectStoragePrefix(projectId));
+  // The storage rows would cascade away with the project and leave the bytes. The
+  // keys go first, so a published app that is still running cannot add a file
+  // between the listing and the delete. This is immediate on purpose, unlike the
+  // database's delay: nothing can restore the rows, so bytes kept past this point
+  // would only be orphans (doc/TAU_CLOUD_STORAGE.md 0.11).
+  if (storageConfigured()) {
+    await revokeStorageKeys(projectId);
+    await deleteStoragePrefix(projectStoragePrefix(projectId));
+  }
   // Before the rows go: the database would delete the domains, but not at Cloudflare or the edge.
   await releaseProjectDomains(projectId);
   // Also before the rows go: they are what says which AWS resources exist. Throws

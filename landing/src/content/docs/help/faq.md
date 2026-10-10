@@ -109,7 +109,7 @@ sandbox is built from them.
 Yes. Ask for it ("let people upload a profile picture") and tau turns on file
 storage for that app. Files are kept by tau, survive rebuilding the preview, and
 are managed under **Tools → Storage**. You get 100 MB on Free and 5 GB on PRO.
-Right now it works in the preview; published apps do not have storage yet.
+A published app gets its own files, separate from the preview ones.
 
 → [File storage](/docs/ship/storage)
 

@@ -272,12 +272,14 @@ function RotateKeyDialog({
   open,
   onOpenChange,
   projectId,
+  env,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  env: StorageEnv;
 }) {
-  const rotate = useRotateStorageKey(projectId);
+  const rotate = useRotateStorageKey(projectId, env);
   const handle = (event: MouseEvent) => {
     event.preventDefault();
     rotate.mutate(undefined, { onSettled: () => onOpenChange(false) });
@@ -291,8 +293,11 @@ function RotateKeyDialog({
           </AlertDialogMedia>
           <AlertDialogTitle className="text-silver-900">Replace the storage key?</AlertDialogTitle>
           <AlertDialogDescription className="text-silver-600">
-            Your app gets a new key and its server restarts to pick it up. The old key keeps working for 24 hours, then
-            stops. Do this if you think the key has leaked. Your files are not touched.
+            {env === "LIVE"
+              ? "Your published app gets a new key within a few seconds, without being rebuilt. "
+              : "Your app gets a new key and its server restarts to pick it up. "}
+            The old key keeps working for 24 hours, then stops. Do this if you think the key has leaked. Your files are
+            not touched.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="border-t border-border pt-4">
@@ -362,7 +367,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-medium text-[var(--silver-900)]">Storage</h2>
           <div className="flex shrink-0 items-center gap-1">
-            {data?.enabled && env === "PREVIEW" && (
+            {data?.enabled && (
               <button
                 type="button"
                 onClick={() => setRotating(true)}
@@ -567,7 +572,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
           </>
         )}
       </div>
-      <RotateKeyDialog open={rotating} onOpenChange={setRotating} projectId={projectId} />
+      <RotateKeyDialog open={rotating} onOpenChange={setRotating} projectId={projectId} env={env} />
       <ClearPreviewDialog count={previewCount} open={clearing} onOpenChange={setClearing} projectId={projectId} />
     </div>
   );

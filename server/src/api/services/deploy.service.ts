@@ -127,6 +127,8 @@ export interface DeployStatus {
   databasePublished: boolean;
   /** The live version has a hosted server, so its recent log lines can be read. */
   backendPublished: boolean;
+  /** The published app has its own file storage (a live storage key exists). */
+  storagePublished: boolean;
 }
 
 /** Statuses a deployment can only have after it went live at least once. */
@@ -297,6 +299,9 @@ export async function getDeployStatus(
       (await prisma.projectResource.count({
         where: { projectId, kind: ResourceKind.NEON_PROJECT, deletedAt: null },
       })) > 0,
+    storagePublished: project.storageEnabled
+      ? (await prisma.storageKey.count({ where: { projectId, env: "LIVE" } })) > 0
+      : false,
     publishFee: {
       credits: toCredits(PUBLISH_FEE_MICRO),
       due: project.publishFeePaidAt === null,

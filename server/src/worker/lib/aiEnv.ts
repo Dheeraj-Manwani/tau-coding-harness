@@ -318,7 +318,7 @@ export async function buildProjectEnv(
   userId: string,
   projectId: string,
   jobId: string,
-  opts: { aiEnabled: boolean; storageEnabled?: boolean },
+  opts: { aiEnabled: boolean; storage?: StorageEnvName | null },
 ): Promise<Record<string, string>> {
   if (!keyEncryptionConfigured()) return {};
 
@@ -351,13 +351,16 @@ export async function buildProjectEnv(
     }
   }
 
-  if (opts.storageEnabled) {
+  if (opts.storage) {
     // Independent of the AI half: an unreachable storage address is logged and
     // skipped, and must not keep the user's own keys out of the app.
+    //
+    // The environment is an argument and has no default. It is the first value
+    // that must differ between the sandbox (PREVIEW) and a published function
+    // (LIVE): the key decides which files a request touches, so asking for the
+    // wrong one would point a live app at test files, or the reverse.
     try {
-      // The sandbox is the preview environment. A published function gets its
-      // own key in S5; today `buildPublishEnv` does not ask for storage.
-      Object.assign(vars, await buildStorageEnv(userId, projectId, "PREVIEW"));
+      Object.assign(vars, await buildStorageEnv(userId, projectId, opts.storage));
     } catch (err) {
       log.error("storage.reinject_skipped", { jobId, projectId, detail: err instanceof Error ? err.message : String(err) });
     }
@@ -502,18 +505,19 @@ export async function needsProjectEnv(projectId: string): Promise<boolean> {
     projectEnvFlags(projectId),
     hasProjectSecrets(projectId),
   ]);
-  return flags.aiEnabled || flags.storageEnabled || secrets;
+  return flags.aiEnabled || flags.storage !== null || secrets;
 }
 
 /** Which tau-managed variables this project's `.env` should carry. */
 export async function projectEnvFlags(
   projectId: string,
-): Promise<{ aiEnabled: boolean; storageEnabled: boolean }> {
+): Promise<{ aiEnabled: boolean; storage: StorageEnvName | null }> {
   const p = await prisma.project.findUnique({
     where: { id: projectId },
     select: { aiEnabled: true, storageEnabled: true },
   });
-  return { aiEnabled: p?.aiEnabled ?? false, storageEnabled: p?.storageEnabled ?? false };
+  // This is what the sandbox's `.env` carries, so it is the preview key.
+  return { aiEnabled: p?.aiEnabled ?? false, storage: p?.storageEnabled ? "PREVIEW" : null };
 }
 
 /** Has the agent turned on AI for this project? */

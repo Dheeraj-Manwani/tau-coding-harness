@@ -91,6 +91,12 @@ A few things to know about a hosted backend:
 - Your secrets are available to the server as environment variables, up to 4 KB
   in total.
 
+If your project has **file storage** (uploads, pictures, documents), your
+published app gets its own files too. **Files uploaded in the preview are not
+copied**, publishing again keeps what visitors uploaded, and taking the app
+offline keeps it. Deleting the project deletes the files. See
+[File storage](/docs/ship/storage).
+
 If your project has a **database**, your published app gets its own, separate
 Postgres. **Preview data is not copied to it**: the published database starts
 empty, and what visitors add there is kept across every later publish.

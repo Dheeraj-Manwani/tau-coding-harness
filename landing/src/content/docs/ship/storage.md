@@ -66,11 +66,22 @@ code.
 ## Preview and published apps are separate
 
 Files uploaded while you test in the preview belong to the preview. A published
-app will have its own files; nothing is copied from one to the other.
+app has its own files; nothing is copied from one to the other, and deleting a
+file in one never touches a file of the same name in the other.
 
-> [!NOTE]
-> Right now file storage works in the preview. Published apps do not have storage
-> yet.
+- **Publishing again keeps your published files.** Only the code changes.
+- **Taking the app offline keeps its files.** Deleting the project deletes them.
+- **Uploads on a published app are not limited by the server.** A visitor can
+  upload a file up to your plan's largest size even though a request to a
+  published server can carry only about 6 MB, because the file goes straight to
+  storage.
+- Both environments show under **Tools → Storage**, as **Preview** and **Live**.
+  Live appears once the app has been published with storage. **Clear preview
+  files** never touches Live.
+- Your published app uses its own key, separate from the preview one. **Replace
+  key** works on either tab, and a published app picks up the new key within
+  seconds without a rebuild.
+- Stored files count toward one allowance, preview and published together.
 
 ## What you need
 

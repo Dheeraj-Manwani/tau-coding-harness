@@ -133,6 +133,14 @@ mock.module("@/api/middleware/auth.middleware", () => ({
     return id;
   },
 }));
+const refreshCalls: string[] = [];
+let refreshOutcome: { status: string } = { status: "refreshed" };
+mock.module("@/lib/refreshSecrets", () => ({
+  refreshLiveBackend: async (id: string) => {
+    refreshCalls.push(id);
+    return refreshOutcome;
+  },
+}));
 const ownerCtl = await import("@/api/controllers/storageOwner.controller");
 const adminCtl = await import("@/api/controllers/admin.controller");
 const { reconcileStorage, diffStorage } = await import("@/lib/reconcileStorage");
@@ -577,6 +585,25 @@ describe("the owner routes (Tools -> Storage)", () => {
     // The old key still lists during the grace window; live and other projects are untouched.
     expect((await call(previewA, "GET", "/files")).json.files).toHaveLength(1);
     expect(tables.storageKey.filter((k) => k.status === "ACTIVE" && k.projectId === PA)).toHaveLength(2); // preview + live
+  });
+
+  test("rotating the live key refreshes the published app, leaves preview alone, and says when it could not", async () => {
+    refreshCalls.length = 0;
+    refreshOutcome = { status: "refreshed" };
+    const previewBefore = tables.storageKey.find((k) => k.projectId === PA && k.env === "PREVIEW" && k.status === "ACTIVE")!.lookupHash;
+    const res = await own("POST", "/A/storage/rotate-key", { env: "LIVE" });
+    expect(res.json).toEqual({ rotated: true, previousKeyValidForHours: 24, appliedToLiveApp: true });
+    expect(refreshCalls).toEqual([PA]);
+    expect(tables.storageKey.find((k) => k.projectId === PA && k.env === "PREVIEW" && k.status === "ACTIVE")!.lookupHash).toBe(previewBefore);
+    expect(tables.storageKey.filter((k) => k.projectId === PA && k.env === "LIVE" && k.status === "ROTATING")).toHaveLength(1);
+    expect((await call(liveA, "GET", "/files")).status).toBe(200); // the old live key, in its grace window
+
+    refreshOutcome = { status: "skipped" }; // a publish is in progress
+    expect((await own("POST", "/A/storage/rotate-key", { env: "LIVE" })).json.appliedToLiveApp).toBe(false);
+  });
+
+  test("the live key cannot be rotated before the app was ever published with storage", async () => {
+    expect((await own("POST", "/B/storage/rotate-key", { env: "LIVE" })).status).toBe(400);
   });
 
   test("rotating is refused for another user, and for an app that does not use storage", async () => {

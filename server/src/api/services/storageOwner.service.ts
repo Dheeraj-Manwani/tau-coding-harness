@@ -16,6 +16,7 @@ import { Sandbox } from "e2b";
 import { keyEncryptionConfigured, ROTATION_GRACE_MS } from "@/lib/apiKeys";
 import { rotateStorageKey } from "@/lib/storageKeys";
 import { reinjectProjectEnv } from "@/worker/lib/aiEnv";
+import { refreshLiveBackend } from "@/lib/refreshSecrets";
 import { log } from "../lib/log";
 
 export type OwnerEnv = "PREVIEW" | "LIVE";
@@ -125,14 +126,16 @@ export async function clearPreview(projectId: string, userId: string) {
 }
 
 /**
- * Replace the preview key and put the new one in the running app. The old key
+ * Replace an environment's key and put the new one in the running app. The old key
  * keeps working for {@link ROTATION_GRACE_MS}, so an app that has not picked up
  * the new one yet is not cut off. The value is never returned.
  */
-export async function rotatePreviewKey(projectId: string, userId: string) {
+export async function rotateKey(projectId: string, userId: string, env: OwnerEnv) {
   const project = await ownedProject(projectId, userId);
   if (!project.storageEnabled) throw Errors.badRequest("This app does not use file storage.");
   if (!keyEncryptionConfigured()) throw new AppError("Secure key storage is not available on this server.", 503);
+
+  if (env === "LIVE") return rotateLiveKey(projectId, userId);
 
   await rotateStorageKey(projectId, userId, "PREVIEW");
   log.info("storage.key_rotated", { projectId, env: "PREVIEW" });
@@ -151,4 +154,27 @@ export async function rotatePreviewKey(projectId: string, userId: string) {
     })();
   }
   return { rotated: true, previousKeyValidForHours: ROTATION_GRACE_MS / 3_600_000 };
+}
+
+/**
+ * The published app's key. The live server's environment is fixed when a version
+ * is made, so the new key reaches it through the same refresh a changed secret
+ * uses (`refreshLiveBackend`, which asks `buildPublishEnv` for the LIVE key).
+ * When the refresh cannot run now (a publish is in progress, hosting is off),
+ * the next publish carries the new key, and the old one works for the grace window.
+ */
+async function rotateLiveKey(projectId: string, userId: string) {
+  const live = await prisma.storageKey.findFirst({ where: { projectId, env: "LIVE", status: "ACTIVE" }, select: { id: true } });
+  if (!live) throw Errors.badRequest("This app has not been published with file storage yet.");
+
+  await rotateStorageKey(projectId, userId, "LIVE");
+  log.info("storage.key_rotated", { projectId, env: "LIVE" });
+
+  let appliedToLiveApp = false;
+  try {
+    appliedToLiveApp = (await refreshLiveBackend(projectId)).status === "refreshed";
+  } catch (err) {
+    log.warn("storage.rotate_live_apply_failed", { projectId, error: String(err) });
+  }
+  return { rotated: true, previousKeyValidForHours: ROTATION_GRACE_MS / 3_600_000, appliedToLiveApp };
 }

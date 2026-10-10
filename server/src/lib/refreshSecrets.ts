@@ -28,7 +28,7 @@ export async function refreshLiveBackend(projectId: string): Promise<RefreshOutc
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { userId: true, aiEnabled: true, liveDeploymentId: true },
+    select: { userId: true, aiEnabled: true, storageEnabled: true, liveDeploymentId: true },
   });
   const live = project?.liveDeploymentId
     ? await prisma.deployment.findUnique({
@@ -44,7 +44,7 @@ export async function refreshLiveBackend(projectId: string): Promise<RefreshOutc
   });
   if (inFlight > 0) return { status: "skipped", reason: "publish_in_progress" };
 
-  const { vars } = await buildPublishEnv({ userId: project.userId, projectId, jobId: "refresh", aiEnabled: project.aiEnabled });
+  const { vars } = await buildPublishEnv({ userId: project.userId, projectId, jobId: "refresh", aiEnabled: project.aiEnabled, storageEnabled: project.storageEnabled });
   // A database app keeps the connection string it was published with.
   if (live.schemaSql !== null) {
     const url = await getDatabaseUrl(projectId);

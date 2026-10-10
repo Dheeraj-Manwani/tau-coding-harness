@@ -92,7 +92,7 @@ export async function enableStorage(
   const flags = await prisma.project.findUnique({ where: { id: projectId }, select: { aiEnabled: true } });
   const vars = await buildProjectEnv(userId, projectId, jobId, {
     aiEnabled: flags?.aiEnabled ?? false,
-    storageEnabled: true,
+    storage: "PREVIEW",
   });
   await writeEnvFile(sandbox, vars);
 

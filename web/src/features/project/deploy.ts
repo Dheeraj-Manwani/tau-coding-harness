@@ -73,6 +73,8 @@ export interface DeployStatus {
   databasePublished: boolean;
   /** The live version has a hosted server, so its recent log lines can be read. */
   backendPublished: boolean;
+  /** The published app has its own file storage, separate from the preview's. */
+  storagePublished: boolean;
 }
 
 export interface PublishResult {

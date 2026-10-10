@@ -235,3 +235,40 @@ describe("the report", () => {
     expect(run("api", api({ "server/README.md": "Bun.file is great, upgradeWebSocket too" })).blockers).toEqual([]);
   });
 });
+
+describe("file storage", () => {
+  const readsStorage = (extra = "") =>
+    api({ "server/storage.ts": "export const k = process.env.TAU_STORAGE_KEY; export const u = process.env.TAU_STORAGE_URL; " + extra });
+
+  test("with storage on, its variables come from tau and are not reported as missing", () => {
+    const r = run("api", readsStorage(), { storageEnabled: true });
+    expect(r.blockers).toEqual([]);
+    expect(r.warnings.map((w) => w.code)).not.toContain("env_missing");
+    expect(r.env).toContainEqual({ name: "TAU_STORAGE_KEY", source: "tau" });
+    expect(r.env).toContainEqual({ name: "TAU_STORAGE_URL", source: "tau" });
+  });
+
+  test("an app that reads the storage variables with storage off is blocked, naming the file", () => {
+    const r = run("api", readsStorage(), { storageEnabled: false });
+    expect(r.blockers.map((b) => b.code)).toContain("storage_not_enabled");
+    expect(r.blockers.find((b) => b.code === "storage_not_enabled")!.files).toEqual(["server/storage.ts"]);
+    expect(r.warnings.map((w) => w.code)).not.toContain("env_missing"); // one problem, one message
+  });
+
+  test("an app that does not touch storage is unaffected either way", () => {
+    expect(run("api", api(), { storageEnabled: false }).blockers).toEqual([]);
+    expect(run("api", api(), { storageEnabled: true }).env.map((e) => e.name)).toEqual(["TAU_STORAGE_KEY", "TAU_STORAGE_URL"]);
+  });
+
+  test("the warning about writing files points to file storage", () => {
+    const r = run("api", api({ "server/up.ts": "import { writeFileSync } from 'node:fs'; writeFileSync('a', 'b')" }));
+    expect(r.warnings.find((w) => w.code === "local_files")!.message).toContain("file storage");
+  });
+
+  test("the two variables count toward the 4 KB environment", () => {
+    const withStorage = run("api", api(), { storageEnabled: true, secretNames: ["A".repeat(60)], envValueBytes: { ["A".repeat(60)]: 3900 } });
+    expect(withStorage.blockers.map((b) => b.code)).toContain("env_too_large");
+    const without = run("api", api(), { secretNames: ["A".repeat(60)], envValueBytes: { ["A".repeat(60)]: 3900 } });
+    expect(without.blockers.map((b) => b.code)).not.toContain("env_too_large");
+  });
+});

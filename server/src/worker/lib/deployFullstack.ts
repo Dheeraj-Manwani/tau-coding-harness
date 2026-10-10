@@ -47,8 +47,24 @@ export interface PublishEnv {
  * behaves the same published as in preview, plus `NODE_ENV=production`. Values
  * go into the function's encrypted configuration, never into the bundle.
  */
-export async function buildPublishEnv(args: { userId: string; projectId: string; jobId: string; aiEnabled: boolean }): Promise<PublishEnv> {
-  const base = await buildProjectEnv(args.userId, args.projectId, args.jobId, { aiEnabled: args.aiEnabled });
+export async function buildPublishEnv(args: {
+  userId: string;
+  projectId: string;
+  jobId: string;
+  aiEnabled: boolean;
+  storageEnabled: boolean;
+}): Promise<PublishEnv> {
+  // A published app gets the LIVE storage key, never the preview one the sandbox
+  // has: live and preview files are separate stores (doc/TAU_CLOUD_STORAGE.md D4).
+  const base = await buildProjectEnv(args.userId, args.projectId, args.jobId, {
+    aiEnabled: args.aiEnabled,
+    storage: args.storageEnabled ? "LIVE" : null,
+  });
+  // Unlike the preview, where a missing key is logged and skipped, a publish
+  // refuses: an app that went live and cannot store a file is worse than none.
+  if (args.storageEnabled && !base.TAU_STORAGE_KEY) {
+    throw new DeployError("File storage is not available right now, so this app cannot be published. Try again in a few minutes.");
+  }
   const vars = { ...base, NODE_ENV: "production" };
   const secrets = await prisma.projectSecret.findMany({ where: { projectId: args.projectId }, select: { name: true } });
   return {

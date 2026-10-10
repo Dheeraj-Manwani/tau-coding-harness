@@ -245,6 +245,11 @@ function PanelBody({
       {status.backendPublished && <ServerLogs projectId={projectId} />}
 
       {status.databasePublished && <ExportData projectId={projectId} />}
+      {status.storagePublished && (
+        <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+          Your published app has its own files. Files uploaded in the preview are not copied. See them under Tools → Storage.
+        </div>
+      )}
 
       <button
         type="button"

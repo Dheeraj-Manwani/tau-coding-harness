@@ -34,6 +34,8 @@ export interface PreflightInput {
   /** Names of the project's `ProjectSecret` rows. */
   secretNames: string[];
   aiEnabled: boolean;
+  /** `Project.storageEnabled`: the app has tau file storage and a live key will be injected. */
+  storageEnabled?: boolean;
   /** Byte length of each injected variable's value, when known. Estimated when not. */
   envValueBytes?: Record<string, number>;
 }
@@ -53,6 +55,9 @@ const ENV_WARN_BYTES = 3500;
 /** Set by tau when `Project.aiEnabled`; same names `buildAiEnv` writes. */
 export const TAU_MANAGED_ENV = ["TAU_API_KEY", "TAU_AI_URL", "TAU_API_URL", "TAU_PROJECT_ID"] as const;
 
+/** Set by tau when `Project.storageEnabled`; the same names `buildStorageEnv` writes. */
+export const TAU_STORAGE_ENV = ["TAU_STORAGE_KEY", "TAU_STORAGE_URL"] as const;
+
 /** Names a runtime provides or that mean nothing to a user. Never reported. */
 const IGNORED_ENV = new Set(["NODE_ENV", "PORT", "TZ", "HOME", "PATH"]);
 
@@ -63,6 +68,8 @@ const ESTIMATED_VALUE_BYTES: Record<string, number> = {
   TAU_AI_URL: 40,
   TAU_API_URL: 40,
   TAU_PROJECT_ID: 36,
+  TAU_STORAGE_KEY: 56,
+  TAU_STORAGE_URL: 60,
 };
 
 const CLIENT_PATH = "server/db/client.ts";
@@ -125,7 +132,7 @@ const WARNING: Pattern[] = [
     code: "local_files",
     re: /\b(?:writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|mkdirSync|rmSync|unlinkSync)\b/,
     message:
-      "Your server writes files to disk. A published app can't keep them: anything written is gone by the next request. Store it in the database instead.",
+      "Your server writes files to disk. A published app can't keep them: anything written is gone by the next request. Keep small data in the database instead, and pictures or documents in tau file storage: ask tau to turn it on.",
   },
   {
     code: "scheduled_work",
@@ -282,14 +289,29 @@ export function preflight(input: PreflightInput): PreflightReport {
   for (const name of [...input.secretNames].sort()) add(name, "secret");
   if (level === "database") add("DATABASE_URL", "platform");
   if (input.aiEnabled) for (const name of TAU_MANAGED_ENV) add(name, "tau");
+  if (input.storageEnabled) for (const name of TAU_STORAGE_ENV) add(name, "tau");
 
   if (level !== "frontend") {
     const unsourced = new Map<string, string[]>();
+    const storageReaders: string[] = [];
     for (const p of serverFiles) {
       for (const name of envNamesRead(code[p]!)) {
         if (IGNORED_ENV.has(name) || seen.has(name)) continue;
+        // Reading the storage variables with storage off is its own, firmer, problem.
+        if ((TAU_STORAGE_ENV as readonly string[]).includes(name)) {
+          if (!storageReaders.includes(p)) storageReaders.push(p);
+          continue;
+        }
         unsourced.set(name, [...(unsourced.get(name) ?? []), p]);
       }
+    }
+    if (storageReaders.length > 0) {
+      blockers.push({
+        code: "storage_not_enabled",
+        message:
+          "Your server uses tau file storage, but it isn't turned on for this app, so the published app would have no way to store a file. Ask tau to set up file storage, then publish again.",
+        files: storageReaders,
+      });
     }
     for (const [name, at] of [...unsourced].sort(([a], [b]) => a.localeCompare(b))) {
       warnings.push({

@@ -108,14 +108,21 @@ export function useClearPreviewFiles(projectId: string) {
 }
 
 /** Replace the preview key and restart the app's server with the new one. */
-export function useRotateStorageKey(projectId: string) {
+export function useRotateStorageKey(projectId: string, env: StorageEnv) {
   return useMutation({
     mutationFn: () =>
       api
-        .post<{ rotated: boolean; previousKeyValidForHours: number }>(`/project/${projectId}/storage/rotate-key`)
+        .post<{ rotated: boolean; previousKeyValidForHours: number; appliedToLiveApp?: boolean }>(
+          `/project/${projectId}/storage/rotate-key`,
+          { env },
+        )
         .then((r) => r.data),
     onSuccess: (data) =>
-      toast.success(`Key replaced. The old one stops working in ${data.previousKeyValidForHours} hours.`),
+      toast.success(
+        data.appliedToLiveApp === false
+          ? `Key replaced. Your published app picks it up on its next publish, and the old key works for ${data.previousKeyValidForHours} hours.`
+          : `Key replaced. The old one stops working in ${data.previousKeyValidForHours} hours.`,
+      ),
     onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't replace the key")),
   });
 }

@@ -7,6 +7,7 @@ import type { Sandbox } from "e2b";
 
 const APP = "/home/user/app";
 const SECRET = "tau_st_SECRETSECRETSECRETSECRETSECRETSECRET1234";
+const LIVE_SECRET = "tau_st_LIVELIVELIVELIVELIVELIVELIVELIVE5678";
 
 const realEnv = (await import("@/lib/env")).env;
 const env: Record<string, unknown> = {
@@ -19,7 +20,7 @@ const env: Record<string, unknown> = {
 };
 mock.module("@/lib/env", () => ({ env }));
 
-let project: { templateKey: string; storageEnabled: boolean; aiEnabled: boolean } | null;
+let project: { templateKey: string; storageEnabled: boolean; aiEnabled: boolean; userId?: string; liveDeploymentId?: string } | null;
 let manifest: Map<string, string>;
 let user: { emailVerifiedAt: Date | null };
 let keysMinted: { projectId: string; env: string }[];
@@ -28,6 +29,11 @@ let restarts: number;
 mock.module("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: async () => user },
+    projectSecret: { findMany: async () => [] },
+    deployment: {
+      findUnique: async () => ({ id: "dep1", backendUrl: "https://fn.example", schemaSql: null, status: "READY" }),
+      count: async () => 0,
+    },
     project: {
       findUnique: async () => project,
       update: async ({ data }: { data: Record<string, unknown> }) => {
@@ -37,22 +43,36 @@ mock.module("@/lib/prisma", () => ({
     },
   },
 }));
+const realApiKeys = await import("@/lib/apiKeys");
 mock.module("@/lib/apiKeys", () => ({
+  ...realApiKeys,
   keyEncryptionConfigured: () => encryptionOn,
   ensureApiKey: async () => ({ key: "tau_sk_live_AIKEYAIKEYAIKEYAIKEY" }),
 }));
 mock.module("@/lib/storageKeys", () => ({
   ensureStorageKey: async (projectId: string, _u: string, target: string) => {
     keysMinted.push({ projectId, env: target });
-    return { key: SECRET };
+    return { key: target === "LIVE" ? LIVE_SECRET : SECRET };
   },
 }));
+const realSecrets = await import("@/lib/projectSecrets");
 mock.module("@/lib/projectSecrets", () => ({
+  ...realSecrets,
   projectSecretEnv: async () => ({ STRIPE_KEY: "sk_user" }),
   hasProjectSecrets: async () => false,
   renderDotenv: (vars: Record<string, string>) => Object.entries(vars).map(([k, v]) => `${k}=${v}`).join("\n"),
 }));
 let encryptionOn = true;
+
+const refreshed: { projectId: string; deploymentId: string; env: Record<string, string> }[] = [];
+const realLambda = await import("@/lib/lambdaApps");
+mock.module("@/lib/lambdaApps", () => ({
+  ...realLambda,
+  backendHostingAvailable: () => true,
+  refreshBackendEnv: async (a: { projectId: string; deploymentId: string; env: Record<string, string> }) => {
+    refreshed.push(a);
+  },
+}));
 
 const realUtils = await import("@/worker/agent/tools/functions/utils");
 mock.module("@/worker/agent/tools/functions/utils", () => ({
@@ -73,6 +93,8 @@ mock.module("@/worker/lib/aiEnv", () => ({
 }));
 
 const { enableStorage } = await import("@/worker/agent/tools/functions/enable-storage");
+const { buildPublishEnv } = await import("@/worker/lib/deployFullstack");
+const { refreshLiveBackend } = await import("@/lib/refreshSecrets");
 const { upsertDeployManifest, AI_ENV_ENTRIES } = await import("@/worker/lib/deployManifest");
 const { buildProjectEnv, checkStorageReachability } = await import("@/worker/lib/aiEnv");
 const { STORAGE_SCAFFOLD } = await import("@/worker/lib/storageScaffold");
@@ -234,12 +256,12 @@ describe("the deploy manifest has two writers", () => {
 
 describe("buildProjectEnv", () => {
   test("storage on, AI off", async () => {
-    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storageEnabled: true });
+    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storage: "PREVIEW" });
     expect(Object.keys(vars).sort()).toEqual(["STRIPE_KEY", "TAU_STORAGE_KEY", "TAU_STORAGE_URL"]);
   });
 
   test("both on", async () => {
-    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: true, storageEnabled: true });
+    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: true, storage: "PREVIEW" });
     expect(vars.TAU_API_KEY).toBeDefined();
     expect(vars.TAU_STORAGE_KEY).toBe(SECRET);
   });
@@ -252,7 +274,7 @@ describe("buildProjectEnv", () => {
 
   test("an unreachable storage address is skipped and the user's own keys still arrive", async () => {
     env.TAU_STORAGE_URL = "http://10.0.0.5/storage";
-    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: true, storageEnabled: true });
+    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: true, storage: "PREVIEW" });
     expect(vars.STRIPE_KEY).toBe("sk_user");
     expect(vars.TAU_API_KEY).toBeDefined();
     expect(vars.TAU_STORAGE_KEY).toBeUndefined();
@@ -275,5 +297,59 @@ describe("checkStorageReachability", () => {
     expect(why({ url: "http://127.0.0.1/storage" })).toBe("loopback");
     expect(why({ url: "http://192.168.1.4/storage" })).toBe("private");
     expect(why({ url: "https://10.example.com/storage" })).toBe("ok"); // a hostname, not an address
+  });
+});
+
+describe("the published app gets the live key", () => {
+  const publish = (storageEnabled: boolean) => buildPublishEnv({ userId: "u", projectId: "p", jobId: "j", aiEnabled: false, storageEnabled });
+
+  test("buildProjectEnv returns a different key for each target, and never the preview key for live", async () => {
+    const preview = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storage: "PREVIEW" });
+    const live = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storage: "LIVE" });
+    expect(preview.TAU_STORAGE_KEY).toBe(SECRET);
+    expect(live.TAU_STORAGE_KEY).toBe(LIVE_SECRET);
+    expect(JSON.stringify(live)).not.toContain(SECRET);
+    expect(live.TAU_STORAGE_URL).toBe(preview.TAU_STORAGE_URL);
+  });
+
+  test("a publish carries the live key and production mode, and fits the function environment", async () => {
+    const out = await publish(true);
+    expect(out.vars.TAU_STORAGE_KEY).toBe(LIVE_SECRET);
+    expect(out.vars.TAU_STORAGE_URL).toBe("https://api.tau.example.com/storage");
+    expect(out.vars.NODE_ENV).toBe("production");
+    expect(JSON.stringify(out.vars)).not.toContain(SECRET);
+    expect(keysMinted.at(-1)).toEqual({ projectId: "p", env: "LIVE" });
+    const bytes = Object.entries(out.vars).reduce((n, [k, v]) => n + k.length + Buffer.byteLength(v), 0);
+    expect(bytes).toBeLessThan(1000);
+  });
+
+  test("an app without storage gets no storage variables and no key is minted", async () => {
+    keysMinted = [];
+    const out = await publish(false);
+    expect(out.vars.TAU_STORAGE_KEY).toBeUndefined();
+    expect(keysMinted).toHaveLength(0);
+  });
+
+  test("a publish refuses, rather than going live without storage, when storage cannot be reached", async () => {
+    env.TAU_STORAGE_URL = "http://localhost:8080/storage";
+    await expect(publish(true)).rejects.toThrow("File storage is not available");
+  });
+
+  test("refreshing secrets re-injects the live storage key, so a rotated key reaches the running app", async () => {
+    refreshed.length = 0;
+    project = { templateKey: "v2-fullstack", storageEnabled: true, aiEnabled: false, userId: "u", liveDeploymentId: "dep1" };
+    const out = await refreshLiveBackend("p");
+    expect(out.status).toBe("refreshed");
+    expect(refreshed).toHaveLength(1);
+    expect(refreshed[0]!.env.TAU_STORAGE_KEY).toBe(LIVE_SECRET);
+    expect(refreshed[0]!.env.NODE_ENV).toBe("production");
+    expect(JSON.stringify(refreshed[0]!.env)).not.toContain(SECRET);
+  });
+
+  test("refreshing an app without storage adds none", async () => {
+    refreshed.length = 0;
+    project = { templateKey: "v2-fullstack", storageEnabled: false, aiEnabled: false, userId: "u", liveDeploymentId: "dep1" };
+    await refreshLiveBackend("p");
+    expect(refreshed[0]!.env.TAU_STORAGE_KEY).toBeUndefined();
   });
 });

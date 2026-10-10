@@ -37,6 +37,7 @@ function status(over: Partial<DeployStatus> = {}): DeployStatus {
     unpublishedChanges: 0,
     serverWarning: null,
     databasePublished: false,
+    storagePublished: false,
     backendPublished: false,
     suspended: null,
     lastFailure: null,

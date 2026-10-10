@@ -127,7 +127,7 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
   });
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    select: { templateKey: true, aiEnabled: true },
+    select: { templateKey: true, aiEnabled: true, storageEnabled: true },
   });
   const level = levelOfTemplate(project.templateKey);
   const hosted = publishesBackend(level);
@@ -154,11 +154,12 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
     let database: PreparedDatabase | null = null;
     if (hosted) {
       await publish(jobId, { type: "thinking", message: "Checking your server" });
-      publishEnv = await buildPublishEnv({ userId, projectId, jobId, aiEnabled: project.aiEnabled });
+      publishEnv = await buildPublishEnv({ userId, projectId, jobId, aiEnabled: project.aiEnabled, storageEnabled: project.storageEnabled });
       await validateBackend(sandbox, {
         level,
         secretNames: publishEnv.secretNames,
         aiEnabled: project.aiEnabled,
+        storageEnabled: project.storageEnabled,
         envValueBytes: publishEnv.valueBytes,
       });
 

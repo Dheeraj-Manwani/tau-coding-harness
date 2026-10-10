@@ -100,7 +100,7 @@ export function blockersMessage(blockers: Issue[]): string {
  */
 export async function validateBackend(
   sandbox: Sandbox,
-  opts: { level: Level; secretNames: string[]; aiEnabled: boolean; envValueBytes: Record<string, number> },
+  opts: { level: Level; secretNames: string[]; aiEnabled: boolean; storageEnabled: boolean; envValueBytes: Record<string, number> },
 ): Promise<PreflightReport> {
   const report = preflight({ ...opts, files: await readPreflightFiles(sandbox) });
   const blockers = [...report.blockers];

@@ -138,7 +138,7 @@ didn't change.
 | Better Stack | `/healthz` down or not `"ok":true` for 2+ checks | Discord + phone |
 | Sentry | new issue, or a resolved one regressing | Discord / email |
 | Hourly sweep (`server/src/api/lib/alerts.ts`) | **critical:** stuck jobs · job failure rate > 10 % · sandbox provisioning failures > 5 % · DeepSeek balance low or unavailable · Razorpay webhook unprocessed > 10 min | Discord |
-| | **warn:** leaked credit holds · tool failure rate > 10 % · p95 job > 15 min · credits/job doubled vs 24 h | Discord |
+| | **warn:** leaked credit holds · tool failure rate > 10 % · p95 job > 15 min · credits/job doubled vs 24 h · one project creating 500+ stored files in an hour · stored files past 8 GB in total (`STORAGE_UPLOAD_SPIKE_PER_HOUR`, `STORAGE_ALERT_BYTES`) | Discord |
 
 The rules live in `server/src/api/lib/anomalies.ts`, and the console uses the same functions. The
 console also shows `info`-level findings and runtime signals the pager doesn't: event-loop lag,
@@ -186,3 +186,67 @@ sum by (finishReason) (count_over_time({app="tau"} | json | event = "job.end" [2
 | Event-loop lag / memory pressure | console → Overview → Runtime; Loki for what ran at that time | A heavy request or a runaway job; kill it from Jobs |
 | Box disk filling | `df -h`, `docker system df` | Check log rotation (step 1); `docker image prune -af` |
 | Site down, nothing in Sentry | Better Stack + `docker compose ps` / `logs app --tail 200` | Process died or DB unreachable |
+| Storage upload-spike or bucket-size alert | console → Storage; the project's page → File storage | Look at the files; suspend the project's storage if it is abuse (see File storage below) |
+
+---
+
+## File storage (Tau Cloud Storage)
+
+Generated apps keep files in a separate R2 bucket (`R2_STORAGE_BUCKET`, `tau-app-storage`) through
+signed addresses; tau's database (`StorageObject`) is the list of files. Design: `doc/TAU_CLOUD_STORAGE.md`.
+The bucket has an open CORS policy (any origin may `PUT`, `GET`, `HEAD`) because uploads come from
+preview hosts and owners' domains; the main bucket is not opened like that.
+
+### Suspend a project's storage
+
+Console → Projects → the project → **File storage → Suspend storage**. A reason is required and goes
+to the log (`admin.storage.suspend`, with the admin's id). Effect, within seconds: the app's key gets
+`storage_suspended` (403) on every call, the owner's Storage pane says so and cannot open files.
+**Every file is kept.** **Resume storage** puts it back. Suspending a published site
+(**Suspend site**) suspends its storage with it, and lifting the site lifts the storage; to keep storage
+stopped after lifting a site, suspend it again.
+
+### Answer a takedown report
+
+1. Find the project: the reported address gives the site, console → Users or the Storage page's
+   *Largest projects* gives the project.
+2. **Suspend storage** first if the content is harmful (a reason such as the report's date). This
+   stops new downloads at once; signed addresses already handed out last up to an hour.
+3. Project page → **File storage → Show files** (pick Preview or Live), find the file, **Delete** with
+   a reason. This removes the row and the bytes (log line `admin.storage.delete_file`).
+4. Decide about the owner: resume storage, or leave it suspended and tell them why.
+5. Check the log for who did what: `{app="tau"} |= "admin.storage"` in Loki.
+
+Files are served as downloads unless they are pictures, PDF, audio, video or plain text, and HTML and
+SVG are never shown in place, so a file cannot run code in an app's origin or in tau's.
+
+### Reconcile the bucket with the table
+
+```sh
+cd server
+bun run scripts/reconcile-storage.ts          # report: objects with no row, READY rows with no object
+bun run scripts/reconcile-storage.ts --fix    # delete the stray objects and the dead rows
+```
+
+Run the report after any incident or bucket change; a healthy system reports nothing. Needs
+`R2_STORAGE_BUCKET` and the database settings. Stray objects cost money and no one can reach them;
+dead rows show the owner a file that will not open.
+
+### Settings
+
+`R2_STORAGE_BUCKET` (storage is off without it), `R2_STORAGE_ACCESS_KEY_ID` and `_SECRET_ACCESS_KEY`
+(a token limited to the bucket; falls back to the main R2 pair), `TAU_STORAGE_URL` (the public address of
+`/storage`, as for `TAU_AI_URL`), `STORAGE_RPM`, `STORAGE_UPLOAD_TTL_SECONDS`, `STORAGE_URL_TTL_SECONDS`,
+`STORAGE_PENDING_TTL_MS`, `STORAGE_ALERT_BYTES`, `STORAGE_UPLOAD_SPIKE_PER_HOUR`. The allowances per
+plan are constants in `server/src/lib/pricing.ts`.
+
+### Terms and the abuse contact
+
+Done 2026-10-10. `landing/src/pages/Terms.tsx` (effective October 10, 2026) has the strict acceptable-use
+list (section 6), the rules for published apps and stored files (7), reporting and takedown (8),
+enforcement (9) and indemnity (10). The only contact for reports is the marketing address
+(`CONTACT_EMAIL` in `Terms.tsx`, the site footer and `help/contact.md`), so **that mailbox is the abuse
+inbox**: a report there is a takedown request, and the steps above are how to answer it. If the address
+ever changes, change it in `Terms.tsx`, `Privacy.tsx`, `SiteFooter.tsx`, `help/contact.md`,
+`DocsIndex.tsx` and `ship/storage.md`. The terms are a draft written without a lawyer; have counsel read
+them before relying on them in a dispute.

@@ -107,6 +107,19 @@ export function useClearPreviewFiles(projectId: string) {
   });
 }
 
+/** Replace the preview key and restart the app's server with the new one. */
+export function useRotateStorageKey(projectId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post<{ rotated: boolean; previousKeyValidForHours: number }>(`/project/${projectId}/storage/rotate-key`)
+        .then((r) => r.data),
+    onSuccess: (data) =>
+      toast.success(`Key replaced. The old one stops working in ${data.previousKeyValidForHours} hours.`),
+    onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't replace the key")),
+  });
+}
+
 // ── Pure helpers ─────────────────────────────────────────────────────────────
 
 /** "0 B", "840 B", "12.4 KB", "10 MB", "1.5 GB": one decimal, dropped when it is .0. */

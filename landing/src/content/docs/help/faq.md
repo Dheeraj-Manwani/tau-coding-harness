@@ -104,6 +104,15 @@ sandbox is built from them.
 
 → [Troubleshooting](/docs/help/troubleshooting)
 
+## Can my app keep uploaded files?
+
+Yes. Ask for it ("let people upload a profile picture") and tau turns on file
+storage for that app. Files are kept by tau, survive rebuilding the preview, and
+are managed under **Tools → Storage**. You get 100 MB on Free and 5 GB on PRO.
+Right now it works in the preview; published apps do not have storage yet.
+
+→ [File storage](/docs/ship/storage)
+
 ## Can I run two builds at once?
 
 No. One job at a time per account. Every build has a real sandbox and a real spend

@@ -21,11 +21,13 @@ mock.module("@/lib/env", () => ({ env }));
 
 let project: { templateKey: string; storageEnabled: boolean; aiEnabled: boolean } | null;
 let manifest: Map<string, string>;
+let user: { emailVerifiedAt: Date | null };
 let keysMinted: { projectId: string; env: string }[];
 let restarts: number;
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
+    user: { findUnique: async () => user },
     project: {
       findUnique: async () => project,
       update: async ({ data }: { data: Record<string, unknown> }) => {
@@ -101,6 +103,7 @@ const run = (sandbox: Sandbox) => enableStorage({ purpose: "recipe photos" }, sa
 beforeEach(() => {
   project = { templateKey: "v2-fullstack", storageEnabled: false, aiEnabled: false };
   manifest = new Map();
+  user = { emailVerifiedAt: new Date() };
   keysMinted = [];
   restarts = 0;
   encryptionOn = true;
@@ -178,6 +181,17 @@ describe("enable_storage", () => {
       expect(keysMinted).toHaveLength(0);
       expect(project!.storageEnabled).toBe(false);
     }
+  });
+
+  test("an account that has not verified its email is refused and nothing is written", async () => {
+    user = { emailVerifiedAt: null };
+    const { sandbox, files } = fakeSandbox();
+    const result = (await run(sandbox)) as Record<string, any>;
+    expect(result.error).toContain("verified email");
+    expect(result.error).toContain("base64");
+    expect(files[`${APP}/.env`]).toBeUndefined();
+    expect(keysMinted).toHaveLength(0);
+    expect(project!.storageEnabled).toBe(false);
   });
 
   test("refuses a generation-1 project", async () => {

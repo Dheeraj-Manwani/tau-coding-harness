@@ -32,6 +32,11 @@ import {
   setPlan,
   suspendSite,
   unsuspendSite,
+  storageOverview,
+  storageFiles,
+  suspendStorage,
+  resumeStorage,
+  deleteStorageFile,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -75,6 +80,9 @@ router.post("/users/:id/plan", setPlan); // { plan: "FREE" | "PRO" } — manual 
 // Runtime inference across every key — who is spending, on what. `?hours=`.
 router.get("/gateway", gatewayOverview);
 router.get("/projects/:id", projectDetail);
+// Tau Cloud Storage: totals, biggest projects and owners, near-allowance owners.
+router.get("/storage", storageOverview);
+router.get("/projects/:id/storage/files", storageFiles); // ?env=&prefix=&cursor=
 
 // ── incident tools ───────────────────────────────────────────────────────────
 router.post("/jobs/reconcile-stuck", reconcileStuckJobs);
@@ -83,6 +91,9 @@ router.post("/users/:id/holds/release", releaseHolds);
 router.post("/sandboxes/:id/kill", killSandbox); // orphans only — refuses anything owned
 router.post("/projects/:id/site/suspend", suspendSite); // { reason } — shown to the owner
 router.post("/projects/:id/site/unsuspend", unsuspendSite);
+router.post("/projects/:id/storage/suspend", suspendStorage); // { reason } — files kept
+router.post("/projects/:id/storage/resume", resumeStorage);
+router.post("/projects/:id/storage/files/delete", deleteStorageFile); // { env?, key, reason }
 
 // ── console ──────────────────────────────────────────────────────────────────
 router.get("/costs", costSeed); // calculator seed: live catalog + provider rates

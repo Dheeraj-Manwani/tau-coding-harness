@@ -12,6 +12,11 @@ import { limitsFor, planFor, storageUsage } from "@/lib/storageQuota";
 import * as storage from "./storage.service";
 import { StorageError } from "../lib/storageErrors";
 import { storageConfigured } from "@/lib/storageBucket";
+import { Sandbox } from "e2b";
+import { keyEncryptionConfigured, ROTATION_GRACE_MS } from "@/lib/apiKeys";
+import { rotateStorageKey } from "@/lib/storageKeys";
+import { reinjectProjectEnv } from "@/worker/lib/aiEnv";
+import { log } from "../lib/log";
 
 export type OwnerEnv = "PREVIEW" | "LIVE";
 
@@ -19,7 +24,7 @@ export type OwnerEnv = "PREVIEW" | "LIVE";
 async function ownedProject(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { userId: true, storageEnabled: true, storageSuspendedAt: true },
+    select: { userId: true, storageEnabled: true, storageSuspendedAt: true, sandboxId: true, sandboxStatus: true },
   });
   if (!project || project.userId !== userId) throw Errors.notFound("Project not found");
   return project;
@@ -117,4 +122,33 @@ export async function clearPreview(projectId: string, userId: string) {
   requireBucket();
   await ownedProject(projectId, userId);
   return storage.clearFiles(ctxFor(projectId, userId, "PREVIEW"));
+}
+
+/**
+ * Replace the preview key and put the new one in the running app. The old key
+ * keeps working for {@link ROTATION_GRACE_MS}, so an app that has not picked up
+ * the new one yet is not cut off. The value is never returned.
+ */
+export async function rotatePreviewKey(projectId: string, userId: string) {
+  const project = await ownedProject(projectId, userId);
+  if (!project.storageEnabled) throw Errors.badRequest("This app does not use file storage.");
+  if (!keyEncryptionConfigured()) throw new AppError("Secure key storage is not available on this server.", 503);
+
+  await rotateStorageKey(projectId, userId, "PREVIEW");
+  log.info("storage.key_rotated", { projectId, env: "PREVIEW" });
+
+  // Fire-and-forget: the restart waits for the server to come back. The key is
+  // already stored, and the next provision writes it anyway.
+  if (project.sandboxId && project.sandboxStatus === "READY") {
+    const sandboxId = project.sandboxId;
+    void (async () => {
+      try {
+        const sandbox = await Sandbox.connect(sandboxId);
+        await reinjectProjectEnv(sandbox, projectId, userId, "storage-rotate", { restart: true });
+      } catch (err) {
+        log.warn("storage.rotate_apply_failed", { projectId, error: String(err) });
+      }
+    })();
+  }
+  return { rotated: true, previousKeyValidForHours: ROTATION_GRACE_MS / 3_600_000 };
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08",
+  "generatedAt": "2026-10-10",
   "tree": [
     {
       "slug": "start",
@@ -140,6 +140,18 @@
           "slug": "deploying",
           "title": "Deploying",
           "description": "Publish your app to a public URL, straight from tau."
+        },
+        {
+          "path": "/docs/ship/custom-domains",
+          "slug": "custom-domains",
+          "title": "Custom domains",
+          "description": "Show your published app at a domain you own, like www.example.com, with HTTPS included."
+        },
+        {
+          "path": "/docs/ship/storage",
+          "slug": "storage",
+          "title": "File storage",
+          "description": "Where an app keeps uploaded pictures, documents and exports, how much room you get, and what tau does about abuse."
         }
       ]
     },
@@ -365,6 +377,7 @@
         "The three buckets",
         "Spend order: free → plan → bonus",
         "Two kinds of spend",
+        "Publishing and logos",
         "Reading your ledger",
         "What happens when you run out",
         "Refunds",
@@ -547,6 +560,7 @@
         "If I edit my GitHub repo, does tau pick it up?",
         "Is there an undo, or checkpoints?",
         "Why does my preview URL keep dying?",
+        "Can my app keep uploaded files?",
         "Can I run two builds at once?",
         "Are all the effort tiers available on the free plan?",
         "My app can call an LLM without an API key?",
@@ -570,7 +584,7 @@
         "Quick answers",
         "Related"
       ],
-      "text": "Every limit tau enforces is in one table, and it lives with the billing docs because most of them are about spend: → Limits That page covers: Credits, grants, expiry and spend order The project cap and job concurrency Per-build budgets by effort tier: turns, sub-agents, wall clock, spend cap Attachment sizes and counts Every AI gateway limit per key Context budget behaviour Quick answers Question Answer --- --- How many free credits? 300, once, at signup How many projects on Free? 3 at a time How many builds at once? 1 per account Biggest attachment? 10 MB (5 MB for images) Gateway daily cap? 20 credits by default, configurable Is there an SLA? No Related Effort tiers: the per-build budgets in context Credits: buckets and spend order Errors: what each refusal looks like when you hit one"
+      "text": "Every limit tau enforces is in one table, and it lives with the billing docs because most of them are about spend: → Limits That page covers: Credits, grants, expiry and spend order The project cap and job concurrency Per-build budgets by effort tier: turns, sub-agents, wall clock, spend cap Attachment sizes and counts File storage: how much an app can keep and the largest file Every AI gateway limit per key Context budget behaviour Quick answers Question Answer --- --- How many free credits? 300, once, at signup How many projects on Free? 3 at a time How many builds at once? 1 per account Biggest attachment? 10 MB (5 MB for images) How much can an app store? 100 MB on Free, 5 GB on PRO Gateway daily cap? 20 credits by default, configurable Is there an SLA? No Related Effort tiers: the per-build budgets in context Credits: buckets and spend order Errors: what each refusal looks like when you hit one"
     },
     {
       "path": "/docs/workspace/chat",
@@ -628,7 +642,7 @@
         "Project cap on downgrade",
         "Next"
       ],
-      "text": "Two plans. Both have every feature; they differ in credits and project count. Free PRO --- --- --- Price ₹0 ₹1,499 / month Credits 25, once, at signup 5,000 per billing cycle Projects at a time 3 Unlimited Effort tiers All three, including Max All three AI gateway Yes Yes GitHub push Yes Yes Support Standard Priority What Free actually gets you Everything. There is no feature behind the paywall: no locked effort tier, no disabled gateway, no watermark. What you get less of is credits and project slots. 300 credits is enough for several small builds, and 3 projects is enough to keep one real thing and two experiments. [!NOTE] The 300 credits are a one-time grant , not a monthly allowance. There is no daily or monthly refill on Free. When they are gone, buy a pack, redeem a code, or upgrade. What PRO changes 5,000 credits on your billing date, every cycle. These are plan credits and they expire at the end of the cycle: they do not roll over. That is what makes them cheap per credit. Unlimited projects. No 3-project cap. Priority support. Everything else is identical, because everything else was already available. Whether to upgrade Upgrade when you are regularly out of credits or regularly deleting a project to make room. Those are the only two things the plan changes. If you build in bursts: a lot one week, nothing the next: credit packs are the better fit. Pack credits never expire; plan credits do. Plan credits expire Unused plan credits are gone at the end of the cycle. Thi"
+      "text": "Two plans. Both have every feature; they differ in credits and project count. Free PRO --- --- --- Price ₹0 ₹1,499 / month Credits 25, once, at signup 5,000 per billing cycle Projects at a time 3 Unlimited Effort tiers All three, including Max All three AI gateway Yes Yes File storage for your apps 100 MB (10 MB per file) 5 GB (100 MB per file) GitHub push Yes Yes Support Standard Priority What Free actually gets you Everything. There is no feature behind the paywall: no locked effort tier, no disabled gateway, no watermark. What you get less of is credits and project slots. 300 credits is enough for several small builds, and 3 projects is enough to keep one real thing and two experiments. [!NOTE] The 300 credits are a one-time grant , not a monthly allowance. There is no daily or monthly refill on Free. When they are gone, buy a pack, redeem a code, or upgrade. What PRO changes 5,000 credits on your billing date, every cycle. These are plan credits and they expire at the end of the cycle: they do not roll over. That is what makes them cheap per credit. Unlimited projects. No 3-project cap. More file storage. 5 GB instead of 100 MB, and files up to 100 MB instead of 10 MB. See File storage. Priority support. Everything else is identical, because everything else was already available. Whether to upgrade Upgrade when you are regularly out of credits or regularly deleting a project to make room. Those are the only two things the plan changes. If you build in bursts: a lot one we"
     },
     {
       "path": "/docs/start/quickstart",
@@ -856,15 +870,20 @@
       "title": "Deploying",
       "description": "Publish your app to a public URL, straight from tau.",
       "order": 4,
-      "updated": "2026-08-01",
+      "updated": "2026-10-09",
       "headings": [
         "How it works",
+        "Choosing your address",
+        "What it costs",
+        "Name and logo",
         "What gets published",
         "When a build fails",
+        "Rolling back",
+        "Taking a site offline",
         "Deploying somewhere else",
         "What about the environment?"
       ],
-      "text": "Tau publishes your app to a public URL. Open the rocket icon in the top right of your project, press Publish , and you get a link anyone can open - no account, no host to sign up for, no build settings to configure. How it works Publishing runs your project's own build ( ) in its sandbox, takes the static output, and serves it from tau's storage. 1. Press Publish . The build streams into the chat like any other job. 2. When it finishes, the panel shows your URL and a copy button. 3. Press Publish update whenever you want the live site to catch up. The panel tells you how many changes you have made since the last publish. Each publish is a complete, separate copy. The live site only switches over once the new build has uploaded successfully: a failed build never takes your site down, it just leaves the previous version serving. [!NOTE] Your address is fixed the first time you publish and does not change when you rename the project. Links you have shared keep working. What gets published The front-end. That is the whole app for a frontend-only project, and it is what most projects are. If your project has a backend or a database , publishing ships the front-end only: anything that calls your API or stores data will not work on the published site yet. The panel warns you before you publish. Server-side hosting is next; until then, use the GitHub route below for those projects. When a build fails The panel shows the error. The usual cause is code that does not compile, and the fi"
+      "text": "Tau publishes your app to a public URL. Open the rocket icon in the top right of your project, press Publish , and you get a link anyone can open - no account, no host to sign up for, no build settings to configure. How it works Publishing runs your project's own build ( ) in its sandbox, takes the static output, and serves it from tau's storage. 1. Press Publish . The build streams into the chat like any other job. 2. When it finishes, the panel shows your URL and a copy button. 3. Press Publish update whenever you want the live site to catch up. The panel tells you how many changes you have made since the last publish. Each publish is a complete, separate copy. The live site only switches over once the new build has uploaded successfully: a failed build never takes your site down, it just leaves the previous version serving. [!NOTE] Your address is fixed the first time you publish and does not change when you rename the project. Links you have shared keep working. Choosing your address Before your first publish, the panel offers an Address for your app, such as . Change it to anything you like: 3 to 40 letters, numbers and hyphens. The panel tells you as you type whether it is free. It is fixed after the first publish , so choose it first. Links you share keep working because the address never changes. Names such as , and are reserved, because the domain would make a page there look like one of tau's own. A name belongs to one project for good. If you delete the project, no"
     },
     {
       "path": "/docs/reference/glossary",
@@ -1005,6 +1024,24 @@
       "text": "You can attach files to any message. A screenshot of a layout is usually a faster way to describe a design than a paragraph, and a spec you already have is better than a spec you retype. What you can attach Images : screenshots, mockups, photos of a whiteboard. Documents : PDFs and text files. Pasted content : paste a table, a log, or a block of text straight into the composer and it becomes an attachment instead of a wall of prompt. Limits Limit Value --- --- Max file size 10 MB Max image size 5 MB Max attachments per message 5 These are the defaults tau runs with. A file over the limit is rejected at upload rather than silently truncated. What happens to them 1. The file uploads directly to storage from your browser. 2. Tau extracts its text content: a PDF becomes text, an image is described. 3. You see the chip go from Extracting to Ready . 4. When you send, the extracted text is folded into the message the agent reads. That last step matters for understanding cost and behaviour: the agent works from extracted text , which is part of your message. It is not re-reading the original file on every turn. [!NOTE] Attach the file, wait for Ready , then send. Sending while an attachment is still extracting means the agent gets the message without its content. Using attachments well A screenshot for layout. \"Like this, but our colours\" with a screenshot attached is one sentence that replaces a design brief. A PDF for requirements. If you already have a spec, attach it and write on"
     },
     {
+      "path": "/docs/ship/custom-domains",
+      "section": "ship",
+      "slug": "custom-domains",
+      "title": "Custom domains",
+      "description": "Show your published app at a domain you own, like www.example.com, with HTTPS included.",
+      "order": 5,
+      "updated": "2026-10-09",
+      "headings": [
+        "The two records",
+        "`www.example.com` or `example.com`?",
+        "At Hostinger",
+        "Primary domain",
+        "If it gets stuck",
+        "Things to know"
+      ],
+      "text": "Connect a domain you already own and your published app appears there , over HTTPS, with the certificate handled for you. You add two DNS records where you bought the domain; tau does the rest. You need a published app first (see Deploying). Open your project, choose Tools → Domains , type the domain, and press Connect . The two records Tau shows you two records, each with a copy button: Record What it does --- --- TXT at in front of your name Proves the domain is yours. Tau will not connect a domain until it sees this. CNAME (or ALIAS for a root domain) Sends visitors to your app. Add the TXT record first. The panel shows each record as found or not found yet as tau looks, and the domain moves through Waiting for DNS → Verifying → Issuing certificate → Active . DNS changes can take from a few minutes to a few hours, and the page updates itself while it waits. You can press Refresh to check straight away. or ? A name with something in front of it, like or , takes a CNAME. This is the easy one. A root domain, like , can't hold a CNAME, so it takes an ALIAS record instead. Registrars name it differently: ALIAS, ANAME, or a CNAME on that they flatten for you. If your registrar has none of these, connect instead and switch on the registrar's forward root to www setting, so sends people to . At Hostinger 1. Open Domains , choose your domain, then DNS / Nameservers and DNS records . 2. For : add a CNAME with name and the value tau shows. 3. For the root: add a CNAME with name and t"
+    },
+    {
       "path": "/docs/reference/api",
       "section": "reference",
       "slug": "api",
@@ -1036,6 +1073,7 @@
         "Credits and plans",
         "Projects and jobs",
         "Per build, by effort tier",
+        "File storage",
         "Attachments",
         "AI gateway, per key",
         "Context",
@@ -1043,7 +1081,7 @@
         "No uptime guarantee",
         "Next"
       ],
-      "text": "Every limit tau enforces, in one place. These are the defaults the service runs with. Credits and plans Limit Value --- --- Free signup grant 300 credits, one time, never refilled PRO monthly allotment 5,000 credits per billing cycle Plan credit expiry End of the billing cycle Free and bonus credit expiry Never Minimum available balance to start a build 1 credit Spend order free → plan → bonus Projects and jobs Limit Value --- --- Projects at a time (Free) 3 Projects at a time (PRO) Unlimited Concurrent jobs per account 1 Concurrency is per account, not per project. Starting a second build while one runs is refused with a clear message rather than queued. Per build, by effort tier Low High Max --- --- --- --- Model DeepSeek (flash) DeepSeek (pro) DeepSeek (pro) Agent turns 80 200 300 Sub-agent turns 20 40 60 Parallel sub-agents 1 3 5 Wall clock 20 min 45 min 90 min Spend cap per build 5,000 credits 25,000 credits 50,000 credits The spend cap is a ceiling, not a price. A small build on Max costs what it costs. → Effort tiers Attachments Limit Value --- --- Max file size 10 MB Max image size 5 MB Max attachments per message 5 → Attachments AI gateway, per key Limit Value --- --- Daily spend cap 20 credits (configurable, up to 100,000) Daily cap reset 00:00 UTC Requests per minute 60 Concurrent requests 8 Max output tokens per request 4096 Minimum balance to serve a request 0.1 credits Single stream wall clock 5 minutes Rotation grace window 24 hours There is also a process-wide"
+      "text": "Every limit tau enforces, in one place. These are the defaults the service runs with. Credits and plans Limit Value --- --- Free signup grant 300 credits, one time, never refilled PRO monthly allotment 5,000 credits per billing cycle Plan credit expiry End of the billing cycle Free and bonus credit expiry Never Minimum available balance to start a build 1 credit Spend order free → plan → bonus Projects and jobs Limit Value --- --- Projects at a time (Free) 3 Projects at a time (PRO) Unlimited Concurrent jobs per account 1 Concurrency is per account, not per project. Starting a second build while one runs is refused with a clear message rather than queued. Per build, by effort tier Low High Max --- --- --- --- Model DeepSeek (flash) DeepSeek (pro) DeepSeek (pro) Agent turns 80 200 300 Sub-agent turns 20 40 60 Parallel sub-agents 1 3 5 Wall clock 20 min 45 min 90 min Spend cap per build 5,000 credits 25,000 credits 50,000 credits The spend cap is a ceiling, not a price. A small build on Max costs what it costs. → Effort tiers File storage Limit Free PRO --- --- --- Stored, across all your projects 100 MB 5 GB Largest single file 10 MB 100 MB Preview environment, per project 50 MB 50 MB Over the limit, new uploads are refused; listing, opening and deleting still work, and nothing is deleted for you. → File storage Attachments Limit Value --- --- Max file size 10 MB Max image size 5 MB Max attachments per message 5 → Attachments AI gateway, per key Limit Value --- --- Daily spend"
     },
     {
       "path": "/docs/ai/openai-compatible",
@@ -1083,6 +1121,26 @@
         "Next"
       ],
       "text": "A project is one app: its chat history, its files, its sandbox, and optionally a linked GitHub repo. Creating one Send a prompt. That is it: there is no project form. The first message creates the project, provisions the sandbox and starts the first job in one step. The list Each project is a card with its name and a screenshot of the finished preview. The screenshot is captured automatically when a build completes, which is what makes a list of six projects readable rather than six identical rectangles. The free-plan cap Free accounts can hold 3 projects at a time. PRO is unlimited. The cap is on projects you have , not projects you have ever made. Delete one and the slot frees up immediately. If you hit it, you will get a clear refusal rather than a half-created project. [!TIP] Three is enough to keep one real thing, one experiment, and one you have not got round to deleting. If you are bumping the cap regularly, that is what PRO is for. See Plans. Deleting Deleting a project removes its files, its chat history and its manifest. This is not reversible and there is no restore. Before deleting anything you might want later: push it to GitHub. That is your only archive, and it is a good one: an ordinary repo you own. [!WARNING] There are no checkpoints and no undo. A deleted project is gone, and a project you have not pushed exists only inside tau. Concurrency One job runs at a time per account by default. Starting a second build while one is running is refused with a clear me"
+    },
+    {
+      "path": "/docs/ship/storage",
+      "section": "ship",
+      "slug": "storage",
+      "title": "File storage",
+      "description": "Where an app keeps uploaded pictures, documents and exports, how much room you get, and what tau does about abuse.",
+      "order": 6,
+      "updated": "2026-10-10",
+      "headings": [
+        "Where the files go",
+        "Seeing and managing the files",
+        "Limits",
+        "What opens in the browser",
+        "Preview and published apps are separate",
+        "What you need",
+        "What tau does about abuse",
+        "Next"
+      ],
+      "text": "An app made with tau can keep files: profile pictures, receipts, documents, a generated export. Ask for it in plain words (\"let people upload a profile picture\") and tau turns file storage on for that app and builds the upload and download screens. Where the files go Files are kept by tau, not on the app's own server or in your browser. They stay when the preview is rebuilt or the sandbox expires, which is the point: anything the app writes to its own disk, or keeps inside the page, is lost the next time it is rebuilt. A file goes from the visitor's browser straight to storage. It never passes through your app's server, so the size of a file is not limited by the server. Every file is private. Nothing has a public address; your app's server asks for a short-lived link each time it wants to show or download one. Seeing and managing the files Open Tools → Storage in your project. How much of your allowance is used, and the largest file you can store. Every file: name, folder, type, size and date. Filter by folder, for example . Preview a picture, PDF, text file or media file, download any file, or delete it. Select several to delete them together. Clear preview files deletes everything uploaded while you test the app in the preview. It never touches files on a published app. Replace key gives your app a new storage key if you think the old one leaked. The old key works for another 24 hours so nothing breaks, and your files are not touched. Deleting a project deletes its files. "
     },
     {
       "path": "/docs/ai/billing",
@@ -1139,7 +1197,7 @@
         "How to think about the boundary",
         "Next"
       ],
-      "text": "Tau builds web apps that run in a Linux sandbox with Node and a package manager. That sentence is the boundary, and most of what follows is a consequence of it. What works well Front-end apps with real interactivity. Forms, lists, filters, tables, dashboards, multi-view apps with client-side routing. This is the centre of the target and the results are good. Small full-stack apps. An HTTP server alongside the front end: API routes, request handling, in-process state or a file-backed store. Marketing and content pages. Landing pages, docs-style layouts, pricing pages. Fast, and cheap on Low. Data-shaped tools. Anything that is \"hold these records, show them this way, let me edit them\": trackers, generators, calculators, converters, CRUD tools. Apps that call an LLM. Ask tau to add AI and it wires the AI gateway in for you: no SDK to install, no key of your own to obtain. This is genuinely unusual and worth using. What is harder Large multi-screen products. Possible, but build it in passes: one screen per message. One prompt describing eight screens gets you eight shallow ones. Heavy persistence. In-sandbox databases work but the sandbox is modest. An app whose whole point is a large local database will strain it. Pixel-exact reproduction of a design. Attach a screenshot and you will get close, and closer with a follow-up. You will not get pixel parity in one shot. Anything needing a credential you have not supplied. Tau cannot sign up for a third-party API on your behalf. If y"
+      "text": "Tau builds web apps that run in a Linux sandbox with Node and a package manager. That sentence is the boundary, and most of what follows is a consequence of it. What works well Front-end apps with real interactivity. Forms, lists, filters, tables, dashboards, multi-view apps with client-side routing. This is the centre of the target and the results are good. Small full-stack apps. An HTTP server alongside the front end: API routes, request handling, in-process state or a file-backed store. Marketing and content pages. Landing pages, docs-style layouts, pricing pages. Fast, and cheap on Low. Data-shaped tools. Anything that is \"hold these records, show them this way, let me edit them\": trackers, generators, calculators, converters, CRUD tools. Apps that keep files. Ask for uploads (profile pictures, documents, receipts) and tau gives the app somewhere durable to keep them, with a screen to manage them under Tools → Storage. See File storage. Apps that call an LLM. Ask tau to add AI and it wires the AI gateway in for you: no SDK to install, no key of your own to obtain. This is genuinely unusual and worth using. What is harder Large multi-screen products. Possible, but build it in passes: one screen per message. One prompt describing eight screens gets you eight shallow ones. Heavy persistence. In-sandbox databases work but the sandbox is modest. An app whose whole point is a large local database will strain it. Pixel-exact reproduction of a design. Attach a screenshot and you "
     }
   ]
 }

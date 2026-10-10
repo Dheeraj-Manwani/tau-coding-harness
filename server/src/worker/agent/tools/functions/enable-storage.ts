@@ -47,6 +47,16 @@ export async function enableStorage(
     return { error: NOT_AVAILABLE };
   }
 
+  // Anyone can then upload files to this app and tau stores them, so it needs an
+  // address that someone answers: the rule publishing applies (requestDeploy).
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true } });
+  if (!user?.emailVerifiedAt) {
+    return {
+      error:
+        "File storage needs a verified email address, and this account has not verified its email yet. Tell the user to verify their email, then ask for file uploads again. Build the rest of the request without uploads for now, and do NOT write uploads to the server's disk or keep files as base64.",
+    };
+  }
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { templateKey: true, storageEnabled: true },

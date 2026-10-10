@@ -6,6 +6,7 @@ import {
   FolderIcon,
   HardDriveIcon,
   InfoIcon,
+  KeyRoundIcon,
   Loader2Icon,
   SearchIcon,
   Trash2Icon,
@@ -37,6 +38,7 @@ import {
   useClearPreviewFiles,
   useDeleteStorageFiles,
   useProjectStorage,
+  useRotateStorageKey,
   useStorageFiles,
   usagePercent,
   type StorageEnv,
@@ -266,6 +268,46 @@ function ClearPreviewDialog({
   );
 }
 
+function RotateKeyDialog({
+  open,
+  onOpenChange,
+  projectId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId: string;
+}) {
+  const rotate = useRotateStorageKey(projectId);
+  const handle = (event: MouseEvent) => {
+    event.preventDefault();
+    rotate.mutate(undefined, { onSettled: () => onOpenChange(false) });
+  };
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent size="sm" className="border-silver-200 bg-space-surface">
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-[var(--blue-500)]/10 text-[var(--blue-500)]">
+            <KeyRoundIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle className="text-silver-900">Replace the storage key?</AlertDialogTitle>
+          <AlertDialogDescription className="text-silver-600">
+            Your app gets a new key and its server restarts to pick it up. The old key keeps working for 24 hours, then
+            stops. Do this if you think the key has leaked. Your files are not touched.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="border-t border-border pt-4">
+          <AlertDialogCancel variant="outline" className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={handle} disabled={rotate.isPending}>
+            {rotate.isPending ? "Replacing…" : "Replace key"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 const EMPTY_KEYS: Set<string> = new Set();
 const ENV_LABEL: Record<StorageEnv, string> = { PREVIEW: "Preview", LIVE: "Live" };
 
@@ -282,6 +324,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
   const setSelected = (update: (s: Set<string>) => Set<string>) =>
     setPick((p) => ({ scope, keys: update(p.scope === scope ? p.keys : EMPTY_KEYS) }));
   const [clearing, setClearing] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
 
   const data = overview.data;
@@ -318,6 +361,17 @@ export function StoragePane({ projectId }: { projectId: string }) {
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-medium text-[var(--silver-900)]">Storage</h2>
+          <div className="flex shrink-0 items-center gap-1">
+            {data?.enabled && env === "PREVIEW" && (
+              <button
+                type="button"
+                onClick={() => setRotating(true)}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+              >
+                <KeyRoundIcon className="size-3.5" />
+                Replace key
+              </button>
+            )}
           {env === "PREVIEW" && previewCount > 0 && (
             <button
               type="button"
@@ -328,6 +382,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
               Clear preview files
             </button>
           )}
+          </div>
         </div>
 
         {overview.isLoading ? (
@@ -512,6 +567,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
           </>
         )}
       </div>
+      <RotateKeyDialog open={rotating} onOpenChange={setRotating} projectId={projectId} />
       <ClearPreviewDialog count={previewCount} open={clearing} onOpenChange={setClearing} projectId={projectId} />
     </div>
   );

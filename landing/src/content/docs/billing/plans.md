@@ -15,6 +15,7 @@ Two plans. Both have every feature; they differ in credits and project count.
 | Projects at a time | 3 | Unlimited |
 | Effort tiers | All three, including Max | All three |
 | AI gateway | Yes | Yes |
+| File storage for your apps | 100 MB (10 MB per file) | 5 GB (100 MB per file) |
 | GitHub push | Yes | Yes |
 | Support | Standard | Priority |
 
@@ -39,6 +40,9 @@ they expire at the end of the cycle: they do not roll over. That is what makes
 them cheap per credit.
 
 **Unlimited projects.** No 3-project cap.
+
+**More file storage.** 5 GB instead of 100 MB, and files up to 100 MB instead of
+10 MB. See [File storage](/docs/ship/storage).
 
 **Priority support.**
 

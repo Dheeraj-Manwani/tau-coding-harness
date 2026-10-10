@@ -98,6 +98,7 @@ router.get("/:projectId/storage/files", storageOwner.listFiles);
 router.post("/:projectId/storage/files/url", storageOwner.fileUrl);
 router.post("/:projectId/storage/files/delete", storageOwner.deleteFiles);
 router.post("/:projectId/storage/clear", storageOwner.clearPreview);
+router.post("/:projectId/storage/rotate-key", storageOwner.rotateKey);
 router.get("/:projectId/secrets", listSecrets);
 router.put("/:projectId/secrets/:name", setSecret);
 router.delete("/:projectId/secrets/:name", deleteSecret);

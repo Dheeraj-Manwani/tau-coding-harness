@@ -182,6 +182,10 @@ const envSchema = z.object({
   STORAGE_URL_TTL_MAX_SECONDS: z.coerce.number().int().positive().default(3600),
   // Age at which an upload that was never confirmed is swept.
   STORAGE_PENDING_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+  // Alerts (api/lib/anomalies.ts). The bucket total that pages: the default is 80% of
+  // the 10 GB R2 free tier. The uploads one project makes in an hour that page.
+  STORAGE_ALERT_BYTES: z.coerce.number().int().positive().default(8 * 1024 ** 3),
+  STORAGE_UPLOAD_SPIKE_PER_HOUR: z.coerce.number().int().positive().default(500),
 
   // Credits / billing — when false, credit enforcement is off (shadow mode).
   CREDITS_ENFORCE: z

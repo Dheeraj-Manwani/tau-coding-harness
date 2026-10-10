@@ -47,6 +47,19 @@ costs.
 
 → [Effort tiers](/docs/build/effort-tiers)
 
+## File storage
+
+| Limit | Free | PRO |
+|---|---|---|
+| Stored, across all your projects | 100 MB | 5 GB |
+| Largest single file | 10 MB | 100 MB |
+| Preview environment, per project | 50 MB | 50 MB |
+
+Over the limit, new uploads are refused; listing, opening and deleting still
+work, and nothing is deleted for you.
+
+→ [File storage](/docs/ship/storage)
+
 ## Attachments
 
 | Limit | Value |

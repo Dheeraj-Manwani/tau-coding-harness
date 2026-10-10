@@ -14,6 +14,7 @@ import { ADMIN_COOKIE } from "../middleware/admin.middleware";
 import * as admin from "../services/admin.service";
 import * as overviewService from "../services/adminOverview.service";
 import { getCostSeed } from "../services/adminCosts.service";
+import * as storageAdmin from "../services/storageAdmin.service";
 
 /** Wrap an async handler so a rejection reaches the error middleware. */
 function handler(
@@ -107,6 +108,46 @@ export const suspendSite = handler((req) => {
 export const unsuspendSite = handler((req) =>
   admin.unsuspendProjectSite(String(req.params.id)),
 );
+
+// ── file storage ─────────────────────────────────────────────────────────────
+
+const storageEnvSchema = z.enum(["PREVIEW", "LIVE"]).default("PREVIEW");
+const adminId = (req: Request) => req.user?.id ?? "unknown";
+
+/** GET /storage — what is stored, by whom, and who is near their allowance. */
+export const storageOverview = handler(() => storageAdmin.overview());
+
+/** GET /projects/:id/storage/files — any project's files, even while suspended. */
+export const storageFiles = handler((req) => {
+  const q = parse(
+    z.object({
+      env: storageEnvSchema,
+      prefix: z.string().max(512).optional(),
+      cursor: z.string().max(512).optional(),
+      limit: z.coerce.number().int().min(1).max(200).optional(),
+    }),
+    req.query,
+  );
+  const { env, ...rest } = q;
+  return storageAdmin.listFiles(String(req.params.id), env, rest);
+});
+
+/** POST /projects/:id/storage/suspend — no uploads or addresses; files are kept. */
+export const suspendStorage = handler((req) => {
+  const { reason } = parse(suspendSiteSchema, req.body);
+  return storageAdmin.suspendStorage(String(req.params.id), adminId(req), reason);
+});
+
+export const resumeStorage = handler((req) => storageAdmin.resumeStorage(String(req.params.id), adminId(req)));
+
+/** POST /projects/:id/storage/files/delete — takedown of one file; a reason is required. */
+export const deleteStorageFile = handler((req) => {
+  const body = parse(
+    z.object({ env: storageEnvSchema, key: z.string().min(1).max(512), reason: z.string().trim().min(1, "A reason is required").max(500) }),
+    req.body,
+  );
+  return storageAdmin.deleteFile(String(req.params.id), body.env, body.key, adminId(req), body.reason);
+});
 
 /** Gateway traffic across every key — the abuse-triage view. `?hours=` (default 24). */
 export const gatewayOverview = handler((req) => {

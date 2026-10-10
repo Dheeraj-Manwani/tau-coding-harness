@@ -45,3 +45,4 @@ export const listFiles = route((u, p, req) => {
 export const fileUrl = route((u, p, req) => owner.fileUrl(p, u, parse(urlBodySchema, req.body)));
 export const deleteFiles = route((u, p, req) => owner.deleteFiles(p, u, parse(deleteBodySchema, req.body)));
 export const clearPreview = route((u, p) => owner.clearPreview(p, u));
+export const rotateKey = route((u, p) => owner.rotatePreviewKey(p, u));

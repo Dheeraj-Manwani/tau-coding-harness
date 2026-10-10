@@ -114,6 +114,11 @@ export default function PrivacyPage() {
         <p>
           We retain your account data for as long as your account is active.
           Generated project files are retained to allow you to access your work.
+          Files stored by your apps with tau file storage are kept until you or
+          we delete them, or until the project is deleted, and are deleted with
+          it. We may inspect and disclose stored files and app content as the
+          Terms of Service describe, including in response to reports of abuse
+          and legal requests.
           You may request deletion of your account and all associated data by
           emailing{" "}
           <a

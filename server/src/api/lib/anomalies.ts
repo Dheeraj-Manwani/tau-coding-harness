@@ -438,3 +438,42 @@ const RANK: Record<Severity, number> = { critical: 0, warn: 1, info: 2 };
 export function sortAnomalies(list: Anomaly[]): Anomaly[] {
   return [...list].sort((a, b) => RANK[a.severity] - RANK[b.severity] || a.key.localeCompare(b.key));
 }
+
+// ── file storage ─────────────────────────────────────────────────────────────
+
+export interface StorageSignals {
+  /** The project that created the most files in the last hour. */
+  busiestProject: { projectId: string; uploads: number } | null;
+  /** Bytes in PENDING and READY rows, across every project. */
+  totalBytes: number;
+}
+
+/**
+ * Two things worth a human: one project flooding uploads (somebody is filling
+ * an owner's allowance, or an app loops), and the whole bucket nearing what the
+ * R2 plan includes. Both are counts, not per-file events.
+ */
+export function storageAnomalies(
+  s: StorageSignals,
+  limits: { uploadsPerHour: number; bucketBytes: number },
+): Anomaly[] {
+  const out: Anomaly[] = [];
+  if (s.busiestProject && s.busiestProject.uploads >= limits.uploadsPerHour) {
+    out.push({
+      key: "storage_upload_spike",
+      severity: "warn",
+      value: s.busiestProject.uploads,
+      message: `Project ${s.busiestProject.projectId} created ${s.busiestProject.uploads} stored files in the last hour (limit ${limits.uploadsPerHour}) — check it in the console and suspend its storage if it is abuse`,
+    });
+  }
+  if (s.totalBytes >= limits.bucketBytes) {
+    const gb = (n: number) => `${Math.round((n / 1024 ** 3) * 10) / 10} GB`;
+    out.push({
+      key: "storage_bucket_size",
+      severity: "warn",
+      value: s.totalBytes,
+      message: `File storage holds ${gb(s.totalBytes)}, past the ${gb(limits.bucketBytes)} alert level — see how much of the R2 plan is left`,
+    });
+  }
+  return out;
+}

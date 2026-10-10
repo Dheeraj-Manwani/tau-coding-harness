@@ -2,6 +2,7 @@ import { useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "rea
 import { Link } from "react-router-dom";
 import { CheckIcon, CriticalIcon, ExternalIcon, InfoIcon, RefreshIcon, WarnIcon } from "./icons";
 import { time } from "@/lib/format";
+import { post } from "@/lib/api";
 
 // ── tone ─────────────────────────────────────────────────────────────────────
 
@@ -467,6 +468,110 @@ export function ConfirmButton({
                 {busy ? "Working…" : (confirmLabel ?? label)}
               </Button>
             )}
+          </div>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
+/**
+ * An action that needs a written reason before it runs: a dialog with a text
+ * box, then a POST. Used where the reason is read by someone (the owner of a
+ * suspended site) or kept in the audit log (a takedown). The reason is required.
+ */
+export function ReasonButton({
+  label,
+  title,
+  description,
+  hint,
+  placeholder,
+  confirmLabel,
+  busyLabel = "Working…",
+  endpoint,
+  extraBody,
+  onDone,
+  variant = "danger",
+  small = true,
+}: {
+  label: string;
+  title: string;
+  description: ReactNode;
+  /** The line over the text box, e.g. who reads the reason. */
+  hint: string;
+  placeholder?: string;
+  confirmLabel?: string;
+  busyLabel?: string;
+  /** Under `/admin`, e.g. `/projects/:id/site/suspend`. */
+  endpoint: string;
+  extraBody?: Record<string, unknown>;
+  onDone: () => void;
+  variant?: "danger" | "default" | "primary";
+  small?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const succeeded = useRef(false);
+
+  const open = () => {
+    setReason("");
+    setError(undefined);
+    succeeded.current = false;
+    ref.current?.showModal();
+  };
+  const close = () => ref.current?.close();
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      await post(endpoint, { ...extraBody, reason: reason.trim() });
+      succeeded.current = true;
+      ref.current?.close();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button variant={variant} onClick={open} className={small ? "px-2 py-1 text-xs" : ""}>
+        {label}
+      </Button>
+      <dialog
+        ref={ref}
+        onClose={() => succeeded.current && onDone()}
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-left text-sm font-normal whitespace-normal text-fg shadow-2xl"
+      >
+        <div className="p-5">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <div className="mt-2 text-sm text-fg-2">{description}</div>
+          <label className="mt-4 block text-xs text-fg-2">
+            {hint}
+            <textarea
+              className={`${inputClass} mt-1.5 w-full resize-y`}
+              rows={3}
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoFocus
+              placeholder={placeholder}
+            />
+          </label>
+          {error && (
+            <div className="mt-4 flex items-start gap-2 text-sm text-critical-text" role="status">
+              <ToneIcon tone="critical" className="mt-0.5 size-4 shrink-0" />
+              <span className="break-words">{error}</span>
+            </div>
+          )}
+          <div className="mt-5 flex justify-end gap-2">
+            <Button onClick={close}>Cancel</Button>
+            <Button variant={variant === "default" ? "primary" : variant} disabled={!reason.trim() || busy} onClick={run}>
+              {busy ? busyLabel : (confirmLabel ?? label)}
+            </Button>
           </div>
         </div>
       </dialog>

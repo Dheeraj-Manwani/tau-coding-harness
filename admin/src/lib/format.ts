@@ -83,3 +83,16 @@ export function label(value: string | null | undefined): string {
   const words = value.toLowerCase().replace(/[_:]+/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+/** A byte count as "840 B", "12.4 KB", "10 MB", "1.5 GB". */
+export function bytes(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let v = Math.max(0, n);
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${i === 0 ? Math.round(v) : Math.round(v * 10) / 10} ${units[i]}`;
+}

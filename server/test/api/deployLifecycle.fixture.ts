@@ -515,7 +515,11 @@ describe("a suspended site", () => {
     expect(project().liveDeploymentId).toBe("new");
     expect(row("new").status).toBe("READY");
 
+    // The site's stored files stop with it (doc/TAU_CLOUD_STORAGE.md 4.3).
+    expect(project().storageSuspendedAt).toBeInstanceOf(Date);
+
     await unsuspendProjectSite(PROJECT);
+    expect(project().storageSuspendedAt).toBeNull();
     expect(await (await visit()).text()).toBe("<h1>new</h1>");
     expect(project().siteSuspendedAt).toBeNull();
     expect(project().siteSuspendedReason).toBeNull();

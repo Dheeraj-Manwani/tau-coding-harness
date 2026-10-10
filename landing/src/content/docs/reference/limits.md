@@ -17,6 +17,7 @@ That page covers:
 - The project cap and job concurrency
 - Per-build budgets by effort tier: turns, sub-agents, wall clock, spend cap
 - Attachment sizes and counts
+- File storage: how much an app can keep and the largest file
 - Every AI gateway limit per key
 - Context budget behaviour
 
@@ -28,6 +29,7 @@ That page covers:
 | How many projects on Free? | 3 at a time |
 | How many builds at once? | 1 per account |
 | Biggest attachment? | 10 MB (5 MB for images) |
+| How much can an app store? | 100 MB on Free, 5 GB on PRO |
 | Gateway daily cap? | 20 credits by default, configurable |
 | Is there an SLA? | No |
 

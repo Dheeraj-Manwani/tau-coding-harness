@@ -489,6 +489,8 @@ export interface ProjectDetail {
     siteSuspendedAt: ISODate | null;
     /** Shown to the owner in their Publish panel. */
     siteSuspendedReason: string | null;
+    storageEnabled: boolean;
+    storageSuspendedAt: ISODate | null;
   };
   fileCount: number;
   messageCount: number;
@@ -617,4 +619,28 @@ export interface PromoCodeResult {
   perUserLimit: number;
   expiresAt: ISODate | null;
   createdAt: ISODate;
+}
+
+// ── file storage ─────────────────────────────────────────────────────────────
+
+export interface StorageOverview {
+  configured: boolean;
+  totals: { usedBytes: number; files: number; projects: number; owners: number };
+  busiestProject: { projectId: string; uploads: number } | null;
+  uploadsPerHour: Array<{ hour: ISODate; uploads: number }>;
+  topProjects: Array<{
+    projectId: string;
+    name: string | null;
+    userId: string | null;
+    suspended: boolean;
+    usedBytes: number;
+    files: number;
+  }>;
+  topOwners: Array<{ userId: string; usedBytes: number; files: number; quotaBytes: number; ratio: number }>;
+  nearAllowance: Array<{ userId: string; usedBytes: number; files: number; quotaBytes: number; ratio: number }>;
+}
+
+export interface StorageFilesPage {
+  files: Array<{ id: string; key: string; name: string; contentType: string; size: number; createdAt: ISODate }>;
+  nextCursor: string | null;
 }

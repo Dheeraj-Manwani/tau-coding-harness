@@ -66,14 +66,20 @@ function table(name: "storageObject" | "storageKey") {
       for (const r of hit) rows.splice(rows.indexOf(r), 1);
       return { count: hit.length };
     },
-    groupBy: async ({ where }: Row) => {
+    groupBy: async ({ by, where, orderBy, take }: Row) => {
       const groups = new Map<string, Row[]>();
-      for (const r of rows.filter((x) => matches(x, where))) groups.set(r.env, [...(groups.get(r.env) ?? []), r]);
-      return [...groups].map(([env, rs]) => ({
-        env,
+      for (const r of rows.filter((x) => matches(x, where))) {
+        const k = by.map((f: string) => r[f]).join("|");
+        groups.set(k, [...(groups.get(k) ?? []), r]);
+      }
+      let out = [...groups.values()].map((rs) => ({
+        ...Object.fromEntries(by.map((f: string) => [f, rs[0]![f]])),
         _count: { _all: rs.length },
         _sum: { sizeBytes: rs.reduce((n, r) => n + r.sizeBytes, 0n) },
-      }));
+      })) as Row[];
+      if (orderBy?._sum) out = out.sort((x, y) => (x._sum.sizeBytes < y._sum.sizeBytes ? 1 : -1));
+      if (orderBy?._count) out = out.sort((x, y) => y._count._all - x._count._all);
+      return take ? out.slice(0, take) : out;
     },
     aggregate: async ({ where }: Row) => ({
       _sum: { sizeBytes: rows.filter((r) => matches(r, where)).reduce((n, r) => n + r.sizeBytes, 0n) },
@@ -84,7 +90,12 @@ function table(name: "storageObject" | "storageKey") {
 const fakePrisma: Row = {
   storageObject: table("storageObject"),
   storageKey: table("storageKey"),
-  project: { findUnique: async ({ where }: Row) => Object.values(projects).find((p) => p.id === where.id) ?? null },
+  project: {
+    findUnique: async ({ where }: Row) => Object.values(projects).find((p) => p.id === where.id) ?? null,
+    findMany: async ({ where }: Row) => Object.values(projects).filter((p) => where.id.in.includes(p.id)),
+    update: async ({ where, data }: Row) => Object.assign(Object.values(projects).find((p) => p.id === where.id)!, data),
+  },
+  $queryRaw: async () => [],
   billingAccount: { findUnique: async ({ where }: Row) => billing[where.userId] ?? null },
   $transaction: async (cb: (tx: Row) => unknown) => cb(fakePrisma),
 };
@@ -106,6 +117,8 @@ mock.module("@/lib/storageBucket", () => ({
     return `https://r2.test/get/${key}?d=${encodeURIComponent(opts.disposition)}&t=${encodeURIComponent(opts.contentType)}`;
   },
   headStorageObject: async (key: string) => (bucket.has(key) ? { size: bucket.get(key)! } : null),
+  STORAGE_PREFIX: "apps/",
+  listStorageKeys: async (prefix: string) => [...bucket.keys()].filter((k) => k.startsWith(prefix)),
   deleteStorageObjects: async (keys: string[]) => {
     keys.forEach((k) => bucket.delete(k));
     return [];
@@ -121,6 +134,10 @@ mock.module("@/api/middleware/auth.middleware", () => ({
   },
 }));
 const ownerCtl = await import("@/api/controllers/storageOwner.controller");
+const adminCtl = await import("@/api/controllers/admin.controller");
+const { reconcileStorage, diffStorage } = await import("@/lib/reconcileStorage");
+const { storageAnomalies } = await import("@/api/lib/anomalies");
+const { storageObjectKey: r2KeyFor } = await import("@/lib/storageBucket");
 const { default: routes } = await import("@/api/routes/storage.routes");
 const { __resetStorageLimiter } = await import("@/api/middleware/storageKey.middleware");
 const { ensureStorageKey, rotateStorageKey, revokeStorageKeys } = await import("@/lib/storageKeys");
@@ -135,7 +152,21 @@ projectRouter.get("/:projectId/storage/files", ownerCtl.listFiles);
 projectRouter.post("/:projectId/storage/files/url", ownerCtl.fileUrl);
 projectRouter.post("/:projectId/storage/files/delete", ownerCtl.deleteFiles);
 projectRouter.post("/:projectId/storage/clear", ownerCtl.clearPreview);
+projectRouter.post("/:projectId/storage/rotate-key", ownerCtl.rotateKey);
 app.use("/project", projectRouter);
+// The admin router sits behind a gate in the real app; here a header names the admin.
+const adminRouter = express.Router();
+adminRouter.use((req, _res, next) => {
+  const id = req.headers["x-test-admin"];
+  if (typeof id === "string") req.user = { id, email: "admin@example.com" } as never;
+  next();
+});
+adminRouter.get("/storage", adminCtl.storageOverview);
+adminRouter.get("/projects/:id/storage/files", adminCtl.storageFiles);
+adminRouter.post("/projects/:id/storage/suspend", adminCtl.suspendStorage);
+adminRouter.post("/projects/:id/storage/resume", adminCtl.resumeStorage);
+adminRouter.post("/projects/:id/storage/files/delete", adminCtl.deleteStorageFile);
+app.use("/admin", adminRouter);
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   res.status(err.statusCode ?? 500).json({ error: err.message });
 });
@@ -533,5 +564,142 @@ describe("the owner routes (Tools -> Storage)", () => {
       (await own("POST", "/A/storage/files/url", { key: "x" })).json,
     ]);
     expect(all).not.toContain("tau_st_");
+  });
+
+  test("rotating the key: the new one works, the old one has its grace window, the value is never returned", async () => {
+    await put(previewA, "keep.txt", 1);
+    const res = await own("POST", "/A/storage/rotate-key");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ rotated: true, previousKeyValidForHours: 24 });
+    expect(JSON.stringify(res.json)).not.toContain("tau_st_");
+    const active = tables.storageKey.find((k) => k.projectId === PA && k.env === "PREVIEW" && k.status === "ACTIVE")!;
+    expect(active.lookupHash).not.toBe(tables.storageKey.find((k) => k.status === "ROTATING")!.lookupHash);
+    // The old key still lists during the grace window; live and other projects are untouched.
+    expect((await call(previewA, "GET", "/files")).json.files).toHaveLength(1);
+    expect(tables.storageKey.filter((k) => k.status === "ACTIVE" && k.projectId === PA)).toHaveLength(2); // preview + live
+  });
+
+  test("rotating is refused for another user, and for an app that does not use storage", async () => {
+    expect((await own("POST", "/C/storage/rotate-key")).status).toBe(404);
+    projects.B!.storageEnabled = false;
+    expect((await own("POST", "/B/storage/rotate-key")).status).toBe(400);
+  });
+});
+
+describe("admin storage controls", () => {
+  const admin = (method: string, path: string, body?: unknown, who: string | null = "admin-1") =>
+    fetch(`${root}/admin${path.replace(/^\/projects\/(A|B|C)\//, (_m, k: string) => `/projects/${ids[k]}/`)}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...(who ? { "x-test-admin": who } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: (await r.json()) as any }));
+
+  test("the overview: totals, biggest projects, owners and who is near the allowance", async () => {
+    await put(previewA, "a", 1000);
+    await put(previewB, "b", 5000);
+    for (let i = 0; i < 8; i++) await put(liveA, `big${i}`, 10 * 1024 * 1024); // 80 MB of a 100 MB allowance
+    const o = await admin("GET", "/storage");
+    expect(o.status).toBe(200);
+    expect(o.json.configured).toBe(true);
+    expect(o.json.totals).toMatchObject({ files: 10, projects: 2, owners: 1 });
+    expect(o.json.totals.usedBytes).toBe(1000 + 5000 + 80 * 1024 * 1024);
+    expect(o.json.topProjects[0]).toMatchObject({ projectId: PA, name: null, files: 9 });
+    expect(o.json.topOwners[0]).toMatchObject({ userId: "owner", quotaBytes: 100 * 1024 * 1024 });
+    expect(o.json.nearAllowance.map((x: any) => x.userId)).toEqual(["owner"]);
+    expect(o.json.busiestProject).toEqual({ projectId: PA, uploads: 9 });
+  });
+
+  test("an owner under four fifths of the allowance is not listed", async () => {
+    await put(previewA, "small", 1000);
+    expect((await admin("GET", "/storage")).json.nearAllowance).toEqual([]);
+  });
+
+  test("suspend stops the app, keeps the files, and resume restores it", async () => {
+    await put(previewA, "keep.txt", 3, "text/plain");
+    const s = await admin("POST", "/projects/A/storage/suspend", { reason: "phishing page reported" });
+    expect(s.status).toBe(200);
+    expect(projects.A!.storageSuspendedAt).toBeInstanceOf(Date);
+    expect((await call(previewA, "POST", "/uploads", { key: "n", size: 1 })).json.code).toBe("storage_suspended");
+    expect((await call(previewA, "POST", "/files/url", { key: "keep.txt" })).status).toBe(403);
+    // The admin can still see what is there.
+    const files = await admin("GET", "/projects/A/storage/files");
+    expect(files.json.files.map((f: any) => f.key)).toEqual(["keep.txt"]);
+    expect((await admin("POST", "/projects/A/storage/resume")).status).toBe(200);
+    expect(projects.A!.storageSuspendedAt).toBeNull();
+    expect((await call(previewA, "POST", "/files/url", { key: "keep.txt" })).status).toBe(200);
+  });
+
+  test("a reason is required to suspend or to delete a file; an unknown project is 404", async () => {
+    expect((await admin("POST", "/projects/A/storage/suspend", {})).status).toBe(400);
+    expect((await admin("POST", "/projects/A/storage/files/delete", { key: "x" })).status).toBe(400);
+    const unknown = await fetch(`${root}/admin/projects/00000000-0000-4000-8000-0000000000ff/storage/suspend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-test-admin": "admin-1" },
+      body: JSON.stringify({ reason: "x" }),
+    });
+    expect(unknown.status).toBe(404);
+  });
+
+  test("a takedown deletes the file from the app and the bucket, per environment", async () => {
+    await put(previewA, "bad.html", 3, "text/html");
+    await put(liveA, "bad.html", 3, "text/html");
+    const del = await admin("POST", "/projects/A/storage/files/delete", { env: "PREVIEW", key: "bad.html", reason: "malware" });
+    expect(del.json.deleted).toBe(1);
+    expect((await call(previewA, "GET", "/files")).json.files).toEqual([]);
+    expect((await call(liveA, "GET", "/files")).json.files).toHaveLength(1);
+    expect(bucket.size).toBe(1);
+  });
+});
+
+describe("storage alert rules", () => {
+  const limits = { uploadsPerHour: 500, bucketBytes: 8 * 1024 ** 3 };
+  test("quiet below both limits and at no traffic", () => {
+    expect(storageAnomalies({ busiestProject: null, totalBytes: 0 }, limits)).toEqual([]);
+    expect(storageAnomalies({ busiestProject: { projectId: "p", uploads: 499 }, totalBytes: 8 * 1024 ** 3 - 1 }, limits)).toEqual([]);
+  });
+  test("an upload spike names the project; the bucket total names the size; both can fire", () => {
+    const spike = storageAnomalies({ busiestProject: { projectId: "p1", uploads: 500 }, totalBytes: 0 }, limits);
+    expect(spike.map((a) => a.key)).toEqual(["storage_upload_spike"]);
+    expect(spike[0]!.message).toContain("p1");
+    const big = storageAnomalies({ busiestProject: null, totalBytes: 9 * 1024 ** 3 }, limits);
+    expect(big.map((a) => a.key)).toEqual(["storage_bucket_size"]);
+    expect(big[0]!.message).toContain("9 GB");
+    expect(storageAnomalies({ busiestProject: { projectId: "p", uploads: 900 }, totalBytes: 9 * 1024 ** 3 }, limits)).toHaveLength(2);
+  });
+});
+
+describe("reconciling the bucket with the table", () => {
+  const row = (id: string, status = "READY", project = PA) => ({ id, projectId: project, env: "PREVIEW" as const, key: id, status: status as "READY" });
+
+  test("diffStorage finds both kinds of orphan and ignores what is in step", () => {
+    const rows = [row("ok"), row("gone"), row("pending", "PENDING")];
+    const keys = [r2KeyFor(PA, "PREVIEW", "ok"), r2KeyFor(PA, "PREVIEW", "stray"), r2KeyFor(PA, "PREVIEW", "pending")];
+    const diff = diffStorage(keys, rows);
+    expect(diff.orphanObjects).toEqual([r2KeyFor(PA, "PREVIEW", "stray")]);
+    expect(diff.missingObjects.map((r) => r.id)).toEqual(["gone"]); // a PENDING row with no object is normal
+  });
+
+  test("an empty bucket and an empty table agree", () => {
+    expect(diffStorage([], [])).toEqual({ orphanObjects: [], missingObjects: [] });
+  });
+
+  test("report only by default; fix deletes the stray object and the dead row", async () => {
+    const real = await put(previewA, "real.txt", 3, "text/plain");
+    const ghost = await put(previewA, "ghost.txt", 3, "text/plain");
+    bucket.delete(r2KeyFor(PA, "PREVIEW", ghost.json.file.id)); // a READY row whose bytes are gone
+    bucket.set(r2KeyFor(PA, "PREVIEW", "stray-object"), 9); // bytes with no row
+
+    const report = await reconcileStorage({ fix: false });
+    expect(report.orphanObjects).toEqual([r2KeyFor(PA, "PREVIEW", "stray-object")]);
+    expect(report.missingObjects.map((r) => r.key)).toEqual(["ghost.txt"]);
+    expect(report.fixed).toBeNull();
+    expect(bucket.has(r2KeyFor(PA, "PREVIEW", "stray-object"))).toBe(true); // nothing changed
+
+    const fixed = await reconcileStorage({ fix: true });
+    expect(fixed.fixed).toEqual({ objectsDeleted: 1, rowsDeleted: 1 });
+    expect(bucket.has(r2KeyFor(PA, "PREVIEW", "stray-object"))).toBe(false);
+    expect((await call(previewA, "GET", "/files")).json.files.map((f: any) => f.key)).toEqual(["real.txt"]);
+    expect(bucket.has(r2KeyFor(PA, "PREVIEW", real.json.file.id))).toBe(true);
+    expect((await reconcileStorage({ fix: false })).orphanObjects).toEqual([]);
   });
 });

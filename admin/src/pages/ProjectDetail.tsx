@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useApi } from "@/lib/useApi";
 import { post } from "@/lib/api";
-import { ago, credits, dateTime, int, label, num, shortId } from "@/lib/format";
-import type { ProjectDetail as ProjectDetailData } from "@/types";
+import { ago, bytes, credits, dateTime, int, label, num, shortId } from "@/lib/format";
+import type { ProjectDetail as ProjectDetailData, StorageFilesPage } from "@/types";
 import {
   Badge,
   Button,
@@ -17,12 +17,12 @@ import {
   Row,
   Loading,
   PageHeader,
+  ReasonButton,
   Section,
   Stat,
   StatGrid,
   Table,
   Td,
-  ToneIcon,
   inputClass,
 } from "@/components/ui";
 import { JobLinks } from "./Jobs";
@@ -80,6 +80,7 @@ export default function ProjectDetail() {
               </Link>
             </Card>
             <PublishedSiteCard project={data.project} onChange={() => reload()} />
+            <StorageCard project={data.project} onChange={() => reload()} />
           </div>
 
           <Section title="Recent jobs">
@@ -172,76 +173,124 @@ function PublishedSiteCard({ project, onChange }: { project: ProjectDetailData["
   );
 }
 
-/** A dialog taking the reason, then POSTs the suspension. The reason is required: the owner reads it. */
+/** The reason is required: the owner reads it in their Publish panel. */
 function SuspendSiteButton({ projectId, onDone }: { projectId: string; onDone: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const succeeded = useRef(false);
+  return (
+    <ReasonButton
+      label="Suspend site"
+      title="Suspend this site?"
+      description={
+        <>
+          Every page at its address shows &quot;This site has been suspended&quot; within seconds, and the owner cannot publish or roll back
+          until it is lifted. Its stored files are suspended with it: no uploads and no download addresses. Nothing is deleted.
+        </>
+      }
+      hint="Reason (the owner sees this in their Publish panel)"
+      placeholder="e.g. This page imitates a bank sign-in form."
+      confirmLabel="Suspend site"
+      busyLabel="Suspending…"
+      endpoint={`/projects/${projectId}/site/suspend`}
+      onDone={onDone}
+    />
+  );
+}
 
-  const open = () => {
-    setReason("");
-    setError(undefined);
-    succeeded.current = false;
-    ref.current?.showModal();
-  };
-  const close = () => ref.current?.close();
-
-  const run = async () => {
-    setBusy(true);
-    try {
-      await post(`/projects/${projectId}/site/suspend`, { reason: reason.trim() });
-      succeeded.current = true;
-      ref.current?.close();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  };
+/**
+ * The files this app has stored with tau Cloud Storage: whether it is on, the
+ * one control (suspend or resume, files kept) and, on request, the files
+ * themselves with a takedown per file. Both need a reason, which goes to the log
+ * with the admin id.
+ */
+function StorageCard({ project, onChange }: { project: ProjectDetailData["project"]; onChange: () => void }) {
+  const [env, setEnv] = useState<"PREVIEW" | "LIVE">("PREVIEW");
+  const [showFiles, setShowFiles] = useState(false);
+  const files = useApi<StorageFilesPage>(showFiles ? `/projects/${project.id}/storage/files?env=${env}&limit=100` : null);
+  const suspended = Boolean(project.storageSuspendedAt);
+  const state = suspended
+    ? ({ tone: "critical", text: "Suspended" } as const)
+    : project.storageEnabled
+      ? ({ tone: "good", text: "On" } as const)
+      : ({ tone: "neutral", text: "Not used" } as const);
 
   return (
-    <>
-      <Button variant="danger" onClick={open} className="px-2 py-1 text-xs">
-        Suspend site
-      </Button>
-      <dialog
-        ref={ref}
-        onClose={() => succeeded.current && onDone()}
-        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-0 text-left text-sm font-normal whitespace-normal text-fg shadow-2xl"
-      >
-        <div className="p-5">
-          <h3 className="text-base font-semibold">Suspend this site?</h3>
-          <p className="mt-2 text-sm text-fg-2">
-            Every page at its address shows "This site has been suspended" within seconds, and the owner can't publish or roll back until it is lifted. Nothing is deleted.
-          </p>
-          <label className="mt-4 block text-xs text-fg-2">
-            Reason (the owner sees this in their Publish panel)
-            <textarea
-              className={`${inputClass} mt-1.5 w-full resize-y`}
-              rows={3}
-              maxLength={500}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              autoFocus
-              placeholder="e.g. This page imitates a bank's sign-in form."
-            />
-          </label>
-          {error && (
-            <div className="mt-4 flex items-start gap-2 text-sm text-critical-text" role="status">
-              <ToneIcon tone="critical" className="mt-0.5 size-4 shrink-0" />
-              <span className="break-words">{error}</span>
-            </div>
+    <Card
+      title="File storage"
+      action={
+        suspended ? (
+          <ConfirmButton
+            label="Resume storage"
+            title="Resume this app's storage?"
+            description="The app can upload files and open them again right away. Nothing was deleted, so there is nothing to restore."
+            variant="primary"
+            closeOnSuccess
+            onConfirm={async () => {
+              await post(`/projects/${project.id}/storage/resume`);
+            }}
+            onDone={onChange}
+          />
+        ) : (
+          <ReasonButton
+            label="Suspend storage"
+            title="Suspend this app's storage?"
+            description="The app can no longer upload files or get download addresses for them, and the owner's Storage pane says it is suspended. Every file is kept."
+            hint="Reason (kept in the log with your id)"
+            placeholder="e.g. Stores a phishing kit reported on 2026-10-10."
+            confirmLabel="Suspend storage"
+            busyLabel="Suspending…"
+            endpoint={`/projects/${project.id}/storage/suspend`}
+            onDone={onChange}
+          />
+        )
+      }
+    >
+      <KV>
+        <Row k="Status"><Badge tone={state.tone}>{state.text}</Badge></Row>
+        {suspended && <Row k="Suspended">{dateTime(project.storageSuspendedAt!)} ({ago(project.storageSuspendedAt!)})</Row>}
+      </KV>
+      <div className="mt-3 flex items-center gap-2">
+        <Button className="px-2 py-1 text-xs" onClick={() => setShowFiles((v) => !v)}>
+          {showFiles ? "Hide files" : "Show files"}
+        </Button>
+        {showFiles && (
+          <select className={inputClass} value={env} onChange={(e) => setEnv(e.target.value as "PREVIEW" | "LIVE")} aria-label="Environment">
+            <option value="PREVIEW">Preview</option>
+            <option value="LIVE">Live</option>
+          </select>
+        )}
+      </div>
+      {showFiles && (
+        <div className="mt-3">
+          {files.error && <ErrorBox message={files.error} onRetry={() => files.reload()} />}
+          {files.loading && !files.data && <Loading />}
+          {files.data && (
+            <Table head={["File", "Type", "Size", "Uploaded", ""]} empty="No files.">
+              {files.data.files.map((f) => (
+                <tr key={f.id}>
+                  <Td mono className="break-all">{f.key}</Td>
+                  <Td className="text-xs text-fg-3">{f.contentType}</Td>
+                  <Td num>{bytes(f.size)}</Td>
+                  <Td className="text-xs text-fg-3">{dateTime(f.createdAt)}</Td>
+                  <Td>
+                    <ReasonButton
+                      label="Delete"
+                      title="Delete this file?"
+                      description={<span className="break-all font-mono text-xs">{f.key}</span>}
+                      hint="Reason (kept in the log with your id)"
+                      placeholder="e.g. Malware reported by a visitor."
+                      confirmLabel="Delete file"
+                      busyLabel="Deleting…"
+                      endpoint={`/projects/${project.id}/storage/files/delete`}
+                      extraBody={{ env, key: f.key }}
+                      onDone={() => files.reload()}
+                    />
+                  </Td>
+                </tr>
+              ))}
+            </Table>
           )}
-          <div className="mt-5 flex justify-end gap-2">
-            <Button onClick={close}>Cancel</Button>
-            <Button variant="danger" disabled={!reason.trim() || busy} onClick={run}>
-              {busy ? "Suspending…" : "Suspend site"}
-            </Button>
-          </div>
+          {files.data?.nextCursor && <p className="mt-2 text-xs text-fg-3">Showing the first 100 files.</p>}
         </div>
-      </dialog>
-    </>
+      )}
+    </Card>
   );
 }

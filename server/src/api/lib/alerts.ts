@@ -11,10 +11,13 @@ import {
   deepseekAnomalies,
   jobAnomalies,
   sortAnomalies,
+  storageAnomalies,
   webhookAnomalies,
   type Anomaly,
 } from "./anomalies";
 import { deepseekBalance } from "./providers";
+import { storageConfigured } from "@/lib/storageBucket";
+import { storageSignals } from "../services/storageAdmin.service";
 
 /**
  * Operational alerting, evaluated from the hourly sweep that already runs — no
@@ -52,17 +55,22 @@ export function countStaleWebhooks(): Promise<number> {
 export async function evaluateAlerts(
   pre: { health?: AdminHealth; metrics?: WindowMetrics[] } = {},
 ): Promise<Alert[]> {
-  const [health, metrics, deepseek, staleWebhooks] = await Promise.all([
+  const [health, metrics, deepseek, staleWebhooks, storage] = await Promise.all([
     pre.health ?? getHealth(),
     pre.metrics ?? getMetrics(),
     deepseekBalance(),
     countStaleWebhooks(),
+    // Only where storage is on: an instance without a bucket has nothing to watch.
+    storageConfigured() ? storageSignals() : Promise.resolve(null),
   ]);
 
   const all = [
     ...jobAnomalies(health, metrics),
     ...deepseekAnomalies(deepseek, env.DEEPSEEK_LOW_BALANCE),
     ...webhookAnomalies(staleWebhooks),
+    ...(storage
+      ? storageAnomalies(storage, { uploadsPerHour: env.STORAGE_UPLOAD_SPIKE_PER_HOUR, bucketBytes: env.STORAGE_ALERT_BYTES })
+      : []),
   ];
   return sortAnomalies(all).filter((a): a is Alert => a.severity !== "info");
 }

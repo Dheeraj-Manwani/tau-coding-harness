@@ -24,6 +24,10 @@ pages. Fast, and cheap on Low.
 **Data-shaped tools.** Anything that is "hold these records, show them this way,
 let me edit them": trackers, generators, calculators, converters, CRUD tools.
 
+**Apps that keep files.** Ask for uploads (profile pictures, documents, receipts)
+and tau gives the app somewhere durable to keep them, with a screen to manage
+them under Tools → Storage. See [File storage](/docs/ship/storage).
+
 **Apps that call an LLM.** Ask tau to add AI and it wires the
 [AI gateway](/docs/ai/overview) in for you: no SDK to install, no key of your
 own to obtain. This is genuinely unusual and worth using.

@@ -820,6 +820,8 @@ export async function getProjectDetail(projectId: string) {
       liveDeploymentId: true,
       siteSuspendedAt: true,
       siteSuspendedReason: true,
+      storageEnabled: true,
+      storageSuspendedAt: true,
     },
   });
   if (!project) throw Errors.notFound("Project not found");
@@ -890,10 +892,15 @@ export async function getProjectDetail(projectId: string) {
  * them. Suspending an already-suspended site replaces the reason and keeps the
  * original time.
  */
+/** The time a project's storage has been suspended since, or now. */
+function storageSuspendedAtOr(existing: Date | null): Date {
+  return existing ?? new Date();
+}
+
 export async function suspendProjectSite(projectId: string, reason: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { slug: true, siteSuspendedAt: true },
+    select: { slug: true, siteSuspendedAt: true, storageSuspendedAt: true },
   });
   if (!project) throw Errors.notFound("Project not found");
 
@@ -902,6 +909,9 @@ export async function suspendProjectSite(projectId: string, reason: string) {
     data: {
       siteSuspendedAt: project.siteSuspendedAt ?? new Date(),
       siteSuspendedReason: reason,
+      // The site's files go with it (doc/TAU_CLOUD_STORAGE.md 4.3): no uploads and
+      // no download addresses, files kept. An earlier storage suspension keeps its time.
+      storageSuspendedAt: storageSuspendedAtOr(project.storageSuspendedAt),
     },
     select: { siteSuspendedAt: true, siteSuspendedReason: true },
   });
@@ -923,7 +933,9 @@ export async function unsuspendProjectSite(projectId: string) {
 
   const updated = await prisma.project.update({
     where: { id: projectId },
-    data: { siteSuspendedAt: null, siteSuspendedReason: null },
+    // Putting the site back puts its storage back too. An admin who wants storage
+    // to stay stopped suspends it again from the storage controls.
+    data: { siteSuspendedAt: null, siteSuspendedReason: null, storageSuspendedAt: null },
     select: { siteSuspendedAt: true, siteSuspendedReason: true },
   });
 

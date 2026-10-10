@@ -13,7 +13,8 @@ import { getDatabaseUrl } from "@/lib/neonApps";
 import { exportDatabase } from "@/lib/databaseExport";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { getBalance } from "@/lib/credits";
+import { ensureBillingAccount, getBalance } from "@/lib/credits";
+import { publishQuotaProblem } from "@/lib/deployQuota";
 import { PUBLISH_FEE_MICRO, toCredits } from "@/lib/pricing";
 import { withinRollbackWindow } from "../lib/deploySweep";
 import { isInFlight } from "@/lib/deployStatus";
@@ -457,6 +458,18 @@ export async function requestDeploy(
   const fileCount = await prisma.projectFile.count({ where: { projectId } });
   if (fileCount === 0) {
     throw Errors.badRequest("Nothing to publish yet — build something first");
+  }
+
+  // Plan limits (C12). Refused before a sandbox is spent; nothing is deleted.
+  if (env.PUBLISH_QUOTAS_ENFORCE) {
+    const { plan } = await ensureBillingAccount(userId);
+    const problem = await publishQuotaProblem({
+      projectId,
+      userId,
+      plan,
+      needsBackend: backendHostingAvailable() && TEMPLATES[toTemplateKey(project.templateKey)].hasServer,
+    });
+    if (problem) throw Errors.tooMany(problem);
   }
 
   const slug = await ensureSlug(project, name);

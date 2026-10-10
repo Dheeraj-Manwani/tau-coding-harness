@@ -404,6 +404,17 @@ const envSchema = z.object({
     .positive()
     .default(5 * 60_000),
 
+  // What a plan may publish (doc/PUBLISHING.md C12; src/lib/deployQuota.ts).
+  // Set PUBLISH_QUOTAS_ENFORCE=false for local test runs that publish often.
+  PUBLISH_QUOTAS_ENFORCE: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+  PUBLISHES_PER_APP_PER_DAY_FREE: z.coerce.number().int().positive().default(5),
+  PUBLISHES_PER_APP_PER_DAY_PRO: z.coerce.number().int().positive().default(25),
+  BACKEND_APPS_FREE: z.coerce.number().int().min(0).default(1),
+  BACKEND_APPS_PRO: z.coerce.number().int().min(0).default(10),
+
   // Razorpay
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

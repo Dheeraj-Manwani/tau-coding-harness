@@ -30,7 +30,22 @@ export function toCsv(columns: string[], rows: unknown[][]): string {
   return [columns.map(csvValue).join(","), ...rows.map((r) => r.map(csvValue).join(","))].join("\r\n") + "\r\n";
 }
 
-const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
+/**
+ * `ALTER TABLE … ADD COLUMN` for columns that hold data in the database but are
+ * not in the schema the app was published with (a column removed from the
+ * schema keeps its data), so the CSVs load into the schema file as exported.
+ */
+export function missingColumnsSql(schemaSql: string, columns: { table: string; column: string; type: string }[]): string {
+  const lines: string[] = [];
+  for (const { table, column, type } of columns) {
+    const block = new RegExp(`create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?"?${table}"?\\s*\\(([\\s\\S]*?)\\n\\s*\\)\\s*;`, "i").exec(schemaSql);
+    if (block && new RegExp(`(^|[\\s(,"])${column}("|\\s)`, "i").test(block[1] ?? "")) continue;
+    lines.push(`ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "${column}" ${type};`);
+  }
+  return lines.length ? `\n-- Columns that hold data but are no longer in the app's schema.\n${lines.join("\n")}` : "";
+}
+
+const quoteIdent =(name: string) => `"${name.replace(/"/g, '""')}"`;
 
 export interface DatabaseExport {
   zip: Uint8Array;
@@ -62,6 +77,15 @@ export async function exportDatabase(connectionString: string, schemaSql: string
       files[`${table}.csv`] = csv;
       rows += data.length;
       if (cut) truncated.push(table);
+    }
+    if (schemaSql) {
+      const cols = await client.query<{ table: string; column: string; type: string }>(
+        `SELECT c.relname AS "table", a.attname AS "column", format_type(a.atttypid, a.atttypmod) AS "type"
+         FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
+         ORDER BY c.relname, a.attnum`,
+      );
+      schemaSql += missingColumnsSql(schemaSql, cols.rows);
     }
     await client.query("ROLLBACK");
   } finally {
